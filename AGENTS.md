@@ -50,6 +50,7 @@ lefthook install
 | PR 必須・1 approve・squash のみ | なし | ruleset `main-protection` |
 
 main への直接 push と force push は ruleset が拒否する。admin も例外にしていない。
+ただし repo の admin は、PR を merge するときに限り approve と pr-checks を待たずに merge できる（急ぎの場合の逃げ道で、普段は使わない）。
 
 PR を作成すると（draft は ready for review にしたときに）Discord に通知が届く。webhook URL は repo の Actions secret `DISCORD_WEBHOOK_URL` に置いていて、ファイルには書かない。
 

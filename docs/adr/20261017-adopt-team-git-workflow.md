@@ -2,6 +2,7 @@
 
 ## Status
 - accepted
+- 部分 supersede: 「admin も bypass できないようにする」と、それに伴う「提出直前に急ぐ場合も例外はない」の条項のみ [20261017-allow-admin-bypass-on-pr-merge](./20261017-allow-admin-bypass-on-pr-merge.md) で置き換えた。その他の条項は存続する。
 
 ## Situation
 - JPHACKS 2026 に 5 人で参加する。開発期間は数週間の短期決戦。
