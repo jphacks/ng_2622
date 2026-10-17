@@ -5,7 +5,8 @@
 #      merge 後に head branch を自動削除する
 #   3. 既定ブランチに ruleset「main-protection」を適用する
 #      （PR 必須・1 approve 必須・新しい push で approve を取り消す・pr-checks の pass 必須・
-#        merge は squash のみ・linear history・force push と削除の禁止。bypass はなし）
+#        merge は squash のみ・linear history・force push と削除の禁止。
+#        repo の admin だけは、PR の merge 時に限り approve と pr-checks を待たずに merge できる）
 # 使い方: scripts/setup-github-repo.sh [--repo <owner>/<name>] [--prune] [--skip-ruleset] [--dry-run]
 #   --repo 省略時はカレントリポジトリの origin を使う。
 #   --dry-run は変更内容を表示するだけで実行しない（読み取りは行う）。
@@ -18,6 +19,7 @@ DRY_RUN=0
 PRUNE=0
 SKIP_RULESET=0
 RULESET_NAME="main-protection"
+# bypass_actors の actor_id 5 は GitHub の組み込みロール「admin」を指す
 REQUIRED_CHECK="pr-checks"
 
 while [[ $# -gt 0 ]]; do
@@ -111,7 +113,9 @@ ruleset_json="$(cat <<JSON
   "name": "${RULESET_NAME}",
   "target": "branch",
   "enforcement": "active",
-  "bypass_actors": [],
+  "bypass_actors": [
+    { "actor_id": 5, "actor_type": "RepositoryRole", "bypass_mode": "pull_request" }
+  ],
   "conditions": { "ref_name": { "include": ["~DEFAULT_BRANCH"], "exclude": [] } },
   "rules": [
     { "type": "deletion" },

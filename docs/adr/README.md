@@ -32,4 +32,5 @@
 
 | 日付 | タイトル | Status |
 |---|---|---|
-| 2026-10-17 | [PR 必須・squash merge・規約の自動検査によるチーム開発フロー](./20261017-adopt-team-git-workflow.md) | accepted |
+| 2026-10-17 | [PR 必須・squash merge・規約の自動検査によるチーム開発フロー](./20261017-adopt-team-git-workflow.md) | accepted（admin の bypass を認めない条項のみ同日に部分 supersede） |
+| 2026-10-17 | [admin に PR の merge 時だけ ruleset の bypass を認める](./20261017-allow-admin-bypass-on-pr-merge.md) | accepted |
