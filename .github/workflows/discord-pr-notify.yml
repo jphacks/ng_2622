@@ -1,0 +1,64 @@
+# PR が作成されたとき（draft から ready for review になったときを含む）に Discord へ通知する。
+# webhook URL は repo の Actions secret DISCORD_WEBHOOK_URL に置く（public repo なのでファイルには書かない）。
+name: discord-pr-notify
+
+on:
+  pull_request:
+    types: [opened, reopened, ready_for_review]
+
+permissions: {}
+
+jobs:
+  notify:
+    # draft の PR は ready for review になったときに通知する。fork からの PR には secret が渡らないので対象外
+    if: >-
+      !github.event.pull_request.draft &&
+      github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - name: Discord に通知
+        env:
+          WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
+          ACTION: ${{ github.event.action }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          PR_TITLE: ${{ github.event.pull_request.title }}
+          PR_URL: ${{ github.event.pull_request.html_url }}
+          PR_BODY: ${{ github.event.pull_request.body }}
+          PR_AUTHOR: ${{ github.event.pull_request.user.login }}
+          PR_AUTHOR_AVATAR: ${{ github.event.pull_request.user.avatar_url }}
+          HEAD_REF: ${{ github.event.pull_request.head.ref }}
+          BASE_REF: ${{ github.event.pull_request.base.ref }}
+        run: |
+          if [ -z "$WEBHOOK_URL" ]; then
+            echo "::warning::secret DISCORD_WEBHOOK_URL が未設定のため通知をスキップします"
+            exit 0
+          fi
+          case "$ACTION" in
+            opened) label="PR が作成されました" ;;
+            reopened) label="PR が再オープンされました" ;;
+            *) label="PR のレビュー準備ができました" ;;
+          esac
+          # PR のタイトルや本文は利用者の入力なので、シェルに展開せず jq で JSON に埋め込む。
+          # allowed_mentions を空にして、本文中の @everyone などでメンションが飛ばないようにする
+          payload="$(jq -n \
+            --arg label "$label" --arg num "$PR_NUMBER" --arg title "$PR_TITLE" --arg url "$PR_URL" \
+            --arg body "$PR_BODY" --arg author "$PR_AUTHOR" --arg avatar "$PR_AUTHOR_AVATAR" \
+            --arg head "$HEAD_REF" --arg base "$BASE_REF" --arg repo "$GITHUB_REPOSITORY" '
+            {
+              username: "GitHub",
+              allowed_mentions: { parse: [] },
+              embeds: [{
+                title: ("#" + $num + " " + $title)[0:256],
+                url: $url,
+                description: (if ($body | length) > 300 then $body[0:300] + "…" else $body end),
+                color: 3066993,
+                author: { name: $author, icon_url: $avatar },
+                fields: [
+                  { name: "ブランチ", value: ("`" + $head + "` → `" + $base + "`"), inline: true },
+                  { name: "レビュー", value: "1 人の approve で merge できます", inline: true }
+                ],
+                footer: { text: ($repo + " ・ " + $label) }
+              }]
+            }')"
+          curl -fsS -X POST -H "Content-Type: application/json" --data "$payload" "$WEBHOOK_URL"

@@ -11,7 +11,7 @@
 ## リポジトリ構成
 
 ```
-.github/          PR・issue テンプレート、ラベル定義、Actions（pr-checks）
+.github/          PR・issue テンプレート、ラベル定義、Actions（pr-checks・Discord 通知）
 .claude/skills/   共有の Claude Code skill（.agents は .claude への symlink）
 docs/adr/         設計・運用の意思決定ログ
 scripts/          規約の検査スクリプトと GitHub 設定スクリプト
@@ -50,6 +50,8 @@ lefthook install
 | PR 必須・1 approve・squash のみ | なし | ruleset `main-protection` |
 
 main への直接 push と force push は ruleset が拒否する。admin も例外にしていない。
+
+PR を作成すると（draft は ready for review にしたときに）Discord に通知が届く。webhook URL は repo の Actions secret `DISCORD_WEBHOOK_URL` に置いていて、ファイルには書かない。
 
 ## コマンド
 
