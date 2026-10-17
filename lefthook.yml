@@ -1,0 +1,15 @@
+# git hook の定義。各自 `brew install lefthook && lefthook install` で有効にする。
+# 同じ検査を GitHub Actions（.github/workflows/pr-checks.yml）でも行うので、ここは手元で早く気づくためのもの。
+commit-msg:
+  commands:
+    check-commit-message:
+      # 件名が Conventional Commits 形式か（type 一覧は scripts/check-commit-msg.sh で定義）
+      run: bash scripts/check-commit-msg.sh {1}
+
+pre-push:
+  commands:
+    check-branch-name:
+      # push 先のブランチ名が <type>/<slug> 形式か
+      run: bash scripts/check-branch-name.sh
+      # git が pre-push に渡す ref 一覧を検査スクリプトへ転送する
+      use_stdin: true

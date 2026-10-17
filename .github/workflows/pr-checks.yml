@@ -1,0 +1,53 @@
+# PR の規約検査。main の ruleset がこの job（pr-checks）の pass を merge の条件にしている。
+# job 名を変えるときは scripts/setup-github-repo.sh の REQUIRED_CHECK も合わせて変える。
+name: pr-checks
+
+on:
+  pull_request:
+    # edited を含めて、PR タイトルの修正だけでも再検査する
+    types: [opened, edited, synchronize, reopened]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: pr-checks-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  pr-checks:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      # PR 側で検査スクリプトを書き換えても検査を通せないよう、規約の検査は base 側のスクリプトで行う
+      - name: base を checkout
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          ref: ${{ github.event.pull_request.base.sha }}
+          path: base
+          persist-credentials: false
+      - name: PR を checkout
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          path: head
+          persist-credentials: false
+      - name: 検査に使うスクリプトを選ぶ
+        run: |
+          # base に検査スクリプトが無いのは、それを初めて追加する PR のときだけ。その場合に限り PR 側を使う
+          if [ -f base/scripts/check-commit-msg.sh ]; then
+            echo "CHECKER_DIR=base/scripts" >> "$GITHUB_ENV"
+          else
+            echo "::warning::base に検査スクリプトが無いため、PR 側のスクリプトで検査します"
+            echo "CHECKER_DIR=head/scripts" >> "$GITHUB_ENV"
+          fi
+      - name: PR タイトルを検査（squash merge で main の commit 件名になる）
+        env:
+          PR_TITLE: ${{ github.event.pull_request.title }}
+        run: bash "$CHECKER_DIR/check-commit-msg.sh" --subject "$PR_TITLE"
+      - name: ブランチ名を検査
+        env:
+          HEAD_REF: ${{ github.head_ref }}
+        run: bash "$CHECKER_DIR/check-branch-name.sh" "$HEAD_REF"
+      # 検査スクリプト自体の変更は、PR 側のスクリプトで self-test する
+      - name: 検査スクリプトの self-test
+        run: bash head/tests/run-tests.sh
