@@ -6,7 +6,7 @@
 ## Situation
 - 作品は、日本人の英語学習者が約 20 秒の自由発話で場面を描写し、その発話を AI が採点して競うもの（[`docs/design/usecase.md`](../design/usecase.md)）。
 - 開発時間は約 14 時間で、採点の仕組みを作り込む時間は無い。
-- Azure はメンバーの GitHub Student Developer Pack のクレジット、Claude はメンバーの 100 USD 分のクレジットを使う。
+- Azure は @kameiryohei の GitHub Student Developer Pack のクレジット、Claude は @TEIKOTA の 100 USD 分のクレジットを使う。
 
 ## Context
 - 理想は、音声そのものを AI に渡し、抑揚やイントネーションまで採点に含めること。

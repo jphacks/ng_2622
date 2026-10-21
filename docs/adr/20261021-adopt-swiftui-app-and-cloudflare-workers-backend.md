@@ -6,7 +6,7 @@
 ## Situation
 - JPHACKS 2026 の作品（チーム 5 人）。名古屋会場は B 日程で、Hack Day は 2026-10-24・25、開発時間は約 14 時間。
 - 作品は、各自の iPhone で同じ 3D シーンを同時に見て英語で描写し、AI の採点で競うもの（[`docs/design/usecase.md`](../design/usecase.md)）。
-- Mac を持つのは 5 人のうち 2 人で、iOS の開発経験があるのは 1 人。
+- Mac を持つのは 5 人のうち 2 人（@TEIKOTA・@kameiryohei）で、iOS の開発経験があるのは 1 人（@TEIKOTA）。
 - リポジトリは公開（MIT ライセンス）で、外部 API（Azure・Claude）のキーを扱う。
 
 ## Context
