@@ -34,3 +34,6 @@
 |---|---|---|
 | 2026-10-17 | [PR 必須・squash merge・規約の自動検査によるチーム開発フロー](./20261017-adopt-team-git-workflow.md) | accepted（admin の bypass を認めない条項のみ同日に部分 supersede） |
 | 2026-10-17 | [admin に PR の merge 時だけ ruleset の bypass を認める](./20261017-allow-admin-bypass-on-pr-merge.md) | accepted |
+| 2026-10-21 | [iOS は SwiftUI、バックエンドは Cloudflare Workers の TypeScript にし、外部 API はバックエンドだけが呼ぶ](./20261021-adopt-swiftui-app-and-cloudflare-workers-backend.md) | accepted |
+| 2026-10-21 | [話し方と文字起こしは Azure の発音評価、内容・表現と講評は Claude で採点する](./20261021-score-speech-with-azure-and-claude.md) | accepted |
+| 2026-10-21 | [仕様の正本を repo の docs/design/ に置く](./20261021-keep-product-specs-in-docs-design.md) | accepted |

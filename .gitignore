@@ -38,5 +38,8 @@ __pycache__/
 *.pyc
 .venv/
 
+# 仮の画面の下書き（固まったものだけ docs/design/ui/images/ に移して commit する）
+docs/design/ui/drafts/
+
 # misc
 *.local

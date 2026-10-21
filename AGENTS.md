@@ -6,7 +6,8 @@
 ## プロジェクト
 
 - JPHACKS 2026 の作品（チーム 5 人）。プロダクトの概要は `README.md` に書く。
-- 技術スタックは未定。決まったら下の「リポジトリ構成」「コマンド」を更新し、選定理由を ADR に残す。
+- 技術スタック: iOS は SwiftUI のネイティブアプリ、バックエンドは TypeScript on Cloudflare Workers ＋ Durable Objects。外部 API（Azure の発音評価・Claude）はバックエンドだけが呼ぶ（[ADR](./docs/adr/20261021-adopt-swiftui-app-and-cloudflare-workers-backend.md)）。アプリとバックエンドのコードを足したら、下の「リポジトリ構成」「コマンド」も更新する。
+- 仕様の正本は `docs/design/`（[ADR](./docs/adr/20261021-keep-product-specs-in-docs-design.md)）。入口は `docs/design/usecase.md`。
 
 ## リポジトリ構成
 
@@ -14,7 +15,9 @@
 .github/          PR・issue テンプレート、ラベル定義、Actions（pr-checks・Discord 通知）
 .claude/skills/   共有の Claude Code skill（.agents は .claude への symlink）
 docs/adr/         設計・運用の意思決定ログ
-scripts/          規約の検査スクリプトと GitHub 設定スクリプト
+docs/design/      仕様の正本（使い方・画面の流れ・アーキテクチャ・採点・コスト対策）
+docs/design/ui/   画面設計書の元データ（screens/*.md、仮の画面の画像）
+scripts/          規約の検査スクリプト、GitHub 設定スクリプト、画面設計書の生成（ui-spec/）
 tests/            scripts/ の self-test
 lefthook.yml      git hook（commit-msg / pre-push）
 ```
@@ -59,6 +62,7 @@ PR を作成すると（draft は ready for review にしたときに）Discord 
 ```sh
 bash tests/run-tests.sh                     # 検査スクリプトの self-test
 scripts/setup-github-repo.sh --dry-run      # GitHub 設定（ラベル・merge 方式・ruleset）の差分確認
+python3 scripts/ui-spec/build.py            # 画面設計書 docs/design/ui/build/ui-spec.html を生成（要 graphviz・librsvg）
 ```
 
 ## AI エージェント向けの補足
