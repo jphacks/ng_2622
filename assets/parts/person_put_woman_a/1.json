@@ -1,0 +1,19 @@
+{
+  "id": "person_put_woman_a",
+  "version": 1,
+  "file": "parts/person_put_woman_a/1.usdz",
+  "category": "person",
+  "words": [
+    {
+      "word": "woman",
+      "pos": "noun"
+    },
+    {
+      "word": "put",
+      "pos": "verb"
+    }
+  ],
+  "pose": "put",
+  "size": [0.563, 1.695, 0.708],
+  "label": "女の人（物を置く）"
+}

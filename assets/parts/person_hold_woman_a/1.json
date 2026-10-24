@@ -1,0 +1,19 @@
+{
+  "id": "person_hold_woman_a",
+  "version": 1,
+  "file": "parts/person_hold_woman_a/1.usdz",
+  "category": "person",
+  "words": [
+    {
+      "word": "woman",
+      "pos": "noun"
+    },
+    {
+      "word": "hold",
+      "pos": "verb"
+    }
+  ],
+  "pose": "hold",
+  "size": [0.555, 1.695, 0.588],
+  "label": "女の人（両手で持つ）"
+}

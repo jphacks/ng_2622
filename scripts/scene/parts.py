@@ -78,7 +78,7 @@ def make_materials() -> None:
         "shirt_blue": ("#5a8fd6", 0.7), "pants_gray": ("#4a4f5a", 0.7), "shoe_brown": ("#6b4428", 0.5),
         "knit_rose": ("#e07a8a", 0.8), "skirt_navy": ("#2f3b63", 0.8), "shoe_white": ("#f2f2f2", 0.5),
         "shirt_yellow": ("#ffcf3a", 0.7), "shorts_blue": ("#3d6fb6", 0.7), "shoe_red": ("#e3483c", 0.5),
-        "dress_pink": ("#f29bb5", 0.75),
+        "dress_pink": ("#f29bb5", 0.75), "pen": ("#2f4fb0", 0.4), "mug": ("#3f8fd9", 0.4),
         # 建物の部分（扉・壁・窓）
         "door": ("#b07a4a", 0.55), "door_panel": ("#9a6538", 0.55), "door_frame": ("#ece6da", 0.6),
         "wall": ("#efe8dc", 0.9), "baseboard": ("#8a6a4a", 0.6), "window_frame": ("#d8dde3", 0.4),
@@ -920,6 +920,25 @@ def props_carry(p):
     box_shape(p, (w, d, h), (0, -0.4, SH_STAND + CARRY_HAND_Z - h / 2))
 
 
+SH_SIT = _heights("sit")[1]   # 座るポーズの肩の高さ
+
+
+def props_drink(p):
+    """口に当てた青いマグカップ（顔の前で見分けられるよう、白い cup とは色を変える）。底を上げて傾け、口の側を顔（+Y）へ向ける。"""
+    tilt = Euler((-1.0, 0, 0))
+    axis = tilt.to_matrix() @ Vector((0, 0, 1))
+    rim = Vector((0, -0.175, SH_STAND + 0.15))   # 口の少し前
+    c = rim - axis * 0.045
+    p.cyl(0.035, 0.032, 0.09, c, M["mug"], rot=tilt, segs=16)
+    p.cyl(0.03, 0.03, 0.002, rim + axis * 0.0005, M["coffee"], rot=tilt, segs=16, smooth=False)
+    p.limb(c + Vector((0.033, 0, 0)) + axis * 0.02, c + Vector((0.06, 0, 0)), 0.008, 0.008, M["mug"], segs=6)   # 持ち手（+X）
+
+
+def props_write(p):
+    """右手（+X 側）に持ったペン。先を机の高さ（0.72 m）に下ろす。"""
+    p.limb((0.115, -0.43, 0.72), (0.085, -0.37, 0.84), 0.006, 0.006, M["pen"], segs=8)
+
+
 # ポーズの表。base は common.py の person() のポーズ（脚と体の高さ）。hands は手の位置 [(x, y, dz), ...]
 # （dz は肩からの高さ。None ならポーズのまま）。props は持たせる物を作る関数（Part を受け取る）と、その Part の名前。
 # words は人の名詞のあとに足す語。base が sit のポーズには、腰の点（hip）を付ける。
@@ -939,6 +958,21 @@ POSES = {
     "carry": {"base": "walk", "label": "箱を運ぶ", "words": [("carry", "verb"), ("box", "noun")],
               "hands": [(-CARRY_BOX[0] / 2 - 0.03, -0.38, CARRY_HAND_Z), (CARRY_BOX[0] / 2 + 0.03, -0.38, CARRY_HAND_Z)],
               "props": ("box", props_carry)},
+    # 立って、胸の前で両手を寄せて物を持つ（持つ物は付けない。配置で物を手の前に置く）
+    "hold": {"base": "stand", "label": "両手で持つ", "words": [("hold", "verb")],
+             "hands": [(-0.1, -0.3, -0.27), (0.1, -0.3, -0.27)]},
+    # 立って、両手を前の下へ伸ばして物を置く（体は曲げられないので、手の位置だけで表す。hold より低く遠く、左右に開く）
+    "put": {"base": "stand", "label": "物を置く", "words": [("put", "verb")],
+            "hands": [(-0.17, -0.42, -0.44), (0.17, -0.42, -0.44)]},
+    # 立って、右手（+X 側）のマグカップを口に当てて飲む
+    "drink": {"base": "stand", "label": "飲む", "words": [("drink", "verb"), ("cup", "noun")],
+              "hands": [(-0.27, 0.0, -0.52), (0.07, -0.22, 0.09)], "props": ("cup", props_drink)},
+    # 座って、机（高さ 0.72 m）に向かってペンで書く。机は含めない
+    "write": {"base": "sit", "label": "座って書く", "words": [("write", "verb"), ("pen", "noun")],
+              "hands": [(-0.14, -0.4, 0.74 - SH_SIT), (0.1, -0.4, 0.76 - SH_SIT)], "props": ("pen", props_write)},
+    # 立って、右手をひさしにして遠く（上）を見る。person() は頭の向きを変えられないので、手で表す
+    "look": {"base": "stand", "label": "手をかざして見る", "words": [("look", "verb")],
+             "hands": [(-0.27, 0.0, -0.52), (0.05, -0.2, 0.3)]},
 }
 
 # 作る組み合わせ（ポーズ, 見た目）。この順で一覧に並ぶ
@@ -946,6 +980,9 @@ PEOPLE = [
     ("stand", "adult_a"), ("walk", "adult_a"), ("run", "adult_a"), ("sit", "adult_a"), ("phone", "adult_a"),
     ("walk", "woman_a"), ("sit", "woman_a"), ("run", "boy_a"), ("stand", "girl_a"),
     ("read", "adult_a"), ("eat", "adult_a"), ("carry", "adult_a"),
+    # 新しいポーズ
+    ("hold", "woman_a"), ("hold", "girl_a"), ("put", "adult_a"), ("put", "woman_a"), ("put", "boy_a"),
+    ("drink", "woman_a"), ("drink", "adult_a"), ("write", "boy_a"), ("write", "girl_a"), ("look", "girl_a"),
 ]
 
 

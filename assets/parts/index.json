@@ -848,5 +848,217 @@
     "pose": "carry",
     "size": [0.571, 1.695, 0.819],
     "label": "男の人（箱を運ぶ）"
+  },
+  {
+    "id": "person_hold_woman_a",
+    "version": 1,
+    "file": "parts/person_hold_woman_a/1.usdz",
+    "category": "person",
+    "words": [
+      {
+        "word": "woman",
+        "pos": "noun"
+      },
+      {
+        "word": "hold",
+        "pos": "verb"
+      }
+    ],
+    "pose": "hold",
+    "size": [0.555, 1.695, 0.588],
+    "label": "女の人（両手で持つ）"
+  },
+  {
+    "id": "person_hold_girl_a",
+    "version": 1,
+    "file": "parts/person_hold_girl_a/1.usdz",
+    "category": "person",
+    "words": [
+      {
+        "word": "girl",
+        "pos": "noun"
+      },
+      {
+        "word": "hold",
+        "pos": "verb"
+      }
+    ],
+    "pose": "hold",
+    "size": [0.416, 1.305, 0.441],
+    "label": "女の子（両手で持つ）"
+  },
+  {
+    "id": "person_put_adult_a",
+    "version": 1,
+    "file": "parts/person_put_adult_a/1.usdz",
+    "category": "person",
+    "words": [
+      {
+        "word": "man",
+        "pos": "noun"
+      },
+      {
+        "word": "put",
+        "pos": "verb"
+      }
+    ],
+    "pose": "put",
+    "size": [0.563, 1.695, 0.658],
+    "label": "男の人（物を置く）"
+  },
+  {
+    "id": "person_put_woman_a",
+    "version": 1,
+    "file": "parts/person_put_woman_a/1.usdz",
+    "category": "person",
+    "words": [
+      {
+        "word": "woman",
+        "pos": "noun"
+      },
+      {
+        "word": "put",
+        "pos": "verb"
+      }
+    ],
+    "pose": "put",
+    "size": [0.563, 1.695, 0.708],
+    "label": "女の人（物を置く）"
+  },
+  {
+    "id": "person_put_boy_a",
+    "version": 1,
+    "file": "parts/person_put_boy_a/1.usdz",
+    "category": "person",
+    "words": [
+      {
+        "word": "boy",
+        "pos": "noun"
+      },
+      {
+        "word": "put",
+        "pos": "verb"
+      }
+    ],
+    "pose": "put",
+    "size": [0.422, 1.271, 0.493],
+    "label": "男の子（物を置く）"
+  },
+  {
+    "id": "person_drink_woman_a",
+    "version": 1,
+    "file": "parts/person_drink_woman_a/1.usdz",
+    "category": "person",
+    "words": [
+      {
+        "word": "woman",
+        "pos": "noun"
+      },
+      {
+        "word": "drink",
+        "pos": "verb"
+      },
+      {
+        "word": "cup",
+        "pos": "noun"
+      }
+    ],
+    "pose": "drink",
+    "size": [0.587, 1.695, 0.51],
+    "label": "女の人（飲む）"
+  },
+  {
+    "id": "person_drink_adult_a",
+    "version": 1,
+    "file": "parts/person_drink_adult_a/1.usdz",
+    "category": "person",
+    "words": [
+      {
+        "word": "man",
+        "pos": "noun"
+      },
+      {
+        "word": "drink",
+        "pos": "verb"
+      },
+      {
+        "word": "cup",
+        "pos": "noun"
+      }
+    ],
+    "pose": "drink",
+    "size": [0.587, 1.695, 0.46],
+    "label": "男の人（飲む）"
+  },
+  {
+    "id": "person_write_boy_a",
+    "version": 1,
+    "file": "parts/person_write_boy_a/1.usdz",
+    "category": "person",
+    "words": [
+      {
+        "word": "boy",
+        "pos": "noun"
+      },
+      {
+        "word": "write",
+        "pos": "verb"
+      },
+      {
+        "word": "pen",
+        "pos": "noun"
+      }
+    ],
+    "pose": "write",
+    "size": [0.42, 1.031, 0.585],
+    "label": "男の子（座って書く）",
+    "anchors": {
+      "hip": [0.001, 0.36, -0.15]
+    }
+  },
+  {
+    "id": "person_write_girl_a",
+    "version": 1,
+    "file": "parts/person_write_girl_a/1.usdz",
+    "category": "person",
+    "words": [
+      {
+        "word": "girl",
+        "pos": "noun"
+      },
+      {
+        "word": "write",
+        "pos": "verb"
+      },
+      {
+        "word": "pen",
+        "pos": "noun"
+      }
+    ],
+    "pose": "write",
+    "size": [0.42, 1.065, 0.623],
+    "label": "女の子（座って書く）",
+    "anchors": {
+      "hip": [0.001, 0.36, -0.131]
+    }
+  },
+  {
+    "id": "person_look_girl_a",
+    "version": 1,
+    "file": "parts/person_look_girl_a/1.usdz",
+    "category": "person",
+    "words": [
+      {
+        "word": "girl",
+        "pos": "noun"
+      },
+      {
+        "word": "look",
+        "pos": "verb"
+      }
+    ],
+    "pose": "look",
+    "size": [0.444, 1.305, 0.366],
+    "label": "女の子（手をかざして見る）"
   }
 ]

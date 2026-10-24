@@ -1,0 +1,19 @@
+{
+  "id": "person_look_girl_a",
+  "version": 1,
+  "file": "parts/person_look_girl_a/1.usdz",
+  "category": "person",
+  "words": [
+    {
+      "word": "girl",
+      "pos": "noun"
+    },
+    {
+      "word": "look",
+      "pos": "verb"
+    }
+  ],
+  "pose": "look",
+  "size": [0.444, 1.305, 0.366],
+  "label": "女の子（手をかざして見る）"
+}
