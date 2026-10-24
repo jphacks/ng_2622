@@ -118,7 +118,7 @@ struct LiveRoomTracker {
 
 extension RoundResults {
   /// results を結果の画面の形にする。順位の順に並べ、採点できなかった人（rank か score が null）は最後に置く。
-  /// 自分（selfID）の講評と模範表現は myReview に入れる。模範表現の日本語訳はバックエンドが返さないので空
+  /// 自分（selfID）の講評（feedback）は myReview に入れる
   init(_ message: Components.Schemas.ResultsMessage, selfID: String?) {
     let rows = message.players.map { p in
       let score = p.rank == nil ? nil : p.score?.value1
@@ -130,7 +130,7 @@ extension RoundResults {
             PlayerResult.Score(content: $0.content, expression: $0.expression, speaking: $0.speech, total: $0.total)
           },
           transcript: p.transcript, comment: p.comment),
-        modelAnswer: p.modelAnswer
+        review: p.feedback.map { RoundResults.Review($0.value1) }
       )
     }
     // バックエンドも順位の順に送るが、同じ順位の中では届いた順を保って並べ直す
@@ -145,8 +145,18 @@ extension RoundResults {
       sceneID: message.sceneId,
       sceneName: message.sceneName.isEmpty ? SceneCatalog.name(of: message.sceneId) : message.sceneName,
       players: (graded + ungraded).map(\.result),
-      myReview: me.map {
-        Review(comment: $0.result.comment, modelSentence: $0.modelAnswer, modelSentenceJa: "")
-      })
+      myReview: me?.review)
+  }
+}
+
+extension RoundResults.Review {
+  init(_ feedback: Components.Schemas.Feedback) {
+    self.init(
+      strengthQuote: feedback.strength.quote,
+      strength: feedback.strength.text,
+      nextStep: feedback.nextStep.text,
+      nextStepGain: feedback.nextStep.gain,
+      rewrite: feedback.rewrite.map { Rewrite(before: $0.value1.before, after: $0.value1.after, reason: $0.value1.reason) },
+      speechTip: feedback.speechTip.text)
   }
 }
