@@ -277,26 +277,37 @@ struct SceneComposerTests {
 struct SceneGeneratorTests {
   final class FakeClient: SceneLayoutClient {
     var result: Result<String, SceneLayoutError>
-    init(_ result: Result<String, SceneLayoutError>) { self.result = result }
+    /// generate が返すまでの時間
+    var delay: Duration
+
+    init(_ result: Result<String, SceneLayoutError>, delay: Duration = .zero) {
+      self.result = result
+      self.delay = delay
+    }
 
     func layout(sceneID: String) async throws -> SceneLayout {
       SceneLayout(protocol: SceneLayout.protocolName, id: sceneID, name: "作った場面", difficulty: "normal", items: [])
     }
 
     func generate(prompt: String, difficulty: SceneDifficulty) async throws -> String {
-      try result.get()
+      if delay > .zero { try await Task.sleep(for: delay) }
+      return try result.get()
     }
+  }
+
+  func makeGenerator(_ client: FakeClient, timeout: Duration = .seconds(5)) -> SceneGenerator {
+    SceneGenerator(client: client, store: SceneLayoutStore(client: client), timeout: timeout, preload: { _ in })
   }
 
   func waitUntilDone(_ generator: SceneGenerator) async {
     for _ in 0..<200 where generator.isGenerating {
-      await Task.yield()
+      try? await Task.sleep(for: .milliseconds(10))
     }
   }
 
   @Test func success() async {
     let client = FakeClient(.success("gen-abcdefghij"))
-    let generator = SceneGenerator(client: client, store: SceneLayoutStore(client: client))
+    let generator = makeGenerator(client)
     #expect(!generator.canGenerate)
     generator.prompt = "  リンゴが落ちる公園 "
     generator.difficulty = .normal
@@ -312,7 +323,7 @@ struct SceneGeneratorTests {
   /// 作り直して同じ場面が返っても、Made は前と違う（待合の onChange が気づける）
   @Test func remakeWithSameSceneIsNewMade() async throws {
     let client = FakeClient(.success("gen-abcdefghij"))
-    let generator = SceneGenerator(client: client, store: SceneLayoutStore(client: client))
+    let generator = makeGenerator(client)
     generator.prompt = "公園"
     generator.generate()
     await waitUntilDone(generator)
@@ -326,11 +337,36 @@ struct SceneGeneratorTests {
 
   @Test func failureShowsReason() async {
     let client = FakeClient(.failure(.refused))
-    let generator = SceneGenerator(client: client, store: SceneLayoutStore(client: client))
+    let generator = makeGenerator(client)
     generator.prompt = "x"
     generator.generate()
     await waitUntilDone(generator)
     #expect(generator.state == .failed(.refused))
+    #expect(generator.made == nil)
+  }
+
+  /// やめた（シートを閉じた・待合を離れた）あとに返事が来ても、作った場面にしない
+  @Test func cancelDropsResult() async {
+    let client = FakeClient(.success("gen-abcdefghij"), delay: .milliseconds(100))
+    let generator = makeGenerator(client)
+    generator.prompt = "公園"
+    generator.generate()
+    generator.cancel()
+    #expect(generator.state == .idle)
+    try? await Task.sleep(for: .milliseconds(300))
+    #expect(generator.made == nil)
+    #expect(generator.state == .idle)
+    #expect(generator.canGenerate)
+  }
+
+  /// 打ち切りの時間を過ぎたら待つのをやめ、「時間がかかりすぎた」にする
+  @Test func timesOut() async {
+    let client = FakeClient(.success("gen-abcdefghij"), delay: .seconds(10))
+    let generator = makeGenerator(client, timeout: .milliseconds(50))
+    generator.prompt = "公園"
+    generator.generate()
+    await waitUntilDone(generator)
+    #expect(generator.state == .failed(.timedOut))
     #expect(generator.made == nil)
   }
 }

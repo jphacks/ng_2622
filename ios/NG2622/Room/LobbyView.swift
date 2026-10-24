@@ -42,17 +42,19 @@ struct LobbyView: View {
     }
     .frame(width: 346)
     .frame(maxWidth: .infinity)
-    .sheet(isPresented: $showsGenerator) {
+    // シートを閉じたら、作っている途中でもやめる（閉じた＝その場面は要らない）
+    .sheet(isPresented: $showsGenerator, onDismiss: generator.cancel) {
       SceneGenerateSheet(generator: generator)
         .presentationDragIndicator(.visible)
     }
-    // 作れたら、その場面を選んだ状態にして待合に戻る（シートを閉じて待っていた場合も選ぶ）。
-    // 作り直して同じ場面が返っても Made は変わる
+    // 作れたら、その場面を選んだ状態にして待合に戻る。作り直して同じ場面が返っても Made は変わる
     .onChange(of: generator.made) { _, made in
       guard let made else { return }
       sceneID = made.id
       showsGenerator = false
     }
+    // 待合を離れたら、通信と時間切れのタイマーを止める
+    .onDisappear(perform: generator.cancel)
   }
 
   /// 部屋のコードと QR

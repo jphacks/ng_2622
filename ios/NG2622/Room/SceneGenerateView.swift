@@ -24,8 +24,6 @@ final class SceneGenerator {
   nonisolated static let maxPromptLength = 40
   /// 待つ時間の目安（進み具合のバーに使う）。バックエンドは長くて 20 秒で返す
   static let expectedWait: TimeInterval = 20
-  /// これを過ぎたら待つのをやめ、「時間がかかりすぎた」にする
-  static let timeout: Duration = .seconds(SceneLayouts.generateTimeout)
 
   var prompt = ""
   var difficulty = SceneDifficulty.easy
@@ -35,13 +33,24 @@ final class SceneGenerator {
 
   private let client: any SceneLayoutClient
   private let store: SceneLayoutStore
+  /// これを過ぎたら待つのをやめ、「時間がかかりすぎた」にする
+  private let timeout: Duration
+  /// 作れた場面を先に読んでおく（test では何もしない）
+  private let preload: (String) -> Void
   private var task: Task<Void, Never>?
   private var timer: Task<Void, Never>?
   private var serial = 0
 
-  init(client: any SceneLayoutClient = SceneLayouts.client, store: SceneLayoutStore = SceneLayouts.store) {
+  init(
+    client: any SceneLayoutClient = SceneLayouts.client,
+    store: SceneLayoutStore = SceneLayouts.store,
+    timeout: Duration = .seconds(SceneLayouts.generateTimeout),
+    preload: @escaping (String) -> Void = { SceneLibrary.shared.preload([$0]) }
+  ) {
     self.client = client
     self.store = store
+    self.timeout = timeout
+    self.preload = preload
   }
 
   var trimmedPrompt: String {
@@ -66,35 +75,40 @@ final class SceneGenerator {
         let id = try await client.generate(prompt: prompt, difficulty: difficulty)
         // 名前を出すのと、スタートしてすぐ出せるように、配置の JSON と部品を先に読んでおく
         let layout = try await store.layout(of: id)
-        SceneLibrary.shared.preload([id])
         guard let self, !Task.isCancelled else { return }
-        timer?.cancel()
+        preload(id)
+        finish()
         serial += 1
         made = Made(id: id, name: layout.name, difficulty: difficulty, serial: serial)
         state = .idle
       } catch {
         guard let self, !Task.isCancelled else { return }
-        timer?.cancel()
+        finish()
         state = .failed(error as? SceneLayoutError ?? .connectionFailed)
       }
     }
     // 通信の待ち時間（URLRequest の timeoutInterval）は無通信の間しか数えないので、全体の時間もここで区切る
-    timer = Task { [weak self] in
-      try? await Task.sleep(for: Self.timeout)
+    timer = Task { [weak self, timeout] in
+      try? await Task.sleep(for: timeout)
       guard let self, !Task.isCancelled, isGenerating else { return }
       task?.cancel()
       task = nil
+      timer = nil
       state = .failed(.timedOut)
     }
   }
 
-  /// 待つのをやめる
+  /// 待つのをやめる。シートを閉じた・待合を離れたときも呼ぶ（閉じた＝その場面は要らない、と扱う）
   func cancel() {
     task?.cancel()
+    finish()
+    state = .idle
+  }
+
+  private func finish() {
     task = nil
     timer?.cancel()
     timer = nil
-    state = .idle
   }
 }
 
