@@ -1,0 +1,6 @@
+# swift-openapi-generator の設定。アプリから使うので型は public にする
+generate:
+  - types
+  - client
+accessModifier: public
+namingStrategy: idiomatic
