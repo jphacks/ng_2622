@@ -8,7 +8,7 @@
 
 | パス | 中身 |
 | --- | --- |
-| `<id>/1.usdz` | 部品の 3D モデル（どれも 0.2 MB 以下） |
+| `<id>/1.usdz` | 部品の 3D モデル（どれも約 0.2 MB 以下） |
 | `<id>/1.json` | メタデータ（`id`・`version`・`file`・`category`・`words`・`pose`・`size`・`label`、一部の部品は `anchors`） |
 | `index.json` | 全部品のメタデータの配列 |
 | `contact_sheet.png` | 確かめの画像。USDZ を読み直して、正面（+Z）を少し右上から見たもの |
