@@ -102,6 +102,7 @@ blender --background --factory-startup --python scripts/scene/parts.py -- --only
 blender --background --factory-startup --python scripts/scene/parts.py -- --meta-only            # USDZ は書かず、JSON だけ作り直す
 blender --background --factory-startup --python scripts/scene/check_parts.py                      # プロトコルに合っているかを確かめる
 blender --background --factory-startup --python scripts/scene/check_parts.py -- --sheet           # 確かめて、contact_sheet.png も作る
+python3 scripts/scene/preview_parts.py                                                            # 部品を 3D で回して見る HTML（下記）
 ```
 
 `check_parts.py` は USDZ を読み直し、次を確かめる（1 つでも合わなければ終了コード 1）。
@@ -111,5 +112,13 @@ blender --background --factory-startup --python scripts/scene/check_parts.py -- 
 - 外接箱の最小 y が 0、x と z の中心が 0（2 mm まで）。外接箱の大きさが JSON の `size` と合う（2 mm まで）
 - 正面の目印が +Z 側にある（人は目が髪より前、犬は鼻と目、車はヘッドライト、自転車は前かご、自動販売機は商品の窓）。ベンチ・椅子・ソファは背もたれが -Z 側。左右対称の物は確かめない
 - `anchors` が付けるはずの部品にあり、外接箱の内側にある。座る人の `hip` を椅子・ベンチ・ソファの `seat` に合わせて置くと、脚が家具の前に出て、足が床に 3 cm より深く入らず、背中が背もたれの後ろへ抜けない（外接箱で見る）
+
+### プレビュー（`preview_parts.py`）
+
+`python3 scripts/scene/preview_parts.py` で、34 部品を 1 個ずつ 3D で回して見られる `assets/parts/build/preview.html`（約 7 MB、commit しない）を作る。three.js（版を固定）・各部品の GLB（Blender で USDZ から書き出す）・USDZ・一覧の画像を HTML に埋め込むので、ネットにつながなくても開ける。three.js と esbuild は初回に npm で `assets/parts/build/vendor/` に取る（`--cache` で場所を変えられる）。
+
+- 3D の表示の中: ドラッグで回す、ピンチ（ホイール）で拡大。橙は `top`、緑は `seat`、桃色は `hip` の点。床のマスは 1 m か 10 cm
+- 切り替え: 情報の枠かいちばん上の帯を左右にスワイプ、‹ › のボタン、キーボードの ← →。「一覧」から選んで飛べる
+- iPhone の Safari では「AR で見る」から AR Quick Look で開ける（埋め込んだ USDZ を Blob URL で渡す。実機ではまだ確かめていない）
 
 Blender は 4.5 LTS と 4.0 で動く。4.0 は USD の書き出しに向きの変換が無いので、`common.py` の `export_usdz` が pxr で Y を上に直す（4.5 と同じ結果になる）。
