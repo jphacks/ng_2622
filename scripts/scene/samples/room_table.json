@@ -1,0 +1,60 @@
+{
+  "protocol": "scenenglish.scene/1",
+  "name": "机でひと休みする女の人",
+  "difficulty": "normal",
+  "description": "A woman is sitting on a chair at a table. There is a cup of coffee and a book on the table. A bag is on the floor next to her.",
+  "elements": [
+    {
+      "id": "woman_sit",
+      "label": "女の人が椅子に座っている",
+      "points": 35,
+      "accept": "a woman is sitting on a chair",
+      "partial": "mentions a woman, without saying she is sitting"
+    },
+    {
+      "id": "cup_on_table",
+      "label": "テーブルの上にコップがある",
+      "points": 25,
+      "accept": "there is a cup on the table",
+      "partial": "mentions a cup or coffee"
+    },
+    {
+      "id": "book_on_table",
+      "label": "テーブルの上に本がある",
+      "points": 20,
+      "accept": "there is a book on the table",
+      "partial": "mentions a book"
+    },
+    {
+      "id": "bag",
+      "label": "床にかばんがある",
+      "points": 10,
+      "accept": "a bag is on the floor"
+    }
+  ],
+  "extraMax": 10,
+  "items": [
+    { "key": "table", "part": "table", "position": [0, 0, -0.5] },
+    { "key": "cup", "part": "cup", "position": [0.25, 0.72, -0.35], "yaw": 30 },
+    {
+      "key": "book",
+      "part": "book",
+      "position": [-0.2, 0.72, -0.55],
+      "yaw": -15
+    },
+    { "key": "chair", "part": "chair", "position": [1.0, 0, -0.5], "yaw": -90 },
+    {
+      "key": "woman",
+      "part": "person_sit_woman_a",
+      "position": [0.825, 0, -0.5],
+      "yaw": -90
+    },
+    {
+      "key": "chair2",
+      "part": "chair",
+      "position": [-1.0, 0, -0.5],
+      "yaw": 90
+    },
+    { "key": "bag", "part": "bag", "position": [1.5, 0, 0.1], "yaw": -30 }
+  ]
+}
