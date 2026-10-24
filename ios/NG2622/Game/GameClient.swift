@@ -34,6 +34,9 @@ enum GameEvent: Sendable, Equatable {
   case results(RoundResults)
   /// ホストが「もう一度」を選び、待合に戻った（again を受けた部屋が送る room）
   case returnedToLobby(RoomState)
+  /// ラウンド中か結果発表のときに、ホストが替わった（前のホストが抜けた）。isSelf なら自分が新しいホスト。
+  /// 待合では room の members の isHost で分かるので送らない
+  case hostChanged(isSelf: Bool)
 }
 
 enum GameError: Error, Equatable {

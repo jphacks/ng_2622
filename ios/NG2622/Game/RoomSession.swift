@@ -46,7 +46,8 @@ final class RoomSession {
   func create() async throws {
     listen()
     code = try await client.createRoom(as: me)
-    isHost = true
+    // 待つ間に届いた room があれば、それに合わせる
+    isHost = participants.first(where: \.isSelf)?.isHost ?? true
   }
 
   /// コードの部屋に入る
@@ -54,7 +55,7 @@ final class RoomSession {
     listen()
     try await client.joinRoom(code: code, as: me)
     self.code = code
-    isHost = false
+    isHost = participants.first(where: \.isSelf)?.isHost ?? false
   }
 
   /// 部屋から抜ける
@@ -100,23 +101,36 @@ final class RoomSession {
     }
   }
 
-  private func handle(_ event: GameEvent) {
+  /// できごとを受けて状態を変える（テストからも呼ぶ）
+  func handle(_ event: GameEvent) {
     switch event {
     case .room(let room):
       code = room.code
       participants = room.members
+      updateHost(from: room.members)
     case .roundStarted(let info):
       // 前のラウンドの録音は消す
       recorder.prepare()
       phase = .playing(info)
     case .participantsChanged(let list):
       participants = list
+      updateHost(from: list)
     case .results(let results):
       phase = .results(results)
     case .returnedToLobby(let room):
       code = room.code
       participants = room.members
+      updateHost(from: room.members)
       phase = .lobby
+    case .hostChanged(let isSelf):
+      isHost = isSelf
+    }
+  }
+
+  /// ホストは、前のホストが抜けると部屋の側で替わる。届いた一覧の自分の isHost に合わせる（自分がいなければそのまま）
+  private func updateHost(from members: [Participant]) {
+    if let me = members.first(where: \.isSelf) {
+      isHost = me.isHost
     }
   }
 }

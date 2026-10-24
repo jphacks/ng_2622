@@ -75,6 +75,32 @@ struct LiveGameClientIntegrationTests {
     host.leaveRoom()
   }
 
+  /// ラウンド中にホストが抜けると、残った参加者がホストになり、締め切りともう一度を押せる
+  @Test func hostLeavesDuringRound() async throws {
+    let url = try #require(liveBackendURL)
+    let host = LiveGameClient(baseURL: url)
+    let guest = LiveGameClient(baseURL: url)
+    var guestEvents = guest.events.makeAsyncIterator()
+
+    let code = try await host.createRoom(as: PlayerProfile(name: "はなこ", color: 0xF07AA8))
+    try await guest.joinRoom(code: code, as: PlayerProfile(name: "たろう", color: 0x5B5BE6))
+    try await host.startRound(sceneID: nil)
+    _ = try await next(&guestEvents) { if case .roundStarted = $0 { true } else { false } }
+
+    host.leaveRoom()
+    let changed = try await next(&guestEvents) { if case .hostChanged = $0 { true } else { false } }
+    #expect(changed == .hostChanged(isSelf: true))
+
+    try await guest.closeRound()
+    _ = try await next(&guestEvents) { if case .results = $0 { true } else { false } }
+    try await guest.playAgain()
+    let lobby = try await next(&guestEvents) { if case .returnedToLobby = $0 { true } else { false } }
+    guard case .returnedToLobby(let room) = lobby else { return }
+    #expect(room.members.map(\.isHost) == [true])
+    #expect(room.members.first?.isSelf == true)
+    guest.leaveRoom()
+  }
+
   /// 無音 0.1 秒の WAV（16 kHz・16 bit・モノラル）
   func silentWAV() throws -> RecordedAudio {
     let samples = 1600

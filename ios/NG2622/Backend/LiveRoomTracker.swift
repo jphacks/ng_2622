@@ -29,6 +29,8 @@ struct LiveRoomTracker {
   private var players: [Schemas.Player] = []
   /// 結果を渡したラウンドの番号
   private var resultsRound: Int?
+  /// ホストの参加者の ID（最後に届いた room の hostId）
+  private var hostID: String?
 
   mutating func apply(_ message: Schemas.ServerMessage) -> [Update] {
     switch message {
@@ -38,11 +40,17 @@ struct LiveRoomTracker {
 
     case .room(let room):
       let previous = phase
+      let previousHost = hostID
       roomID = room.roomId
       phase = room.phase
       players = room.players
-      // ラウンド中と結果発表の room は、参加者の名前と色を覚えるだけ（状態は続けて届く progress で渡す）
-      guard room.phase == .lobby else { return [] }
+      hostID = room.hostId
+      // ラウンド中と結果発表の room は、参加者の名前と色を覚えるだけ（状態は続けて届く progress で渡す）。
+      // ただしホストが抜けて替わったら、新しいホストがスタート・締め切り・もう一度を押せるよう知らせる
+      guard room.phase == .lobby else {
+        guard let previousHost, previousHost != room.hostId else { return [] }
+        return [.event(.hostChanged(isSelf: room.hostId == selfID))]
+      }
       let state = RoomState(code: room.roomId, members: room.players.map(lobbyParticipant))
       // 結果発表（かラウンド中）から待合に戻った。ホストの again か、つなぎ直したら戻っていた
       if let previous, previous != .lobby { return [.event(.returnedToLobby(state))] }

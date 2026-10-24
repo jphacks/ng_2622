@@ -182,6 +182,7 @@ struct LiveRoomTrackerTranscriptTests {
           #expect(results.players.first?.isSelf == true)
           #expect(results.myReview?.modelSentence.hasPrefix("A sunny park.") == true)
         case .event(.returnedToLobby): kinds.append("lobby")
+        case .event(.hostChanged(let isSelf)): kinds.append("host:\(isSelf)")
         }
       }
     }
@@ -191,5 +192,50 @@ struct LiveRoomTrackerTranscriptTests {
         "welcome", "room", "error:not_host", "round", "progress:talking,talking", "progress:talking,grading",
         "progress:talking,done", "results:60,-", "welcome", "lobby",
       ])
+  }
+}
+
+/// ホストが抜けて替わったときに、新しいホストが分かるか
+struct LiveRoomTrackerHostTests {
+  let me = "00000000-0000-4000-8000-000000000001"
+  let host = "00000000-0000-4000-8000-000000000002"
+
+  func message(_ json: String) throws -> Components.Schemas.ServerMessage {
+    try JSONDecoder().decode(Components.Schemas.ServerMessage.self, from: Data(json.utf8))
+  }
+
+  /// hostId と、残っている人。hostLeft なら前のホストは抜けていて、自分がホスト
+  func room(_ phase: String, hostLeft: Bool) -> String {
+    let others = hostLeft ? "" : #"{"id":"\#(host)","name":"はなこ","color":15760040,"isHost":true,"connected":true},"#
+    return #"{"type":"room","roomId":"0427","phase":"\#(phase)","hostId":"\#(hostLeft ? me : host)","maxPlayers":5,"players":["#
+      + others + #"{"id":"\#(me)","name":"たろう","color":5987302,"isHost":\#(hostLeft),"connected":true}]}"#
+  }
+
+  func joined() throws -> LiveRoomTracker {
+    var tracker = LiveRoomTracker()
+    _ = tracker.apply(try message(#"{"type":"welcome","playerId":"\#(me)","token":"t0k","isHost":false}"#))
+    _ = tracker.apply(try message(room("lobby", hostLeft: false)))
+    return tracker
+  }
+
+  /// 待合では room の members の isHost で分かる
+  @Test func lobby() throws {
+    var tracker = try joined()
+    let updates = tracker.apply(try message(room("lobby", hostLeft: true)))
+    guard case .event(.room(let state)) = updates.first else {
+      Issue.record("room でない: \(updates)")
+      return
+    }
+    #expect(state.members.map(\.isHost) == [true])
+    #expect(state.members.first?.isSelf == true)
+  }
+
+  /// ラウンド中と結果発表では hostChanged を渡す。ホストが替わらない room では渡さない
+  @Test(arguments: ["playing", "results"])
+  func duringRound(phase: String) throws {
+    var tracker = try joined()
+    #expect(tracker.apply(try message(room(phase, hostLeft: false))) == [])
+    #expect(tracker.apply(try message(room(phase, hostLeft: true))) == [.event(.hostChanged(isSelf: true))])
+    #expect(tracker.apply(try message(room(phase, hostLeft: true))) == [])
   }
 }
