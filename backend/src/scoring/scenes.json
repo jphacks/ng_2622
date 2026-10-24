@@ -1,0 +1,50 @@
+[
+  {
+    "id": "park",
+    "name": "公園",
+    "description": "A sunny city park. A red bench stands under a big tree. A dog is running near a fountain, two children are playing with a ball, and an old man is reading a newspaper on the bench.",
+    "elements": [
+      "bench",
+      "tree",
+      "dog",
+      "fountain",
+      "children",
+      "ball",
+      "old man",
+      "newspaper"
+    ],
+    "video": "park.mp4"
+  },
+  {
+    "id": "kitchen",
+    "name": "台所",
+    "description": "A small kitchen in the evening. A pot of soup is boiling on the stove, vegetables are on a cutting board, a cat is sleeping on a chair, and the window shows the sunset.",
+    "elements": [
+      "pot",
+      "soup",
+      "stove",
+      "vegetables",
+      "cutting board",
+      "cat",
+      "chair",
+      "window",
+      "sunset"
+    ],
+    "video": "kitchen.mp4"
+  },
+  {
+    "id": "station",
+    "name": "駅のホーム",
+    "description": "A crowded train station platform in the morning. A blue train is arriving, people are waiting in line, a man is looking at his phone, a clock shows eight o'clock, and a vending machine stands by the wall.",
+    "elements": [
+      "train",
+      "platform",
+      "people",
+      "line",
+      "phone",
+      "clock",
+      "vending machine"
+    ],
+    "video": "station.mp4"
+  }
+]
