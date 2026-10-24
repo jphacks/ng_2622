@@ -417,25 +417,22 @@
             "$ref": "#/components/schemas/PlayerColor"
           },
           "rank": {
-            "anyOf": [
-              {
-                "type": "integer",
-                "minimum": 1,
-                "maximum": 9007199254740991
-              },
-              {
-                "type": "null"
-              }
+            "type": [
+              "integer",
+              "null"
             ],
+            "minimum": 1,
+            "maximum": 9007199254740991,
             "description": "順位。同点は同じ順位。採点できなかった人は null"
           },
           "score": {
-            "anyOf": [
+            "type": [
+              "object",
+              "null"
+            ],
+            "allOf": [
               {
                 "$ref": "#/components/schemas/PlayerScore"
-              },
-              {
-                "type": "null"
               }
             ],
             "description": "採点できなかった人（締め切られた・失敗した）は null"
