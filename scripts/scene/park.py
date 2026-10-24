@@ -16,7 +16,7 @@ import bpy
 from mathutils import Vector
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-from common import HALF, SIZE, Part, material, run  # noqa: E402
+from common import HALF, SIZE, Part, material, materials, run  # noqa: E402
 
 rng = random.Random(2622)
 
@@ -27,7 +27,7 @@ M = {}
 
 
 def make_materials() -> None:
-    spec = {
+    M.update(materials({
         "grass": ("#6dbb45", 0.9), "grass_dark": ("#4a9530", 0.9), "grass_light": ("#93d35c", 0.9),
         "soil": ("#7a4a2a", 0.95), "soil_dark": ("#4f2f1a", 0.95),
         "rock": ("#8d8d94", 0.8), "rock_dark": ("#6a6a72", 0.85),
@@ -43,9 +43,7 @@ def make_materials() -> None:
         "stem": ("#4e9a33", 0.7),
         "flower_pink": ("#ff8fb3", 0.6), "flower_yellow": ("#ffd84a", 0.6),
         "flower_white": ("#fffaf0", 0.6), "flower_purple": ("#b48cff", 0.6),
-    }
-    for name, (color, rough) in spec.items():
-        M[name] = material(name, color, rough)
+    }))
     M["iron"] = material("iron", "#2b2b30", 0.35, metal=0.8)
     M["ball"] = material("ball", "#e8352b", 0.3, coat=0.6)
     M["glass"] = material("glass", "#ffe7a8", 0.2, emit=4.0)
@@ -159,16 +157,18 @@ def build_lamp(root, loc):
     p.finish(root, loc=(*loc, 0))
 
 
-def build_fence(root, x0, x1, y):
+def build_fence(root, x0, x1, y) -> list[float]:
+    """柵を作り、柱の x 座標を返す。"""
     p = Part("fence")
     n = int((x1 - x0) / 0.5)
-    for i in range(n + 1):
-        x = x0 + (x1 - x0) * i / n
+    posts = [x0 + (x1 - x0) * i / n for i in range(n + 1)]
+    for x in posts:
         p.box((0.08, 0.08, 0.62), (x, y, 0.31), M["fence"], bevel=0.015)
-        p.cyl(0.0, 0.06, 0.08, (x, y, 0.66), M["fence"], segs=4, smooth=False)
+        p.cyl(0.06, 0.0, 0.08, (x, y, 0.66), M["fence"], segs=4, smooth=False)  # 柱の先のとがり
     for z in (0.22, 0.46):
         p.box((x1 - x0 + 0.1, 0.05, 0.07), ((x0 + x1) / 2, y - 0.06, z), M["fence"], bevel=0.012)
     p.finish(root)
+    return posts
 
 
 def build_dog(root, loc, rot_z):
@@ -303,7 +303,8 @@ def build_park() -> bpy.types.Object:
         build_tree(root, name, loc, h, blossom, crown)
     build_bench(root, *bench)
     build_lamp(root, lamp)
-    build_fence(root, 1.2, 3.45, 3.55)
+    fence_y = 3.55
+    fence_posts = build_fence(root, 1.2, 3.45, fence_y)
     build_dog(root, *dog)
     build_ball(root, ball)
     build_boy(root, *boy)
@@ -316,7 +317,7 @@ def build_park() -> bpy.types.Object:
     keep_out += [(pond[0], pond[1], pond[2] + 0.35), (*bench[0], 0.95), (*lamp, 0.3), (*dog[0], 0.5), (*ball, 0.25), (*boy[0], 0.4)]
     keep_out += [(*loc, 0.35) for _, loc, *_ in trees] + [(x, y, 0.4) for _, x, y in flowers]
     keep_out += [(x, y, s + 0.2) for x, y, s in bushes] + [(x, y, s + 0.3) for x, y, s in rocks]
-    keep_out += [(2.3, 3.55, 0.0)] + [(x, 3.55, 0.25) for x in (1.2, 1.8, 2.4, 3.0, 3.45)]
+    keep_out += [(x, fence_y, 0.25) for x in fence_posts]
     build_grass(root, keep_out)
     return root
 
