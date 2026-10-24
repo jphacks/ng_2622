@@ -138,7 +138,7 @@ struct PlayView: View {
         .padding(.trailing, 22)
     }
     .overlay(alignment: .bottom) {
-      VolumeMeter()
+      VolumeMeter(level: recorder.meterLevel)
         .padding(.bottom, 14)
         .opacity(isRecording ? 1 : 0)
         .offset(y: isRecording ? 0 : 24)

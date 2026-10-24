@@ -81,6 +81,23 @@ final class VoiceRecorder {
     return recording
   }
 
+  /// 音量メーターに出すいまの音量（0〜1）。録っていないときは 0。
+  /// シミュレーターでマイクが使えないときだけ nil を返し、メーターは仮の動きにする（見た目を確かめるため）
+  func meterLevel() -> Double? {
+    guard let recorder else {
+      #if targetEnvironment(simulator)
+        return nil
+      #else
+        return 0
+      #endif
+    }
+    guard recorder.isRecording else { return 0 }
+    recorder.updateMeters()
+    // 平均の音量（dB）を、話し声の幅（-50〜-10 dB）で 0〜1 に直す
+    let db = Double(recorder.averagePower(forChannel: 0))
+    return min(1, max(0, (db + 50) / 40))
+  }
+
   /// 録音を止め、ファイルを消す（次のラウンドの前と、退出のとき）
   func discard() {
     if let recorder {
