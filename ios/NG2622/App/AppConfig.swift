@@ -5,7 +5,7 @@ struct AppConfig {
   enum BackendMode: String {
     /// 仮のデータで動く。通信しない
     case mock
-    /// 本物のバックエンドにつなぐ（まだ未実装）
+    /// 本物のバックエンド（BACKEND_URL）につなぐ。LiveGameClient
     case live
   }
 
