@@ -1,0 +1,14 @@
+{
+  "id": "door",
+  "version": 1,
+  "file": "parts/door/1.usdz",
+  "category": "building",
+  "words": [
+    {
+      "word": "door",
+      "pos": "noun"
+    }
+  ],
+  "size": [0.94, 2.07, 0.148],
+  "label": "扉（ドア）"
+}

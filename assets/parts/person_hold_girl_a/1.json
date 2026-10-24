@@ -1,0 +1,19 @@
+{
+  "id": "person_hold_girl_a",
+  "version": 1,
+  "file": "parts/person_hold_girl_a/1.usdz",
+  "category": "person",
+  "words": [
+    {
+      "word": "girl",
+      "pos": "noun"
+    },
+    {
+      "word": "hold",
+      "pos": "verb"
+    }
+  ],
+  "pose": "hold",
+  "size": [0.416, 1.305, 0.441],
+  "label": "女の子（両手で持つ）"
+}

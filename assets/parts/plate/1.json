@@ -1,0 +1,21 @@
+{
+  "id": "plate",
+  "version": 1,
+  "file": "parts/plate/1.usdz",
+  "category": "thing",
+  "words": [
+    {
+      "word": "plate",
+      "pos": "noun"
+    },
+    {
+      "word": "dish",
+      "pos": "noun"
+    }
+  ],
+  "size": [0.24, 0.025, 0.24],
+  "label": "皿",
+  "anchors": {
+    "top": 0.01
+  }
+}

@@ -1,0 +1,18 @@
+{
+  "id": "cart",
+  "version": 1,
+  "file": "parts/cart/1.usdz",
+  "category": "thing",
+  "words": [
+    {
+      "word": "cart",
+      "pos": "noun"
+    },
+    {
+      "word": "shopping cart",
+      "pos": "noun"
+    }
+  ],
+  "size": [0.58, 1.02, 0.898],
+  "label": "ショッピングカート"
+}

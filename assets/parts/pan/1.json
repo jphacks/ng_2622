@@ -1,0 +1,18 @@
+{
+  "id": "pan",
+  "version": 1,
+  "file": "parts/pan/1.usdz",
+  "category": "thing",
+  "words": [
+    {
+      "word": "pan",
+      "pos": "noun"
+    },
+    {
+      "word": "frying pan",
+      "pos": "noun"
+    }
+  ],
+  "size": [0.472, 0.082, 0.26],
+  "label": "フライパン"
+}

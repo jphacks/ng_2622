@@ -1,0 +1,26 @@
+{
+  "id": "person_write_girl_a",
+  "version": 1,
+  "file": "parts/person_write_girl_a/1.usdz",
+  "category": "person",
+  "words": [
+    {
+      "word": "girl",
+      "pos": "noun"
+    },
+    {
+      "word": "write",
+      "pos": "verb"
+    },
+    {
+      "word": "pen",
+      "pos": "noun"
+    }
+  ],
+  "pose": "write",
+  "size": [0.42, 1.065, 0.623],
+  "label": "女の子（座って書く）",
+  "anchors": {
+    "hip": [0.001, 0.36, -0.131]
+  }
+}

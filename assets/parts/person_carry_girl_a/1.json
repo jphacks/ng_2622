@@ -1,0 +1,23 @@
+{
+  "id": "person_carry_girl_a",
+  "version": 1,
+  "file": "parts/person_carry_girl_a/1.usdz",
+  "category": "person",
+  "words": [
+    {
+      "word": "girl",
+      "pos": "noun"
+    },
+    {
+      "word": "carry",
+      "pos": "verb"
+    },
+    {
+      "word": "box",
+      "pos": "noun"
+    }
+  ],
+  "pose": "carry",
+  "size": [0.428, 1.305, 0.614],
+  "label": "女の子（箱を運ぶ）"
+}

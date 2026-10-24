@@ -30,7 +30,8 @@ TOL_ORIGIN = 0.002   # 原点のずれの許容（m）
 TOL_SIZE = 0.002     # 大きさのずれの許容（m）
 CATEGORIES = {"person", "animal", "plant", "food", "furniture", "vehicle", "building", "ground", "thing"}
 
-# scene-protocol.md の「最初に作る部品（34 個）」
+# scene-protocol.md の「最初に作る部品（34 個）」と、場面の文の調べ（research/scene-sentence-coverage.md）で
+# 「足すと効く」とされた物 14 個・人物 15 体。この順で contact_sheet.png に並ぶ
 EXPECTED = [
     "tree", "bench", "ball_red", "bicycle", "umbrella", "vending_machine",
     "person_stand_adult_a", "person_walk_adult_a", "person_run_adult_a", "person_sit_adult_a", "person_phone_adult_a",
@@ -38,6 +39,13 @@ EXPECTED = [
     "table", "chair", "box", "apple_red", "bag", "book", "bottle", "cup", "sofa",
     "person_read_adult_a", "person_eat_adult_a", "person_carry_adult_a",
     "person_walk_woman_a", "person_sit_woman_a", "person_run_boy_a", "person_stand_girl_a",
+    # 足した物
+    "door", "wall", "window", "checkout_counter", "shelf", "basket", "plate", "shirt", "seat",
+    "laptop", "clock", "cart", "pan", "bed",
+    # 足した人物（新しいポーズと、今あるポーズの見た目違い）
+    "person_hold_woman_a", "person_hold_girl_a", "person_put_adult_a", "person_put_woman_a", "person_put_boy_a",
+    "person_drink_woman_a", "person_drink_adult_a", "person_write_boy_a", "person_write_girl_a", "person_look_girl_a",
+    "person_carry_boy_a", "person_carry_woman_a", "person_carry_girl_a", "person_sit_girl_a", "person_sit_boy_a",
 ]
 
 # 向きの目印（parts.py の front と同じ）。(マテリアル名, 向き, 比べる相手)。向きが 1 なら相手より +Z 側、
@@ -45,12 +53,16 @@ EXPECTED = [
 # （人物は手や持ち物・座った脚が前に出て外接箱の中心がずれるので、目を髪と比べる）
 FRONT = {"bench": ("bench_back", -1, None), "chair": ("chair_back", -1, None), "sofa": ("sofa_back", -1, None),
          "bicycle": ("bike_basket", 1, None), "car": ("headlight", 1, None), "vending_machine": ("vending_glow", 1, None),
-         "animal_run_dog_a": ("dog_dark", 1, None)}
+         "animal_run_dog_a": ("dog_dark", 1, None),
+         "window": ("window_sill", 1, None), "checkout_counter": ("counter_front", 1, None), "shelf": ("shelf_back", -1, None),
+         "shirt": ("shirt_collar", 1, None), "seat": ("seat_back", -1, None), "laptop": ("trackpad", 1, None),
+         "cart": ("cart_handle", -1, None)}
 FRONT.update({pid: ("eye", 1, "hair") for pid in EXPECTED if pid.startswith("person_")})
 
 # anchors を付けるはずの部品と、その種類（scene-protocol.md の「部品のメタデータ」）
 ANCHORS = {"table": {"top"}, "box": {"top"}, "chair": {"seat"}, "bench": {"seat"}, "sofa": {"seat"},
-           "person_sit_adult_a": {"hip"}, "person_sit_woman_a": {"hip"}}
+           "checkout_counter": {"top"}, "shelf": {"top"}, "plate": {"top"}, "seat": {"seat"}, "bed": {"top", "seat"}}
+ANCHORS.update({pid: {"hip"} for pid in EXPECTED if pid.startswith(("person_sit_", "person_write_"))})
 TOL_ANCHOR = 0.001   # anchors が外接箱からはみ出してよい量（m。丸めの分）
 LEG_AHEAD = 0.05     # 座らせたとき、人の前の端が家具の前の端より前に出ているはずの量（m）
 SINK = 0.03          # 座らせたとき、足が床（y = 0）にめり込んでよい深さ（m）

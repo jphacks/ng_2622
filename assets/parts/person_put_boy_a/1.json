@@ -1,0 +1,19 @@
+{
+  "id": "person_put_boy_a",
+  "version": 1,
+  "file": "parts/person_put_boy_a/1.usdz",
+  "category": "person",
+  "words": [
+    {
+      "word": "boy",
+      "pos": "noun"
+    },
+    {
+      "word": "put",
+      "pos": "verb"
+    }
+  ],
+  "pose": "put",
+  "size": [0.422, 1.271, 0.493],
+  "label": "男の子（物を置く）"
+}

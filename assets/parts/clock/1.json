@@ -1,0 +1,14 @@
+{
+  "id": "clock",
+  "version": 1,
+  "file": "parts/clock/1.usdz",
+  "category": "thing",
+  "words": [
+    {
+      "word": "clock",
+      "pos": "noun"
+    }
+  ],
+  "size": [0.34, 0.34, 0.061],
+  "label": "時計（壁掛け）"
+}

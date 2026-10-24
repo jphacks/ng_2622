@@ -1,0 +1,14 @@
+{
+  "id": "window",
+  "version": 1,
+  "file": "parts/window/1.usdz",
+  "category": "building",
+  "words": [
+    {
+      "word": "window",
+      "pos": "noun"
+    }
+  ],
+  "size": [1.28, 1.0, 0.24],
+  "label": "窓"
+}

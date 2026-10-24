@@ -1,0 +1,25 @@
+{
+  "id": "checkout_counter",
+  "version": 1,
+  "file": "parts/checkout_counter/1.usdz",
+  "category": "furniture",
+  "words": [
+    {
+      "word": "checkout counter",
+      "pos": "noun"
+    },
+    {
+      "word": "cash register",
+      "pos": "noun"
+    },
+    {
+      "word": "counter",
+      "pos": "noun"
+    }
+  ],
+  "size": [1.5, 1.199, 0.65],
+  "label": "レジのカウンター",
+  "anchors": {
+    "top": 0.9
+  }
+}

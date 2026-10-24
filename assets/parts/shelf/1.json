@@ -1,0 +1,21 @@
+{
+  "id": "shelf",
+  "version": 1,
+  "file": "parts/shelf/1.usdz",
+  "category": "furniture",
+  "words": [
+    {
+      "word": "shelf",
+      "pos": "noun"
+    },
+    {
+      "word": "bookshelf",
+      "pos": "noun"
+    }
+  ],
+  "size": [1.2, 1.8, 0.4],
+  "label": "棚（商品棚・本棚）",
+  "anchors": {
+    "top": 1.8
+  }
+}

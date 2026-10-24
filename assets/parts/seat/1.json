@@ -1,0 +1,17 @@
+{
+  "id": "seat",
+  "version": 1,
+  "file": "parts/seat/1.usdz",
+  "category": "furniture",
+  "words": [
+    {
+      "word": "seat",
+      "pos": "noun"
+    }
+  ],
+  "size": [0.9, 1.142, 0.603],
+  "label": "座席（バス・電車、2 人がけ）",
+  "anchors": {
+    "seat": [0.0, 0.46, 0.082]
+  }
+}

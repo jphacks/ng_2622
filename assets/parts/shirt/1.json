@@ -1,0 +1,14 @@
+{
+  "id": "shirt",
+  "version": 1,
+  "file": "parts/shirt/1.usdz",
+  "category": "thing",
+  "words": [
+    {
+      "word": "shirt",
+      "pos": "noun"
+    }
+  ],
+  "size": [0.26, 0.058, 0.32],
+  "label": "シャツ（たたんだ）"
+}

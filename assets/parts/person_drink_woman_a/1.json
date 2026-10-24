@@ -1,0 +1,23 @@
+{
+  "id": "person_drink_woman_a",
+  "version": 1,
+  "file": "parts/person_drink_woman_a/1.usdz",
+  "category": "person",
+  "words": [
+    {
+      "word": "woman",
+      "pos": "noun"
+    },
+    {
+      "word": "drink",
+      "pos": "verb"
+    },
+    {
+      "word": "cup",
+      "pos": "noun"
+    }
+  ],
+  "pose": "drink",
+  "size": [0.587, 1.695, 0.51],
+  "label": "女の人（飲む）"
+}
