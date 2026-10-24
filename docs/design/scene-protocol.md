@@ -202,9 +202,23 @@ v1 の基本は止まった場面で、動作は人物のポーズで表す。�
 3. 配置の JSON を書き、`POST /scenes` で保存して `sceneId` を受け取る。
 4. 崩れを見つけて直すのは、エージェントの中で行う。
 
+## 最初に作る部品（34 個、2026-10-24 に決定）
+
+deep research（[`research/scene-parts-research.md`](./research/scene-parts-research.md)）の Tier 1 の 30 個に、人物の見た目違いを 4 個足す。Tier 1 は「30 部品で 8〜10 場面を作れる」ことを条件に選んだもの。
+
+| 区分 | 部品 |
+| --- | --- |
+| 今のシーンからそのまま流用（形をプロトコルに合わせる） | `tree`・`bench`・`ball_red`・`bicycle`・`umbrella`・`vending_machine`、`person_stand_adult_a`・`person_walk_adult_a`・`person_run_adult_a`・`person_sit_adult_a`・`person_phone_adult_a` |
+| 今のシーンから切り出して直す | `car`（雨のバス停）・`trash_bin`（教室）・`smartphone`（カフェ）・`flower`（公園）・`grass_patch`（公園）・`road_patch`（駅前）・`animal_run_dog_a`（公園の犬） |
+| 新しく作る | `table`・`chair`・`box`・`apple_red`・`bag`・`book`・`bottle`・`cup`・`sofa`、ポーズの `person_read_adult_a`・`person_eat_adult_a`・`person_carry_adult_a`（`person()` の `hands` で手の位置を変える） |
+| 見た目違い（足した 4 個） | `person_walk_woman_a`・`person_sit_woman_a`・`person_run_boy_a`・`person_stand_girl_a`。`adult_a` は男の人とし、man・woman・boy・girl を言い分けられるようにする |
+
+- 確かめた目安: 名前で呼べる部品 N ≒ 32、ポーズ A = 13、前置詞 P = 8 で、描写の文は約 1 万通り。言える動詞は、ポーズの 8 種類（stand・walk・run・sit・read・eat・carry・talk on the phone）に動きの 4 種類を足して約 12。
+- 調べた結果の場面のテンプレート（18 場面）は下書きとして使う。採点の配点（どれも 6 要素 × 15 点）は、関係（例: 犬がボールに向かって走る）に高く付けるよう、作るときに直す。
+
 ## Open Questions
 
-- 最初に用意する部品の一覧（日常でよく使う動詞・名詞から選ぶ。どの頻出語の一覧を使うか）。数と内訳は deep research の結果（Tier 1）で決め、それまで部品作りは始めない（2026-10-24）。
+- 最初に用意する部品の一覧は上で決めた（2026-10-24）。数の決め方の目安は次のとおり。
   - 目安: ほぼ同じ文も含めて 1000 通り以上の描写の文が作れればよい。文の数はおよそ N × P × (N − 1) ＋ A × P × N（N は名前で呼べる部品の数、P は前置詞の数、A は人物・動物のポーズの部品の数）で、部品の数の 2 乗で増える。例えば物 18・ポーズ 8・地面 4 の 30 部品で、P = 8 なら約 6,900 通り、15 部品でも約 1,600 通りになる。
   - 言える動詞の数は、ポーズの数と動きの 4 種類でしか増えない。物を足しても動詞は増えないので、部品を選ぶときはポーズ（動詞）の数を重く見る。
 - `POST /scenes/generate` に使う Claude のモデルと、1 回の費用の上限（[`cost-safety.md`](./cost-safety.md)）。
