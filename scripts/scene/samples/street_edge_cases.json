@@ -1,0 +1,71 @@
+{
+  "protocol": "scenenglish.scene/1",
+  "name": "通りを走る車と犬（確かめ用の端の例）",
+  "difficulty": "hard",
+  "description": "A car is driving along the street. A dog is running toward a red ball. A woman is walking on the sidewalk. This sample also has an unknown part, a pinned version and a scaled item.",
+  "elements": [
+    {
+      "id": "car_drive",
+      "label": "車が道を走っている",
+      "points": 30,
+      "accept": "a car is driving on the road"
+    },
+    {
+      "id": "dog_ball",
+      "label": "犬がボールに向かって走っている",
+      "points": 40,
+      "accept": "a dog is running toward a ball",
+      "partial": "mentions a dog or a ball"
+    },
+    {
+      "id": "woman_walk",
+      "label": "女の人が歩いている",
+      "points": 20,
+      "accept": "a woman is walking"
+    }
+  ],
+  "extraMax": 10,
+  "items": [
+    { "key": "road", "part": "road_patch", "position": [0, 0, -0.5] },
+    {
+      "key": "car",
+      "part": "car",
+      "position": [-2.6, 0, -1.2],
+      "yaw": 90,
+      "motion": { "type": "move", "to": [2.6, 0, -1.2], "duration": 4 }
+    },
+    {
+      "key": "dog",
+      "part": "animal_run_dog_a",
+      "position": [-1.5, 0, 3.0],
+      "yaw": 90,
+      "motion": {
+        "type": "move",
+        "to": [1.0, 0, 3.0],
+        "duration": 3,
+        "delay": 1
+      }
+    },
+    {
+      "key": "ball",
+      "part": "ball_red",
+      "position": [1.8, 0, 3.0],
+      "scale": 2,
+      "motion": { "type": "rotate", "duration": 2 }
+    },
+    {
+      "key": "woman",
+      "part": "person_walk_woman_a@1",
+      "position": [2.8, 0, 2.6],
+      "yaw": 180
+    },
+    {
+      "key": "machine",
+      "part": "vending_machine",
+      "position": [-3.2, 0, -3.5]
+    },
+    { "key": "bin", "part": "trash_bin", "position": [-2.4, 0, -3.5] },
+    { "key": "unicorn", "part": "unicorn_white", "position": [0, 0, 0] },
+    { "key": "old", "part": "tree@9", "position": [3, 0, -3.5] }
+  ]
+}
