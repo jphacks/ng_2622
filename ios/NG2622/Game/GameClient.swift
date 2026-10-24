@@ -1,7 +1,7 @@
 import Foundation
 
 /// 画面がバックエンドとやりとりする口。docs/design/architecture.md の WebSocket のメッセージに合わせる。
-/// いまは仮のデータを返す MockGameClient だけ。本物の API（WebSocket）につなぐ実装は後の PR で足す。
+/// 仮のデータを返す MockGameClient と、本物のバックエンドにつなぐ LiveGameClient がある
 protocol GameClient: AnyObject {
   /// バックエンドから届くできごと。1 か所だけで読む
   var events: AsyncStream<GameEvent> { get }
@@ -36,9 +36,19 @@ enum GameEvent: Sendable, Equatable {
   case returnedToLobby(RoomState)
 }
 
-enum GameError: Error {
+enum GameError: Error, Equatable {
   /// そのコードの部屋が無い
   case roomNotFound
+  /// 満員で入れない
+  case roomFull
+  /// ゲームが始まっていて入れない
+  case alreadyStarted
+  /// 空いている部屋のコードが無い（部屋を作れない）
+  case serverBusy
+  /// バックエンドにつながらない・返事が来ない
+  case connectionFailed
+  /// 部屋が受け付けなかった（WebSocket の error）。code は ErrorCode の値
+  case rejected(code: String, message: String)
 }
 
 /// 部屋の状態
