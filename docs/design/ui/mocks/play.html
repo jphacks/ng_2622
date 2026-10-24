@@ -248,19 +248,19 @@
 
 <div class="toolbar" role="toolbar" aria-label="モックの操作">
   <div class="group">
-    <button class="tb-btn primary" id="tb-start">▶ スタート</button>
-    <button class="tb-btn" id="tb-reset">最初から</button>
+    <button type="button" class="tb-btn primary" id="tb-start">▶ スタート</button>
+    <button type="button" class="tb-btn" id="tb-reset">最初から</button>
   </div>
   <div class="group">
     <span class="label">視点</span>
-    <button class="tb-btn" data-role="host" aria-pressed="true">ホスト</button>
-    <button class="tb-btn" data-role="guest" aria-pressed="false">参加者</button>
+    <button type="button" class="tb-btn" data-role="host" aria-pressed="true">ホスト</button>
+    <button type="button" class="tb-btn" data-role="guest" aria-pressed="false">参加者</button>
   </div>
   <div class="group">
     <span class="label">画面へ</span>
-    <button class="tb-btn" data-jump="intro">回転中</button>
-    <button class="tb-btn" data-jump="rec">録音中</button>
-    <button class="tb-btn" data-jump="wait">待機</button>
+    <button type="button" class="tb-btn" data-jump="intro">回転中</button>
+    <button type="button" class="tb-btn" data-jump="rec">録音中</button>
+    <button type="button" class="tb-btn" data-jump="wait">待機</button>
   </div>
   <label class="check"><input type="checkbox" id="tb-offline"> 切断中の人を入れる</label>
 </div>
@@ -272,9 +272,9 @@
         <div class="statusbar">
           <span>9:41</span>
           <span class="icons" aria-hidden="true">
-            <svg width="18" height="12" viewBox="0 0 18 12"><rect x="0" y="8" width="3" height="4" rx="1" fill="#14163a"/><rect x="5" y="5" width="3" height="7" rx="1" fill="#14163a"/><rect x="10" y="2.5" width="3" height="9.5" rx="1" fill="#14163a"/><rect x="15" y="0" width="3" height="12" rx="1" fill="#14163a"/></svg>
-            <svg width="16" height="12" viewBox="0 0 16 12"><path d="M8 11.5 5.6 9a3.4 3.4 0 0 1 4.8 0zM3.5 6.9a6.4 6.4 0 0 1 9 0l-1.4 1.4a4.4 4.4 0 0 0-6.2 0zM1.3 4.7a9.5 9.5 0 0 1 13.4 0l-1.4 1.4a7.5 7.5 0 0 0-10.6 0z" fill="#14163a"/></svg>
-            <svg width="27" height="13" viewBox="0 0 27 13"><rect x=".5" y=".5" width="23" height="12" rx="3.5" fill="none" stroke="#14163a" opacity=".4"/><rect x="2" y="2" width="20" height="9" rx="2" fill="#14163a"/><rect x="24.5" y="4" width="2" height="5" rx="1" fill="#14163a" opacity=".4"/></svg>
+            <svg width="18" height="12" viewBox="0 0 18 12" aria-hidden="true"><rect x="0" y="8" width="3" height="4" rx="1" fill="#14163a"/><rect x="5" y="5" width="3" height="7" rx="1" fill="#14163a"/><rect x="10" y="2.5" width="3" height="9.5" rx="1" fill="#14163a"/><rect x="15" y="0" width="3" height="12" rx="1" fill="#14163a"/></svg>
+            <svg width="16" height="12" viewBox="0 0 16 12" aria-hidden="true"><path d="M8 11.5 5.6 9a3.4 3.4 0 0 1 4.8 0zM3.5 6.9a6.4 6.4 0 0 1 9 0l-1.4 1.4a4.4 4.4 0 0 0-6.2 0zM1.3 4.7a9.5 9.5 0 0 1 13.4 0l-1.4 1.4a7.5 7.5 0 0 0-10.6 0z" fill="#14163a"/></svg>
+            <svg width="27" height="13" viewBox="0 0 27 13" aria-hidden="true"><rect x=".5" y=".5" width="23" height="12" rx="3.5" fill="none" stroke="#14163a" opacity=".4"/><rect x="2" y="2" width="20" height="9" rx="2" fill="#14163a"/><rect x="24.5" y="4" width="2" height="5" rx="1" fill="#14163a" opacity=".4"/></svg>
           </span>
         </div>
 
@@ -294,14 +294,14 @@
           </div>
           <div class="scene" id="scene">
             <div class="drag-hint" id="drag-hint">指で回して見られます</div>
-            <button class="btn-reset" id="btn-reset" aria-label="初期の向きに戻す">
+            <button type="button" class="btn-reset" id="btn-reset" aria-label="初期の向きに戻す">
               <svg width="22" height="22" viewBox="0 0 24 24" aria-hidden="true"><path d="M4.5 12a7.5 7.5 0 1 0 2.2-5.3" fill="none" stroke="#5b5be6" stroke-width="2.6" stroke-linecap="round"/><path d="M5 2.8v4.6h4.6" fill="none" stroke="#5b5be6" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
             </button>
-            <div class="meter" id="meter" aria-label="音量メーター"></div>
+            <div class="meter" id="meter" role="img" aria-label="音量メーター"></div>
           </div>
           <div class="play-foot">
             <p class="paused-note" id="paused-note">上の「▶ スタート」で、ホストがスタートした想定で始まります</p>
-            <button class="big-btn" id="btn-done">話し終えた</button>
+            <button type="button" class="big-btn" id="btn-done">話し終えた</button>
           </div>
         </section>
 
@@ -309,15 +309,15 @@
         <section class="view" id="v-wait" aria-label="待機">
           <div class="plist" id="plist"></div>
           <div class="host-area" id="host-area">
-            <button class="big-btn" id="btn-close" disabled><div class="fill" id="close-fill"></div><span>締め切って発表する</span></button>
+            <button type="button" class="big-btn" id="btn-close" disabled><div class="fill" id="close-fill"></div><span>締め切って発表する</span></button>
             <span class="host-note">ホストだけに出ています</span>
           </div>
           <div class="sheet-bg" id="sheet">
             <div class="sheet" role="dialog" aria-modal="true" aria-labelledby="sheet-title">
               <h2 id="sheet-title">締め切って発表しますか？</h2>
               <p id="sheet-msg"></p>
-              <button class="big-btn" id="btn-close-yes">締め切って発表する</button>
-              <button class="big-btn" id="btn-close-no">待つ</button>
+              <button type="button" class="big-btn" id="btn-close-yes">締め切って発表する</button>
+              <button type="button" class="big-btn" id="btn-close-no">待つ</button>
             </div>
           </div>
         </section>
@@ -697,18 +697,23 @@
   // ---------- 操作盤 ----------
   $("#tb-start").addEventListener("click", () => { startRound(); log("ホストがスタートした"); });
   $("#tb-reset").addEventListener("click", () => { reset(); log("最初に戻した"); });
-  document.querySelectorAll("[data-role]").forEach((b) => b.addEventListener("click", () => {
-    state.host = b.dataset.role === "host";
-    document.querySelectorAll("[data-role]").forEach((x) => x.setAttribute("aria-pressed", String(x === b)));
-    $("#host-area").style.display = state.host ? "" : "none";
-    if (!state.host) closeSheet();
-  }));
-  document.querySelectorAll("[data-jump]").forEach((b) => b.addEventListener("click", () => {
-    const to = b.dataset.jump;
-    reset();
-    if (to === "rec") { startRound(INTRO_MS); show("rec"); }
-    if (to === "wait") { startRound(INTRO_MS + 9000); show("rec"); stopRecording("（待機の画面へ飛んだ）"); }
-  }));
+  const roleBtns = document.querySelectorAll("[data-role]");
+  for (const b of roleBtns) {
+    b.addEventListener("click", () => {
+      state.host = b.dataset.role === "host";
+      for (const x of roleBtns) x.setAttribute("aria-pressed", String(x === b));
+      $("#host-area").style.display = state.host ? "" : "none";
+      if (!state.host) closeSheet();
+    });
+  }
+  for (const b of document.querySelectorAll("[data-jump]")) {
+    b.addEventListener("click", () => {
+      const to = b.dataset.jump;
+      reset();
+      if (to === "rec") { startRound(INTRO_MS); show("rec"); }
+      if (to === "wait") { startRound(INTRO_MS + 9000); show("rec"); stopRecording("（待機の画面へ飛んだ）"); }
+    });
+  }
   $("#tb-offline").addEventListener("change", (e) => {
     state.offline = e.target.checked;
     log(state.offline ? "次のラウンドから、けんが途中で切断する" : "切断中の人を入れない");
