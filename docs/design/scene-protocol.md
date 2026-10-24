@@ -206,10 +206,10 @@ Claude には次の形（JSON Schema）で書かせる。部品の ID は `enum`
 ```
 { name, description,
   items: [{ key, part,
-            place: { relation: ground | on | in | under | next_to | in_front_of | behind | near | between | sit_on,
+            place: { relation: ground | on | in | under | above | next_to | in_front_of | behind | near | between | sit_on,
                      target?, target2?（between のとき）, zone?（手前・真ん中・奥 × 左・中・右の 9 区画） },
             facing?: camera | left | right | away | toward（key）,
-            motion?: { type: fall | move | rotate | sway, toward?（key か区画）, duration } }],
+            motion?: { type: fall | move | rotate | sway, toward?（key か区画）, path?: across | along（toward の部品を横切る・沿う）, duration } }],
   elements: [{ id, label, points, accept, partial? }] }
 ```
 
@@ -217,7 +217,9 @@ Claude には次の形（JSON Schema）で書かせる。部品の ID は `enum`
 
 - 地面に置くもの（`ground`）は、区画の中に `size` で重ならないよう並べる。
 - `on` は相手の `anchors.top`（無ければ高さ）の上に置く。`sit_on` は相手の `anchors.seat` に人の `anchors.hip` を合わせる。ほかの関係は、相手の `size` に 10 cm の隙間を足した位置に置く。
-- 向き（`facing`）と動きの行き先（`motion.toward`）は、相手の座標から計算する。
+- `above` は相手の真上に、触れない高さ（相手の高さ＋ 0.3 m）で置く。
+- 向き（`facing`）と動きの行き先（`motion.toward`）は、相手の座標から計算する。`path: across` は相手（道路など）を短い辺の向きに横切り、`along` は長い辺に沿って動かす。
+- 関係の種類は、調べた結果（[`research/scene-sentence-coverage.md`](./research/scene-sentence-coverage.md)）で多かった位置の言い方（beside・on・under・near・behind・toward・in front of・across・between・above・along）を表せるように選んだ。beside は `next_to`、toward は `motion.toward` で表す。
 - 配点は合計 90 に直し、`extraMax` は 10 にする。知らない `target` は無視し、区画の真ん中に置く。
 
 Claude の API（Messages API）に渡すもの:
