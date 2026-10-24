@@ -38,6 +38,23 @@ struct RoomQRCode: View {
   }
 }
 
+/// 部屋の QR に入れる文字列 `scenenglish://room/<4 桁>`。作る側（待合）と読む側（部屋に入る）でここだけを使い、形がずれないようにする
+enum RoomLink {
+  static let codeLength = 4
+  private static let prefix = "scenenglish://room/"
+
+  static func url(code: String) -> String { prefix + code }
+
+  /// QR の中身から 4 桁のコードを取り出す。この形でなければ nil
+  static func code(from payload: String) -> String? {
+    let text = payload.trimmingCharacters(in: .whitespacesAndNewlines)
+    guard text.hasPrefix(prefix) else { return nil }
+    let code = text.dropFirst(prefix.count)
+    guard code.count == codeLength, code.allSatisfy({ $0.isASCII && $0.isNumber }) else { return nil }
+    return String(code)
+  }
+}
+
 /// QR の点の並び（余白なし）
 private struct QRMatrix {
   let size: Int

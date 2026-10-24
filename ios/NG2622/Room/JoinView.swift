@@ -1,6 +1,7 @@
 import SwiftUI
 
-/// 部屋に入る。ホストの画面の 4 桁のコードを打つと、そろったところで自動で確かめる
+/// 部屋に入る。ホストの画面の 4 桁のコードを打つと、そろったところで自動で確かめる。
+/// 待合の QR を読み取っても、そのコードを打ったのと同じように確かめる
 struct JoinView: View {
   let profile: PlayerProfile
   /// コードの部屋に入る。部屋が無いと投げる
@@ -12,6 +13,13 @@ struct JoinView: View {
   @State private var failed = false
   /// 間違えたときに横に揺らす回数
   @State private var shakes = 0
+  @State private var scanning = false
+  /// QR から読めたコード。カメラを閉じてから入れる
+  @State private var scannedCode: String?
+  /// QR を読めた回数（手ざわりで知らせる）
+  @State private var scans = 0
+  /// この端末で QR を読めないときの一言
+  @State private var scanNote: String?
 
   private static let length = 4
 
@@ -48,10 +56,15 @@ struct JoinView: View {
             .foregroundStyle(Theme.red)
         } else if checking {
           ProgressView().tint(Theme.accent)
+        } else if let scanNote {
+          Text(scanNote)
+            .foregroundStyle(Theme.muted)
         }
       }
       .font(Theme.font(15, .heavy))
       .frame(height: 44)
+
+      scanButton
 
       Spacer(minLength: 8)
       keypad
@@ -59,6 +72,44 @@ struct JoinView: View {
     }
     .frame(width: 346)
     .frame(maxWidth: .infinity)
+    .fullScreenCover(isPresented: $scanning, onDismiss: enterScanned) {
+      QRScannerView(
+        onCode: { code in
+          scannedCode = code
+          scans += 1
+          scanning = false
+        },
+        onCancel: { scanning = false }
+      )
+    }
+    .sensoryFeedback(.success, trigger: scans)
+  }
+
+  /// 「QR を読み取る」。読めない端末では、押したときに理由を出す
+  private var scanButton: some View {
+    Button {
+      failed = false
+      scanNote = QRScannerView.unavailableReason
+      if scanNote == nil { scanning = true }
+    } label: {
+      Label("QR を読み取る", systemImage: "qrcode.viewfinder")
+        .font(Theme.font(17, .heavy))
+        .foregroundStyle(Theme.accent)
+        .frame(maxWidth: .infinity)
+        .frame(height: 52)
+        .background(.white, in: Capsule())
+        .overlay { Capsule().strokeBorder(Theme.accent, lineWidth: 2.5) }
+    }
+    .disabled(checking)
+  }
+
+  /// QR から読めたコードを、打ったときと同じように確かめる
+  private func enterScanned() {
+    guard let scanned = scannedCode else { return }
+    scannedCode = nil
+    failed = false
+    code = scanned
+    submit()
   }
 
   private var codeBoxes: some View {
@@ -117,6 +168,7 @@ struct JoinView: View {
 
   private func press(_ key: String) {
     failed = false
+    scanNote = nil
     if key == "del" {
       if !code.isEmpty { code.removeLast() }
       return

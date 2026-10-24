@@ -87,11 +87,6 @@ private struct CardBackground: View {
   }
 }
 
-/// 部屋の QR に入れる文字列。読み取りは後の PR で作る
-enum RoomLink {
-  static func url(code: String) -> String { "scenenglish://room/\(code)" }
-}
-
 private struct Seat: View {
   let participant: Participant
 
