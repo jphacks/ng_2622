@@ -23,7 +23,7 @@ protocol GameClient: AnyObject {
   func playAgain() async throws
 }
 
-enum GameEvent: Sendable {
+enum GameEvent: Sendable, Equatable {
   /// 部屋の参加者と接続の状態（room）
   case room(RoomState)
   /// ラウンドが始まった。全員の端末で同じ時刻に回転を始める（round）
