@@ -25,7 +25,7 @@ pnpm openapi          # openapi.json を生成し直す
 - 内容・表現・講評・模範表現: Claude（既定は `claude-haiku-5-5`）に文字起こしとシーンの説明を渡す。
 - 合計は `SCORE_WEIGHTS`（内容,表現,話し方。既定 `50,25,25`）で重み付けする。
 - `SCORING_MODE=fixed` で外部 API を呼ばず固定の点数を返す。デプロイ先は `wrangler.jsonc` で fixed にしてある。
-- シーンは仮で `src/scoring/scenes.json` に置いている。
+- シーンは仮で `src/scoring/scenes.json` に置いている。`id` は 3D シーン（`assets/scenes/<id>`）と同じにする。
 
 ### 手元で採点を試す
 
@@ -41,7 +41,7 @@ CLAUDE_API_KEY=...
 
 ```sh
 # 16 kHz・16 bit・モノラルの WAV を作って送る（1 回で Azure と Claude を 1 回ずつ呼ぶ）
-say -o test.wav --data-format=LEI16@16000 "There is a red bench under a big tree."
+say -o test.wav --data-format=LEI16@16000 "A boy is running in the park and a dog is running to a red ball."
 curl -F audio=@test.wav -F sceneId=park http://localhost:8787/dev/score
 ```
 
