@@ -74,8 +74,8 @@ final class RoomSession {
   func finishSpeaking() {
     guard case .playing = phase else { return }
     phase = .waiting(enteredAt: Date())
-    recorder.stop()
-    Task { try? await client.finishSpeaking() }
+    let audio = recorder.stop()
+    Task { try? await client.finishSpeaking(audio: audio) }
   }
 
   /// ホストが締め切る
