@@ -95,19 +95,6 @@ def make_materials() -> None:
     M["bike_basket"] = material("bike_basket", "#8e959e", 0.4)
 
 
-# 人物の見た目。adult_a は男の人
-def outfits() -> dict:
-    face = {"skin": M["skin"], "eye": M["eye"], "cheek": M["cheek"], "mouth": M["mouth"]}
-    return {
-        "adult_a": {**face, "hair": M["hair_black"], "top": M["shirt_blue"], "bottom": M["pants_gray"], "shoe": M["shoe_brown"]},
-        "woman_a": {**face, "hair": M["hair_brown"], "top": M["knit_rose"], "bottom": M["skirt_navy"], "shoe": M["shoe_white"],
-                    "skirt": True, "hair_style": "long"},
-        "boy_a": {**face, "hair": M["hair_black"], "top": M["shirt_yellow"], "bottom": M["shorts_blue"], "shoe": M["shoe_red"]},
-        "girl_a": {**face, "hair": M["hair_brown"], "top": M["dress_pink"], "bottom": M["dress_pink"], "shoe": M["shoe_red"],
-                   "skirt": True, "hair_style": "bun"},
-    }
-
-
 CHILD_SCALE = 0.75   # 子どもの大きさ（大人に対する倍率）
 SH_STAND = 1.3       # 立つ・歩くポーズの肩の高さ（common.py の _heights）
 SEAT_Z = 0.46        # 座るポーズに合う座面の高さ。chair・sofa をこの高さにする（bench は 0.48）
@@ -555,69 +542,97 @@ def build_dog(root):
 
 
 # ---------- 人物 ----------
+#
+# 人物は「ポーズの表（POSES）」と「見た目の表（LOOKS）」の組み合わせ（PEOPLE）から作る。
+# id は person_<ポーズ>_<見た目>。どのポーズもどの見た目と組み合わせられ、PEOPLE に足せば部品が増える。
 
-NOUN = {"adult_a": "man", "woman_a": "woman", "boy_a": "boy", "girl_a": "girl"}
-LABEL = {"adult_a": "男の人", "woman_a": "女の人", "boy_a": "男の子", "girl_a": "女の子"}
-VERB_LABEL = {"stand": "立つ", "walk": "歩く", "run": "走る", "sit": "座る", "phone": "スマホを見る",
-              "read": "本を読む", "eat": "リンゴを食べる", "carry": "箱を運ぶ"}
-
-
-def person_part(pose, look, extra_words=(), front=("eye", 1)):
-    """人物の部品を登録する。pose は部品の名前のポーズ（read・eat・carry も含む）。"""
-    words = [(NOUN[look], "noun"), (pose, "verb")] if pose != "phone" else [(NOUN[look], "noun"), ("phone", "noun"), ("look", "verb")]
-    return part(f"person_{pose}_{look}", "person", f"{LABEL[look]}（{VERB_LABEL[pose]}）",
-                [*words, *extra_words], pose=pose, front=front)
-
-
-def simple_person(pose, look):
-    """common.py の person() のポーズをそのまま使う人物。"""
-    def build(root):
-        scale = CHILD_SCALE if look in ("boy_a", "girl_a") else 1.0
-        person(root, "person", (0, 0), 0.0, outfits()[look], pose=pose, scale=scale)
-        if pose == "sit":   # 腰の点（common.py の person() の腰の球の中心）
-            return {"hip": (0, 0, _heights(pose)[0] * scale)}
-        return None
-    person_part(pose, look)(build)
+# 見た目の表。adult_a は男の人（今ある部品の id に合わせて man_a とは呼ばない）。服と髪の色は outfits()
+LOOKS = {
+    "adult_a": {"noun": "man", "label": "男の人", "scale": 1.0},
+    "woman_a": {"noun": "woman", "label": "女の人", "scale": 1.0},
+    "boy_a": {"noun": "boy", "label": "男の子", "scale": CHILD_SCALE},
+    "girl_a": {"noun": "girl", "label": "女の子", "scale": CHILD_SCALE},
+}
 
 
-for _pose in ("stand", "walk", "run", "sit", "phone"):
-    simple_person(_pose, "adult_a")
-simple_person("walk", "woman_a")
-simple_person("sit", "woman_a")
-simple_person("run", "boy_a")
-simple_person("stand", "girl_a")
-
-
-@person_part("read", "adult_a", [("book", "noun")])
-def build_person_read(root):
-    """立って、開いた本を胸の前で両手に持って読む人。本は同じ部品に含める。"""
-    person(root, "person", (0, 0), 0.0, outfits()["adult_a"], pose="stand",
-           hands=[(-0.16, -0.3, -0.22), (0.16, -0.3, -0.22)])
-    p = Part("book")
+def props_read(p):
     book_open(p, (0, -0.36, SH_STAND - 0.15))
-    p.finish(root)
 
 
-@person_part("eat", "adult_a", [("apple", "noun")])
-def build_person_eat(root):
-    """立って、右手（+X 側）のリンゴを口に運んで食べる人。リンゴは同じ部品に含める。"""
-    person(root, "person", (0, 0), 0.0, outfits()["adult_a"], pose="stand",
-           hands=[(-0.27, 0.0, -0.52), (0.07, -0.22, 0.1)])
-    p = Part("apple")
+def props_eat(p):
     apple_shape(p, (0.03, -0.24, SH_STAND + 0.15), r=0.045)
-    p.finish(root)
 
 
-@person_part("carry", "adult_a", [("box", "noun")])
-def build_person_carry(root):
-    """歩きながら、段ボール箱を両手で前に抱えて運ぶ人。箱は同じ部品に含める。"""
-    w, d, h = 0.42, 0.32, 0.3
-    hand_z = -0.42   # 肩からの手の高さ（箱の横の真ん中をつかむ）
-    person(root, "person", (0, 0), 0.0, outfits()["adult_a"], pose="walk",
-           hands=[(-w / 2 - 0.03, -0.38, hand_z), (w / 2 + 0.03, -0.38, hand_z)])
-    p = Part("box")
-    box_shape(p, (w, d, h), (0, -0.4, SH_STAND + hand_z - h / 2))
-    p.finish(root)
+CARRY_BOX, CARRY_HAND_Z = (0.42, 0.32, 0.3), -0.42   # 運ぶ箱の大きさと、肩からの手の高さ（箱の横の真ん中をつかむ）
+
+
+def props_carry(p):
+    w, d, h = CARRY_BOX
+    box_shape(p, (w, d, h), (0, -0.4, SH_STAND + CARRY_HAND_Z - h / 2))
+
+
+# ポーズの表。base は common.py の person() のポーズ（脚と体の高さ）。hands は手の位置 [(x, y, dz), ...]
+# （dz は肩からの高さ。None ならポーズのまま）。props は持たせる物を作る関数（Part を受け取る）と、その Part の名前。
+# words は人の名詞のあとに足す語。base が sit のポーズには、腰の点（hip）を付ける。
+POSES = {
+    "stand": {"base": "stand", "label": "立つ", "words": [("stand", "verb")]},
+    "walk": {"base": "walk", "label": "歩く", "words": [("walk", "verb")]},
+    "run": {"base": "run", "label": "走る", "words": [("run", "verb")]},
+    "sit": {"base": "sit", "label": "座る", "words": [("sit", "verb")]},
+    "phone": {"base": "phone", "label": "スマホを見る", "words": [("phone", "noun"), ("look", "verb")]},
+    # 立って、開いた本を胸の前で両手に持って読む
+    "read": {"base": "stand", "label": "本を読む", "words": [("read", "verb"), ("book", "noun")],
+             "hands": [(-0.16, -0.3, -0.22), (0.16, -0.3, -0.22)], "props": ("book", props_read)},
+    # 立って、右手（+X 側）のリンゴを口に運んで食べる
+    "eat": {"base": "stand", "label": "リンゴを食べる", "words": [("eat", "verb"), ("apple", "noun")],
+            "hands": [(-0.27, 0.0, -0.52), (0.07, -0.22, 0.1)], "props": ("apple", props_eat)},
+    # 歩きながら、段ボール箱を両手で前に抱えて運ぶ
+    "carry": {"base": "walk", "label": "箱を運ぶ", "words": [("carry", "verb"), ("box", "noun")],
+              "hands": [(-CARRY_BOX[0] / 2 - 0.03, -0.38, CARRY_HAND_Z), (CARRY_BOX[0] / 2 + 0.03, -0.38, CARRY_HAND_Z)],
+              "props": ("box", props_carry)},
+}
+
+# 作る組み合わせ（ポーズ, 見た目）。この順で一覧に並ぶ
+PEOPLE = [
+    ("stand", "adult_a"), ("walk", "adult_a"), ("run", "adult_a"), ("sit", "adult_a"), ("phone", "adult_a"),
+    ("walk", "woman_a"), ("sit", "woman_a"), ("run", "boy_a"), ("stand", "girl_a"),
+    ("read", "adult_a"), ("eat", "adult_a"), ("carry", "adult_a"),
+]
+
+
+def outfits() -> dict:
+    """見た目ごとの服と髪のマテリアル（make_materials() のあとで呼ぶ）。"""
+    face = {"skin": M["skin"], "eye": M["eye"], "cheek": M["cheek"], "mouth": M["mouth"]}
+    return {
+        "adult_a": {**face, "hair": M["hair_black"], "top": M["shirt_blue"], "bottom": M["pants_gray"], "shoe": M["shoe_brown"]},
+        "woman_a": {**face, "hair": M["hair_brown"], "top": M["knit_rose"], "bottom": M["skirt_navy"], "shoe": M["shoe_white"],
+                    "skirt": True, "hair_style": "long"},
+        "boy_a": {**face, "hair": M["hair_black"], "top": M["shirt_yellow"], "bottom": M["shorts_blue"], "shoe": M["shoe_red"]},
+        "girl_a": {**face, "hair": M["hair_brown"], "top": M["dress_pink"], "bottom": M["dress_pink"], "shoe": M["shoe_red"],
+                   "skirt": True, "hair_style": "bun"},
+    }
+
+
+def person_builder(pose: str, look: str):
+    spec, scale = POSES[pose], LOOKS[look]["scale"]
+
+    def build(root):
+        person(root, "person", (0, 0), 0.0, outfits()[look], pose=spec["base"], scale=scale, hands=spec.get("hands"))
+        if "props" in spec:   # 持たせる物も人と同じ倍率にする（手の位置は人の倍率をかける前の座標）
+            name, fn = spec["props"]
+            p = Part(name)
+            fn(p)
+            p.finish(root, scale=scale)
+        if spec["base"] == "sit":   # 腰の点（common.py の person() の腰の球の中心）
+            return {"hip": (0, 0, _heights("sit")[0] * scale)}
+        return None
+    build.__doc__ = f"{LOOKS[look]['label']}（{spec['label']}）"
+    return build
+
+
+for _pose, _look in PEOPLE:
+    part(f"person_{_pose}_{_look}", "person", f"{LOOKS[_look]['label']}（{POSES[_pose]['label']}）",
+         [(LOOKS[_look]["noun"], "noun"), *POSES[_pose]["words"]], pose=_pose, front=("eye", 1))(person_builder(_pose, _look))
 
 
 # ---------- 書き出し ----------
