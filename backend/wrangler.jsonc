@@ -1,0 +1,12 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "ng-2622-backend",
+  "main": "src/index.ts",
+  "compatibility_date": "2026-10-24",
+  "observability": {
+    "enabled": true
+  },
+  // PR ごとのプレビュー（wrangler preview）の設定。vars や DO の binding は上の階層から引き継がれないので、
+  // プレビューでも使うものはここにも書く
+  "previews": {}
+}
