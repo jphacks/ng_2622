@@ -122,12 +122,23 @@ class Part:
             v.co += d.normalized() * r * bumpy * noise.noise(d / r * 1.8 + offset)
         self._merge(tb, mat, smooth)
 
-    def slab(self, size, z_top, thickness, radius, mat, segments=10):
-        """角の丸い板（島の地面と土の層）。縦の辺だけを丸める。"""
+    def slab(self, size, z_top, thickness, radius, mat, segments=10, center=(0, 0), corners=None):
+        """角の丸い板（島の地面や土台の層、道路）。縦の辺だけを丸める。
+
+        size は一辺の長さか (幅, 奥行き)。corners は丸める角を (x の符号, y の符号) の組で選ぶ（None ですべて）。
+        """
+        w, d = (size, size) if isinstance(size, (int, float)) else size
+        cx, cy = center
         tb = bmesh.new()
         bmesh.ops.create_cube(tb, size=1.0, matrix=Matrix.LocRotScale(
-            Vector((0, 0, z_top - thickness / 2)), Euler((0, 0, 0)), Vector((size, size, thickness))))
-        vertical = [e for e in tb.edges if abs(e.verts[0].co.z - e.verts[1].co.z) > 1e-4]
+            Vector((cx, cy, z_top - thickness / 2)), Euler((0, 0, 0)), Vector((w, d, thickness))))
+
+        def corner(e):
+            co = e.verts[0].co
+            return (1 if co.x > cx else -1, 1 if co.y > cy else -1)
+
+        vertical = [e for e in tb.edges if abs(e.verts[0].co.z - e.verts[1].co.z) > 1e-4
+                    and (corners is None or corner(e) in corners)]
         bmesh.ops.bevel(tb, geom=vertical, offset=radius, segments=segments, profile=0.5, affect="EDGES")
         self._merge(tb, mat, smooth=False)
 
