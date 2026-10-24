@@ -1,0 +1,568 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>結果画面のモック</title>
+<style>
+  :root {
+    --bg: #f1f5f9;
+    --card: #ffffff;
+    --ink: #111827;
+    --muted: #64748b;
+    --line: #e2e8f0;
+    --accent: #4f46e5;
+    --accent-ink: #ffffff;
+    --chip: #eef2ff;
+    --gold: #f59e0b;
+    --closed: #e2e8f0;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #0b1120;
+      --card: #1e293b;
+      --ink: #f1f5f9;
+      --muted: #94a3b8;
+      --line: #334155;
+      --accent: #818cf8;
+      --accent-ink: #0b1120;
+      --chip: #312e81;
+      --closed: #334155;
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #0b1120;
+    --card: #1e293b;
+    --ink: #f1f5f9;
+    --muted: #94a3b8;
+    --line: #334155;
+    --accent: #818cf8;
+    --accent-ink: #0b1120;
+    --chip: #312e81;
+    --closed: #334155;
+  }
+  * { box-sizing: border-box; }
+  [hidden] { display: none !important; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--ink);
+    font-family: "Hiragino Sans", "Noto Sans JP", system-ui, sans-serif;
+    line-height: 1.5;
+    min-height: 100vh;
+  }
+
+  /* 操作バー（画面の外） */
+  .toolbar {
+    max-width: 420px;
+    margin: 0 auto;
+    padding: 16px 16px 0;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    font-size: 13px;
+    color: var(--muted);
+  }
+  .toolbar label { display: inline-flex; align-items: center; gap: 6px; cursor: pointer; }
+  .toolbar button {
+    font: inherit;
+    color: var(--ink);
+    background: var(--card);
+    border: 1px solid var(--line);
+    border-radius: 999px;
+    padding: 4px 12px;
+    cursor: pointer;
+  }
+
+  /* 携帯の画面 */
+  .phone {
+    position: relative;
+    max-width: 390px;
+    height: min(780px, calc(100vh - 80px));
+    min-height: 620px;
+    margin: 12px auto 24px;
+    background: var(--bg);
+    border: 1px solid var(--line);
+    border-radius: 32px;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    box-shadow: 0 10px 30px rgba(15, 23, 42, 0.12);
+  }
+  @media (max-width: 440px) {
+    .phone { max-width: none; margin: 0; border-radius: 0; border: 0; height: 100vh; min-height: 0; }
+  }
+  .screen {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    padding: 20px 16px 16px;
+    overflow-y: auto;
+  }
+  .screen-head { margin-bottom: 14px; }
+  .screen-head .eyebrow { font-size: 12px; color: var(--muted); letter-spacing: 0.04em; }
+  .screen-head h1 { font-size: 22px; margin: 2px 0 0; }
+  .scene {
+    font-size: 13px;
+    color: var(--muted);
+    background: var(--card);
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    padding: 8px 12px;
+    margin-bottom: 14px;
+  }
+  .scene strong { color: var(--ink); font-weight: 600; }
+
+  .btn-stack { margin-top: auto; display: grid; gap: 10px; padding-top: 16px; }
+  .btn {
+    font: inherit;
+    font-weight: 600;
+    border-radius: 14px;
+    padding: 13px 14px;
+    border: 1px solid var(--line);
+    background: var(--card);
+    color: var(--ink);
+    cursor: pointer;
+    text-align: center;
+  }
+  .btn.primary { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
+  .btn.ghost { background: transparent; color: var(--muted); }
+  .btn:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
+  [data-host-only] { display: none; }
+  .is-host [data-host-only] { display: block; }
+
+  /* 結果発表 */
+  .rank-list { display: grid; gap: 8px; }
+  .row {
+    position: relative;
+    display: grid;
+    grid-template-columns: 34px 1fr auto;
+    align-items: center;
+    gap: 10px;
+    background: var(--card);
+    border: 1px solid var(--line);
+    border-radius: 14px;
+    padding: 12px 14px;
+    perspective: 600px;
+  }
+  .row .place { font-weight: 700; color: var(--muted); font-variant-numeric: tabular-nums; }
+  .row .name { font-weight: 600; }
+  .row .score { font-weight: 700; font-variant-numeric: tabular-nums; font-size: 18px; }
+  .row .face { transform-origin: 50% 50%; }
+  .row .closed {
+    position: absolute;
+    inset: 0;
+    border-radius: 14px;
+    background: var(--closed);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--muted);
+    font-weight: 700;
+    letter-spacing: 0.2em;
+    transition: opacity 0.2s;
+  }
+  .row.open .closed { opacity: 0; pointer-events: none; }
+  .row.open .face { animation: flap 0.45s ease-out; }
+  .row.is-winner { border-color: var(--gold); }
+  .row.is-winner .place { color: var(--gold); }
+  @keyframes flap {
+    0% { transform: rotateX(-90deg); opacity: 0; }
+    100% { transform: rotateX(0deg); opacity: 1; }
+  }
+  .winner {
+    margin: 14px 0 0;
+    text-align: center;
+    background: var(--chip);
+    color: var(--accent);
+    border-radius: 14px;
+    padding: 12px;
+    font-weight: 700;
+  }
+  .winner small { display: block; font-weight: 400; color: var(--muted); }
+  /* 発表中は「とばす」だけ、終わったら次の操作を出す */
+  .ranking-actions .after { display: none; }
+  .ranking-actions .skip { display: block; }
+  .is-done .ranking-actions .after { display: grid; }
+  .is-done .ranking-actions .skip { display: none; }
+
+  /* みんなの描写 */
+  .desc-list { display: grid; gap: 10px; }
+  .desc {
+    background: var(--card);
+    border: 1px solid var(--line);
+    border-radius: 14px;
+    padding: 12px 14px;
+  }
+  .desc-head { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
+  .desc-head .name { font-weight: 600; }
+  .desc-head .score { font-weight: 700; font-variant-numeric: tabular-nums; }
+  .desc p { margin: 6px 0 4px; font-size: 14px; }
+  .desc .comment { font-size: 12px; color: var(--muted); }
+  .desc.is-me { border-color: var(--accent); }
+  .me-tag {
+    font-size: 11px;
+    color: var(--accent);
+    background: var(--chip);
+    border-radius: 999px;
+    padding: 1px 8px;
+    margin-left: 6px;
+    font-weight: 600;
+  }
+
+  /* 振り返り */
+  .total {
+    background: var(--card);
+    border: 1px solid var(--line);
+    border-radius: 14px;
+    padding: 14px;
+    text-align: center;
+    margin-bottom: 14px;
+  }
+  .total .label { font-size: 12px; color: var(--muted); }
+  .total .value { font-size: 40px; font-weight: 800; font-variant-numeric: tabular-nums; line-height: 1.1; }
+  .total .value span { font-size: 16px; color: var(--muted); font-weight: 600; }
+  .bars { display: grid; gap: 12px; margin-bottom: 14px; }
+  .bar-head { display: flex; justify-content: space-between; font-size: 14px; }
+  .bar-head .weight { color: var(--muted); font-size: 12px; margin-left: 6px; }
+  .bar-head .num { font-weight: 700; font-variant-numeric: tabular-nums; }
+  .track { height: 8px; background: var(--line); border-radius: 999px; overflow: hidden; margin-top: 6px; }
+  .fill { height: 100%; background: var(--accent); border-radius: 999px; }
+  .card {
+    background: var(--card);
+    border: 1px solid var(--line);
+    border-radius: 14px;
+    padding: 12px 14px;
+    margin-bottom: 10px;
+  }
+  .card h2 { font-size: 13px; margin: 0 0 4px; color: var(--muted); font-weight: 600; }
+  .card p { margin: 0; font-size: 14px; }
+  .model { font-family: ui-monospace, "SF Mono", monospace; font-size: 14px; }
+  .model-ja { font-size: 12px; color: var(--muted); margin-top: 4px; }
+
+  /* 仮の画面（ロビー・ホーム） */
+  .placeholder {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    text-align: center;
+    color: var(--muted);
+    font-size: 14px;
+    gap: 6px;
+  }
+  .placeholder strong { color: var(--ink); font-size: 16px; }
+</style>
+</head>
+<body>
+
+<div class="toolbar">
+  <label><input type="checkbox" id="host-toggle" checked> ホストとして見る</label>
+  <button type="button" id="reset">最初から</button>
+</div>
+
+<div class="phone" id="phone">
+
+  <!-- 結果発表 -->
+  <section class="screen" data-screen="ranking" hidden>
+    <div class="screen-head">
+      <div class="eyebrow">結果発表</div>
+      <h1>順位</h1>
+    </div>
+    <div class="scene"><strong>シーン:</strong> 公園のベンチと木（仮）</div>
+
+    <div class="rank-list" id="rank-list"></div>
+
+    <div class="winner" id="winner" hidden>
+      優勝 <span id="winner-name"></span>
+      <small>おめでとう</small>
+    </div>
+
+    <div class="btn-stack ranking-actions">
+      <button type="button" class="btn ghost skip" id="skip">発表をとばす</button>
+      <div class="after" style="gap:10px">
+        <button type="button" class="btn primary" data-go="everyone">みんなの描写を見る</button>
+        <button type="button" class="btn" data-go="review">自分の結果を振り返る</button>
+        <button type="button" class="btn" data-go="lobby" data-host-only>同じ顔ぶれでもう一度</button>
+        <button type="button" class="btn ghost" data-go="home">退出する</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- みんなの描写 -->
+  <section class="screen" data-screen="everyone" hidden>
+    <div class="screen-head">
+      <div class="eyebrow">みんなの描写</div>
+      <h1>点数順に読み比べる</h1>
+    </div>
+    <div class="scene"><strong>シーン:</strong> 公園のベンチと木（仮）</div>
+    <div class="desc-list" id="desc-list"></div>
+    <div class="btn-stack">
+      <button type="button" class="btn" data-go="ranking">戻る</button>
+    </div>
+  </section>
+
+  <!-- 振り返り -->
+  <section class="screen" data-screen="review" hidden>
+    <div class="screen-head">
+      <div class="eyebrow">振り返り</div>
+      <h1>あなたの結果</h1>
+    </div>
+
+    <div class="total">
+      <div class="label">合計点</div>
+      <div class="value" id="review-total"></div>
+      <div class="label" id="review-rank"></div>
+    </div>
+
+    <div class="bars" id="review-bars"></div>
+
+    <div class="card">
+      <h2>講評（Claude）</h2>
+      <p id="review-comment"></p>
+    </div>
+    <div class="card">
+      <h2>模範表現</h2>
+      <p class="model" id="review-model"></p>
+      <p class="model-ja" id="review-model-ja"></p>
+    </div>
+
+    <div class="btn-stack">
+      <button type="button" class="btn" data-go="ranking">戻る</button>
+    </div>
+  </section>
+
+  <!-- 仮の画面：待合 -->
+  <section class="screen" data-screen="lobby" hidden>
+    <div class="placeholder">
+      <strong>待合（ロビー）</strong>
+      <span>別の担当の画面。ここではつながりだけ示す。</span>
+    </div>
+    <div class="btn-stack">
+      <button type="button" class="btn" data-go="ranking">結果発表に戻る</button>
+    </div>
+  </section>
+
+  <!-- 仮の画面：ホーム -->
+  <section class="screen" data-screen="home" hidden>
+    <div class="placeholder">
+      <strong>ホーム</strong>
+      <span>別の担当の画面。ここではつながりだけ示す。</span>
+    </div>
+    <div class="btn-stack">
+      <button type="button" class="btn" data-go="ranking">結果発表に戻る</button>
+    </div>
+  </section>
+
+</div>
+
+<script>
+  // 仮のデータ。合計点は 内容 50% ・ 表現 25% ・ 話し方 25% の重み付き（screen-flow.md）。
+  const WEIGHTS = { content: 0.5, expression: 0.25, speaking: 0.25 };
+  const ME = "ゆい";
+
+  const players = [
+    {
+      name: "あかり",
+      scores: { content: 84, expression: 78, speaking: 80 },
+      text: "There is a wooden bench under a big tree. A dog is sitting next to the bench, and a kid is throwing a ball.",
+      comment: "場面の要素を幅広く拾えている。",
+    },
+    {
+      name: "けんた",
+      scores: { content: 92, expression: 88, speaking: 85 },
+      text: "A brown dog is waiting beside an old bench, under a tree with green leaves. Sunlight is coming through the branches.",
+      comment: "木と光まで描写できていて、場面がよく伝わる。",
+    },
+    {
+      name: ME,
+      scores: { content: 76, expression: 70, speaking: 88 },
+      text: "There is a bench in the park. There is a tree. A dog is near the bench.",
+      comment: "話し方は安定している。要素の説明をもう少し具体的に。",
+    },
+    {
+      name: "ハルト",
+      scores: { content: 88, expression: 82, speaking: 74 },
+      text: "The park has a bench and a big tree, and a dog sits there looking at the children playing nearby.",
+      comment: "場面の関係が描けている。発音に少し揺れがある。",
+    },
+    {
+      name: "みさき",
+      scores: { content: 65, expression: 72, speaking: 79 },
+      text: "Bench, tree, and, um, dog in the park.",
+      comment: "要素は挙がっているが、文になっていない。",
+    },
+  ];
+
+  const review = {
+    comment: "場面の要素（ベンチ・木・犬）は押さえています。「犬がどこにいるか」を文で示すと、内容の点がさらに上がります。",
+    model: "A dog is resting on the bench under the big tree.",
+    modelJa: "大きな木の下のベンチで、犬が休んでいます。",
+  };
+
+  // 合計点（重み付き）
+  players.forEach((p) => {
+    const s = p.scores;
+    p.total = s.content * WEIGHTS.content + s.expression * WEIGHTS.expression + s.speaking * WEIGHTS.speaking;
+  });
+
+  // 点数の高い順（順位）
+  const ranked = [...players].sort((a, b) => b.total - a.total);
+  const STEP_MS = 900;
+  let timers = [];
+  let revealed = false;
+
+  const $ = (sel) => document.querySelector(sel);
+  const phone = $("#phone");
+
+  function clearTimers() {
+    timers.forEach(clearTimeout);
+    timers = [];
+  }
+
+  // 結果発表の行を作る（順位の順に並べ、閉じた状態で置く）
+  function buildRanking() {
+    const list = $("#rank-list");
+    list.innerHTML = "";
+    ranked.forEach((p, i) => {
+      const row = document.createElement("div");
+      row.className = "row";
+      row.innerHTML = `
+        <div class="place">${i + 1}</div>
+        <div class="face"><div class="name"></div></div>
+        <div class="score"></div>
+        <div class="closed">？？？</div>`;
+      row.querySelector(".name").textContent = p.name;
+      row.querySelector(".score").textContent = Math.round(p.total);
+      if (i === 0) row.classList.add("is-winner");
+      list.appendChild(row);
+    });
+  }
+
+  function rowEls() {
+    return [...document.querySelectorAll("#rank-list .row")];
+  }
+
+  function openRow(el) {
+    el.classList.add("open");
+  }
+
+  function showWinner() {
+    $("#winner-name").textContent = ranked[0].name;
+    $("#winner").hidden = false;
+    phone.querySelector('[data-screen="ranking"]').classList.add("is-done");
+    revealed = true;
+  }
+
+  // 最下位から 1 行ずつ開く（一度開いたら、戻ってきたときは開いたままにする）
+  function startReveal() {
+    clearTimers();
+    buildRanking();
+    const screen = phone.querySelector('[data-screen="ranking"]');
+    screen.classList.remove("is-done");
+    $("#winner").hidden = true;
+
+    if (revealed) {
+      skipReveal();
+      return;
+    }
+
+    const rows = rowEls();
+    const bottomUp = [...rows].reverse();
+    bottomUp.forEach((row, i) => {
+      timers.push(setTimeout(() => openRow(row), 400 + i * STEP_MS));
+    });
+    timers.push(setTimeout(showWinner, 400 + bottomUp.length * STEP_MS));
+  }
+
+  function skipReveal() {
+    clearTimers();
+    rowEls().forEach(openRow);
+    showWinner();
+  }
+
+  // みんなの描写（点数順）
+  function buildEveryone() {
+    const list = $("#desc-list");
+    list.innerHTML = "";
+    ranked.forEach((p) => {
+      const card = document.createElement("div");
+      card.className = "desc" + (p.name === ME ? " is-me" : "");
+      const isMe = p.name === ME ? '<span class="me-tag">あなた</span>' : "";
+      card.innerHTML = `
+        <div class="desc-head">
+          <div><span class="name"></span>${isMe}</div>
+          <span class="score"></span>
+        </div>
+        <p></p>
+        <div class="comment"></div>`;
+      card.querySelector(".name").textContent = p.name;
+      card.querySelector(".score").textContent = Math.round(p.total) + " 点";
+      card.querySelector("p").textContent = p.text;
+      card.querySelector(".comment").textContent = p.comment;
+      list.appendChild(card);
+    });
+  }
+
+  // 振り返り（自分の内訳）
+  function buildReview() {
+    const me = players.find((p) => p.name === ME);
+    const rank = ranked.findIndex((p) => p.name === ME) + 1;
+    $("#review-total").innerHTML = `${Math.round(me.total)} <span>点</span>`;
+    $("#review-rank").textContent = `${rank} 位 / ${ranked.length} 人`;
+
+    const items = [
+      { key: "content", label: "内容", weight: "50%" },
+      { key: "expression", label: "表現", weight: "25%" },
+      { key: "speaking", label: "話し方", weight: "25%" },
+    ];
+    const bars = $("#review-bars");
+    bars.innerHTML = "";
+    items.forEach((item) => {
+      const value = me.scores[item.key];
+      const wrap = document.createElement("div");
+      wrap.innerHTML = `
+        <div class="bar-head">
+          <span>${item.label}<span class="weight">${item.weight}</span></span>
+          <span class="num">${value} 点</span>
+        </div>
+        <div class="track"><div class="fill" style="width:${value}%"></div></div>`;
+      bars.appendChild(wrap);
+    });
+
+    $("#review-comment").textContent = review.comment;
+    $("#review-model").textContent = review.model;
+    $("#review-model-ja").textContent = review.modelJa;
+  }
+
+  function go(name) {
+    phone.querySelectorAll("[data-screen]").forEach((s) => {
+      s.hidden = s.dataset.screen !== name;
+    });
+    clearTimers();
+    if (name === "ranking") startReveal();
+    if (name === "everyone") buildEveryone();
+    if (name === "review") buildReview();
+    phone.querySelector(`[data-screen="${name}"]`).scrollTop = 0;
+  }
+
+  document.addEventListener("click", (e) => {
+    const target = e.target.closest("[data-go]");
+    if (target) go(target.dataset.go);
+  });
+  $("#skip").addEventListener("click", skipReveal);
+  $("#reset").addEventListener("click", () => {
+    revealed = false;
+    go("ranking");
+  });
+  $("#host-toggle").addEventListener("change", (e) => {
+    document.body.classList.toggle("is-host", e.target.checked);
+  });
+
+  document.body.classList.toggle("is-host", $("#host-toggle").checked);
+  go("ranking");
+</script>
+</body>
+</html>
