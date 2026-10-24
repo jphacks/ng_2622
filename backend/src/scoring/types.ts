@@ -16,10 +16,23 @@ export type Scene = {
   name: string;
   // Claude に渡す場面の説明（英語）
   description: string;
-  // 描写してほしい要素
-  elements: string[];
+  // 描写してほしい要素。言えた要素の点を足したものが内容の点になる
+  elements: SceneElement[];
+  // 一覧にない正しい描写に出す点の上限。elements の points と足して 100 にする
+  extraMax: number;
   // アプリに同梱する動画のファイル名
   video: string;
+};
+
+export type SceneElement = {
+  id: string;
+  // 画面に出す名前（日本語）
+  label: string;
+  points: number;
+  // 満点にする言い方（英語。Claude に渡す）
+  accept: string;
+  // 半分の点にする言い方。無ければ部分点なし
+  partial?: string;
 };
 
 export type SpeechScore = {
@@ -38,6 +51,15 @@ export type LanguageScore = {
   comment: string;
   // 模範表現（英語）
   modelAnswer: string;
+  // 要素ごとの判定。内容の点の内訳
+  elements: ElementJudgment[];
+};
+
+export type ElementJudgment = {
+  id: string;
+  level: "full" | "partial" | "none";
+  // 判定の根拠にした発言
+  evidence: string;
 };
 
 export type ScoreResult =
@@ -52,6 +74,8 @@ export type ScoreResult =
       transcript: string;
       comment: string;
       modelAnswer: string;
+      // 内容の内訳
+      elements: ElementJudgment[];
       // 話し方の内訳
       speechDetail: { accuracy: number; fluency: number; prosody: number };
       mode: "live" | "fixed";

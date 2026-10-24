@@ -2,49 +2,128 @@
   {
     "id": "park",
     "name": "公園",
-    "description": "A sunny city park. A red bench stands under a big tree. A dog is running near a fountain, two children are playing with a ball, and an old man is reading a newspaper on the bench.",
+    "description": "A sunny park. A person is playing with a dog and a ball on the grass.",
     "elements": [
-      "bench",
-      "tree",
-      "dog",
-      "fountain",
-      "children",
-      "ball",
-      "old man",
-      "newspaper"
+      {
+        "id": "place",
+        "label": "公園で",
+        "points": 20,
+        "accept": "park, playground, field, lawn"
+      },
+      {
+        "id": "person",
+        "label": "人",
+        "points": 15,
+        "accept": "person, man, woman, boy, girl, someone, owner"
+      },
+      {
+        "id": "dog",
+        "label": "犬",
+        "points": 15,
+        "accept": "dog, puppy",
+        "partial": "animal, pet"
+      },
+      {
+        "id": "ball",
+        "label": "ボール",
+        "points": 15,
+        "accept": "ball"
+      },
+      {
+        "id": "play",
+        "label": "人と犬が一緒に遊んでいる",
+        "points": 25,
+        "accept": "the person and the dog are playing together, e.g. playing catch, throwing the ball to the dog",
+        "partial": "only says someone or something is playing, without connecting the person and the dog"
+      }
     ],
+    "extraMax": 10,
     "video": "park.mp4"
+  },
+  {
+    "id": "school",
+    "name": "学校",
+    "description": "A classroom at school. A teacher is giving a lesson and the students are listening. Some students are absent, so a few desks are empty.",
+    "elements": [
+      {
+        "id": "place",
+        "label": "学校で",
+        "points": 15,
+        "accept": "school, classroom, class"
+      },
+      {
+        "id": "students",
+        "label": "生徒",
+        "points": 15,
+        "accept": "students, pupils, children, kids",
+        "partial": "people"
+      },
+      {
+        "id": "teacher",
+        "label": "先生",
+        "points": 15,
+        "accept": "teacher, instructor",
+        "partial": "an adult, a man or a woman in front of the class"
+      },
+      {
+        "id": "lesson",
+        "label": "生徒が先生の授業を受けている",
+        "points": 25,
+        "accept": "the teacher is teaching and the students are listening or studying, e.g. having a lesson, taking a class",
+        "partial": "says a lesson or studying without connecting the teacher and the students"
+      },
+      {
+        "id": "absent",
+        "label": "数名の生徒が欠席している",
+        "points": 20,
+        "accept": "some students are absent or not here, some seats or desks are empty",
+        "partial": "mentions empty seats or desks without saying students are missing, or says all but one"
+      }
+    ],
+    "extraMax": 10,
+    "video": "school.mp4"
   },
   {
     "id": "kitchen",
     "name": "台所",
-    "description": "A small kitchen in the evening. A pot of soup is boiling on the stove, vegetables are on a cutting board, a cat is sleeping on a chair, and the window shows the sunset.",
+    "description": "A small kitchen in the evening. A pot of soup is boiling on the stove, vegetables are on a cutting board, and a cat is sleeping on a chair.",
     "elements": [
-      "pot",
-      "soup",
-      "stove",
-      "vegetables",
-      "cutting board",
-      "cat",
-      "chair",
-      "window",
-      "sunset"
+      {
+        "id": "place",
+        "label": "台所で",
+        "points": 15,
+        "accept": "kitchen"
+      },
+      {
+        "id": "soup",
+        "label": "鍋でスープを煮ている",
+        "points": 25,
+        "accept": "a pot or soup is boiling or cooking on the stove",
+        "partial": "mentions a pot, soup or stove without saying it is cooking"
+      },
+      {
+        "id": "vegetables",
+        "label": "まな板の上の野菜",
+        "points": 15,
+        "accept": "vegetables on a cutting board",
+        "partial": "vegetables or a cutting board alone"
+      },
+      {
+        "id": "cat",
+        "label": "猫",
+        "points": 15,
+        "accept": "cat, kitten",
+        "partial": "animal, pet"
+      },
+      {
+        "id": "sleeping",
+        "label": "猫が椅子の上で寝ている",
+        "points": 20,
+        "accept": "the cat is sleeping or napping on a chair",
+        "partial": "the cat is sleeping without the chair, or the cat is on a chair without sleeping"
+      }
     ],
+    "extraMax": 10,
     "video": "kitchen.mp4"
-  },
-  {
-    "id": "station",
-    "name": "駅のホーム",
-    "description": "A crowded train station platform in the morning. A blue train is arriving, people are waiting in line, a man is looking at his phone, a clock shows eight o'clock, and a vending machine stands by the wall.",
-    "elements": [
-      "train",
-      "platform",
-      "people",
-      "line",
-      "phone",
-      "clock",
-      "vending machine"
-    ],
-    "video": "station.mp4"
   }
 ]
