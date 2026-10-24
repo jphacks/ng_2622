@@ -1,9 +1,7 @@
-"""砂浜のジオラマ（3D シーン）を作り、アプリ用の USDZ と発表用の画像を書き出す。
+"""海辺のジオラマ（3D シーン）を作り、アプリ用の USDZ と発表用の画像を書き出す。
 
-浜辺のパラソルの下で女性が眠っていて、そばに砂のお城がある。ヤシの木が 3 本あり、
-手前から奥へ波が寄せて砕ける。共通の道具は common.py。
+手前が砂浜、奥が海。砂浜はなだらかに下がって海に入る。難易度は「ふつう」。共通の道具は common.py。
 
-Blender の中で動かす（Blender 4.5 LTS で確認）。
 使い方:
   blender --background --factory-startup --python scripts/scene/beach.py -- [--out assets/scenes] [--no-render] [--samples 128]
 """
@@ -14,438 +12,502 @@ import random
 import sys
 from pathlib import Path
 
-import bmesh
 import bpy
-from mathutils import Vector
+from mathutils import Vector, noise
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-from common import HALF, SIZE, Part, material, materials, run  # noqa: E402
+from common import HALF, SIZE, Part, material, materials, person, run  # noqa: E402
 
-rng = random.Random(2622)
+rng = random.Random(58)
 M: dict = {}
 
-# 砂浜の中心からの、飾りを置かない場所（x, y, 半径）。ランダムな貝殻などはここを避ける
-KEEP_OUT: list[tuple[float, float, float]] = []
+SEA_Z = -0.1           # 海面の高さ
+SLOPE_Y0, SLOPE_Y1 = -0.5, 1.4  # 砂浜が海へ下がり始める所と、海底に着く所
+SEABED_Z = -0.55
+CORNER = 0.8           # 島の角の丸み
 
-SHORE_Y = 1.0  # 砂と海の境目（y）
-UMBRELLA = (-1.3, -1.4)
-SLEEPER = (-1.3, -2.0)
-CASTLE = (0.9, -1.9)
-
-
-# ---------- マテリアル ----------
 
 def make_materials() -> None:
     M.update(materials({
-        "sand": ("#f4e3b8", 0.72), "sand_wet": ("#d9bb8e", 0.45), "sand_dark": ("#cba870", 0.75),
-        "sand_light": ("#fdf0d2", 0.72), "wet_base": ("#b9996c", 0.8),
-        "bark": ("#9b7a50", 0.85), "bark_dark": ("#6f5234", 0.9),
-        "frond": ("#3f9a3a", 0.65), "frond2": ("#5cb848", 0.65), "frond3": ("#2f7d33", 0.65),
-        "coconut": ("#6b4a2a", 0.6),
-        "umbrella_red": ("#e85d5d", 0.55), "umbrella_white": ("#fffaf0", 0.55),
-        "pole": ("#f6efe4", 0.5),
-        "towel_a": ("#2fb8ac", 0.8), "towel_b": ("#fff4e6", 0.8),
-        "skin": ("#f6caa6", 0.55), "hair": ("#3a2618", 0.6),
-        "swim_top": ("#ff8a7a", 0.6), "swim_bottom": ("#2f3b63", 0.6),
-        "straw": ("#e7c27d", 0.7), "flip": ("#e3483c", 0.5),
-        "bag": ("#ff9f43", 0.7), "bucket": ("#e85d5d", 0.5), "shovel": ("#ffd84a", 0.5),
-        "castle": ("#d4b48a", 0.8), "castle_dark": ("#b89c72", 0.85), "window": ("#5b4636", 0.6),
-        "shell_pink": ("#ffb7a5", 0.4), "shell_white": ("#fff4e6", 0.4),
-        "driftwood": ("#a48b6a", 0.9), "dark": ("#2a211c", 0.3),
-        "foam": ("#f7fbff", 0.5), "wash": ("#fdfdfd", 0.5),
-        "cooler": ("#3a7bd5", 0.4), "rock": ("#7d7468", 0.55), "beak": ("#f5a623", 0.4),
-        "book": ("#7b5ea7", 0.5), "glasses": ("#1d1d1f", 0.15), "bottle": ("#bfe9ff", 0.1),
+        "sand_side": ("#d8b77c", 0.95), "base_dark": ("#9a7a52", 0.95),
+        "foam": ("#ffffff", 0.4), "rock": ("#8d8d94", 0.8), "rock_dark": ("#6a6a72", 0.85),
+        "bark": ("#8a6440", 0.9), "bark_ring": ("#6f4e30", 0.9), "frond": ("#3f9a3a", 0.6), "frond2": ("#5cb848", 0.6),
+        "coconut": ("#6b4428", 0.7),
+        "castle": ("#e3c48c", 0.95), "castle_wet": ("#c9a46a", 0.9), "flag": ("#e8484a", 0.5), "stick": ("#a8683a", 0.7),
+        "bucket": ("#e8484a", 0.35), "shovel": ("#ffd23a", 0.35), "shovel_handle": ("#3f7fe0", 0.4),
+        "umbrella_red": ("#e8484a", 0.5), "umbrella_white": ("#fbf6ee", 0.5), "pole": ("#f2f2f2", 0.4),
+        "towel_blue": ("#3f7fe0", 0.85), "towel_white": ("#f7f4ec", 0.85),
+        "mat_red": ("#e05a4f", 0.85), "mat_white": ("#fbf6ee", 0.85), "basket": ("#c98e5a", 0.8),
+        "bread": ("#f2d9a6", 0.8), "crust": ("#c98a45", 0.7), "lettuce": ("#7cc24a", 0.6), "tomato": ("#e8484a", 0.5),
+        "plate": ("#ffffff", 0.4), "juice": ("#ff9f2e", 0.2), "cap": ("#3f9a3a", 0.4),
+        "cooler": ("#3fa7d9", 0.4), "cooler_lid": ("#f2f2f2", 0.4),
+        "straw": ("#e9cf8a", 0.85), "hat_band": ("#3f7fe0", 0.6),
+        "gull": ("#fbfbf8", 0.6), "gull_gray": ("#a9b0ba", 0.6), "gull_black": ("#2a2a30", 0.5), "beak": ("#ffc23a", 0.4),
+        "crab": ("#e8573a", 0.45), "crab_dark": ("#b83a26", 0.5),
+        "shell_pink": ("#f7b6c8", 0.5), "shell_white": ("#fff4e6", 0.5), "starfish": ("#ff8a3d", 0.7),
+        "ring_red": ("#e8484a", 0.3), "ring_white": ("#fbfbf8", 0.3),
+        "hull": ("#fbfbf8", 0.35), "hull_stripe": ("#3f7fe0", 0.4), "sail": ("#fffaf0", 0.6), "mast": ("#a8683a", 0.6),
+        "surf": ("#ffd23a", 0.3), "surf_stripe": ("#e8484a", 0.3), "sand_print": ("#dcc08c", 0.95),
+        "ball_red": ("#e8484a", 0.35), "ball_yellow": ("#ffd23a", 0.35), "ball_blue": ("#3f7fe0", 0.35), "ball_white": ("#fbfbf8", 0.35),
+        "skin": ("#f6caa6", 0.55), "skin_tan": ("#d9a47a", 0.55), "eye": ("#2a211c", 0.3), "cheek": ("#f59a9a", 0.7), "mouth": ("#a8463d", 0.5),
+        "hair_brown": ("#6b4428", 0.6), "hair_black": ("#2a1f1a", 0.6), "hair_blond": ("#e3b45a", 0.6),
+        "tee_yellow": ("#ffcf3a", 0.7), "tee_green": ("#5cc08a", 0.7), "shorts_blue": ("#3d6fb6", 0.7), "shorts_red": ("#e05a4f", 0.7),
+        "dress": ("#ff9fbf", 0.75), "aloha": ("#3fb8c8", 0.7), "sandal": ("#3f7fe0", 0.5), "swim": ("#3f7fe0", 0.5),
     }))
-    M["sea"] = material("sea", "#1f9bd1", 0.12, coat=0.6, ior=1.33)
-    M["sea_deep"] = material("sea_deep", "#1a7fb8", 0.3)
-    M["glass"] = material("glass", "#ffe7a8", 0.2, emit=4.0)
+    M["sand"] = sand_material()
+    # 海は透かして、水の下の砂浜が見えるようにする（USDZ では不透明な水色になる）
+    M["sea"] = material("sea", "#2fb3c6", 0.04, ior=1.33, trans=0.75)
+    M["sea_side"] = material("sea_side", "#1f8fb3", 0.05, ior=1.33, trans=0.6)
 
 
-def free(x: float, y: float, r: float = 0.0) -> bool:
-    """(x, y) の周りに、飾りを置いてよい場所があるか。"""
-    return all(math.hypot(x - kx, y - ky) >= kr + r for kx, ky, kr in KEEP_OUT)
+def sand_material() -> bpy.types.Material:
+    """砂。画像では細かい凸凹を付ける（USDZ では色だけ）。"""
+    mat = material("sand", "#f2dcaa", 0.95)
+    nt = mat.node_tree
+    tex = nt.nodes.new("ShaderNodeTexNoise")
+    tex.inputs["Scale"].default_value = 180.0
+    bump = nt.nodes.new("ShaderNodeBump")
+    bump.inputs["Strength"].default_value = 0.25
+    nt.links.new(tex.outputs["Fac"], bump.inputs["Height"])
+    nt.links.new(bump.outputs["Normal"], nt.nodes["Principled BSDF"].inputs["Normal"])
+    return mat
 
 
 # ---------- 地面と海 ----------
 
-def build_ground(root) -> None:
-    # 海の下の床と、砂の下の層
-    under = Part("ground_under")
-    under.slab(SIZE, -0.25, 0.85, 0.96, M["wet_base"])
-    under.slab(SIZE - 0.4, -1.1, 0.18, 0.8, M["sand_dark"])
-    under.finish(root)
-
-    # 乾いた砂の面（岸より手前）。奥の海とは岸の線で分かれる
-    dry = Part("sand_dry")
-    dry.slab((SIZE, SHORE_Y + HALF), 0.0, 0.25, 0.9, M["sand"], center=(0, (SHORE_Y - HALF) / 2))
-    dry.finish(root)
-
-    # 海の水面（砂より少し低い）
-    sea = Part("sea")
-    sea.box((SIZE, HALF - SHORE_Y, 0.3), (0, (HALF + SHORE_Y) / 2, -0.2), M["sea"])
-    sea.finish(root)
-
-    # 岸のぬれた砂の帯と、引いていく波の白い泡
-    wet = Part("wet_sand")
-    wet.box((SIZE, 0.55, 0.012), (0, SHORE_Y - 0.28, 0.0), M["sand_wet"])
-    wet.finish(root)
-    wash = Part("wash")
-    for _ in range(18):
-        x = rng.uniform(-HALF + 0.3, HALF - 0.3)
-        wash.box((rng.uniform(0.35, 0.7), 0.07, 0.018), (x, SHORE_Y + rng.uniform(0.02, 0.12), 0.012),
-                 M["wash"], rot=(0, 0, rng.uniform(-0.2, 0.2)))
-    wash.finish(root)
-
-    # 砂のつぶ（表面の模様）
-    grains = Part("sand_grains")
-    for _ in range(120):
-        x, y = rng.uniform(-HALF + 0.2, HALF - 0.2), rng.uniform(-HALF + 0.2, SHORE_Y - 0.35)
-        if not free(x, y, 0.0):
-            continue
-        grains.blob(rng.uniform(0.012, 0.022), (x, y, 0.006), rng.choice([M["sand_dark"], M["sand_light"]]),
-                    scale=(1, 1, 0.5), bumpy=0.04, subdiv=2, seed=rng.random() * 9)
-    grains.finish(root)
+def smooth01(t: float) -> float:
+    t = min(max(t, 0.0), 1.0)
+    return t * t * (3 - 2 * t)
 
 
-# ---------- 波 ----------
-
-def build_waves(root) -> None:
-    """手前から奥へ 3 列の波。青い波の体に白い泡の帽子と、飛び散るしぶきを付ける。"""
-    water = Part("waves")
-    foam = Part("waves_foam")
-    spray = Part("waves_spray")
-    rows = [(1.55, 0.26, 0.0), (2.45, 0.36, 1.3), (3.3, 0.3, 2.4)]
-    for y0, amp, phase in rows:
-        n = 26
-        for i in range(n):
-            x = -HALF + 0.2 + (SIZE - 0.4) * i / (n - 1)
-            crest = amp * (0.55 + 0.45 * math.sin(x * 1.1 + phase)) * (0.7 + 0.3 * math.cos(x * 0.6 - phase))
-            h = max(0.05, crest)
-            # 波の体。岸へ倒れかかるように、少し手前にずらす
-            water.blob(0.2 + 0.08 * math.sin(i), (x, y0 - 0.05, h * 0.55), M["sea"],
-                       scale=(1.1, 0.7, 1.4), bumpy=0.04, subdiv=3, seed=phase + i * 0.37)
-            # 崩れる白い帽子
-            foam.blob(0.16, (x - 0.02, y0 - 0.16, h * 1.02), M["foam"],
-                      scale=(1.4, 0.45, 0.5), bumpy=0.12, subdiv=3, seed=phase + i * 0.91)
-            if i % 3 == 0:
-                spray.sphere(0.035, (x + 0.1, y0 - 0.34, h + 0.22 + 0.1 * math.sin(i * 2.0)),
-                             M["foam"], segs=8)
-    water.finish(root)
-    foam.finish(root)
-    spray.finish(root)
+def sand_height(x: float, y: float) -> float:
+    s = smooth01((y - SLOPE_Y0) / (SLOPE_Y1 - SLOPE_Y0))
+    dune = 0.035 * noise.noise(Vector((x * 0.55, y * 0.55, 0.3))) * (1 - s)
+    return SEABED_Z * s + dune
 
 
-# ---------- パラソル ----------
-
-def canopy_wedge(p: Part, cx: float, cy: float, z0: float, radius: float, height: float,
-                 a0: float, a1: float, mat) -> None:
-    """パラソルの布の一枚（くさび形）。頂点から外へ広がる三角の面で作る。"""
-    tb = bmesh.new()
-    apex = tb.verts.new((cx, cy, z0 + height))
-    c0 = tb.verts.new((cx, cy, z0))
-    e0 = tb.verts.new((cx + radius * math.cos(a0), cy + radius * math.sin(a0), z0))
-    e1 = tb.verts.new((cx + radius * math.cos(a1), cy + radius * math.sin(a1), z0))
-    tb.faces.new((apex, e0, e1))   # 布の表面
-    tb.faces.new((apex, c0, e0))   # 両側の面
-    tb.faces.new((apex, e1, c0))
-    tb.faces.new((c0, e1, e0))     # 底（裏から見えるように）
-    bmesh.ops.recalc_face_normals(tb, faces=list(tb.faces))
-    p._merge(tb, mat, smooth=False)
+def sea_height(x: float, y: float) -> float:
+    return SEA_Z + 0.012 * math.sin(x * 2.6 + y * 1.3) + 0.008 * math.sin(x * 5.1 - y * 3.7)
 
 
-def build_umbrella(root) -> None:
-    cx, cy = UMBRELLA
-    pole = Part("umbrella")
-    # 砂に刺さった棒と、根元の砂の山
-    pole.cyl(0.04, 0.04, 2.8, (cx, cy, 1.4), M["pole"], segs=10)
-    pole.sphere(0.05, (cx, cy, 2.86), M["pole"], segs=10)
-    pole.blob(0.26, (cx, cy, 0.04), M["sand_wet"], scale=(1, 1, 0.35), bumpy=0.2, subdiv=2, seed=4.0, smooth=False)
-    # 布は赤と白の 8 枚を交互に
-    z0, radius, height = 2.25, 1.4, 0.6
-    for k in range(8):
-        a0, a1 = k * math.tau / 8, (k + 1) * math.tau / 8
-        canopy_wedge(pole, cx, cy, z0, radius, height, a0, a1,
-                     M["umbrella_red"] if k % 2 == 0 else M["umbrella_white"])
-    # 布の縁の小さな玉（ふさ）
-    for k in range(8):
-        a = (k + 0.5) * math.tau / 8
-        pole.sphere(0.04, (cx + math.cos(a) * radius, cy + math.sin(a) * radius, z0 - 0.02),
-                    M["umbrella_white"], segs=8)
-    pole.finish(root)
+SHORE_Y = -0.02  # 砂浜と海の境目（sand_height が SEA_Z になるあたり）
 
 
-# ---------- 寝ている女性 ----------
-
-def build_sleeper(root) -> None:
-    cx, cy = SLEEPER
-    # 敷いたタオル（ストライプ）
-    towel = Part("towel")
-    towel.box((1.8, 0.85, 0.02), (cx, cy, 0.01), M["towel_a"], bevel=0.006)
-    for k in range(-5, 6, 2):
-        towel.box((0.12, 0.87, 0.024), (cx + k * 0.16, cy, 0.012), M["towel_b"])
-    towel.finish(root)
-
-    body = Part("sleeper")
-    # 頭（髪の上に、顔を隠す麦わら帽子）
-    head_x = cx - 0.6
-    body.sphere(0.14, (head_x, cy, 0.17), M["skin"], scale=(1, 1, 0.95))
-    body.sphere(0.152, (head_x + 0.03, cy + 0.02, 0.2), M["hair"], scale=(1, 1, 0.85), segs=16)
-    body.cyl(0.32, 0.32, 0.025, (head_x, cy, 0.25), M["straw"], segs=18)   # 帽子のつば
-    body.cyl(0.15, 0.16, 0.09, (head_x, cy, 0.3), M["straw"], segs=16)     # 帽子のクラウン
-    body.cyl(0.155, 0.155, 0.02, (head_x, cy, 0.26), M["straw"], segs=16)  # 帽子のバンド
-    # 首と胴（水着）
-    body.cyl(0.05, 0.05, 0.08, (head_x + 0.2, cy, 0.14), M["skin"], rot=(0, math.pi / 2, 0), segs=10)
-    body.sphere(0.2, (cx - 0.25, cy, 0.14), M["swim_top"], scale=(1.5, 0.85, 0.42))
-    body.sphere(0.19, (cx + 0.05, cy, 0.14), M["swim_bottom"], scale=(1.2, 0.9, 0.42))
-    # 脚（片方は少し曲げる）
-    body.limb((cx + 0.15, cy - 0.08, 0.13), (cx + 0.6, cy - 0.1, 0.1), 0.09, 0.07, M["skin"])
-    body.limb((cx + 0.15, cy + 0.1, 0.12), (cx + 0.55, cy + 0.2, 0.09), 0.09, 0.07, M["skin"])
-    body.box((0.12, 0.08, 0.1), (cx + 0.66, cy - 0.1, 0.08), M["skin"], bevel=0.02)
-    body.box((0.12, 0.08, 0.1), (cx + 0.6, cy + 0.2, 0.07), M["skin"], bevel=0.02)
-    # 腕（胸の上で組む）
-    body.limb((cx - 0.4, cy - 0.2, 0.18), (cx - 0.12, cy - 0.12, 0.22), 0.05, 0.045, M["skin"])
-    body.limb((cx - 0.42, cy + 0.16, 0.18), (cx - 0.16, cy + 0.1, 0.22), 0.05, 0.045, M["skin"])
-    body.finish(root)
-
-    # 横に置いた、サンダル
-    flip = Part("flip_flops")
-    for dy in (-0.14, 0.14):
-        flip.box((0.22, 0.09, 0.03), (cx + 0.1, cy + dy - 1.0, 0.015), M["flip"], bevel=0.01)
-    flip.finish(root)
+def build_island(root):
+    p = Part("island")
+    p.terrain(-HALF, HALF, -HALF, HALF, 0.1, sand_height, -0.9, M["sand"], M["sand_side"], CORNER, CORNER)
+    p.slab(SIZE - 0.4, -0.9, 0.18, 0.6, M["base_dark"])
+    p.finish(root)
 
 
-# ---------- 砂のお城 ----------
+def build_sea(root):
+    """海。島の縁より少しだけ外に出して、横から水の層が見えるようにする。"""
+    p = Part("sea")
+    e = 0.015
+    p.terrain(-HALF - e, HALF + e, SHORE_Y - 0.1, HALF + e, 0.1, sea_height, SEABED_Z - 0.3, M["sea"], M["sea_side"], 0.0, CORNER + e)
+    p.finish(root)
 
-def build_castle(root) -> None:
-    cx, cy = CASTLE
-    p = Part("castle")
-    # 土台と 3 段の城
-    p.cyl(0.9, 0.92, 0.1, (cx, cy, 0.05), M["castle_dark"], segs=24)
-    p.cyl(0.74, 0.76, 0.2, (cx, cy, 0.2), M["castle"], segs=24)
-    p.cyl(0.52, 0.54, 0.2, (cx, cy, 0.4), M["castle"], segs=22)
-    p.cyl(0.3, 0.32, 0.22, (cx, cy, 0.61), M["castle"], segs=20)
-    # 各段のぎざぎざの塀
-    for z, r, n in [(0.31, 0.74, 14), (0.51, 0.54, 12), (0.72, 0.32, 10)]:
+
+def build_foam(root):
+    """波打ち際の白い泡と、沖で砕ける波。"""
+    p = Part("waves")
+    x = -HALF + 0.15
+    while x < HALF - 0.15:
+        y = SHORE_Y + 0.04 * math.sin(x * 2.2) + rng.uniform(-0.03, 0.03)
+        p.blob(rng.uniform(0.09, 0.15), (x, y, SEA_Z + 0.005), M["foam"], scale=(1.6, 0.6, 0.18), bumpy=0.4, subdiv=2, seed=x * 3)
+        x += rng.uniform(0.12, 0.2)
+    for y0, n in ((1.75, 9), (2.9, 6)):
         for k in range(n):
-            a = k * math.tau / n
-            if k % 2:
-                continue
-            p.box((0.1, 0.1, 0.07), (cx + math.cos(a) * r, cy + math.sin(a) * r, z), M["castle"],
-                  rot=(0, 0, a))
-    # 角の小塔
-    for ax, ay in [(-0.6, -0.42), (0.6, -0.42), (-0.6, 0.42), (0.6, 0.42)]:
-        ox, oy = cx + ax * 0.82, cy + ay * 0.82
-        p.cyl(0.1, 0.1, 0.36, (ox, oy, 0.28), M["castle"], segs=12)
-        p.cyl(0.13, 0.0, 0.16, (ox, oy, 0.54), M["castle_dark"], segs=12)
-    # 真ん中の塔と旗
-    p.cyl(0.13, 0.12, 0.34, (cx, cy, 0.9), M["castle"], segs=14)
-    p.cyl(0.16, 0.0, 0.2, (cx, cy, 1.1), M["castle_dark"], segs=14)
-    p.cyl(0.008, 0.008, 0.32, (cx, cy, 1.36), M["dark"], segs=6)
-    p.box((0.18, 0.01, 0.1), (cx + 0.09, cy, 1.4), M["umbrella_red"], bevel=0.003)
-    # 入口のアーチと窓
-    p.box((0.2, 0.06, 0.2), (cx, cy - 0.76, 0.2), M["window"], bevel=0.02)
-    p.sphere(0.1, (cx, cy - 0.76, 0.3), M["window"], scale=(1, 0.3, 1), segs=12)
-    for ax in (-0.3, 0.3):
-        p.box((0.07, 0.05, 0.1), (cx + ax, cy - 0.55, 0.52), M["window"])
+            x = -HALF + 0.5 + (SIZE - 1.0) * (k + rng.uniform(0.1, 0.9)) / n
+            y = y0 + rng.uniform(-0.15, 0.15)
+            for j in range(4):
+                p.blob(rng.uniform(0.07, 0.1), (x + j * 0.12, y + rng.uniform(-0.02, 0.02), SEA_Z + 0.015), M["foam"],
+                       scale=(1.4, 0.5, 0.35), bumpy=0.4, subdiv=2, seed=k * 7 + j + y0)
     p.finish(root)
 
-    # 砂のバケツと、ひっくり返したスコップ
-    tools = Part("beach_tools")
-    tools.cyl(0.17, 0.15, 0.24, (cx + 1.0, cy - 0.5, 0.12), M["bucket"], segs=16)
-    tools.cyl(0.14, 0.14, 0.02, (cx + 1.0, cy - 0.5, 0.245), M["sand_wet"], segs=16)
-    tools.box((0.04, 0.5, 0.03), (cx + 0.5, cy - 0.9, 0.02), M["shovel"], rot=(0, 0, 0.5), bevel=0.01)
-    tools.box((0.14, 0.14, 0.02), (cx + 0.36, cy - 1.2, 0.02), M["shovel"], rot=(0, 0, 0.5), bevel=0.01)
-    tools.finish(root)
 
+# ---------- 砂浜のもの ----------
 
-# ---------- ヤシの木 ----------
-
-def build_palm(root, name: str, base, height: float, lean) -> None:
-    """カーブした幹と、放射状に伸びる葉、その下のココナッツ。"""
-    trunk = Part(name + "_trunk")
-    segs = 12
-    pts = [Vector(base) + Vector((lean[0] * (i / segs) ** 2, lean[1] * (i / segs) ** 2, height * i / segs))
-           for i in range(segs + 1)]
-    for i in range(segs):
-        r1 = 0.2 - 0.09 * i / segs
-        r2 = 0.2 - 0.09 * (i + 1) / segs
-        trunk.limb(pts[i], pts[i + 1], r1, r2, M["bark"], segs=10)
-        # 幹の輪の模様（ところどころ濃い節）
-        if i % 2 == 0:
-            trunk.blob(r1 * 1.12, pts[i].lerp(pts[i + 1], 0.5), M["bark_dark"], scale=(1, 1, 0.45),
-                       bumpy=0.12, subdiv=2, seed=i * 0.7, smooth=False)
-    trunk.finish(root)
-
+def build_palm(root, name, loc, height, lean, rot_z):
+    """ヤシの木。幹は曲がりながら lean の向きに傾き、先に葉とヤシの実。"""
+    p = Part(name)
+    pts = []
+    for k in range(9):
+        t = k / 8
+        pts.append(Vector((lean * t * t * height * 0.35, 0, t * height)))
+    for k in range(8):
+        r = 0.16 - 0.06 * k / 8
+        p.limb(pts[k], pts[k + 1], r, r * 0.92, M["bark"], segs=12)
+        p.cyl(r * 1.08, r * 1.0, 0.05, tuple(pts[k + 1] - Vector((0, 0, 0.03))), M["bark_ring"], segs=12)
     top = pts[-1]
-    crown = Part(name + "_crown")
-    count = 8
-    for k in range(count):
-        ang = k * math.tau / count + rng.uniform(-0.15, 0.15)
-        length = rng.uniform(1.45, 1.8)
-        droop = rng.uniform(0.6, 0.9)
-        frond_points = []
-        for j in range(7 + 1):
-            t = j / 7
-            frond_points.append(top + Vector((math.cos(ang) * length * t, math.sin(ang) * length * t,
-                                              0.25 * (1 - t) - droop * t * t)))
-        mat = [M["frond"], M["frond2"], M["frond3"]][k % 3]
-        side = Vector((-math.sin(ang), math.cos(ang), 0))
-        for j in range(7):
-            w = 0.09 * (1 - j / 7) + 0.02
-            crown.limb(frond_points[j], frond_points[j + 1], w, 0.09 * (1 - (j + 1) / 7) + 0.02, mat, segs=6)
-            if j > 0:
-                # 葉の筋（両側に細い葉）
-                for s in (-1, 1):
-                    tip = frond_points[j] + side * s * 0.36 * (1 - j / 7) + Vector((0, 0, -0.14))
-                    crown.limb(frond_points[j], tip, 0.02, 0.008, mat, segs=5)
-    # 下に垂れるココナッツ
-    for k in range(4):
-        a = k * math.tau / 4 + rng.uniform(0, 0.5)
-        crown.sphere(0.1, top + Vector((math.cos(a) * 0.18, math.sin(a) * 0.18, -0.2)), M["coconut"], segs=12)
-    crown.finish(root)
+    for k in range(3):
+        a = k / 3 * math.tau
+        p.sphere(0.1, (top.x + math.cos(a) * 0.12, top.y + math.sin(a) * 0.12, top.z - 0.12), M["coconut"], segs=12)
+    # 葉: 先に向かって細くなり、弧を描いて垂れる帯
+    for k in range(8):
+        a = k / 8 * math.tau + 0.2
+        d = Vector((math.cos(a), math.sin(a), 0))
+        side = Vector((-d.y, d.x, 0))
+        length = rng.uniform(1.3, 1.6)
+        mat = M["frond"] if k % 2 else M["frond2"]
+        prev = None
+        for j in range(9):
+            t = j / 8
+            c = top + d * t * length + Vector((0, 0, 0.35 * t - 1.0 * t * t))
+            w = 0.24 * math.sin(min(t * 1.2, 1.0) * math.pi * 0.9 + 0.15)
+            cur = (c - side * w + Vector((0, 0, 0.04)), c + side * w + Vector((0, 0, 0.04)), c)
+            if prev:   # 表と裏の両方を張る（アプリは裏を描かないため）
+                for quad in ((prev[2], prev[1], cur[1], cur[2]), (prev[0], prev[2], cur[2], cur[0])):
+                    p.poly(quad, mat, smooth=True)
+                    p.poly(quad[::-1], mat, smooth=True)
+            prev = cur
+    p.finish(root, loc=(*loc, sand_height(*loc) - 0.05), rot_z=rot_z)
 
 
-# ---------- 浜辺の小物 ----------
-
-def build_beach_items(root) -> None:
-    # ビーチバッグ
-    bag = Part("beach_bag")
-    bag.box((0.5, 0.14, 0.34), (-0.7, -3.1, 0.17), M["bag"], bevel=0.03)
-    bag.box((0.3, 0.02, 0.08), (-0.7, -3.18, 0.27), M["sand_light"], bevel=0.005)
-    bag.finish(root)
-
-    # 流木
-    wood = Part("driftwood")
-    wood.limb((2.2, -0.9, 0.04), (1.4, -0.55, 0.06), 0.06, 0.04, M["driftwood"])
-    wood.limb((1.7, -0.7, 0.06), (1.9, -0.35, 0.16), 0.03, 0.02, M["driftwood"])
-    wood.finish(root)
-
-    # 貝殻（ランダムに、飾りの無い場所へ）
-    shells = Part("shells")
-    count = 0
-    while count < 16:
-        x, y = rng.uniform(-3.5, 3.5), rng.uniform(-3.7, SHORE_Y - 0.4)
-        if not free(x, y, 0.1):
-            continue
-        shells.cyl(0.035, 0.012, 0.04, (x, y, 0.02), rng.choice([M["shell_pink"], M["shell_white"]]),
-                   rot=(rng.uniform(0, 0.6), 0, rng.uniform(0, 3)), segs=8, smooth=False)
-        count += 1
-    shells.finish(root)
+def build_sandcastle(root, loc):
+    """砂の城。真ん中の塔に旗、まわりに堀。"""
+    p = Part("sandcastle")
+    # 堀（水が入っている）
+    p.cyl(0.62, 0.62, 0.02, (0, 0, 0.005), M["castle_wet"], segs=36, smooth=False)
+    p.cyl(0.58, 0.58, 0.02, (0, 0, 0.012), M["sea"], segs=36, smooth=False)
+    p.cyl(0.46, 0.5, 0.12, (0, 0, 0.06), M["castle"], segs=32)
+    towers = [(0, 0, 0.26, 0.42), (-0.28, -0.2, 0.15, 0.26), (0.3, -0.18, 0.15, 0.26), (-0.22, 0.26, 0.14, 0.24), (0.26, 0.24, 0.14, 0.24)]
+    for x, y, r, h in towers:
+        p.cyl(r, r * 0.86, h, (x, y, 0.12 + h / 2), M["castle"], segs=20)
+        for k in range(6):   # 塔の上のぎざぎざ
+            a = k / 6 * math.tau
+            p.box((r * 0.32, r * 0.32, 0.06), (x + math.cos(a) * r * 0.72, y + math.sin(a) * r * 0.72, 0.12 + h + 0.03), M["castle"],
+                  rot=(0, 0, a), bevel=0.01, segments=1)
+    for (x0, y0, _, _), (x1, y1, _, _) in zip(towers[1:], towers[2:] + towers[1:2]):
+        mid = Vector(((x0 + x1) / 2, (y0 + y1) / 2, 0.2))
+        length = math.hypot(x1 - x0, y1 - y0)
+        p.box((length, 0.08, 0.14), tuple(mid), M["castle"], rot=(0, 0, math.atan2(y1 - y0, x1 - x0)), bevel=0.02)
+    p.box((0.1, 0.03, 0.12), (0, -0.25, 0.4), M["castle_wet"], bevel=0.02)   # 門
+    p.limb((0, 0, 0.6), (0, 0, 0.95), 0.008, 0.008, M["stick"], segs=6)
+    p.poly(((0, 0, 0.94), (0.16, 0, 0.88), (0, 0, 0.82)), M["flag"])
+    p.poly(((0, 0, 0.94), (0, 0, 0.82), (0.16, 0, 0.88)), M["flag"])
+    p.finish(root, loc=(*loc, sand_height(*loc)))
 
 
-# ---------- 追加の小物 ----------
-
-def build_lounger(root) -> None:
-    """ストライプの寝椅子。背もたれを少し起こしている。"""
-    x, y = -0.2, -2.7
-    p = Part("lounger")
-    for dx in (-0.55, 0.55):
-        for dy in (-0.25, 0.25):
-            p.cyl(0.02, 0.02, 0.22, (x + dx, y + dy, 0.11), M["pole"], segs=8)
-    p.box((1.3, 0.62, 0.05), (x, y, 0.24), M["towel_a"], bevel=0.015)
-    for k in (-0.4, -0.13, 0.13, 0.4):
-        p.box((0.1, 0.63, 0.052), (x + k, y, 0.242), M["towel_b"])
-    p.box((0.75, 0.62, 0.04), (x - 0.6, y, 0.42), M["towel_a"], rot=(0, 0.55, 0), bevel=0.012)
-    p.finish(root)
+def build_bucket_shovel(root, loc, rot_z):
+    p = Part("bucket_and_shovel")
+    p.cyl(0.13, 0.1, 0.22, (0, 0, 0.11), M["bucket"], segs=20)
+    p.cyl(0.115, 0.115, 0.01, (0, 0, 0.215), M["castle_wet"], segs=20)
+    p.limb((-0.13, 0, 0.21), (0, 0, 0.32), 0.008, 0.008, M["bucket"], segs=6)
+    p.limb((0, 0, 0.32), (0.13, 0, 0.21), 0.008, 0.008, M["bucket"], segs=6)
+    p.finish(root, loc=(*loc, sand_height(*loc)), rot_z=rot_z)
 
 
-def build_surfboard(root) -> None:
-    """砂に立てかけたサーフボード。白地に赤い帯。"""
-    x, y = 2.7, -2.0
-    p = Part("surfboard")
-    p.box((0.42, 1.75, 0.05), (x, y, 0.85), M["wash"], rot=(1.2, 0, 0.25), bevel=0.02)
-    p.box((0.1, 1.76, 0.056), (x, y, 0.85), M["umbrella_red"], rot=(1.2, 0, 0.25))
-    p.finish(root)
+def shovel(p, hand, tip, mat_blade, mat_handle):
+    """持ち手から先へのスコップ（子どもの手に持たせる）。"""
+    hand, tip = Vector(hand), Vector(tip)
+    p.limb(hand + (hand - tip).normalized() * 0.05, tip, 0.015, 0.015, mat_handle, segs=6)
+    d = (tip - hand).normalized()
+    p.box((0.1, 0.13, 0.015), tuple(tip + d * 0.06), mat_blade, rot=d.to_track_quat("Y", "Z").to_euler(), bevel=0.006)
 
 
-def build_beach_ball(root) -> None:
-    """三色のビーチボール。"""
-    x, y, r = 0.1, -3.4, 0.2
-    p = Part("beach_ball")
-    p.sphere(r, (x, y, r), M["umbrella_white"], segs=24)
-    for k, mat in enumerate(("umbrella_red", "sea", "shovel")):
-        p.sphere(r * 1.01, (x, y, r), M[mat], scale=(0.33, 1, 1), rot=(0, 0, k * math.tau / 3), segs=24)
-    p.finish(root)
+def build_beach_umbrella(root, loc, tilt=0.22):
+    """赤と白のビーチパラソル。tilt だけ奥（+Y）へ傾けて砂に刺す。"""
+    p = Part("beach_umbrella")
+    top = Vector((0.0, 0.0, 2.3))
+    p.limb((0, 0, -0.2), top + Vector((0, 0, 0.12)), 0.025, 0.025, M["pole"], segs=8)
+    p.sphere(0.04, tuple(top + Vector((0, 0, 0.14))), M["umbrella_white"], segs=10)
+    ribs = 12
+    rim = [top + Vector((math.cos(k / ribs * math.tau) * 1.15, math.sin(k / ribs * math.tau) * 1.15, -0.42)) for k in range(ribs)]
+    for k in range(ribs):
+        a, b = rim[k], rim[(k + 1) % ribs]
+        mid = (a + b) / 2 + Vector((0, 0, 0.05))
+        mat = M["umbrella_red"] if k % 2 else M["umbrella_white"]
+        p.poly((top, a, mid), mat)
+        p.poly((top, mid, b), mat)
+        p.poly((top, mid, a), mat)   # 裏
+        p.poly((top, b, mid), mat)
+        # 縁のたれ
+        p.poly((a, a + Vector((0, 0, -0.1)), b + Vector((0, 0, -0.1)), b), mat)
+        p.poly((a, b, b + Vector((0, 0, -0.1)), a + Vector((0, 0, -0.1))), mat)
+    obj = p.finish(root, loc=(*loc, sand_height(*loc)))
+    obj.rotation_euler = (-tilt, 0, 0)
 
 
-def build_cooler(root) -> None:
-    """青いクーラーボックスと白いふた。"""
-    x, y = 2.2, -3.3
-    p = Part("cooler")
-    p.box((0.52, 0.34, 0.26), (x, y, 0.13), M["cooler"], bevel=0.03)
-    p.box((0.54, 0.36, 0.05), (x, y, 0.285), M["umbrella_white"], bevel=0.02)
-    p.box((0.2, 0.02, 0.03), (x, y - 0.2, 0.33), M["pole"], bevel=0.01)
-    p.finish(root)
+def build_towel(root, name, loc, rot_z, size, mats):
+    p = Part(name)
+    w, d = size
+    n = 6
+    for k in range(n):
+        p.box((w / n + 0.002, d, 0.02), (-w / 2 + w / n * (k + 0.5), 0, 0.01), mats[k % 2])
+    p.finish(root, loc=(*loc, sand_height(*loc) + 0.005), rot_z=rot_z)
 
 
-def build_lifebuoy(root) -> None:
-    """赤白の浮き輪を立てた支柱。"""
-    x, y = -3.5, 1.4
-    p = Part("lifebuoy")
-    p.cyl(0.03, 0.03, 0.9, (x, y, 0.45), M["pole"], segs=8)
-    for k in range(16):
-        a = k * math.tau / 16
-        mat = M["umbrella_red"] if k % 2 == 0 else M["umbrella_white"]
-        p.sphere(0.055, (x + math.cos(a) * 0.2, y, 0.9 + math.sin(a) * 0.2), mat, segs=10)
-    p.finish(root)
+def build_picnic(root, loc, rot_z):
+    """チェックのシートと、かご・サンドイッチの皿・ジュース。"""
+    p = Part("picnic")
+    n = 6
+    for i in range(n):
+        for j in range(n):
+            p.box((0.2, 0.2, 0.015), (-0.5 + 0.2 * (i + 0.5), -0.5 + 0.2 * (j + 0.5), 0.008), M["mat_red"] if (i + j) % 2 else M["mat_white"])
+    # かご
+    p.box((0.42, 0.3, 0.22), (0.25, 0.22, 0.13), M["basket"], bevel=0.04)
+    p.limb((0.08, 0.22, 0.24), (0.25, 0.22, 0.4), 0.012, 0.012, M["crust"], segs=6)
+    p.limb((0.25, 0.22, 0.4), (0.42, 0.22, 0.24), 0.012, 0.012, M["crust"], segs=6)
+    # 皿とサンドイッチ（1 つはカモメが持っていった）
+    p.cyl(0.15, 0.13, 0.02, (-0.15, -0.15, 0.025), M["plate"], segs=24, smooth=False)
+    sandwich(p, (-0.2, -0.12, 0.04), 0.3)
+    p.cyl(0.035, 0.035, 0.18, (0.3, -0.25, 0.1), M["juice"], segs=12)
+    p.cyl(0.02, 0.02, 0.03, (0.3, -0.25, 0.205), M["cap"], segs=10)
+    p.finish(root, loc=(*loc, sand_height(*loc) + 0.005), rot_z=rot_z)
 
 
-def build_rocks(root) -> None:
-    """浅瀬の岩。"""
+def sandwich(p, loc, rot_z, scale=1.0):
+    """三角のサンドイッチ（パン・レタス・トマト・パン）。"""
+    x, y, z = loc
+    s = scale
+    tri = [Vector((math.cos(a) * 0.09 * s, math.sin(a) * 0.09 * s, 0)) for a in (rot_z, rot_z + 2.1, rot_z + 4.2)]
+    layers = [(M["bread"], 0.0, 0.03), (M["lettuce"], 0.03, 0.012), (M["tomato"], 0.042, 0.01), (M["bread"], 0.052, 0.03)]
+    for mat, z0, h in layers:
+        z0, h = z0 * s, h * s
+        grow = 1.08 if mat in (M["lettuce"],) else 1.0
+        bot = [Vector((x, y, z + z0)) + v * grow for v in tri]
+        top = [v + Vector((0, 0, h)) for v in bot]
+        p.poly(bot[::-1], mat)
+        p.poly(top, mat)
+        for k in range(3):
+            p.poly((bot[k], bot[(k + 1) % 3], top[(k + 1) % 3], top[k]), M["crust"] if mat == M["bread"] else mat)
+
+
+def build_seagull(root, loc, rot_z, scale=1.0):
+    """サンドイッチをくわえて飛んでいくカモメ。正面は -Y。"""
+    p = Part("seagull")
+    p.sphere(0.13, (0, 0.02, 0), M["gull"], scale=(0.85, 1.7, 0.8))
+    p.sphere(0.09, (0, -0.22, 0.06), M["gull"])
+    p.cyl(0.03, 0.0, 0.1, (0, -0.33, 0.04), M["beak"], rot=(math.pi / 2 + 0.2, 0, 0), segs=8)
+    for sx in (-1, 1):
+        p.sphere(0.016, (sx * 0.055, -0.27, 0.09), M["gull_black"], segs=8)
+        # 翼（浅い V の字に広げた形）。付け根は灰色、先は黒
+        root_pt = Vector((sx * 0.08, 0.0, 0.04))
+        elbow = Vector((sx * 0.4, 0.04, 0.13))
+        tip = Vector((sx * 0.75, 0.1, 0.17))
+        for a, b, w, mat in ((root_pt, elbow, 0.13, M["gull_gray"]), (elbow, tip, 0.1, M["gull_gray"])):
+            d = Vector((0, 1, 0)) * w
+            p.poly((a - d * 0.4, b - d * 0.4, b + d, a + d), mat, smooth=True)
+            p.poly((a + d, b + d, b - d * 0.4, a - d * 0.4), mat, smooth=True)
+        d = Vector((0, 1, 0)) * 0.08
+        p.poly((tip - d * 0.3, tip + Vector((sx * 0.12, 0.04, 0.05)), tip + d), M["gull_black"])
+        p.poly((tip + d, tip + Vector((sx * 0.12, 0.04, 0.05)), tip - d * 0.3), M["gull_black"])
+    # しっぽ
+    p.poly(((-0.07, 0.22, 0.0), (0.07, 0.22, 0.0), (0.05, 0.36, 0.03), (-0.05, 0.36, 0.03)), M["gull"])
+    p.poly(((-0.05, 0.36, 0.03), (0.05, 0.36, 0.03), (0.07, 0.22, 0.0), (-0.07, 0.22, 0.0)), M["gull"])
+    sandwich(p, (0, -0.42, -0.03), 0.5, scale=0.9)
+    p.finish(root, loc=loc, rot_z=rot_z, scale=scale)
+
+
+def build_crab(root, loc, rot_z):
+    p = Part("crab")
+    p.sphere(0.11, (0, 0, 0.07), M["crab"], scale=(1.3, 0.9, 0.5))
+    for sx in (-1, 1):
+        p.limb((sx * 0.04, -0.06, 0.1), (sx * 0.05, -0.08, 0.17), 0.01, 0.01, M["crab"], segs=6)
+        p.sphere(0.022, (sx * 0.05, -0.08, 0.18), M["eye"], segs=8)
+        # はさみ（振り上げている）
+        p.limb((sx * 0.12, -0.05, 0.07), (sx * 0.2, -0.12, 0.14), 0.02, 0.018, M["crab"], segs=8)
+        p.sphere(0.045, (sx * 0.22, -0.15, 0.18), M["crab_dark"], scale=(0.8, 1, 1.1), segs=12)
+        p.cyl(0.018, 0.0, 0.06, (sx * 0.22, -0.18, 0.23), M["crab_dark"], rot=(0.4, 0, 0), segs=6)
+        for k in range(3):
+            y = 0.0 + k * 0.04
+            p.limb((sx * 0.12, y, 0.06), (sx * 0.2, y + 0.01, 0.07), 0.012, 0.011, M["crab"], segs=6)
+            p.limb((sx * 0.2, y + 0.01, 0.07), (sx * 0.25, y + 0.02, 0.0), 0.011, 0.008, M["crab"], segs=6)
+    p.finish(root, loc=(*loc, sand_height(*loc)), rot_z=rot_z)
+
+
+def build_rocks(root, spots):
     p = Part("rocks")
-    for x, y, r in [(3.5, 1.7, 0.35), (3.0, 2.2, 0.22), (3.9, 2.4, 0.28)]:
-        p.blob(r, (x, y, r * 0.5), M["rock"], scale=(1.2, 1, 0.7), bumpy=0.1, subdiv=3, seed=x + y)
+    for i, (x, y, s) in enumerate(spots):
+        z = sand_height(x, y)
+        p.blob(s, (x, y, z + s * 0.25), M["rock"], scale=(1.2, 1, 0.75), bumpy=0.3, subdiv=2, seed=i * 2.3, smooth=False)
+        p.blob(s * 0.6, (x + s * 0.9, y - s * 0.4, z + s * 0.15), M["rock_dark"], scale=(1.1, 1, 0.7), bumpy=0.3, subdiv=2, seed=i * 4.1, smooth=False)
     p.finish(root)
 
 
-def build_gulls(root) -> None:
-    """砂の上にとまっているカモメ。"""
-    p = Part("gulls")
-    for x, y, a in [(0.4, 0.3, 0.4), (-0.2, 0.6, -1.0)]:
-        p.sphere(0.07, (x, y, 0.07), M["wash"], scale=(1.6, 0.7, 0.8), segs=12)
-        p.sphere(0.035, (x, y - 0.08, 0.1), M["wash"], segs=10)
-        p.box((0.22, 0.04, 0.02), (x, y, 0.09), M["wash"], rot=(0, 0, a))
-        p.box((0.05, 0.02, 0.015), (x, y - 0.12, 0.1), M["beak"], rot=(0, 0, 0))
+def build_shells(root, n=14):
+    """貝がらとヒトデ。"""
+    p = Part("shells")
+    for k in range(n):
+        x, y = rng.uniform(-3.4, 3.4), rng.uniform(-3.4, -0.4)
+        z = sand_height(x, y)
+        if k % 4 == 0:   # ヒトデ
+            for j in range(5):
+                a = j / 5 * math.tau + k
+                p.limb((x, y, z + 0.015), (x + math.cos(a) * 0.09, y + math.sin(a) * 0.09, z + 0.01), 0.025, 0.008, M["starfish"], segs=6)
+        else:            # 扇形の貝
+            a = rng.random() * math.tau
+            p.cyl(0.05, 0.0, 0.03, (x, y, z + 0.012), rng.choice([M["shell_pink"], M["shell_white"]]), rot=(0, 0, a), segs=7, smooth=False)
     p.finish(root)
 
 
-def build_towel_props(root) -> None:
-    """タオルの上の本・水のボトル・サングラス。"""
-    cx, cy = SLEEPER
-    p = Part("towel_props")
-    p.box((0.2, 0.14, 0.04), (cx + 0.5, cy + 0.2, 0.035), M["book"], bevel=0.005)
-    p.cyl(0.04, 0.04, 0.2, (cx + 0.45, cy - 0.25, 0.1), M["bottle"], segs=12)
-    p.box((0.12, 0.05, 0.02), (cx + 0.1, cy + 0.3, 0.02), M["glasses"], bevel=0.005)
+def build_beach_ball(root, loc):
+    """赤・黄・青・白の 4 色で塗り分けたビーチボール。"""
+    p = Part("beach_ball")
+    r, z0 = 0.2, sand_height(*loc) + 0.19
+    colors = [M["ball_red"], M["ball_white"], M["ball_yellow"], M["ball_white"], M["ball_blue"], M["ball_white"]]
+    lon, lat = 36, 12
+
+    def pt(i, j):
+        a, b = i / lon * math.tau, j / lat * math.pi
+        return Vector((math.sin(b) * math.cos(a) * r, math.sin(b) * math.sin(a) * r, math.cos(b) * r + z0))
+
+    for i in range(lon):
+        mat = colors[i * len(colors) // lon]
+        for j in range(lat):
+            if j == 0:            # 極は三角
+                p.poly((pt(i, 0), pt(i, 1), pt(i + 1, 1)), mat)
+            elif j == lat - 1:
+                p.poly((pt(i, j), pt(i, lat), pt(i + 1, j)), mat)
+            else:
+                p.poly((pt(i, j), pt(i, j + 1), pt(i + 1, j + 1), pt(i + 1, j)), mat)
+    p.cyl(0.04, 0.04, 0.01, (0, 0, z0 + r), M["ball_white"], segs=12)
+    p.finish(root, loc=loc)
+
+
+def build_float_ring(root, loc, z, r=0.3, tube=0.09):
+    """浮き輪（赤と白）。"""
+    p = Part("float_ring")
+    n = 16
+    for k in range(n):
+        a, b = k / n * math.tau, (k + 1) / n * math.tau
+        p.limb((math.cos(a) * r, math.sin(a) * r, 0), (math.cos(b) * r, math.sin(b) * r, 0), tube, tube,
+               M["ring_red"] if (k // 2) % 2 else M["ring_white"], segs=12)
+        p.sphere(tube, (math.cos(b) * r, math.sin(b) * r, 0), M["ring_red"] if (k // 2) % 2 else M["ring_white"], segs=12)
+    p.finish(root, loc=(*loc, z))
+
+
+def build_sailboat(root, loc, rot_z):
+    p = Part("sailboat")
+    p.box((0.5, 1.4, 0.24), (0, 0, 0.0), M["hull"], bevel=0.11)
+    p.box((0.52, 1.2, 0.05), (0, 0.02, 0.05), M["hull_stripe"])
+    p.limb((0, -0.05, 0.1), (0, -0.05, 1.75), 0.022, 0.018, M["mast"], segs=8)
+    p.limb((0, -0.05, 0.32), (0, 0.6, 0.32), 0.016, 0.016, M["mast"], segs=6)
+    p.poly(((0.003, -0.05, 1.75), (0.003, -0.05, 1.62), (0.003, 0.16, 1.68)), M["flag"])
+    p.poly(((-0.003, -0.05, 1.75), (-0.003, 0.16, 1.68), (-0.003, -0.05, 1.62)), M["flag"])
+    sail = ((0, -0.03, 0.36), (0, -0.03, 1.65), (0, 0.58, 0.36))
+    p.poly(sail, M["sail"])
+    p.poly(sail[::-1], M["sail"])
+    jib = ((0, -0.08, 0.32), (0, -0.08, 1.45), (0, -0.66, 0.14))
+    p.poly(jib, M["sail"])
+    p.poly(jib[::-1], M["sail"])
+    p.finish(root, loc=(*loc, SEA_Z + 0.02), rot_z=rot_z)
+
+
+def build_cooler(root, loc, rot_z):
+    p = Part("cooler")
+    p.box((0.5, 0.32, 0.3), (0, 0, 0.15), M["cooler"], bevel=0.04)
+    p.box((0.52, 0.34, 0.07), (0, 0, 0.32), M["cooler_lid"], bevel=0.03)
+    p.limb((-0.15, 0, 0.36), (0.15, 0, 0.36), 0.015, 0.015, M["cooler_lid"], segs=6)
+    p.finish(root, loc=(*loc, sand_height(*loc)), rot_z=rot_z)
+
+
+def build_straw_hat(root, name, loc, rot):
+    p = Part(name)
+    p.cyl(0.3, 0.3, 0.02, (0, 0, 0.0), M["straw"], segs=28)
+    p.sphere(0.15, (0, 0, 0.02), M["straw"], scale=(1, 1, 0.75), segs=20)
+    p.cyl(0.152, 0.152, 0.04, (0, 0, 0.04), M["hat_band"], segs=24)
+    obj = p.finish(root, loc=loc)
+    obj.rotation_euler = rot
+
+
+def build_surfboard(root, loc, rot_z):
+    """砂に立てたサーフボード。"""
+    p = Part("surfboard")
+    p.sphere(1.0, (0, 0, 0.75), M["surf"], scale=(0.24, 0.05, 0.85), segs=28)
+    p.sphere(1.0, (0, -0.005, 0.75), M["surf_stripe"], scale=(0.05, 0.052, 0.84), segs=20)
+    p.finish(root, loc=(*loc, sand_height(*loc) - 0.1), rot_z=rot_z)
+
+
+def build_flip_flops(root, loc, rot_z):
+    p = Part("flip_flops")
+    for sx in (-1, 1):
+        p.sphere(1.0, (sx * 0.08, 0, 0.012), M["sandal"], scale=(0.05, 0.12, 0.012), segs=14)
+        p.limb((sx * 0.08, -0.06, 0.02), (sx * 0.08 - 0.035, 0.0, 0.03), 0.006, 0.006, M["ball_white"], segs=4)
+        p.limb((sx * 0.08, -0.06, 0.02), (sx * 0.08 + 0.035, 0.0, 0.03), 0.006, 0.006, M["ball_white"], segs=4)
+    p.finish(root, loc=(*loc, sand_height(*loc)), rot_z=rot_z)
+
+
+def build_footprints(root, start, end):
+    """砂の上の足あと（左右交互）。"""
+    p = Part("footprints")
+    a, b = Vector(start), Vector(end)
+    d = (b - a).normalized()
+    side = Vector((-d.y, d.x))
+    n = int((b - a).length / 0.28)
+    for k in range(n):
+        c = a + d * (k * 0.28) + side * (0.07 if k % 2 else -0.07)
+        p.sphere(1.0, (c.x, c.y, sand_height(c.x, c.y) + 0.002), M["sand_print"], scale=(0.045, 0.09, 0.006),
+                 rot=(0, 0, math.atan2(d.y, d.x) - math.pi / 2), segs=10)
     p.finish(root)
 
 
 def build_beach() -> bpy.types.Object:
     root = bpy.data.objects.new("beach", None)
     bpy.context.scene.collection.objects.link(root)
+    build_island(root)
+    build_sea(root)
+    build_foam(root)
+    build_palm(root, "palm_back", (-3.0, -0.75), 3.5, 1.0, 0.5)
+    build_palm(root, "palm_front", (-3.15, -2.95), 2.9, 1.0, -0.6)
+    build_rocks(root, [(2.75, 0.05, 0.38), (3.3, 0.45, 0.26), (-1.9, 0.7, 0.22)])
+    build_shells(root)
 
-    # 飾りを置かない場所（パラソル・寝ている女性・お城・ヤシの木）
-    KEEP_OUT.extend([(UMBRELLA[0], UMBRELLA[1], 1.5), (SLEEPER[0], SLEEPER[1], 1.1), (CASTLE[0], CASTLE[1], 1.2),
-                     (-0.7, -3.1, 0.35), (2.9, 0.3, 1.2), (-3.2, -0.9, 1.2), (2.2, 0.5, 0.9),
-                     (-0.2, -2.7, 0.9), (2.7, -2.0, 0.4), (0.1, -3.4, 0.3), (2.2, -3.3, 0.4),
-                     (-3.5, 1.4, 0.3), (3.4, 2.1, 0.6), (0.4, 0.3, 0.15), (-0.2, 0.6, 0.15)])
+    kid = {"skin": M["skin"], "eye": M["eye"], "cheek": M["cheek"], "mouth": M["mouth"]}
 
-    build_ground(root)
-    build_waves(root)
-    build_umbrella(root)
-    build_sleeper(root)
-    build_castle(root)
-    build_palm(root, "palm_right", (2.9, 0.3, 0.0), 3.3, (-0.25, 0.1))
-    build_palm(root, "palm_left", (-3.2, -0.9, 0.0), 3.0, (0.3, 0.1))
-    build_palm(root, "palm_mid", (2.2, 0.5, 0.0), 2.5, (0.2, -0.2))
-    build_beach_items(root)
-    build_lounger(root)
-    build_surfboard(root)
-    build_beach_ball(root)
-    build_cooler(root)
-    build_lifebuoy(root)
-    build_rocks(root)
-    build_gulls(root)
-    build_towel_props(root)
+    # 砂の城を作っている 2 人の子ども（1 人はスコップ、もう 1 人は手で形を整える）
+    castle = (-1.55, -1.55)
+    build_sandcastle(root, castle)
+    build_bucket_shovel(root, (-2.35, -1.05), 0.3)
+    boy = {**kid, "hair": M["hair_black"], "top": M["tee_yellow"], "bottom": M["shorts_blue"], "shoe": M["skin"]}
+    girl = {**kid, "hair": M["hair_brown"], "top": M["tee_green"], "bottom": M["shorts_red"], "shoe": M["skin"], "hair_style": "bun"}
+    # 男の子は城の奥から手前（カメラのほう）を向き、女の子は横から城を向く
+    boy_at = ((castle[0] + 0.05, castle[1] + 0.85), 0.1)
+    girl_at = ((castle[0] + 0.9, castle[1] + 0.1), -math.pi / 2 + 0.45)
+    kneel_sh = 1.0   # ひざ立ちの肩の高さ
+    shovel_hand = (0.14, -0.45, -0.45)
+    person(root, "boy_building", *boy_at, boy, pose="kneel", scale=0.7, hands=[(-0.18, -0.4, -0.55), shovel_hand])
+    person(root, "girl_building", *girl_at, girl, pose="kneel", scale=0.7, hands=[(-0.16, -0.45, -0.62), (0.16, -0.45, -0.62)])
+    q = Part("shovel")
+    shovel(q, (shovel_hand[0], shovel_hand[1], kneel_sh + shovel_hand[2]), (0.16, -0.62, 0.12), M["shovel"], M["shovel_handle"])
+    q.finish(root, loc=boy_at[0], rot_z=boy_at[1], scale=0.7)
+
+    # ピクニックのシートと、サンドイッチを取られて驚く女性。カモメはサンドイッチをくわえて海へ飛んでいく
+    picnic = (0.05, -0.55)
+    build_picnic(root, picnic, -0.2)
+    woman = {**kid, "skin": M["skin"], "hair": M["hair_blond"], "top": M["dress"], "bottom": M["dress"], "shoe": M["sandal"],
+             "skirt": True, "hair_style": "long"}
+    person(root, "woman_surprised", (-0.45, -0.95), -0.35, woman, hands=[(-0.12, -0.2, 0.12), (0.34, -0.25, 0.62)])
+    build_seagull(root, (-0.15, -0.35, 1.9), 1.45, scale=1.5)   # 画像のカメラに対して斜め 45° に飛ぶ（翼が広がって見える）
+
+    # パラソルの下で、麦わら帽子を顔にのせて昼寝している男性
+    build_beach_umbrella(root, (2.05, -0.95))
+    towel_c, towel_rot = Vector((1.75, -1.6, 0)), 0.25
+    build_towel(root, "towel", towel_c.xy, towel_rot, (0.8, 1.9), [M["towel_blue"], M["towel_white"]])
+    # あお向けに寝かせる: 立った人を X 軸で -90° 倒すと、頭が +Y、顔が上を向く。背中の厚み（0.2）だけ浮かせる
+    axis = Vector((-math.sin(towel_rot), math.cos(towel_rot), 0))
+    feet = towel_c - axis * 0.85
+    man = {**kid, "skin": M["skin_tan"], "hair": M["hair_black"], "top": M["aloha"], "bottom": M["shorts_red"], "shoe": M["skin_tan"]}
+    sleeper = person(root, "man_sleeping", feet.xy, 0.0, man, hands=[(-0.14, -0.2, -0.42), (0.14, -0.2, -0.42)], lift=0.2)
+    sleeper.rotation_euler = (-math.pi / 2, 0, towel_rot)
+    head = feet + axis * 1.52   # 立ったときの頭の中心の高さ
+    build_straw_hat(root, "straw_hat", (head.x, head.y, 0.2 + 0.17), (-0.2, 0.0, towel_rot))
+    build_cooler(root, (2.95, -1.45), -0.3)
+
+    # 浮き輪で海に浮かぶ男の子と、沖のヨット
+    swimmer_at = (-0.9, 2.0)
+    swimmer = {**kid, "hair": M["hair_blond"], "top": M["skin"], "bottom": M["swim"], "shoe": M["skin"]}
+    person(root, "boy_swimming", swimmer_at, -0.3, swimmer, scale=0.7, lift=SEA_Z - 0.7 * 0.95,
+           hands=[(-0.36, -0.1, 0.0), (0.36, -0.1, 0.0)])
+    build_float_ring(root, swimmer_at, SEA_Z + 0.02, r=0.3, tube=0.085)
+    build_sailboat(root, (2.0, 2.7), -0.9)   # 帆を画像のカメラに向ける
+
+    build_crab(root, (2.15, -0.45), -0.4)
+    build_beach_ball(root, (-2.1, -2.75))
+    build_surfboard(root, (1.15, -3.05), 0.5)
+    build_flip_flops(root, (2.55, -2.45), 0.3)
+    build_footprints(root, (-0.9, -3.4), (-0.55, -1.1))
     return root
 
 
@@ -454,5 +516,7 @@ def build():
     return build_beach()
 
 
-if __name__ == "__main__":
-    run("beach", build)
+# 夏の晴れた昼。太陽は高く、背景は明るい空色
+ENV = {"sun_elevation": 50, "sun_energy": 2.8, "sun_color": "#fff4e0", "bg_strength": 2.0, "bg_edge": "#86c3e8", "bg_center": "#f2fbff"}
+
+run("beach", build, lens=42, env=ENV)

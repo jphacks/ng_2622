@@ -1,19 +1,19 @@
 {
   "id": "beach",
-  "name": "ビーチ",
+  "name": "海辺",
   "model": "beach.usdz",
-  "description": "A busy sandy beach on a sunny afternoon. A woman is sleeping on a striped towel under a red and white beach umbrella, with a book, a water bottle, and sunglasses beside her. Nearby there is a detailed sandcastle with a flag, a bucket, and a shovel. A striped lounger, a surfboard standing in the sand, a blue cooler, and a three-colour beach ball are around the beach. Waves are crashing onto the shore, with rocks in the shallow water, a lifebuoy on a post, and two seagulls on the sand. Three coconut palm trees stand on the sand.",
+  "difficulty": "normal",
+  "description": "A sunny beach in summer. Two children are kneeling on the sand and building a sandcastle with a red flag. One of them is digging with a yellow shovel, and a red bucket is next to them. A seagull is flying away with a sandwich in its beak, and a woman in a pink dress is surprised and reaching up next to a checkered picnic blanket with a basket. A man is sleeping on a striped towel under a red and white beach umbrella with a straw hat on his face. A boy is floating in the sea with a red and white float ring. There is a small sailboat on the sea, two palm trees, a crab and rocks near the water, a surfboard standing in the sand, a beach ball, a cooler, and footprints in the sand.",
   "elements": [
-    "a woman sleeping on a striped towel with a book and a water bottle",
-    "a red and white beach umbrella",
-    "a detailed sandcastle with a flag",
-    "a bucket and a shovel",
-    "a striped lounger",
-    "a surfboard standing in the sand",
-    "a blue cooler and a three-colour beach ball",
-    "waves crashing onto the shore with rocks in the shallow water",
-    "a red and white lifebuoy on a post",
-    "two seagulls on the sand",
-    "three coconut palm trees"
+    "two children building a sandcastle",
+    "a child digging with a shovel next to a red bucket",
+    "a seagull flying away with a sandwich in its beak",
+    "a surprised woman reaching up toward the seagull",
+    "a picnic blanket with a basket",
+    "a man sleeping under a beach umbrella with a straw hat on his face",
+    "a boy floating in the sea with a float ring",
+    "a sailboat on the sea",
+    "palm trees",
+    "a crab near the rocks"
   ]
 }

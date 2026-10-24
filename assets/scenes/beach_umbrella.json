@@ -1,0 +1,20 @@
+{
+  "id": "beach_umbrella",
+  "name": "ビーチ（パラソル）",
+  "model": "beach_umbrella.usdz",
+  "description": "A busy sandy beach on a sunny afternoon. A woman is sleeping on a striped towel under a red and white beach umbrella, with a book, a water bottle, and sunglasses beside her. Nearby there is a detailed sandcastle with a flag, a bucket, and a shovel. A striped lounger, a surfboard standing in the sand, a blue cooler, and a three-colour beach ball are around the beach. Waves are crashing onto the shore, with rocks in the shallow water, a lifebuoy on a post, and two seagulls on the sand. Three coconut palm trees stand on the sand.",
+  "elements": [
+    "a woman sleeping on a striped towel with a book and a water bottle",
+    "a red and white beach umbrella",
+    "a detailed sandcastle with a flag",
+    "a bucket and a shovel",
+    "a striped lounger",
+    "a surfboard standing in the sand",
+    "a blue cooler and a three-colour beach ball",
+    "waves crashing onto the shore with rocks in the shallow water",
+    "a red and white lifebuoy on a post",
+    "two seagulls on the sand",
+    "three coconut palm trees"
+  ],
+  "difficulty": "normal"
+}
