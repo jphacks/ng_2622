@@ -9,11 +9,11 @@
 | パス | 中身 |
 | --- | --- |
 | `<id>/1.usdz` | 部品の 3D モデル（どれも 0.2 MB 以下） |
-| `<id>/1.json` | メタデータ（`id`・`version`・`file`・`category`・`words`・`pose`・`size`・`label`） |
+| `<id>/1.json` | メタデータ（`id`・`version`・`file`・`category`・`words`・`pose`・`size`・`label`、一部の部品は `anchors`） |
 | `index.json` | 全部品のメタデータの配列 |
 | `contact_sheet.png` | 確かめの画像。USDZ を読み直して、正面（+Z）を少し右上から見たもの |
 
-どのファイルも `scripts/scene/parts.py` が生成する。手で編集しない（`size` も作った形の外接箱から計算している）。
+どのファイルも `scripts/scene/parts.py` が生成する。手で編集しない（`size` も作った形の外接箱から、`anchors` も形を作るときの寸法から計算している）。
 
 ## 座標と大きさ
 
@@ -27,12 +27,23 @@
 
 座るポーズ（`person_sit_*`）は人だけで、椅子を含まない。座面の高さ 0.46〜0.48 m（`chair`・`sofa` は 0.46 m、`bench` は 0.48 m）に合う。
 
-外接箱の中心を原点にしているので、座る人の腰は原点より奥（-Z）にある。椅子やベンチに座らせるには、人を椅子と同じ向きにして、椅子の位置から正面（+Z）へ次の分だけずらして置く。
+外接箱の中心を原点にしているので、座る人の腰は原点より奥（-Z）にある。椅子やベンチに座らせるには、人を椅子と同じ向きにして、人の `anchors.hip` が椅子の `anchors.seat` に重なるように置く（人の位置 = 椅子の位置 + `seat` − `hip`）。
 
-| 部品 | 腰（座面の中心に来る点）の位置 |
-| --- | --- |
-| `person_sit_adult_a` | 原点から -Z へ 0.20 m、高さ 0.48 m |
-| `person_sit_woman_a` | 原点から -Z へ 0.175 m、高さ 0.48 m |
+### 置き方の手がかり（`anchors`）
+
+座らせる・上に置く座標を計算するための点。座標は部品の中の座標（原点は外接箱の底面の中心、正面は +Z、m）。
+
+| 部品 | `anchors` | 意味 |
+| --- | --- | --- |
+| `table` | `top`: 0.72 | 天板の上面の高さ |
+| `box` | `top`: 0.35 | ふたの上面の高さ（テープの厚みは含めない） |
+| `chair` | `seat`: [0, 0.46, 0] | クッションの上面の中心 |
+| `bench` | `seat`: [0, 0.482, 0.08] | 座面の板の上面の真ん中 |
+| `sofa` | `seat`: [0, 0.46, 0.1] | 2 つの座面のクッションの真ん中の上面 |
+| `person_sit_adult_a` | `hip`: [0, 0.48, -0.2] | 腰の点（座面に重ねる点） |
+| `person_sit_woman_a` | `hip`: [0, 0.48, -0.175] | 腰の点（座面に重ねる点） |
+
+`hip` の高さ 0.48 m はベンチの座面に合わせてあるので、`chair`・`sofa`（0.46 m）に座らせると足が 2 cm 床に入る。
 
 ### 持たせた物
 
@@ -87,6 +98,7 @@
 ```sh
 blender --background --factory-startup --python scripts/scene/parts.py                            # 全部品と index.json
 blender --background --factory-startup --python scripts/scene/parts.py -- --only car --only tree  # 一部だけ（index.json も作り直す）
+blender --background --factory-startup --python scripts/scene/parts.py -- --meta-only            # USDZ は書かず、JSON だけ作り直す
 blender --background --factory-startup --python scripts/scene/check_parts.py                      # プロトコルに合っているかを確かめる
 blender --background --factory-startup --python scripts/scene/check_parts.py -- --sheet           # 確かめて、contact_sheet.png も作る
 ```
@@ -97,5 +109,6 @@ blender --background --factory-startup --python scripts/scene/check_parts.py -- 
 - 2 MB 以下、Y が上でメートル
 - 外接箱の最小 y が 0、x と z の中心が 0（2 mm まで）。外接箱の大きさが JSON の `size` と合う（2 mm まで）
 - 正面の目印が +Z 側にある（人は目が髪より前、犬は鼻と目、車はヘッドライト、自転車は前かご、自動販売機は商品の窓）。ベンチ・椅子・ソファは背もたれが -Z 側。左右対称の物は確かめない
+- `anchors` が付けるはずの部品にあり、外接箱の内側にある。座る人の `hip` を椅子・ベンチ・ソファの `seat` に合わせて置くと、脚が家具の前に出て、足が床に 3 cm より深く入らず、背中が背もたれの後ろへ抜けない（外接箱で見る）
 
 Blender は 4.5 LTS と 4.0 で動く。4.0 は USD の書き出しに向きの変換が無いので、`common.py` の `export_usdz` が pxr で Y を上に直す（4.5 と同じ結果になる）。

@@ -4,14 +4,18 @@
 Blender の中で動かす（Blender 4.5 LTS と 4.0 で確認）。共通の道具は common.py。
 
   assets/parts/<id>/1.usdz   部品の 3D モデル。原点は底面の中心、正面は +Z、Y が上、メートル
-  assets/parts/<id>/1.json   メタデータ（id・version・file・category・words・pose・size・label）
+  assets/parts/<id>/1.json   メタデータ（id・version・file・category・words・pose・size・label・anchors）
   assets/parts/index.json    全部品のメタデータの配列
 
 形は今のシーン（park.py など）の部品を書き写して、大きさと向きをプロトコルに合わせたもの。
 シーンのスクリプトは読み込むとそのシーンを書き出してしまうので、関数は呼ばずに写してある。
 
+部品を作る関数は、置き方の手がかりの点（anchors）を Blender の座標で返せる（返さなければ anchors なし）。
+  top:  上に物を置ける面の高さ        seat: 座る点        hip: 座るポーズの人の腰の点
+書き出すときに、原点を動かした分と座標の向きを直してプロトコルの座標にする。
+
 使い方:
-  blender --background --factory-startup --python scripts/scene/parts.py -- [--only <id>] [--out assets/parts]
+  blender --background --factory-startup --python scripts/scene/parts.py -- [--only <id>] [--out assets/parts] [--meta-only]
 """
 from __future__ import annotations
 
@@ -27,7 +31,7 @@ import bpy
 from mathutils import Euler, Matrix, Vector
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-from common import REPO, Part, export_usdz, material, materials, person  # noqa: E402
+from common import REPO, Part, _heights, export_usdz, material, materials, person  # noqa: E402
 
 VERSION = 1
 
@@ -119,6 +123,7 @@ def part(pid, category, label, words, pose=None, front=None):
 
     words は (語, 品詞) の組。front は向きを確かめる目印で、(マテリアル名, 1) なら正面（+Z）側に、
     (マテリアル名, -1) なら背中（-Z）側にあるはずのもの。左右対称で向きが無い部品は None。
+    登録する関数は root を受け取って形を作り、anchors（Blender の座標。top は z、seat・hip は (x, y, z)）を返してよい。
     """
     def register(fn):
         PARTS[pid] = {"build": fn, "category": category, "label": label, "pose": pose, "front": front,
@@ -222,8 +227,9 @@ def build_road_patch(root):
 def build_bench(root):
     """公園のベンチ（park.py の build_bench）。座面の高さは 0.48 m。背もたれは奥（-Z）。"""
     p = Part("bench")
-    for i in range(4):
-        p.box((1.6, 0.085, 0.045), (0, -0.17 + i * 0.105, 0.46), M["wood"], bevel=0.012)
+    slat_y, slat_d, slat_t, slat_z = [-0.17 + i * 0.105 for i in range(4)], 0.085, 0.045, 0.46
+    for y in slat_y:
+        p.box((1.6, slat_d, slat_t), (0, y, slat_z), M["wood"], bevel=0.012)
     for i in range(3):
         p.box((1.6, 0.045, 0.085), (0, 0.27, 0.62 + i * 0.12), M["bench_back"], rot=(-0.22, 0, 0), bevel=0.012)
     for x in (-0.68, 0.68):
@@ -232,6 +238,8 @@ def build_bench(root):
         p.box((0.06, 0.5, 0.045), (x, 0.02, 0.66), M["iron"], bevel=0.015)
         p.box((0.05, 0.45, 0.04), (x, 0.03, 0.43), M["iron"], bevel=0.01)
     p.finish(root)
+    # 座る点は座面の板の上面の、左右と前後の真ん中
+    return {"seat": (0, (slat_y[0] + slat_y[-1]) / 2, slat_z + slat_t / 2)}
 
 
 @part("table", "furniture", "テーブル", [("table", "noun")])
@@ -245,6 +253,7 @@ def build_table(root):
         for sy in (-1, 1):
             p.box((0.05, 0.05, h - 0.04), (sx * (w / 2 - 0.08), sy * (d / 2 - 0.08), (h - 0.04) / 2), M["table_leg"], bevel=0.008)
     p.finish(root)
+    return {"top": h}   # 天板の上面
 
 
 @part("chair", "furniture", "椅子", [("chair", "noun")], front=("chair_back", -1))
@@ -261,6 +270,7 @@ def build_chair(root):
     p.box((0.38, 0.03, 0.14), (0, 0.19, seat + 0.43), M["chair_back"], bevel=0.01)
     p.box((0.38, 0.03, 0.05), (0, 0.19, seat + 0.23), M["chair_back"], bevel=0.01)
     p.finish(root)
+    return {"seat": (0, 0, seat + 0.03 + 0.03 / 2)}   # クッションの上面の中心
 
 
 @part("sofa", "furniture", "ソファ", [("sofa", "noun"), ("couch", "noun")], front=("sofa_back", -1))
@@ -272,12 +282,14 @@ def build_sofa(root):
         for sy in (-1, 1):
             p.cyl(0.03, 0.025, 0.1, (sx * (w / 2 - 0.1), sy * (d / 2 - 0.1), 0.05), M["sofa_leg"], segs=8)
     p.box((w, d, 0.24), (0, 0, 0.22), M["sofa"], bevel=0.04)                       # 土台
+    cushion_y, cushion_t = -0.1, 0.14
     for sx in (-1, 1):
-        p.box((0.68, 0.62, 0.14), (sx * 0.35, -0.1, SEAT_Z - 0.07), M["sofa_cushion"], bevel=0.05)   # 座面のクッション
+        p.box((0.68, 0.62, cushion_t), (sx * 0.35, cushion_y, SEAT_Z - cushion_t / 2), M["sofa_cushion"], bevel=0.05)   # 座面のクッション
         p.box((0.2, d, 0.3), (sx * (w / 2 - 0.1), 0, 0.47), M["sofa"], bevel=0.06)          # ひじかけ
         p.box((0.68, 0.18, 0.36), (sx * 0.36, 0.2, SEAT_Z + 0.2), M["sofa_cushion"], rot=(-0.12, 0, 0), bevel=0.06)  # 背のクッション
     p.box((w - 0.04, 0.2, 0.52), (0, d / 2 - 0.1, 0.59), M["sofa_back"], bevel=0.06)          # 背もたれ
     p.finish(root)
+    return {"seat": (0, cushion_y, SEAT_Z)}   # 2 つの座面のクッションの真ん中の上面
 
 
 # ---------- 乗り物と機械 ----------
@@ -419,8 +431,10 @@ def box_shape(p, size, loc):
 def build_box(root):
     """段ボール箱。幅 0.45 m・高さ 0.35 m・奥行き 0.35 m。"""
     p = Part("box")
-    box_shape(p, (0.45, 0.35, 0.35), (0, 0, 0))
+    h = 0.35
+    box_shape(p, (0.45, 0.35, h), (0, 0, 0))
     p.finish(root)
+    return {"top": h}   # ふたの上面（テープの厚みは含めない）
 
 
 def apple_shape(p, loc, r=0.04):
@@ -549,8 +563,11 @@ def person_part(pose, look, extra_words=(), front=("eye", 1)):
 def simple_person(pose, look):
     """common.py の person() のポーズをそのまま使う人物。"""
     def build(root):
-        person(root, "person", (0, 0), 0.0, outfits()[look], pose=pose,
-               scale=CHILD_SCALE if look in ("boy_a", "girl_a") else 1.0)
+        scale = CHILD_SCALE if look in ("boy_a", "girl_a") else 1.0
+        person(root, "person", (0, 0), 0.0, outfits()[look], pose=pose, scale=scale)
+        if pose == "sit":   # 腰の点（common.py の person() の腰の球の中心）
+            return {"hip": (0, 0, _heights(pose)[0] * scale)}
+        return None
     person_part(pose, look)(build)
 
 
@@ -596,10 +613,11 @@ def build_person_carry(root):
 
 # ---------- 書き出し ----------
 
-def bake_and_center(root) -> list[float]:
+def bake_and_center(root) -> tuple[list[float], Vector]:
     """部品の形をメッシュに焼き込み、外接箱の底面の中心が原点に来るように動かす。
 
-    返り値はプロトコルの座標での大きさ [幅（X）, 高さ（Y）, 奥行き（Z）]。Blender では幅が X、高さが Z、奥行きが Y。
+    返り値は、プロトコルの座標での大きさ [幅（X）, 高さ（Y）, 奥行き（Z）] と、動かした量（Blender の座標）。
+    Blender では幅が X、高さが Z、奥行きが Y。
     """
     bpy.context.view_layer.update()   # matrix_world を、finish() で付けた位置・回転・倍率に合わせる
     objs = [o for o in bpy.context.scene.objects if o.type == "MESH"]
@@ -615,16 +633,41 @@ def bake_and_center(root) -> list[float]:
         o.data.transform(Matrix.Translation(-shift))
         o.data.update()
     size = hi - lo
-    return [round(size.x, 3), round(size.z, 3), round(size.y, 3)]
+    return [round(size.x, 3), round(size.z, 3), round(size.y, 3)], shift
 
 
-def metadata(pid: str, spec: dict, size: list[float]) -> dict:
+def to_protocol(anchors: dict | None, shift: Vector) -> dict | None:
+    """Blender の座標の anchors を、原点を動かした分を引いてプロトコルの座標（Y が上、正面は +Z）に直す。
+
+    Blender の (x, y, z) はプロトコルの (x, z, -y)。
+    """
+    if not anchors:
+        return None
+
+    def num(v: float) -> float:
+        return round(v, 3) + 0.0   # -0.0 を 0.0 にする
+
+    out = {}
+    for key in ("top", "seat", "hip"):
+        if key not in anchors:
+            continue
+        if key == "top":
+            out[key] = num(anchors[key] - shift.z)
+        else:
+            x, y, z = Vector(anchors[key]) - shift
+            out[key] = [num(x), num(z), num(-y)]
+    return out
+
+
+def metadata(pid: str, spec: dict, size: list[float], anchors: dict | None = None) -> dict:
     meta = {"id": pid, "version": VERSION, "file": f"parts/{pid}/{VERSION}.usdz", "category": spec["category"],
             "words": spec["words"]}
     if spec["pose"]:
         meta["pose"] = spec["pose"]
     meta["size"] = size
     meta["label"] = spec["label"]
+    if anchors:
+        meta["anchors"] = anchors
     return meta
 
 
@@ -635,20 +678,25 @@ def write_json(path: Path, data) -> None:
     path.write_text(text + "\n", encoding="utf-8")
 
 
-def build_part(pid: str, out: Path) -> dict:
+def build_part(pid: str, out: Path, meta_only: bool = False) -> dict:
+    """部品を 1 つ作って書き出す。meta_only なら USDZ は書かず、JSON だけ作り直す。"""
     spec = PARTS[pid]
     bpy.ops.wm.read_factory_settings(use_empty=True)
     Part._tmp_mesh = None   # 作り直しで消えた作業用のメッシュを参照しないようにする
     make_materials()
     root = bpy.data.objects.new(pid, None)
     bpy.context.scene.collection.objects.link(root)
-    spec["build"](root)
-    size = bake_and_center(root)
+    anchors = spec["build"](root)
+    size, shift = bake_and_center(root)
+    meta = metadata(pid, spec, size, to_protocol(anchors, shift))
+    (out / pid).mkdir(parents=True, exist_ok=True)
+    write_json(out / pid / f"{VERSION}.json", meta)
+    if meta_only:
+        print(f"wrote {out / pid / f'{VERSION}.json'} size={size} anchors={meta.get('anchors')}")
+        return meta
     usdz = out / pid / f"{VERSION}.usdz"
     export_usdz(usdz)
-    meta = metadata(pid, spec, size)
-    write_json(out / pid / f"{VERSION}.json", meta)
-    print(f"wrote {usdz} size={size} {usdz.stat().st_size / 1e6:.2f} MB")
+    print(f"wrote {usdz} size={size} anchors={meta.get('anchors')} {usdz.stat().st_size / 1e6:.2f} MB")
     return meta
 
 
@@ -657,11 +705,12 @@ def main() -> None:
     ap = argparse.ArgumentParser(prog="parts.py")
     ap.add_argument("--out", type=Path, default=REPO / "assets" / "parts")
     ap.add_argument("--only", action="append", choices=list(PARTS), help="この部品だけ作る（くり返して指定できる）")
+    ap.add_argument("--meta-only", action="store_true", help="USDZ は書かず、メタデータの JSON と index.json だけ作り直す")
     args = ap.parse_args(argv)
     out: Path = args.out.resolve()
 
     for pid in args.only or PARTS:
-        build_part(pid, out)
+        build_part(pid, out, meta_only=args.meta_only)
     # 一覧は、いま書き出してある各部品の JSON から作り直す（--only のときも全部品が入る）
     index = [json.loads((out / pid / f"{VERSION}.json").read_text(encoding="utf-8"))
              for pid in PARTS if (out / pid / f"{VERSION}.json").exists()]
