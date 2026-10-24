@@ -6,7 +6,18 @@
   "observability": {
     "enabled": true
   },
+  // 採点の設定。SCORING_MODE は "live"（Azure と Claude を呼ぶ）か "fixed"（固定の点数）。
+  // 部屋とつなぐまではデプロイ先で外部 API を呼ばないよう fixed にしておき、手元の .dev.vars で live に上書きする
+  "vars": {
+    "SCORING_MODE": "fixed",
+    "SCORE_WEIGHTS": "50,25,25"
+  },
   // PR ごとのプレビュー（wrangler preview）の設定。vars や DO の binding は上の階層から引き継がれないので、
   // プレビューでも使うものはここにも書く
-  "previews": {}
+  "previews": {
+    "vars": {
+      "SCORING_MODE": "fixed",
+      "SCORE_WEIGHTS": "50,25,25"
+    }
+  }
 }
