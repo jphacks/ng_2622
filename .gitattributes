@@ -11,6 +11,7 @@
 *.ico binary
 *.woff binary
 *.woff2 binary
+*.usdz binary
 
 # GitHub の言語統計から除外（ドキュメントとロックファイル）
 docs/** linguist-documentation

@@ -1,0 +1,16 @@
+{
+  "id": "station",
+  "name": "駅前",
+  "model": "station.usdz",
+  "description": "The square in front of a small train station. The station building has a big clock on its tower and a blue sign. A woman in a beige coat is walking out of the station, pulling a pink suitcase. A man in a dark suit is waiting at the bus stop and looking at his phone. A yellow taxi is waiting on the road next to a crosswalk. There is a clock on a pole in the square, a red vending machine, a blue bicycle, trees in round planters, flower beds, and street lamps.",
+  "elements": [
+    "a station building with a clock on the tower",
+    "a woman pulling a suitcase",
+    "a man looking at his phone at the bus stop",
+    "a yellow taxi on the road",
+    "a crosswalk",
+    "a red vending machine",
+    "a blue bicycle",
+    "trees and flower beds in the square"
+  ]
+}
