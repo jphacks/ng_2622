@@ -54,7 +54,7 @@ struct MessageDecodingTests {
   ])
   func results(fields: String, graded: Bool) throws {
     let message = try decode(
-      #"{"type":"results","round":1,"sceneId":"park","sceneName":"公園","players":[{"id":"\#(playerID)","name":"はなこ","color":5987302,\#(fields)"transcript":"","comment":"","modelAnswer":""}]}"#
+      #"{"type":"results","round":1,"sceneId":"park","sceneName":"公園","players":[{"id":"\#(playerID)","name":"はなこ","color":5987302,\#(fields)"transcript":"","comment":"","feedback":null}]}"#
     )
     guard case .results(let results) = message, let player = results.players.first else {
       Issue.record("results でない: \(message)")

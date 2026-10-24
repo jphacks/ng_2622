@@ -1,6 +1,7 @@
 import Anthropic from "@anthropic-ai/sdk";
 import type {
   ElementJudgment,
+  LanguageNotes,
   LanguageScore,
   Scene,
   ScoringEnv,
@@ -18,8 +19,13 @@ All players watched the same scene and described it freely in up to 20 seconds. 
    Judge meaning, not exact words. Grammar mistakes do not matter here. Quote the words you based the judgment on as evidence ("" for none).
 2. extra: points from 0 to the given maximum for correct details of the scene that are not in the list.
 3. expression: score from 0 to 100 for vocabulary range and sentence construction (variety, accuracy, natural phrasing). A few separate words is around 20; correct, varied sentences are around 90.
-4. comment: one short sentence of feedback in Japanese, saying what was good first. If an element was missed, hint at it.
-5. modelAnswer: one or two natural English sentences describing the scene at a level slightly above the player.`;
+
+Then write feedback in Japanese for the player. Be specific and encouraging, and do not mention points.
+4. strength: the best thing the player said. quote: copy the words exactly from the transcript. text: one short sentence saying what the quote conveys well.
+5. hints: for every element judged "partial" or "none", one short sentence suggesting what to add, with a short English example (e.g. 次は女性がスーツケースを引いているところを足してみよう。"A woman is pulling a suitcase.").
+6. expressionTip: one short sentence on how to make the sentences richer, with a short English example.
+7. rewrite: pick one sentence or fragment of the player and make it natural, keeping the meaning and level. before: copy it exactly from the transcript. after: the corrected English. reason: one short sentence in Japanese.
+   Words that look like recognition errors (odd or meaningless words, very short fragments) are not the player's mistakes; do not correct them. If nothing needs fixing, return null.`;
 
 const schemaFor = (scene: Scene) => ({
   type: "object",
@@ -39,19 +45,57 @@ const schemaFor = (scene: Scene) => ({
     },
     extra: { type: "integer" },
     expression: { type: "integer" },
-    comment: { type: "string" },
-    modelAnswer: { type: "string" },
+    strength: {
+      type: "object",
+      properties: { quote: { type: "string" }, text: { type: "string" } },
+      required: ["quote", "text"],
+      additionalProperties: false,
+    },
+    hints: {
+      type: "array",
+      items: {
+        type: "object",
+        properties: {
+          id: { type: "string", enum: scene.elements.map((e) => e.id) },
+          text: { type: "string" },
+        },
+        required: ["id", "text"],
+        additionalProperties: false,
+      },
+    },
+    expressionTip: { type: "string" },
+    rewrite: {
+      anyOf: [
+        {
+          type: "object",
+          properties: {
+            before: { type: "string" },
+            after: { type: "string" },
+            reason: { type: "string" },
+          },
+          required: ["before", "after", "reason"],
+          additionalProperties: false,
+        },
+        { type: "null" },
+      ],
+    },
   },
-  required: ["elements", "extra", "expression", "comment", "modelAnswer"],
+  required: [
+    "elements",
+    "extra",
+    "expression",
+    "strength",
+    "hints",
+    "expressionTip",
+    "rewrite",
+  ],
   additionalProperties: false,
 });
 
-type Judged = {
+type Judged = LanguageNotes & {
   elements: ElementJudgment[];
   extra: number;
   expression: number;
-  comment: string;
-  modelAnswer: string;
 };
 
 export class ClaudeError extends Error {}
@@ -113,8 +157,12 @@ export async function gradeLanguage(
   return {
     content: contentScore(scene, judged),
     expression: clamp(judged.expression),
-    comment: judged.comment,
-    modelAnswer: judged.modelAnswer,
     elements: judged.elements,
+    notes: {
+      strength: judged.strength,
+      hints: judged.hints,
+      expressionTip: judged.expressionTip,
+      rewrite: judged.rewrite,
+    },
   };
 }

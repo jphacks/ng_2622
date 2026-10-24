@@ -1,4 +1,5 @@
 import type { z } from "zod";
+import type { Feedback } from "../scoring";
 import type { PlayerStatus } from "../schemas/common";
 import type { PlayerResult, ResultsMessage } from "../schemas/ws";
 import { AVATAR_COLORS } from "./player";
@@ -22,8 +23,7 @@ export type Grade =
       status: "done";
       score: Score;
       transcript: string;
-      comment: string;
-      modelAnswer: string;
+      feedback: Feedback;
     }
   | { status: "failed" };
 
@@ -157,8 +157,8 @@ export const roundResults = (
       color: p.color ?? AVATAR_COLORS[0],
       score: done ? roundScore(done.score) : null,
       transcript: done?.transcript ?? "",
-      comment: done?.comment ?? "",
-      modelAnswer: done?.modelAnswer ?? "",
+      comment: done?.feedback.strength.text ?? "",
+      feedback: done?.feedback ?? null,
     };
   });
   const graded = rows

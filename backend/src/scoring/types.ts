@@ -40,17 +40,46 @@ export type SpeechScore = {
   prosody: number;
   // 上の 3 つの平均。PronScore はこれらをまとめた点なので使わない
   score: number;
+  // 単語ごとの正確さ。話し方の一言で、直す単語を一つ選ぶのに使う
+  words: { word: string; accuracy: number; errorType: string }[];
 };
 
 export type LanguageScore = {
   content: number;
   expression: number;
-  // 講評の一言（日本語）
-  comment: string;
-  // 模範表現（英語）
-  modelAnswer: string;
   // 要素ごとの判定。内容の点の内訳
   elements: ElementJudgment[];
+  // 講評の材料。どれを出すかは feedback.ts が点数から決める
+  notes: LanguageNotes;
+};
+
+// Claude が書く講評の材料（日本語。引用だけ英語）
+export type LanguageNotes = {
+  // できたこと。quote は文字起こしからそのまま引く
+  strength: { quote: string; text: string };
+  // 言えなかった要素ごとの一言ヒント
+  hints: { id: string; text: string }[];
+  // 表現を伸ばす一言
+  expressionTip: string;
+  // 本人の一文を自然に直したもの。直す所が無ければ null
+  rewrite: Rewrite | null;
+};
+
+export type Rewrite = { before: string; after: string; reason: string };
+
+export type SpeechAspect = "accuracy" | "fluency" | "prosody";
+
+// 振り返りに出す講評。次に伸ばすのは一つだけ
+export type Feedback = {
+  strength: { quote: string; text: string };
+  nextStep: {
+    kind: "content" | "expression" | "speech";
+    // 合計点で何点伸びるか。内容の要素のときだけ出す
+    gain: number | null;
+    text: string;
+  };
+  rewrite: Rewrite | null;
+  speechTip: { aspect: SpeechAspect; text: string };
 };
 
 export type ElementJudgment = {
@@ -70,8 +99,7 @@ export type ScoreResult =
       expression: number;
       speech: number;
       transcript: string;
-      comment: string;
-      modelAnswer: string;
+      feedback: Feedback;
       // 内容の内訳
       elements: ElementJudgment[];
       // 話し方の内訳

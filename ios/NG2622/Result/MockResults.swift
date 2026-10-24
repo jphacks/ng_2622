@@ -22,7 +22,7 @@ extension RoundResults {
       graded.append(
         PlayerResult(
           id: p.id, name: p.name, color: p.color, isSelf: p.isSelf,
-          score: sample.score, transcript: sample.transcript, comment: sample.comment))
+          score: sample.score, transcript: sample.transcript, comment: sample.review.strength))
       if p.isSelf { myReview = sample.review }
     }
 
@@ -39,7 +39,6 @@ private struct MockSample {
   let expression: Int
   let speaking: Int
   let transcript: String
-  let comment: String
   let review: RoundResults.Review
 
   /// 合計は 内容 50%・表現 25%・話し方 25% で四捨五入（仮の重み。本物はバックエンドが決める）
@@ -55,111 +54,122 @@ private struct MockSample {
     default: park
     }
   }
+}
 
+/// 講評を短く書くための入れ物
+private func mockReview(
+  _ quote: String, _ strength: String,
+  next: String, gain: Int? = nil,
+  rewrite: (String, String, String)? = nil,
+  speech: String
+) -> RoundResults.Review {
+  RoundResults.Review(
+    strengthQuote: quote, strength: strength,
+    nextStep: next, nextStepGain: gain,
+    rewrite: rewrite.map { RoundResults.Review.Rewrite(before: $0.0, after: $0.1, reason: $0.2) },
+    speechTip: speech)
+}
+
+private let tipSteady = "発音・なめらかさ・抑揚ともに安定しています。この調子です。"
+private let tipFluency = "言葉の間を短くして、ひと続きで言ってみよう。"
+private let tipProsody = "文の終わりを少し下げると、抑揚が伝わりやすくなります。"
+
+extension MockSample {
   static let park: [MockSample] = [
     MockSample(
       content: 76, expression: 70, speaking: 88,
       transcript: "There is a bench in the park. There is a tree. A dog is near the bench.",
-      comment: "話し方は安定している。もう少し具体的に。",
-      review: RoundResults.Review(
-        comment: "ベンチ・木・犬は押さえています。犬がどこで何をしているかを文で言えると、内容の点が上がります。",
-        modelSentence: "A dog is resting on the bench under the big tree.",
-        modelSentenceJa: "大きな木の下のベンチで、犬が休んでいます。")),
+      review: mockReview(
+        "A dog is near the bench", "犬の位置を、ベンチとの関係で言えています。",
+        next: "次は男の子がボールを投げているところを足してみよう。\"A boy is throwing a ball.\"", gain: 10,
+        speech: tipSteady)),
     MockSample(
       content: 92, expression: 88, speaking: 85,
       transcript:
         "A little boy is throwing a red ball, and a brown dog is running after it. Behind them, there is a wooden bench under a big tree.",
-      comment: "動きと位置の関係まで言えている。",
-      review: RoundResults.Review(
-        comment: "男の子・犬・ボールの動きと、ベンチと木の位置を一度に伝えられています。この調子です。",
-        modelSentence: "A boy is throwing a red ball for his dog in front of the bench.",
-        modelSentenceJa: "ベンチの前で、男の子が犬にむかって赤いボールを投げています。")),
+      review: mockReview(
+        "a brown dog is running after it", "犬の動きまで、文でいきいきと伝えられています。",
+        next: "文をつなぐ言葉を変えてみよう。\"while\" を使うと、二つの動きを一文で言えます。",
+        speech: tipSteady)),
     MockSample(
       content: 84, expression: 78, speaking: 80,
       transcript: "There is a wooden bench under a big tree. A dog is next to the bench, and a boy is playing with a ball.",
-      comment: "場面の要素を幅広く拾えている。",
-      review: RoundResults.Review(
-        comment: "要素は幅広く拾えています。ボールの色や男の子の動きを足すと、場面がもっと伝わります。",
-        modelSentence: "A boy is about to throw a red ball to his dog.",
-        modelSentenceJa: "男の子が、犬に赤いボールを投げようとしています。")),
+      review: mockReview(
+        "a wooden bench under a big tree", "ベンチと木の位置関係を一度に言えています。",
+        next: "次はボールの色を足してみよう。\"a red ball\"", gain: 5,
+        rewrite: ("a boy is playing with a ball", "a boy is about to throw a red ball", "動きを具体的にすると、場面がもっと伝わります。"),
+        speech: tipProsody)),
     MockSample(
       content: 65, expression: 72, speaking: 79,
       transcript: "Bench, tree, and, um, dog. A boy... red ball.",
-      comment: "要素は挙がっているが、文になっていない。",
-      review: RoundResults.Review(
-        comment: "見えているものは挙げられています。「There is 〜」「A boy is 〜ing」の形で文にしてみましょう。",
-        modelSentence: "There is a boy with a red ball next to a dog.",
-        modelSentenceJa: "犬のそばに、赤いボールを持った男の子がいます。")),
+      review: mockReview(
+        "red ball", "ボールの色まで見て言えています。",
+        next: "次は男の子が何をしているかを文で言ってみよう。\"A boy is throwing a red ball.\"", gain: 10,
+        rewrite: ("A boy... red ball.", "A boy has a red ball.", "動詞を入れると文になります。"),
+        speech: tipFluency)),
     MockSample(
       content: 88, expression: 82, speaking: 74,
       transcript: "In the park, a boy and his dog are playing with a red ball. An empty bench is under the tree.",
-      comment: "場面の関係が描けている。発音に少し揺れがある。",
-      review: RoundResults.Review(
-        comment: "場面の関係がよく描けています。ゆっくり区切って話すと、話し方の点が上がります。",
-        modelSentence: "An empty bench stands under the tree while a boy plays with his dog.",
-        modelSentenceJa: "男の子が犬と遊んでいるそばで、木の下に誰もいないベンチがあります。")),
+      review: mockReview(
+        "a boy and his dog are playing with a red ball", "男の子と犬の関係を一文で言えています。",
+        next: "次は犬の色を足してみよう。\"a brown dog\"", gain: 5,
+        speech: "“empty” を一音ずつはっきり発音してみよう。")),
     MockSample(
       content: 58, expression: 60, speaking: 66,
       transcript: "A dog. The dog is play. Ball is red.",
-      comment: "短い文で言えている。動詞の形に気をつけて。",
-      review: RoundResults.Review(
-        comment: "短くても文で言えています。「is play」は「is playing」にすると自然です。",
-        modelSentence: "The dog is playing with a red ball.",
-        modelSentenceJa: "犬が赤いボールで遊んでいます。")),
+      review: mockReview(
+        "Ball is red", "ボールの色を文で言えています。",
+        next: "次はベンチと木を足してみよう。\"There is a bench under a tree.\"", gain: 10,
+        rewrite: ("The dog is play", "The dog is playing", "「is」のあとは -ing の形にします。"),
+        speech: tipFluency)),
     MockSample(
       content: 80, expression: 86, speaking: 90,
       transcript: "It's a sunny day. A boy is playing catch with his dog, and the dog looks really happy.",
-      comment: "表現が生き生きしている。ベンチと木にも触れたい。",
-      review: RoundResults.Review(
-        comment: "生き生きとした表現です。ベンチや木など、背景にも一言触れると内容の点が上がります。",
-        modelSentence: "A boy and his dog are playing catch near a bench under a tree.",
-        modelSentenceJa: "木の下のベンチのそばで、男の子と犬がキャッチボールをしています。")),
+      review: mockReview(
+        "the dog looks really happy", "犬の様子まで、自然な表現で言えています。",
+        next: "次は背景のベンチと木を足してみよう。\"near a bench under a tree\"", gain: 10,
+        speech: tipSteady)),
     MockSample(
       content: 70, expression: 64, speaking: 72,
       transcript: "I can see a tree and a bench. There is a boy. He has a ball.",
-      comment: "順に説明できている。犬が抜けている。",
-      review: RoundResults.Review(
-        comment: "見えるものを順に説明できています。犬が抜けているので、男の子との関係も足してみましょう。",
-        modelSentence: "A boy holding a red ball is standing next to his dog.",
-        modelSentenceJa: "赤いボールを持った男の子が、犬の隣に立っています。")),
+      review: mockReview(
+        "I can see a tree and a bench", "見えるものを順に、文で言えています。",
+        next: "次は犬を足してみよう。\"A dog is next to the boy.\"", gain: 10,
+        rewrite: ("There is a boy. He has a ball.", "There is a boy with a ball.", "二文を一文にまとめると、なめらかになります。"),
+        speech: tipProsody)),
   ]
-}
 
-extension MockSample {
   static let classroom: [MockSample] = [
     MockSample(
       content: 90, expression: 86, speaking: 84,
       transcript:
         "A teacher is pointing at the blackboard, and a boy in a yellow shirt is raising his hand. The other students are writing in their notebooks.",
-      comment: "先生と生徒の動きを両方言えている。",
-      review: RoundResults.Review(
-        comment: "先生・手を挙げた男の子・ノートを書く生徒と、動きをまとめて伝えられています。この調子です。",
-        modelSentence: "A boy is raising his hand while the teacher points at the blackboard.",
-        modelSentenceJa: "先生が黒板を指していて、男の子が手を挙げています。")),
+      review: mockReview(
+        "a boy in a yellow shirt is raising his hand", "服の色と動きまで、一文で言えています。",
+        next: "次は先生の机の上にある物を足してみよう。\"There is an apple on the desk.\"", gain: 5,
+        speech: tipSteady)),
     MockSample(
       content: 74, expression: 70, speaking: 82,
       transcript: "There is a classroom. There are many desks. There is a clock on the wall.",
-      comment: "物は挙がっている。人の動きも言いたい。",
-      review: RoundResults.Review(
-        comment: "机や時計は押さえています。先生や生徒が何をしているかを足すと、内容の点が上がります。",
-        modelSentence: "Students are sitting at their desks, and a clock is on the wall.",
-        modelSentenceJa: "生徒たちが机に座っていて、壁に時計があります。")),
+      review: mockReview(
+        "There is a clock on the wall", "時計の場所まで言えています。",
+        next: "次は先生が何をしているかを足してみよう。\"A teacher is pointing at the blackboard.\"", gain: 10,
+        speech: tipSteady)),
     MockSample(
       content: 62, expression: 64, speaking: 70,
       transcript: "Teacher, blackboard. A boy... hand up. Apple.",
-      comment: "要素は挙がっているが、文になっていない。",
-      review: RoundResults.Review(
-        comment: "見えているものは挙げられています。「A boy is raising his hand.」のように文にしてみましょう。",
-        modelSentence: "There is an apple and a globe on the teacher's desk.",
-        modelSentenceJa: "先生の机の上に、りんごと地球儀があります。")),
+      review: mockReview(
+        "hand up", "手を挙げている様子に気づけています。",
+        next: "次は先生の動きを文で言ってみよう。\"A teacher is pointing at the blackboard.\"", gain: 10,
+        rewrite: ("A boy... hand up.", "A boy is raising his hand.", "動詞を入れると文になります。"),
+        speech: tipFluency)),
     MockSample(
       content: 82, expression: 80, speaking: 76,
       transcript: "In the classroom, the teacher is standing by the blackboard. I can see two windows with yellow curtains and a bookshelf.",
-      comment: "教室の様子を広く描けている。",
-      review: RoundResults.Review(
-        comment: "教室の様子を広く描けています。生徒の動きにも一言触れると、場面がもっと伝わります。",
-        modelSentence: "The teacher is standing by the blackboard next to the windows.",
-        modelSentenceJa: "先生が、窓のそばの黒板の横に立っています。")),
+      review: mockReview(
+        "two windows with yellow curtains", "数と色まで細かく言えています。",
+        next: "次は生徒の動きを足してみよう。\"A boy is raising his hand.\"", gain: 10,
+        speech: tipProsody)),
   ]
 
   static let station: [MockSample] = [
@@ -167,35 +177,33 @@ extension MockSample {
       content: 88, expression: 84, speaking: 86,
       transcript:
         "A woman is walking out of the station with a pink suitcase. A man in a suit is looking at his phone at the bus stop.",
-      comment: "人の動きと持ち物まで言えている。",
-      review: RoundResults.Review(
-        comment: "スーツケースの女性とバス停の男性を、動きまで含めて伝えられています。この調子です。",
-        modelSentence: "A woman pulling a pink suitcase is walking out of the station.",
-        modelSentenceJa: "ピンクのスーツケースを引いた女性が、駅から出てきています。")),
+      review: mockReview(
+        "A man in a suit is looking at his phone", "男性の服装と動きを一文で言えています。",
+        next: "次は黄色いタクシーを足してみよう。\"A yellow taxi is waiting.\"", gain: 8,
+        speech: tipSteady)),
     MockSample(
       content: 72, expression: 68, speaking: 80,
       transcript: "There is a station. There is a clock. There is a yellow taxi.",
-      comment: "物は挙がっている。人にも触れたい。",
-      review: RoundResults.Review(
-        comment: "駅・時計・タクシーは押さえています。人が何をしているかを足すと、内容の点が上がります。",
-        modelSentence: "A yellow taxi is waiting on the road in front of the station.",
-        modelSentenceJa: "駅の前の道で、黄色いタクシーが待っています。")),
+      review: mockReview(
+        "There is a yellow taxi", "タクシーの色まで言えています。",
+        next: "次は女性がスーツケースを引いているところを足してみよう。\"A woman is pulling a suitcase.\"", gain: 10,
+        rewrite: ("There is a station. There is a clock.", "There is a big clock on the station.", "同じ形が続くときは一文にまとめると自然です。"),
+        speech: tipSteady)),
     MockSample(
       content: 60, expression: 62, speaking: 68,
       transcript: "Station, big clock. Taxi is yellow. Man phone.",
-      comment: "短い語で言えている。文にしたい。",
-      review: RoundResults.Review(
-        comment: "見えているものは挙げられています。「A man is looking at his phone.」のように文にしてみましょう。",
-        modelSentence: "A man is looking at his phone at the bus stop.",
-        modelSentenceJa: "バス停で、男の人がスマホを見ています。")),
+      review: mockReview(
+        "Taxi is yellow", "タクシーの色を文で言えています。",
+        next: "次は女性がスーツケースを引いているところを足してみよう。\"A woman is pulling a suitcase.\"", gain: 10,
+        rewrite: ("Man phone.", "A man is looking at his phone.", "誰が何をしているかを文にすると伝わります。"),
+        speech: tipFluency)),
     MockSample(
       content: 80, expression: 82, speaking: 74,
       transcript: "In front of the station, there is a red vending machine and a blue bicycle. A taxi is next to the crosswalk.",
-      comment: "位置の関係が描けている。発音に少し揺れがある。",
-      review: RoundResults.Review(
-        comment: "物の位置の関係がよく描けています。ゆっくり区切って話すと、話し方の点が上がります。",
-        modelSentence: "A taxi is waiting next to the crosswalk in front of the station.",
-        modelSentenceJa: "駅の前の横断歩道のそばで、タクシーが待っています。")),
+      review: mockReview(
+        "A taxi is next to the crosswalk", "物の位置の関係を言えています。",
+        next: "次はスマホを見ている男性を足してみよう。\"A man is looking at his phone.\"", gain: 10,
+        speech: "“vending” を一音ずつはっきり発音してみよう。")),
   ]
 }
 

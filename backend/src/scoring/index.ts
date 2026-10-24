@@ -1,9 +1,18 @@
 import { assessSpeech } from "./azure";
 import { gradeLanguage } from "./claude";
+import { buildFeedback } from "./feedback";
 import { findScene } from "./scenes";
-import type { ScoreResult, ScoringEnv } from "./types";
+import type { LanguageNotes, ScoreResult, ScoringEnv } from "./types";
 
-export type { ScoreResult, ScoringEnv } from "./types";
+export type { Feedback, ScoreResult, ScoringEnv } from "./types";
+
+// Claude を呼ばないときの講評の材料
+const SHORT_NOTES: LanguageNotes = {
+  strength: { quote: "", text: "英語で話し始められました。" },
+  hints: [],
+  expressionTip: "もう少し長く、文にして話してみよう。",
+  rewrite: null,
+};
 
 // 16 kHz・16 bit・モノラルで 20 秒 ≈ 0.64 MB。余裕を見て 1 MB まで
 const MAX_AUDIO_BYTES = 1024 * 1024;
@@ -64,8 +73,24 @@ export async function score(
       expression: 60,
       speech: 60,
       transcript: "(固定の点数のモードのため、文字起こしはありません)",
-      comment: "固定の点数を返しています。",
-      modelAnswer: scene.description,
+      feedback: buildFeedback({
+        scene,
+        transcript: "",
+        elements: [],
+        expression: 60,
+        speech: {
+          accuracy: 60,
+          fluency: 60,
+          prosody: 60,
+          score: 60,
+          words: [],
+        },
+        notes: {
+          ...SHORT_NOTES,
+          strength: { quote: "", text: "固定の点数を返しています。" },
+        },
+        weights: [wc, we, ws],
+      }),
       elements: [],
       speechDetail: { accuracy: 60, fluency: 60, prosody: 60 },
       mode: "fixed",
@@ -86,13 +111,7 @@ export async function score(
     const words = speech.transcript.split(/\s+/).filter(Boolean).length;
     const language =
       words < MIN_WORDS
-        ? {
-            content: 0,
-            expression: 0,
-            comment: "もう少し長く話してみよう。",
-            modelAnswer: scene.description,
-            elements: [],
-          }
+        ? { content: 0, expression: 0, elements: [], notes: SHORT_NOTES }
         : await gradeLanguage(env, scene, speech.transcript);
     return {
       ok: true,
@@ -102,8 +121,15 @@ export async function score(
       expression: language.expression,
       speech: round(speech.score),
       transcript: speech.transcript,
-      comment: language.comment,
-      modelAnswer: language.modelAnswer,
+      feedback: buildFeedback({
+        scene,
+        transcript: speech.transcript,
+        elements: language.elements,
+        expression: language.expression,
+        speech,
+        notes: language.notes,
+        weights: [wc, we, ws],
+      }),
       elements: language.elements,
       speechDetail: {
         accuracy: speech.accuracy,
