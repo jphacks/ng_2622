@@ -45,6 +45,10 @@ targets:
       - path: ../assets/parts
         type: folder
         buildPhase: resources
+      # Mock で出す、AI で作った場面の見本（配置の JSON）。アプリの中では SampleLayouts/<sceneId>.json になる
+      - path: SampleLayouts
+        type: folder
+        buildPhase: resources
     settings:
       base:
         PRODUCT_NAME: NG2622
