@@ -54,12 +54,6 @@
         "description": "アバターの色。0xRRGGBB を整数で表す",
         "example": 5987302
       },
-      "PlayerId": {
-        "type": "string",
-        "format": "uuid",
-        "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$",
-        "description": "部屋の中での参加者の ID"
-      },
       "PlayerToken": {
         "type": "string",
         "minLength": 1,
@@ -662,6 +656,26 @@
         "pattern": "^\\d{4}$",
         "description": "部屋のコード（数字 4 桁）",
         "example": "0427"
+      },
+      "SubmitAudioResponse": {
+        "type": "object",
+        "properties": {
+          "status": {
+            "type": "string",
+            "const": "grading"
+          }
+        },
+        "required": [
+          "status"
+        ],
+        "additionalProperties": false,
+        "description": "受け取って採点を始めた。点数は返さず、全員の採点がそろったら WebSocket の results で届く"
+      },
+      "PlayerId": {
+        "type": "string",
+        "format": "uuid",
+        "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$",
+        "description": "部屋の中での参加者の ID"
       }
     }
   },
@@ -824,6 +838,130 @@
             },
             "required": true,
             "description": "部屋のコード（数字 4 桁）"
+          }
+        ]
+      }
+    },
+    "/rooms/{roomId}/rounds/{round}/audio": {
+      "post": {
+        "operationId": "submitAudio",
+        "tags": [
+          "rounds"
+        ],
+        "summary": "自分の音声を送る",
+        "description": "話し終えたら、録音した WAV（16 kHz・16 bit・モノラル、1 MB まで）を本文にそのまま載せて送る。1 ラウンドに 1 回だけ。受け取ったらすぐ 202 を返し、採点は部屋の側で続ける。進み具合は WebSocket の progress、点数は全員の採点がそろったら results で届く。",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "audio/wav": {
+              "schema": {
+                "type": "string",
+                "format": "binary"
+              }
+            }
+          }
+        },
+        "responses": {
+          "202": {
+            "description": "受け取って採点を始めた",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SubmitAudioResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "コード・番号・ヘッダーの形が違う（invalid_message）、または音声が WAV でない（invalid_audio）",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "参加者の ID と合言葉が合わない（unauthorized）",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "部屋が無い（room_not_found）",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "ラウンド中でない・番号が違う・参加していない（not_playing）、またはもう送った（already_submitted）",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "1 MB を超えている（invalid_audio）",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "in": "path",
+            "name": "roomId",
+            "schema": {
+              "$ref": "#/components/schemas/RoomId"
+            },
+            "required": true,
+            "description": "部屋のコード（数字 4 桁）"
+          },
+          {
+            "in": "path",
+            "name": "round",
+            "schema": {
+              "type": "string",
+              "pattern": "^[1-9]\\d*$",
+              "example": "1"
+            },
+            "required": true,
+            "description": "ラウンドの番号（round の round）"
+          },
+          {
+            "in": "header",
+            "name": "x-player-id",
+            "schema": {
+              "$ref": "#/components/schemas/PlayerId"
+            },
+            "required": true,
+            "description": "部屋の中での参加者の ID"
+          },
+          {
+            "in": "header",
+            "name": "authorization",
+            "schema": {
+              "type": "string",
+              "pattern": "^Bearer \\S+$"
+            },
+            "required": true,
+            "description": "Bearer と合言葉（welcome の token）"
           }
         ]
       }
