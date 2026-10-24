@@ -8,6 +8,8 @@ struct RoomView: View {
 
   /// プレイ・待機の画面を出しているか。結果がそろっても、少しのあいだ待機の画面を残す
   @State private var inRound = false
+  @State private var micDenied = MicPermission.isDenied
+  @Environment(\.scenePhase) private var scenePhase
 
   var body: some View {
     ZStack {
@@ -19,6 +21,9 @@ struct RoomView: View {
           .transition(.opacity)
       } else {
         LobbyView(session: session, onLeave: onLeave)
+          .safeAreaInset(edge: .bottom, spacing: 0) {
+            if micDenied { MicDeniedNotice() }
+          }
           .transition(.opacity)
       }
     }
@@ -26,6 +31,10 @@ struct RoomView: View {
     .animation(.easeInOut(duration: 0.35), value: session.phase == .lobby)
     .onChange(of: session.phase) { _, phase in
       if case .playing = phase { inRound = true }
+    }
+    // 設定から戻ってきたら、許可が変わったかを見直す
+    .onChange(of: scenePhase) { _, phase in
+      if phase == .active { micDenied = MicPermission.isDenied }
     }
   }
 }

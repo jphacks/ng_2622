@@ -10,7 +10,7 @@ struct RoundView: View {
   var body: some View {
     ZStack {
       if case .playing(let round) = session.phase {
-        PlayView(round: round) { session.finishSpeaking() }
+        PlayView(round: round, recorder: session.recorder) { session.finishSpeaking() }
           .transition(.opacity)
       } else if let waitingSince {
         WaitingView(session: session, enteredAt: waitingSince)
