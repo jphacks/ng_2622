@@ -109,5 +109,4 @@ WebSocket のメッセージ（ThatsFight の `src/shared/protocol.ts` に倣う
 
 ## Open Questions
 
-- 空の正解文での発音評価が REST で通るか（実際のキーで試す）。
 - 3D の表示に使う仕組みは RealityKit、モデルの形式は USDZ を既定にする（推測。確認していない）。シーンは Blender のスクリプトで作って同梱する（2026-10-21 に決定）。自動生成の構成は [`scene-generation.md`](./scene-generation.md)。
