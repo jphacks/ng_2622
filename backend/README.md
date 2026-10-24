@@ -90,4 +90,4 @@ API キーはファイルに書かない。
 
 ## 型
 
-binding（Durable Objects など）を `wrangler.jsonc` に足したら `pnpm cf-typegen` で型を作り直し、`new Hono<{ Bindings: CloudflareBindings }>()` で使う。
+binding（Durable Objects など）の型 `CloudflareBindings` は、`wrangler types` が `wrangler.jsonc` から `worker-configuration.d.ts` に作る。生成物だが commit しておく（clone してすぐエディタで型が見えるように）。`wrangler.jsonc` や wrangler の版を変えたら `pnpm cf-typegen` で作り直して一緒に commit する。PR では backend-checks が `pnpm cf-typegen:check` で作り直し忘れを検査する。Biome の整形の対象からは外している。

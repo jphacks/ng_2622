@@ -1,4 +1,4 @@
-# PR で backend/ の型チェック、openapi.json が最新か、ビルドを確かめる。壊れたものが main に入ってデプロイで落ちるのを防ぐ。
+# PR で backend/ の生成物（binding の型・openapi.json）が最新か、型チェック、ビルドを確かめる。壊れたものが main に入ってデプロイで落ちるのを防ぐ。
 # backend を触らない PR では動かないので、ruleset の必須チェックには入れていない。
 name: backend-checks
 
@@ -37,6 +37,9 @@ jobs:
           cache-dependency-path: backend/pnpm-lock.yaml
       - name: 依存を入れる
         run: pnpm install --frozen-lockfile
+      # binding の型（worker-configuration.d.ts）を、wrangler.jsonc から作り直したものと突き合わせる
+      - name: worker-configuration.d.ts が最新か
+        run: pnpm cf-typegen:check
       - name: 型チェック
         run: pnpm typecheck
       # iOS が読む openapi.json を、コードから生成し直したものと突き合わせる
