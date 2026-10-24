@@ -2,7 +2,7 @@
   {
     "id": "park",
     "name": "公園",
-    "description": "A small park on a sunny spring day. A boy in a yellow shirt is running along a stone path. A brown dog is running toward a red ball on the grass. There is a pond with lily pads, a pink cherry blossom tree, two green trees, an empty wooden bench, a street lamp, a wooden fence, bushes, and some flowers.",
+    "description": "A sunny park. A person is playing with a dog and a ball on the grass.",
     "elements": [
       {
         "id": "place",
@@ -51,7 +51,7 @@
   {
     "id": "classroom",
     "name": "教室",
-    "description": "A bright classroom with wooden floors. A teacher in a blue cardigan is standing next to the blackboard and pointing at it. A boy in a yellow shirt is raising his hand. Other students are sitting at their desks, writing in notebooks and reading. There are two windows with yellow curtains, a bookshelf with colorful books, a clock on the wall, a bulletin board, a plant, and a red school bag next to a desk. On the teacher's desk there are books, an apple, and a globe.",
+    "description": "A classroom at school. A teacher is giving a lesson and the students are listening. Some students are absent, so a few desks are empty.",
     "elements": [
       {
         "id": "place",
