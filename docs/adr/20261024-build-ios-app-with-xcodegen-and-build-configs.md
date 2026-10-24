@@ -31,6 +31,7 @@
 - Mock の振る舞い（ほかの参加者の数、途中で切断する人を入れるか、参加者として入ったときにホストがスタートするまでの秒数）も、同じ道筋で xcconfig の `MOCK_*` から入れる。既定値は `Mock.xcconfig`、各自の変更は `Local.xcconfig` に書く（2026-10-24、issue #22）。アプリはホームから始まり、開発用の入り口の画面は置かない。
 - 対応する iOS は 26 以上にする。手元の iPhone に合わせた。
 - 3D は RealityKit の `RealityView` で描く。USDZ のモデルができるまでは箱を組んで作り、できたら読み込みに差し替える。
+  - 追記（2026-10-24）: `assets/scenes/*.usdz` の読み込みに差し替え、箱の公園は消した。
 
 ## Consequences
 - ファイルを足しても `project.pbxproj` の衝突が起きない。代わりに、Mac のメンバーは xcodegen を入れ、clone や `project.yml` の変更のあとに `(cd ios && xcodegen)` を打つ必要がある。

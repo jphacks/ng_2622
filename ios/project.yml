@@ -29,6 +29,13 @@ targets:
     platform: iOS
     sources:
       - path: NG2622
+      # 3D シーン（USDZ・サムネイル・説明の JSON）は assets/scenes から直接入れる（ios/ には写さない）
+      - path: ../assets/scenes
+        buildPhase: resources
+        includes:
+          - "*.usdz"
+          - "*.png"
+          - "*.json"
     settings:
       base:
         PRODUCT_NAME: NG2622

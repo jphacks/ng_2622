@@ -15,6 +15,8 @@ struct RootView: View {
       }
     }
     .foregroundStyle(Theme.ink)
+    // 3D シーンは読み込みに時間がかかるので、起動したらすぐ読み始める（最初に出す公園から）
+    .task { SceneLibrary.shared.preload(SceneCatalog.all.map(\.id)) }
   }
 }
 
