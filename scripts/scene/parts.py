@@ -1,6 +1,7 @@
 """シーンを組み立てる部品（プロトコル v1）を作り、部品ごとの USDZ とメタデータの JSON を書き出す。
 
-仕様は docs/design/scene-protocol.md の「部品」と「最初に作る部品（34 個）」。
+仕様は docs/design/scene-protocol.md の「部品」と「最初に作る部品（34 個）」。そのあと場面の文の調べ
+（research/scene-sentence-coverage.md）で「足すと効く」とされた物と人物を足した（一覧は assets/parts/README.md）。
 Blender の中で動かす（Blender 4.5 LTS と 4.0 で確認）。共通の道具は common.py。
 
   assets/parts/<id>/1.usdz   部品の 3D モデル。原点は底面の中心、正面は +Z、Y が上、メートル
