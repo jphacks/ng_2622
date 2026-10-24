@@ -1,0 +1,18 @@
+{
+  "id": "convenience_store",
+  "name": "コンビニ",
+  "model": "convenience_store.usdz",
+  "description": "A busy convenience store with white shelves full of drinks, snacks, and cups of instant noodles. Tall shelves stand in the middle with products on both sides, and a row of shelves runs along the back wall. A glass drinks fridge lines the left wall, and a tall glass cooler stands in the back right corner. At the front, a checkout counter has a cash register, a card reader, a conveyor belt, and paper bags, with a cashier in a red uniform behind it. A customer waits to pay in front of the counter. A hot food case holds rice balls and hot dogs, and a spinning snack rack and a magazine rack stand near the front. A stack of shopping baskets sits on the floor. Customers walk the aisles, one carrying a basket, one looking at drinks in the fridge, and one looking at a phone.",
+  "elements": [
+    "a cashier in a red uniform behind the checkout counter",
+    "a customer waiting to pay in front of the counter",
+    "a cash register, card reader, and paper bags on the counter",
+    "tall shelves full of drinks and snacks",
+    "a glass drinks fridge along the left wall",
+    "a tall glass cooler in the back corner",
+    "a hot food case with rice balls and hot dogs",
+    "a spinning snack rack and a magazine rack",
+    "a stack of red shopping baskets",
+    "customers walking the aisles, one holding a basket"
+  ]
+}

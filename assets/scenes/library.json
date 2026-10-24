@@ -1,0 +1,18 @@
+{
+  "id": "library",
+  "name": "図書館",
+  "model": "library.usdz",
+  "description": "A quiet public library with wooden bookshelves full of colourful books along the back and left walls. Three reading tables each have four people sitting around them: one group is talking and pointing at an open book, one student is taking notes in a notebook, and people have open books, laptops, notebooks, pens, cups of drink, a desk lamp, and water bottles on the tables. A person reads alone in a green armchair by the window. A person stands browsing the shelves. A librarian stands behind the front counter with a stack of books and a card. A book cart with returned books, a clock and posters on the wall, plants, and a backpack hanging from one chair.",
+  "elements": [
+    "a group of four people sitting at a table, talking and pointing at a book",
+    "a student taking notes in a notebook with a pen",
+    "a table with open books, laptops, and cups of drink",
+    "a person reading alone in a green armchair by the window",
+    "a person standing and looking at the bookshelves",
+    "a librarian behind the front counter",
+    "a book cart with returned books",
+    "tall wooden bookshelves full of colourful books",
+    "a round wall clock and posters",
+    "a desk lamp, water bottles, and a backpack on a chair"
+  ]
+}

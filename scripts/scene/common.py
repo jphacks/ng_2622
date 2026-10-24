@@ -383,7 +383,9 @@ def setup_render(samples: int, lens: float = 46, env: dict | None = None) -> Non
     nt = world.node_tree
     nt.nodes.clear()
     sky = nt.nodes.new("ShaderNodeTexSky")
-    sky.sky_type = "NISHITA"
+    # Blender 5.x では NISHITA が MULTIPLE_SCATTERING に名前を変えた
+    sky_types = sky.bl_rna.properties["sky_type"].enum_items.keys()
+    sky.sky_type = "NISHITA" if "NISHITA" in sky_types else "MULTIPLE_SCATTERING"
     sky.sun_elevation = math.radians(e["sun_elevation"])
     sky.sun_rotation = math.radians(e["sun_rotation"])
     sky_bg = nt.nodes.new("ShaderNodeBackground")
