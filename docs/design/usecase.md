@@ -89,7 +89,9 @@ ScenEnglish（シーングリッシュ）。Scene と English を合わせた造
 
 ## Open Questions（決定木の状態）
 
-- 作業分担: 各自が AI を使って作業するので、得意分野に合わせた細かい分担にはこだわらない（2026-10-21）。外せない制約は 1 つで、SwiftUI のアプリをビルドして iPhone に入れるには Mac が要り、Mac を持つのはチーム 5 人のうち 2 人（@TEIKOTA・@kameiryohei）だけ。iOS の作業はこの 2 人に寄り、Mac の無い人はバックエンド・採点の中身（シーンの説明、Claude への指示文）・3D の素材・発表資料などを担う。
+- 作業分担: 各自が AI を使って作業するので、得意分野に合わせた細かい分担にはこだわらない（2026-10-21）。外せない制約は 1 つで、SwiftUI のアプリをビルドして iPhone に入れるには Mac が要り、Mac を持つのはチーム 5 人のうち 3 人（@TEIKOTA・@kameiryohei・@alfeeshahrin9-sudo）。
+  - 最初の分担（2026-10-24）: バックエンドは @kameiryohei・@nozaworld、フロントエンド（SwiftUI のアプリ）は @TEIKOTA・@alfeeshahrin9-sudo・@takuma098。
+  - フロントエンドは、各自が担当の画面を設計し、UI・UX を互いにレビューする。画面の設計は SwiftUI で行う必要はなく、Mac の無いメンバー（Windows）は HTML で画面の案を作って認識をすり合わせる。
 - 残り: 振り返りに出す講評の形（[`screen-flow.md`](./screen-flow.md) の Open Questions）。開発しながら決めてよい。
 - 確認したいこと（推測で置いている前提）:
   - Azure for Students のサブスクリプションで、Speech の有料プラン（S0）を作れるか。無料プラン（F0）は同時 1 セッションまでで、2 台の同時プレイに使えない。
