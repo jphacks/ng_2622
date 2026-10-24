@@ -1,0 +1,19 @@
+{
+  "id": "person_stand_adult_a",
+  "version": 1,
+  "file": "parts/person_stand_adult_a/1.usdz",
+  "category": "person",
+  "words": [
+    {
+      "word": "man",
+      "pos": "noun"
+    },
+    {
+      "word": "stand",
+      "pos": "verb"
+    }
+  ],
+  "pose": "stand",
+  "size": [0.631, 1.695, 0.38],
+  "label": "男の人（立つ）"
+}

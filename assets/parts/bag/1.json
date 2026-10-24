@@ -1,0 +1,14 @@
+{
+  "id": "bag",
+  "version": 1,
+  "file": "parts/bag/1.usdz",
+  "category": "thing",
+  "words": [
+    {
+      "word": "bag",
+      "pos": "noun"
+    }
+  ],
+  "size": [0.38, 0.409, 0.135],
+  "label": "かばん（トートバッグ）"
+}

@@ -1,6 +1,6 @@
 """3D シーン（ジオラマ）を作るスクリプトの共通部分。scripts/scene/ の各シーン（park.py など）から使う。
 
-Blender の中で動かす（Blender 4.5 LTS で確認）。外部の素材は使わず、形はすべてコードで作る。
+Blender の中で動かす（Blender 4.5 LTS で確認。4.0 でも USDZ は書き出せる）。外部の素材は使わず、形はすべてコードで作る。
 シーンのスクリプトは build() で部品を組み立てて run() に渡す。run() はアプリ用の USDZ と発表用の画像を書き出す。
 
   <out>/<scene>.usdz   アプリ用。RealityKit の座標（Y が上、メートル、正面は +Z）。部品は名前付きの Xform に分ける
@@ -340,6 +340,9 @@ def person(root, name, loc, rot_z, outfit: dict, pose="stand", scale=1.0, point_
 
 def export_usdz(path: Path) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
+    if "convert_orientation" not in bpy.ops.wm.usd_export.get_rna_type().properties:
+        _export_usdz_without_orientation(path)
+        return
     bpy.ops.wm.usd_export(
         filepath=str(path),
         export_materials=True,
@@ -349,6 +352,36 @@ def export_usdz(path: Path) -> None:
         export_global_forward_selection="NEGATIVE_Z",
         export_global_up_selection="Y",
     )
+
+
+def _export_usdz_without_orientation(path: Path) -> None:
+    """向きの変換が書き出しの設定に無い Blender（4.0 など）向け。
+
+    Z が上のまま /root の下に書き出し、pxr で /root を X 軸まわりに -90 度回して Y を上にする。
+    Blender の -Y（正面）が +Z に、+Z（上）が +Y になり、4.5 の convert_orientation と同じ向きになる。
+    """
+    from pxr import Sdf, Usd, UsdGeom, UsdUtils
+
+    usdc = path.with_name(f"_{path.stem}_tmp.usdc")
+    bpy.ops.wm.usd_export(
+        filepath=str(usdc),
+        export_materials=True,
+        generate_preview_surface=True,
+        export_animation=False,
+        root_prim_path="/root",
+    )
+    stage = Usd.Stage.Open(str(usdc))
+    UsdGeom.SetStageUpAxis(stage, UsdGeom.Tokens.y)
+    UsdGeom.SetStageMetersPerUnit(stage, 1.0)
+    xf = UsdGeom.Xformable(stage.GetPrimAtPath("/root"))
+    ops = xf.GetOrderedXformOps()
+    rot = xf.AddRotateXOp(UsdGeom.XformOp.PrecisionFloat, "yup")
+    rot.Set(-90.0)
+    xf.SetXformOpOrder([rot, *ops])
+    stage.GetRootLayer().Save()
+    path.unlink(missing_ok=True)
+    UsdUtils.CreateNewUsdzPackage(Sdf.AssetPath(str(usdc)), str(path))
+    usdc.unlink()
 
 
 # 画像の光と背景。晴れの昼がふつうで、シーンごとに run(env=...) で一部を変えられる

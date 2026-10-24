@@ -1,0 +1,22 @@
+{
+  "id": "road_patch",
+  "version": 1,
+  "file": "parts/road_patch/1.usdz",
+  "category": "ground",
+  "words": [
+    {
+      "word": "road",
+      "pos": "noun"
+    },
+    {
+      "word": "street",
+      "pos": "noun"
+    },
+    {
+      "word": "crosswalk",
+      "pos": "noun"
+    }
+  ],
+  "size": [8.0, 0.004, 5.5],
+  "label": "道路（横断歩道つき）"
+}

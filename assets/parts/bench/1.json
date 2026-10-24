@@ -1,0 +1,17 @@
+{
+  "id": "bench",
+  "version": 1,
+  "file": "parts/bench/1.usdz",
+  "category": "furniture",
+  "words": [
+    {
+      "word": "bench",
+      "pos": "noun"
+    }
+  ],
+  "size": [1.6, 0.937, 0.596],
+  "label": "ベンチ",
+  "anchors": {
+    "seat": [0.0, 0.482, 0.08]
+  }
+}

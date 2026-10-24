@@ -1,0 +1,14 @@
+{
+  "id": "umbrella",
+  "version": 1,
+  "file": "parts/umbrella/1.usdz",
+  "category": "thing",
+  "words": [
+    {
+      "word": "umbrella",
+      "pos": "noun"
+    }
+  ],
+  "size": [1.128, 0.972, 1.132],
+  "label": "傘（開いた）"
+}

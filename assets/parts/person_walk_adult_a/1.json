@@ -1,0 +1,19 @@
+{
+  "id": "person_walk_adult_a",
+  "version": 1,
+  "file": "parts/person_walk_adult_a/1.usdz",
+  "category": "person",
+  "words": [
+    {
+      "word": "man",
+      "pos": "noun"
+    },
+    {
+      "word": "walk",
+      "pos": "verb"
+    }
+  ],
+  "pose": "walk",
+  "size": [0.611, 1.695, 0.606],
+  "label": "男の人（歩く）"
+}

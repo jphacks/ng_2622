@@ -1,0 +1,14 @@
+{
+  "id": "book",
+  "version": 1,
+  "file": "parts/book/1.usdz",
+  "category": "thing",
+  "words": [
+    {
+      "word": "book",
+      "pos": "noun"
+    }
+  ],
+  "size": [0.15, 0.03, 0.211],
+  "label": "本"
+}

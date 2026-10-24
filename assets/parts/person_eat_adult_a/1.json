@@ -1,0 +1,23 @@
+{
+  "id": "person_eat_adult_a",
+  "version": 1,
+  "file": "parts/person_eat_adult_a/1.usdz",
+  "category": "person",
+  "words": [
+    {
+      "word": "man",
+      "pos": "noun"
+    },
+    {
+      "word": "eat",
+      "pos": "verb"
+    },
+    {
+      "word": "apple",
+      "pos": "noun"
+    }
+  ],
+  "pose": "eat",
+  "size": [0.587, 1.695, 0.475],
+  "label": "男の人（リンゴを食べる）"
+}

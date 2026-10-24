@@ -1,0 +1,18 @@
+{
+  "id": "cup",
+  "version": 1,
+  "file": "parts/cup/1.usdz",
+  "category": "thing",
+  "words": [
+    {
+      "word": "cup",
+      "pos": "noun"
+    },
+    {
+      "word": "coffee",
+      "pos": "noun"
+    }
+  ],
+  "size": [0.141, 0.087, 0.14],
+  "label": "コーヒーカップ"
+}

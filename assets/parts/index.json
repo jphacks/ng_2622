@@ -1,0 +1,608 @@
+[
+  {
+    "id": "tree",
+    "version": 1,
+    "file": "parts/tree/1.usdz",
+    "category": "plant",
+    "words": [
+      {
+        "word": "tree",
+        "pos": "noun"
+      }
+    ],
+    "size": [2.532, 3.569, 2.387],
+    "label": "木"
+  },
+  {
+    "id": "flower",
+    "version": 1,
+    "file": "parts/flower/1.usdz",
+    "category": "plant",
+    "words": [
+      {
+        "word": "flower",
+        "pos": "noun"
+      }
+    ],
+    "size": [0.327, 0.368, 0.357],
+    "label": "花"
+  },
+  {
+    "id": "grass_patch",
+    "version": 1,
+    "file": "parts/grass_patch/1.usdz",
+    "category": "ground",
+    "words": [
+      {
+        "word": "grass",
+        "pos": "noun"
+      }
+    ],
+    "size": [8.0, 0.124, 8.0],
+    "label": "芝生（8 m 四方の地面）"
+  },
+  {
+    "id": "road_patch",
+    "version": 1,
+    "file": "parts/road_patch/1.usdz",
+    "category": "ground",
+    "words": [
+      {
+        "word": "road",
+        "pos": "noun"
+      },
+      {
+        "word": "street",
+        "pos": "noun"
+      },
+      {
+        "word": "crosswalk",
+        "pos": "noun"
+      }
+    ],
+    "size": [8.0, 0.004, 5.5],
+    "label": "道路（横断歩道つき）"
+  },
+  {
+    "id": "bench",
+    "version": 1,
+    "file": "parts/bench/1.usdz",
+    "category": "furniture",
+    "words": [
+      {
+        "word": "bench",
+        "pos": "noun"
+      }
+    ],
+    "size": [1.6, 0.937, 0.596],
+    "label": "ベンチ",
+    "anchors": {
+      "seat": [0.0, 0.482, 0.08]
+    }
+  },
+  {
+    "id": "table",
+    "version": 1,
+    "file": "parts/table/1.usdz",
+    "category": "furniture",
+    "words": [
+      {
+        "word": "table",
+        "pos": "noun"
+      }
+    ],
+    "size": [1.2, 0.72, 0.75],
+    "label": "テーブル",
+    "anchors": {
+      "top": 0.72
+    }
+  },
+  {
+    "id": "chair",
+    "version": 1,
+    "file": "parts/chair/1.usdz",
+    "category": "furniture",
+    "words": [
+      {
+        "word": "chair",
+        "pos": "noun"
+      }
+    ],
+    "size": [0.42, 0.935, 0.42],
+    "label": "椅子",
+    "anchors": {
+      "seat": [0.0, 0.46, 0.0]
+    }
+  },
+  {
+    "id": "sofa",
+    "version": 1,
+    "file": "parts/sofa/1.usdz",
+    "category": "furniture",
+    "words": [
+      {
+        "word": "sofa",
+        "pos": "noun"
+      },
+      {
+        "word": "couch",
+        "pos": "noun"
+      }
+    ],
+    "size": [1.8, 0.85, 0.88],
+    "label": "ソファ",
+    "anchors": {
+      "seat": [0.0, 0.46, 0.1]
+    }
+  },
+  {
+    "id": "bicycle",
+    "version": 1,
+    "file": "parts/bicycle/1.usdz",
+    "category": "vehicle",
+    "words": [
+      {
+        "word": "bicycle",
+        "pos": "noun"
+      },
+      {
+        "word": "bike",
+        "pos": "noun"
+      }
+    ],
+    "size": [0.5, 0.99, 1.66],
+    "label": "自転車"
+  },
+  {
+    "id": "car",
+    "version": 1,
+    "file": "parts/car/1.usdz",
+    "category": "vehicle",
+    "words": [
+      {
+        "word": "car",
+        "pos": "noun"
+      }
+    ],
+    "size": [1.925, 1.493, 3.998],
+    "label": "車"
+  },
+  {
+    "id": "vending_machine",
+    "version": 1,
+    "file": "parts/vending_machine/1.usdz",
+    "category": "thing",
+    "words": [
+      {
+        "word": "vending machine",
+        "pos": "noun"
+      }
+    ],
+    "size": [0.9, 1.8, 0.76],
+    "label": "自動販売機"
+  },
+  {
+    "id": "trash_bin",
+    "version": 1,
+    "file": "parts/trash_bin/1.usdz",
+    "category": "thing",
+    "words": [
+      {
+        "word": "trash can",
+        "pos": "noun"
+      },
+      {
+        "word": "trash bin",
+        "pos": "noun"
+      }
+    ],
+    "size": [0.42, 0.467, 0.42],
+    "label": "ごみ箱"
+  },
+  {
+    "id": "ball_red",
+    "version": 1,
+    "file": "parts/ball_red/1.usdz",
+    "category": "thing",
+    "words": [
+      {
+        "word": "ball",
+        "pos": "noun"
+      }
+    ],
+    "size": [0.24, 0.24, 0.24],
+    "label": "赤いボール"
+  },
+  {
+    "id": "umbrella",
+    "version": 1,
+    "file": "parts/umbrella/1.usdz",
+    "category": "thing",
+    "words": [
+      {
+        "word": "umbrella",
+        "pos": "noun"
+      }
+    ],
+    "size": [1.128, 0.972, 1.132],
+    "label": "傘（開いた）"
+  },
+  {
+    "id": "smartphone",
+    "version": 1,
+    "file": "parts/smartphone/1.usdz",
+    "category": "thing",
+    "words": [
+      {
+        "word": "smartphone",
+        "pos": "noun"
+      },
+      {
+        "word": "phone",
+        "pos": "noun"
+      }
+    ],
+    "size": [0.075, 0.01, 0.155],
+    "label": "スマートフォン"
+  },
+  {
+    "id": "box",
+    "version": 1,
+    "file": "parts/box/1.usdz",
+    "category": "thing",
+    "words": [
+      {
+        "word": "box",
+        "pos": "noun"
+      }
+    ],
+    "size": [0.45, 0.353, 0.356],
+    "label": "段ボール箱",
+    "anchors": {
+      "top": 0.35
+    }
+  },
+  {
+    "id": "apple_red",
+    "version": 1,
+    "file": "parts/apple_red/1.usdz",
+    "category": "food",
+    "words": [
+      {
+        "word": "apple",
+        "pos": "noun"
+      }
+    ],
+    "size": [0.079, 0.089, 0.079],
+    "label": "赤いリンゴ"
+  },
+  {
+    "id": "bag",
+    "version": 1,
+    "file": "parts/bag/1.usdz",
+    "category": "thing",
+    "words": [
+      {
+        "word": "bag",
+        "pos": "noun"
+      }
+    ],
+    "size": [0.38, 0.409, 0.135],
+    "label": "かばん（トートバッグ）"
+  },
+  {
+    "id": "book",
+    "version": 1,
+    "file": "parts/book/1.usdz",
+    "category": "thing",
+    "words": [
+      {
+        "word": "book",
+        "pos": "noun"
+      }
+    ],
+    "size": [0.15, 0.03, 0.211],
+    "label": "本"
+  },
+  {
+    "id": "bottle",
+    "version": 1,
+    "file": "parts/bottle/1.usdz",
+    "category": "thing",
+    "words": [
+      {
+        "word": "bottle",
+        "pos": "noun"
+      }
+    ],
+    "size": [0.072, 0.21, 0.072],
+    "label": "ペットボトル"
+  },
+  {
+    "id": "cup",
+    "version": 1,
+    "file": "parts/cup/1.usdz",
+    "category": "thing",
+    "words": [
+      {
+        "word": "cup",
+        "pos": "noun"
+      },
+      {
+        "word": "coffee",
+        "pos": "noun"
+      }
+    ],
+    "size": [0.141, 0.087, 0.14],
+    "label": "コーヒーカップ"
+  },
+  {
+    "id": "animal_run_dog_a",
+    "version": 1,
+    "file": "parts/animal_run_dog_a/1.usdz",
+    "category": "animal",
+    "words": [
+      {
+        "word": "dog",
+        "pos": "noun"
+      },
+      {
+        "word": "run",
+        "pos": "verb"
+      }
+    ],
+    "pose": "run",
+    "size": [0.397, 0.861, 1.201],
+    "label": "走る犬"
+  },
+  {
+    "id": "person_stand_adult_a",
+    "version": 1,
+    "file": "parts/person_stand_adult_a/1.usdz",
+    "category": "person",
+    "words": [
+      {
+        "word": "man",
+        "pos": "noun"
+      },
+      {
+        "word": "stand",
+        "pos": "verb"
+      }
+    ],
+    "pose": "stand",
+    "size": [0.631, 1.695, 0.38],
+    "label": "男の人（立つ）"
+  },
+  {
+    "id": "person_walk_adult_a",
+    "version": 1,
+    "file": "parts/person_walk_adult_a/1.usdz",
+    "category": "person",
+    "words": [
+      {
+        "word": "man",
+        "pos": "noun"
+      },
+      {
+        "word": "walk",
+        "pos": "verb"
+      }
+    ],
+    "pose": "walk",
+    "size": [0.611, 1.695, 0.606],
+    "label": "男の人（歩く）"
+  },
+  {
+    "id": "person_run_adult_a",
+    "version": 1,
+    "file": "parts/person_run_adult_a/1.usdz",
+    "category": "person",
+    "words": [
+      {
+        "word": "man",
+        "pos": "noun"
+      },
+      {
+        "word": "run",
+        "pos": "verb"
+      }
+    ],
+    "pose": "run",
+    "size": [0.568, 1.675, 0.836],
+    "label": "男の人（走る）"
+  },
+  {
+    "id": "person_sit_adult_a",
+    "version": 1,
+    "file": "parts/person_sit_adult_a/1.usdz",
+    "category": "person",
+    "words": [
+      {
+        "word": "man",
+        "pos": "noun"
+      },
+      {
+        "word": "sit",
+        "pos": "verb"
+      }
+    ],
+    "pose": "sit",
+    "size": [0.564, 1.375, 0.78],
+    "label": "男の人（座る）",
+    "anchors": {
+      "hip": [0.0, 0.48, -0.2]
+    }
+  },
+  {
+    "id": "person_phone_adult_a",
+    "version": 1,
+    "file": "parts/person_phone_adult_a/1.usdz",
+    "category": "person",
+    "words": [
+      {
+        "word": "man",
+        "pos": "noun"
+      },
+      {
+        "word": "phone",
+        "pos": "noun"
+      },
+      {
+        "word": "look",
+        "pos": "verb"
+      }
+    ],
+    "pose": "phone",
+    "size": [0.551, 1.695, 0.514],
+    "label": "男の人（スマホを見る）"
+  },
+  {
+    "id": "person_walk_woman_a",
+    "version": 1,
+    "file": "parts/person_walk_woman_a/1.usdz",
+    "category": "person",
+    "words": [
+      {
+        "word": "woman",
+        "pos": "noun"
+      },
+      {
+        "word": "walk",
+        "pos": "verb"
+      }
+    ],
+    "pose": "walk",
+    "size": [0.611, 1.695, 0.606],
+    "label": "女の人（歩く）"
+  },
+  {
+    "id": "person_sit_woman_a",
+    "version": 1,
+    "file": "parts/person_sit_woman_a/1.usdz",
+    "category": "person",
+    "words": [
+      {
+        "word": "woman",
+        "pos": "noun"
+      },
+      {
+        "word": "sit",
+        "pos": "verb"
+      }
+    ],
+    "pose": "sit",
+    "size": [0.564, 1.375, 0.83],
+    "label": "女の人（座る）",
+    "anchors": {
+      "hip": [0.0, 0.48, -0.175]
+    }
+  },
+  {
+    "id": "person_run_boy_a",
+    "version": 1,
+    "file": "parts/person_run_boy_a/1.usdz",
+    "category": "person",
+    "words": [
+      {
+        "word": "boy",
+        "pos": "noun"
+      },
+      {
+        "word": "run",
+        "pos": "verb"
+      }
+    ],
+    "pose": "run",
+    "size": [0.426, 1.256, 0.627],
+    "label": "男の子（走る）"
+  },
+  {
+    "id": "person_stand_girl_a",
+    "version": 1,
+    "file": "parts/person_stand_girl_a/1.usdz",
+    "category": "person",
+    "words": [
+      {
+        "word": "girl",
+        "pos": "noun"
+      },
+      {
+        "word": "stand",
+        "pos": "verb"
+      }
+    ],
+    "pose": "stand",
+    "size": [0.473, 1.305, 0.36],
+    "label": "女の子（立つ）"
+  },
+  {
+    "id": "person_read_adult_a",
+    "version": 1,
+    "file": "parts/person_read_adult_a/1.usdz",
+    "category": "person",
+    "words": [
+      {
+        "word": "man",
+        "pos": "noun"
+      },
+      {
+        "word": "read",
+        "pos": "verb"
+      },
+      {
+        "word": "book",
+        "pos": "noun"
+      }
+    ],
+    "pose": "read",
+    "size": [0.562, 1.695, 0.618],
+    "label": "男の人（本を読む）"
+  },
+  {
+    "id": "person_eat_adult_a",
+    "version": 1,
+    "file": "parts/person_eat_adult_a/1.usdz",
+    "category": "person",
+    "words": [
+      {
+        "word": "man",
+        "pos": "noun"
+      },
+      {
+        "word": "eat",
+        "pos": "verb"
+      },
+      {
+        "word": "apple",
+        "pos": "noun"
+      }
+    ],
+    "pose": "eat",
+    "size": [0.587, 1.695, 0.475],
+    "label": "男の人（リンゴを食べる）"
+  },
+  {
+    "id": "person_carry_adult_a",
+    "version": 1,
+    "file": "parts/person_carry_adult_a/1.usdz",
+    "category": "person",
+    "words": [
+      {
+        "word": "man",
+        "pos": "noun"
+      },
+      {
+        "word": "carry",
+        "pos": "verb"
+      },
+      {
+        "word": "box",
+        "pos": "noun"
+      }
+    ],
+    "pose": "carry",
+    "size": [0.571, 1.695, 0.819],
+    "label": "男の人（箱を運ぶ）"
+  }
+]

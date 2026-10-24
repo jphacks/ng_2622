@@ -1,0 +1,19 @@
+{
+  "id": "person_stand_girl_a",
+  "version": 1,
+  "file": "parts/person_stand_girl_a/1.usdz",
+  "category": "person",
+  "words": [
+    {
+      "word": "girl",
+      "pos": "noun"
+    },
+    {
+      "word": "stand",
+      "pos": "verb"
+    }
+  ],
+  "pose": "stand",
+  "size": [0.473, 1.305, 0.36],
+  "label": "女の子（立つ）"
+}
