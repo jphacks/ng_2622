@@ -46,7 +46,8 @@ struct LobbyView: View {
       SceneGenerateSheet(generator: generator)
         .presentationDragIndicator(.visible)
     }
-    // 作れたら、その場面を選んだ状態にして待合に戻る（シートを閉じて待っていた場合も選ぶ）
+    // 作れたら、その場面を選んだ状態にして待合に戻る（シートを閉じて待っていた場合も選ぶ）。
+    // 作り直して同じ場面が返っても Made は変わる
     .onChange(of: generator.made) { _, made in
       guard let made else { return }
       sceneID = made.id

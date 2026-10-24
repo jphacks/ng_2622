@@ -16,6 +16,8 @@ final class SceneGenerator {
     let id: String
     let name: String
     let difficulty: SceneDifficulty
+    /// 何度目に作れたか。作り直して同じ場面が返っても別の Made になり、待合が作れたことに気づける
+    let serial: Int
   }
 
   /// 一言の長さの上限
@@ -35,6 +37,7 @@ final class SceneGenerator {
   private let store: SceneLayoutStore
   private var task: Task<Void, Never>?
   private var timer: Task<Void, Never>?
+  private var serial = 0
 
   init(client: any SceneLayoutClient = SceneLayouts.client, store: SceneLayoutStore = SceneLayouts.store) {
     self.client = client
@@ -66,7 +69,8 @@ final class SceneGenerator {
         SceneLibrary.shared.preload([id])
         guard let self, !Task.isCancelled else { return }
         timer?.cancel()
-        made = Made(id: id, name: layout.name, difficulty: difficulty)
+        serial += 1
+        made = Made(id: id, name: layout.name, difficulty: difficulty, serial: serial)
         state = .idle
       } catch {
         guard let self, !Task.isCancelled else { return }

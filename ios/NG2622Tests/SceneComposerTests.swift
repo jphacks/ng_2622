@@ -304,7 +304,24 @@ struct SceneGeneratorTests {
     #expect(generator.isGenerating)
     await waitUntilDone(generator)
     #expect(generator.state == .idle)
-    #expect(generator.made == .init(id: "gen-abcdefghij", name: "作った場面", difficulty: .normal))
+    #expect(generator.made?.id == "gen-abcdefghij")
+    #expect(generator.made?.name == "作った場面")
+    #expect(generator.made?.difficulty == .normal)
+  }
+
+  /// 作り直して同じ場面が返っても、Made は前と違う（待合の onChange が気づける）
+  @Test func remakeWithSameSceneIsNewMade() async throws {
+    let client = FakeClient(.success("gen-abcdefghij"))
+    let generator = SceneGenerator(client: client, store: SceneLayoutStore(client: client))
+    generator.prompt = "公園"
+    generator.generate()
+    await waitUntilDone(generator)
+    let first = try #require(generator.made)
+    generator.generate()
+    await waitUntilDone(generator)
+    let second = try #require(generator.made)
+    #expect(first.id == second.id)
+    #expect(first != second)
   }
 
   @Test func failureShowsReason() async {
