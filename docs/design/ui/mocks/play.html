@@ -1,0 +1,786 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>プレイの画面モック</title>
+<!--
+  issue #9 のモック。プレイ（回転中）→ プレイ（録音中）→ 待機 の 3 画面。
+  自己完結（外部の読み込みなし）。仮のデータで動き、バックエンドとは通信しない。
+  決定の正本: docs/design/ui/screens/{play-intro,play-recording,waiting}.md と issue #9 の「認識合わせ」
+-->
+<style>
+  :root {
+    --bg: #eceef5;
+    --screen: #f7f7fb;
+    --ink: #14163a;
+    --muted: #6b6f8a;
+    --accent: #5b5be6;
+    --accent-soft: #e3e3fb;
+    --yellow: #ffd43b;
+    --red: #ef2b2b;
+    --gray: #9a9db3;
+    --card: #ffffff;
+    --font: "Hiragino Maru Gothic ProN", "Hiragino Sans", "M PLUS Rounded 1c", "Yu Gothic UI", system-ui, sans-serif;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; }
+  body {
+    background: var(--bg);
+    color: var(--ink);
+    font-family: var(--font);
+    min-height: 100vh;
+  }
+  button { font: inherit; color: inherit; cursor: pointer; }
+
+  /* ---------- モックの外側（操作盤と説明） ---------- */
+  .toolbar {
+    position: sticky; top: 0; z-index: 10;
+    display: flex; flex-wrap: wrap; gap: 8px; align-items: center; justify-content: center;
+    padding: 10px 16px;
+    background: rgba(236, 238, 245, .92);
+    backdrop-filter: blur(6px);
+    border-bottom: 1px solid #d9dbe8;
+  }
+  .toolbar .group { display: flex; gap: 4px; align-items: center; }
+  .toolbar .label { font-size: 12px; color: var(--muted); margin-right: 2px; }
+  .tb-btn {
+    border: 1px solid #c9cbe0; background: #fff; border-radius: 999px;
+    padding: 6px 12px; font-size: 13px; font-weight: 700;
+  }
+  .tb-btn.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+  .tb-btn[aria-pressed="true"] { background: var(--ink); border-color: var(--ink); color: #fff; }
+  .tb-btn:disabled { opacity: .4; cursor: default; }
+  .toolbar label.check { font-size: 13px; display: flex; gap: 4px; align-items: center; }
+
+  .layout {
+    display: flex; flex-wrap: wrap; gap: 24px; justify-content: center; align-items: flex-start;
+    padding: 20px 16px 40px;
+  }
+  .side { width: 340px; max-width: 100%; display: grid; gap: 12px; }
+  .panel {
+    background: #fff; border-radius: 14px; padding: 14px 16px;
+    box-shadow: 0 1px 3px rgba(20, 22, 58, .08);
+    font-size: 13px; line-height: 1.7;
+  }
+  .panel h2 { font-size: 15px; margin: 0 0 6px; }
+  .panel h3 { font-size: 13px; margin: 10px 0 2px; color: var(--muted); }
+  .panel ul { margin: 0; padding-left: 1.2em; }
+  .panel .id { font-family: ui-monospace, Menlo, monospace; font-size: 12px; color: var(--muted); }
+  #log { list-style: none; padding: 0; margin: 0; max-height: 160px; overflow: auto; font-size: 12px; }
+  #log li { padding: 2px 0; border-bottom: 1px dashed #eee; }
+  #log time { color: var(--muted); margin-right: 6px; font-family: ui-monospace, Menlo, monospace; }
+
+  /* ---------- 端末の枠 ---------- */
+  .phone-fit { position: relative; }
+  .phone {
+    position: absolute; top: 0; left: 0;
+    width: 410px; height: 864px;
+    transform-origin: top left;
+    border-radius: 58px; padding: 10px;
+    background: #1b1c22;
+    box-shadow: 0 20px 50px rgba(20, 22, 58, .25);
+  }
+  .screen {
+    position: relative; overflow: hidden;
+    width: 390px; height: 844px; border-radius: 48px;
+    background: var(--screen);
+  }
+  .statusbar {
+    position: absolute; top: 0; left: 0; right: 0; height: 50px; z-index: 5;
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 6px 30px 0 36px; font-weight: 700; font-size: 16px;
+    font-family: system-ui, sans-serif;
+  }
+  .statusbar .icons { display: flex; gap: 6px; align-items: center; }
+  .home-ind {
+    position: absolute; bottom: 8px; left: 50%; transform: translateX(-50%); z-index: 5;
+    width: 134px; height: 5px; border-radius: 3px; background: var(--ink);
+  }
+
+  .view {
+    position: absolute; inset: 0; padding-top: 50px;
+    display: flex; flex-direction: column; align-items: center;
+    opacity: 0; pointer-events: none; transition: opacity .35s ease;
+  }
+  .view.active { opacity: 1; pointer-events: auto; }
+
+  /* ---------- 3D シーン（CSS 3D のジオラマ） ---------- */
+  .scene {
+    position: relative; width: 390px;
+    perspective: 900px; perspective-origin: 50% 30%;
+    touch-action: none; user-select: none; -webkit-user-select: none;
+  }
+  .world { position: absolute; left: 50%; top: 55%; transform-style: preserve-3d; }
+  .world * { transform-style: preserve-3d; }
+  .bx { position: absolute; left: 0; top: 0; }
+  .face { position: absolute; backface-visibility: hidden; }
+  .ball {
+    position: absolute; left: -11px; top: -11px; width: 22px; height: 22px; border-radius: 50%;
+    background: radial-gradient(circle at 35% 30%, #ff8a8a 0 15%, #e52323 45%, #b51010 100%);
+  }
+  .shadow {
+    position: absolute; border-radius: 50%;
+    background: radial-gradient(closest-side, rgba(20, 22, 58, .18), transparent);
+  }
+
+  /* ---------- プレイ（回転中 → 録音中を、画面を切り替えずにつなぐ） ---------- */
+  /* 3D は同じ位置・大きさのまま。見出しが残り時間のバーに入れ替わり、メーターとボタンが下から出る */
+  .play-head { position: relative; width: 346px; height: 96px; margin-top: 24px; }
+  .play-head > * { position: absolute; left: 0; right: 0; transition: opacity .5s ease, transform .5s ease; }
+  .play-title { top: 10px; margin: 0; display: flex; justify-content: center; align-items: center; }
+  .rec-status { top: 22px; opacity: 0; transform: translateY(-14px); }
+  .rec-row { display: flex; justify-content: space-between; align-items: baseline; font-weight: 800; }
+  .rec-label { display: flex; align-items: center; gap: 8px; font-size: 20px; }
+  .rec-dot { width: 14px; height: 14px; border-radius: 50%; background: var(--red); animation: blink 1.2s ease-in-out infinite; align-self: center; }
+  @keyframes blink { 50% { opacity: .35; } }
+  .rec-sec { font-size: 18px; color: var(--muted); }
+  .rec-sec b { font-size: 30px; color: var(--ink); font-variant-numeric: tabular-nums; margin: 0 2px; }
+  .tbar { margin-top: 10px; height: 14px; border-radius: 7px; background: var(--accent-soft); overflow: hidden; }
+  .tbar i { display: block; height: 100%; width: 100%; border-radius: 7px; background: var(--accent); }
+
+  #v-play .scene { height: 520px; }
+  .count { font-size: 72px; font-weight: 900; line-height: 1; color: var(--accent); font-variant-numeric: tabular-nums; min-width: 1ch; text-align: center; }
+  .count.pop { animation: pop .35s ease-out both; }
+  @keyframes pop {
+    0% { transform: scale(.5); opacity: 0; }
+    60% { transform: scale(1.15); opacity: 1; }
+    100% { transform: scale(1); }
+  }
+  .meter {
+    position: absolute; left: 50%; bottom: 14px; z-index: 3;
+    width: 230px; height: 54px; border-radius: 27px;
+    background: rgba(255, 255, 255, .88); box-shadow: 0 4px 14px rgba(20, 22, 58, .1);
+    display: flex; align-items: center; justify-content: center; gap: 5px;
+    opacity: 0; transform: translate(-50%, 24px);
+    transition: opacity .5s ease .15s, transform .5s ease .15s;
+  }
+  .meter i { display: block; width: 6px; border-radius: 3px; background: var(--accent); height: 6px; transition: height .07s linear; }
+  .drag-hint {
+    position: absolute; top: 6px; left: 50%; transform: translateX(-50%);
+    font-size: 12px; color: var(--muted); background: rgba(255, 255, 255, .8);
+    padding: 3px 10px; border-radius: 999px; pointer-events: none;
+    opacity: 0; transition: opacity .4s;
+  }
+  .btn-reset {
+    position: absolute; top: 6px; right: 22px; z-index: 4;
+    width: 44px; height: 44px; border-radius: 50%; border: none;
+    background: rgba(255, 255, 255, .92); box-shadow: 0 2px 10px rgba(20, 22, 58, .12);
+    display: flex; align-items: center; justify-content: center;
+    opacity: 0; transform: scale(.6); pointer-events: none; transition: opacity .25s, transform .25s;
+  }
+  .btn-reset.shown { opacity: 1; transform: none; pointer-events: auto; }
+  .play-foot { position: relative; width: 346px; height: 70px; margin-top: 14px; }
+  .play-foot > * { position: absolute; left: 0; right: 0; }
+  .paused-note { top: 4px; margin: 0; text-align: center; color: var(--muted); font-size: 14px; transition: opacity .3s; }
+  .big-btn {
+    width: 346px; height: 64px; border-radius: 32px; border: none;
+    font-size: 24px; font-weight: 800; letter-spacing: .04em;
+  }
+  #btn-done {
+    top: 0; background: var(--accent); color: #fff; box-shadow: 0 6px 0 #4343b8;
+    opacity: 0; transform: translateY(40px); pointer-events: none;
+    transition: opacity .5s ease .25s, transform .5s ease .25s;
+  }
+  #btn-done:active { transform: translateY(3px); box-shadow: 0 3px 0 #4343b8; }
+
+  #v-play[data-phase="rec"] .play-title { opacity: 0; transform: translateY(-14px); }
+  #v-play[data-phase="rec"] .rec-status { opacity: 1; transform: none; }
+  #v-play[data-phase="rec"] .meter { opacity: 1; transform: translate(-50%, 0); }
+  #v-play[data-phase="rec"] .drag-hint { opacity: 1; }
+  #v-play[data-phase="rec"] .drag-hint.used { opacity: 0; }
+  #v-play[data-phase="rec"] .paused-note { opacity: 0; }
+  #v-play[data-phase="rec"] #btn-done { opacity: 1; transform: none; pointer-events: auto; }
+  #v-play[data-phase="rec"] .scene { cursor: grab; }
+  #v-play[data-phase="rec"] .scene.dragging { cursor: grabbing; }
+
+  /* ---------- 待機 ---------- */
+  .plist {
+    width: 346px; margin-top: 40px; background: var(--card); border-radius: 22px;
+    box-shadow: 0 6px 20px rgba(20, 22, 58, .07); padding: 4px 18px;
+  }
+  .prow { display: flex; align-items: center; gap: 14px; height: 64px; border-bottom: 1px solid #eef0f5; }
+  .prow:last-child { border-bottom: none; }
+  .avatar {
+    width: 44px; height: 44px; border-radius: 50%; flex: none;
+    display: flex; align-items: center; justify-content: center;
+    font-weight: 900; font-size: 19px; color: #fff;
+  }
+  .pname { font-size: 19px; font-weight: 800; flex: 1; display: flex; align-items: center; gap: 8px; min-width: 0; }
+  .you { font-size: 11px; font-weight: 800; color: var(--accent); background: var(--accent-soft); padding: 2px 8px; border-radius: 999px; }
+  .pstate { display: flex; align-items: center; gap: 8px; font-size: 16px; font-weight: 800; white-space: nowrap; }
+  .pstate.talking { color: var(--accent); }
+  .pstate.grading { color: var(--accent); }
+  .pstate.done { color: var(--accent); }
+  .pstate.offline { color: var(--gray); }
+  .ico { width: 26px; height: 26px; border-radius: 50%; display: flex; align-items: center; justify-content: center; flex: none; }
+  .ico.done { background: var(--accent); }
+  .ico.offline { background: #e3e4ee; }
+  .ico.talking { background: var(--accent-soft); animation: blink 1s ease-in-out infinite; }
+  .spin { width: 24px; height: 24px; border-radius: 50%; border: 4px solid var(--accent-soft); border-top-color: var(--accent); animation: rot .9s linear infinite; }
+  @keyframes rot { to { transform: rotate(360deg); } }
+  .host-area { position: absolute; bottom: 30px; left: 0; right: 0; display: flex; flex-direction: column; align-items: center; gap: 6px; }
+  #btn-close {
+    position: relative; overflow: hidden;
+    background: #fff; color: var(--accent); border: 2.5px solid var(--accent);
+  }
+  #btn-close:disabled { color: var(--gray); border-color: #c9cbe0; cursor: default; }
+  #btn-close .fill { position: absolute; left: 0; top: 0; bottom: 0; width: 0; background: var(--accent-soft); z-index: 0; }
+  #btn-close span { position: relative; z-index: 1; }
+  .host-note { font-size: 13px; color: var(--muted); }
+
+  /* 確認のシート */
+  .sheet-bg { position: absolute; inset: 0; z-index: 8; background: rgba(20, 22, 58, .35); display: none; align-items: flex-end; }
+  .sheet-bg.open { display: flex; }
+  .sheet {
+    width: 100%; background: #fff; border-radius: 28px 28px 0 0; padding: 26px 22px 40px;
+    display: flex; flex-direction: column; align-items: center; gap: 10px;
+    animation: up .25s ease-out both;
+  }
+  @keyframes up { from { transform: translateY(100%); } }
+  .sheet h2 { margin: 0; font-size: 22px; font-weight: 900; }
+  .sheet p { margin: 0 0 8px; color: var(--muted); font-weight: 700; }
+  #btn-close-yes { background: var(--accent); color: #fff; }
+  #btn-close-no { background: #eef0f5; color: var(--ink); }
+</style>
+</head>
+<body>
+
+<div class="toolbar" role="toolbar" aria-label="モックの操作">
+  <div class="group">
+    <button type="button" class="tb-btn primary" id="tb-start">▶ スタート</button>
+    <button type="button" class="tb-btn" id="tb-reset">最初から</button>
+  </div>
+  <div class="group">
+    <span class="label">視点</span>
+    <button type="button" class="tb-btn" data-role="host" aria-pressed="true">ホスト</button>
+    <button type="button" class="tb-btn" data-role="guest" aria-pressed="false">参加者</button>
+  </div>
+  <div class="group">
+    <span class="label">画面へ</span>
+    <button type="button" class="tb-btn" data-jump="intro">回転中</button>
+    <button type="button" class="tb-btn" data-jump="rec">録音中</button>
+    <button type="button" class="tb-btn" data-jump="wait">待機</button>
+  </div>
+  <label class="check"><input type="checkbox" id="tb-offline"> 切断中の人を入れる</label>
+</div>
+
+<div class="layout">
+  <div class="phone-fit" id="phone-fit">
+    <div class="phone" id="phone">
+      <div class="screen">
+        <div class="statusbar">
+          <span>9:41</span>
+          <span class="icons" aria-hidden="true">
+            <svg width="18" height="12" viewBox="0 0 18 12" aria-hidden="true"><rect x="0" y="8" width="3" height="4" rx="1" fill="#14163a"/><rect x="5" y="5" width="3" height="7" rx="1" fill="#14163a"/><rect x="10" y="2.5" width="3" height="9.5" rx="1" fill="#14163a"/><rect x="15" y="0" width="3" height="12" rx="1" fill="#14163a"/></svg>
+            <svg width="16" height="12" viewBox="0 0 16 12" aria-hidden="true"><path d="M8 11.5 5.6 9a3.4 3.4 0 0 1 4.8 0zM3.5 6.9a6.4 6.4 0 0 1 9 0l-1.4 1.4a4.4 4.4 0 0 0-6.2 0zM1.3 4.7a9.5 9.5 0 0 1 13.4 0l-1.4 1.4a7.5 7.5 0 0 0-10.6 0z" fill="#14163a"/></svg>
+            <svg width="27" height="13" viewBox="0 0 27 13" aria-hidden="true"><rect x=".5" y=".5" width="23" height="12" rx="3.5" fill="none" stroke="#14163a" opacity=".4"/><rect x="2" y="2" width="20" height="9" rx="2" fill="#14163a"/><rect x="24.5" y="4" width="2" height="5" rx="1" fill="#14163a" opacity=".4"/></svg>
+          </span>
+        </div>
+
+        <!-- 4a プレイ（回転中）→ 4b プレイ（録音中）。1 つの画面で、段階（data-phase）だけ変える -->
+        <section class="view" id="v-play" data-phase="intro" aria-label="プレイ">
+          <div class="play-head">
+            <div class="play-title">
+              <span class="count" id="count" aria-live="polite"></span>
+            </div>
+            <div class="rec-status" aria-live="polite">
+              <div class="rec-row">
+                <span class="rec-label"><span class="rec-dot"></span>録音中</span>
+                <span class="rec-sec">残り<b id="remain-sec">20</b>秒</span>
+              </div>
+              <div class="tbar"><i id="tbar"></i></div>
+            </div>
+          </div>
+          <div class="scene" id="scene">
+            <div class="drag-hint" id="drag-hint">指で回して見られます</div>
+            <button type="button" class="btn-reset" id="btn-reset" aria-label="初期の向きに戻す">
+              <svg width="22" height="22" viewBox="0 0 24 24" aria-hidden="true"><path d="M4.5 12a7.5 7.5 0 1 0 2.2-5.3" fill="none" stroke="#5b5be6" stroke-width="2.6" stroke-linecap="round"/><path d="M5 2.8v4.6h4.6" fill="none" stroke="#5b5be6" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            </button>
+            <div class="meter" id="meter" role="img" aria-label="音量メーター"></div>
+          </div>
+          <div class="play-foot">
+            <p class="paused-note" id="paused-note">上の「▶ スタート」で、ホストがスタートした想定で始まります</p>
+            <button type="button" class="big-btn" id="btn-done">話し終えた</button>
+          </div>
+        </section>
+
+        <!-- 5 待機 -->
+        <section class="view" id="v-wait" aria-label="待機">
+          <div class="plist" id="plist"></div>
+          <div class="host-area" id="host-area">
+            <button type="button" class="big-btn" id="btn-close" disabled><div class="fill" id="close-fill"></div><span>締め切って発表する</span></button>
+            <span class="host-note">ホストだけに出ています</span>
+          </div>
+          <div class="sheet-bg" id="sheet">
+            <div class="sheet" role="dialog" aria-modal="true" aria-labelledby="sheet-title">
+              <h2 id="sheet-title">締め切って発表しますか？</h2>
+              <p id="sheet-msg"></p>
+              <button type="button" class="big-btn" id="btn-close-yes">締め切って発表する</button>
+              <button type="button" class="big-btn" id="btn-close-no">待つ</button>
+            </div>
+          </div>
+        </section>
+
+        <div class="home-ind"></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="side">
+    <div class="panel" id="info"></div>
+    <div class="panel">
+      <h2>動きのメモ</h2>
+      <ul>
+        <li>データは仮のもの。ほかの参加者は乱数で話し終え、数秒で採点が終わる。</li>
+        <li>待機の後（全員の採点がそろう／ホストが締め切る）は結果発表（#10）に進む地点。モックでは最初に戻る。</li>
+        <li>音量メーターは仮の動きで、マイクは使わない。</li>
+      </ul>
+    </div>
+    <div class="panel">
+      <h2>できごと</h2>
+      <ol id="log"></ol>
+    </div>
+  </div>
+</div>
+
+<script>
+(() => {
+  "use strict";
+
+  // ---------- 定数 ----------
+  const INTRO_MS = 3000;     // 1 周（約 3 秒）
+  const REC_MS = 20000;      // 録音は最長 20 秒
+  const CLOSE_LOCK_MS = 2000; // 待機に入ってから締め切りを押せない時間
+  const TILT = 28;           // 最初の見下ろす角度
+  const TILT_MIN = 10;       // 縦に動かせる範囲（仮。モックで触って決める）
+  const TILT_MAX = 75;
+
+  const INFO = {
+    intro: {
+      title: "4a プレイ（回転中）", id: "play-intro",
+      role: "全員の端末に同じ 3D シーンを出し、自動で 1 周（約 3 秒）回す。回っている間は操作できない。",
+      check: ["カウントダウンを 3D に重ねず、上の中央に出すのが分かりやすいか", "回転を示す矢印なしで、回っているのが伝わるか", "3 秒で場面をつかめるか"],
+    },
+    rec: {
+      title: "4b プレイ（録音中）", id: "play-recording",
+      role: "1 周し終えたら全員一斉に録音が始まる。3D を見ながら英語で描写する。最長 20 秒。ライブ字幕は出さない。",
+      check: ["回転中から画面を切り替えずにつなぐ（3D は同じ位置のまま、見出しが残り時間のバーに入れ替わる）のが自然か", "つなぎ目が滑らかな分、録音が始まったことに気付けるか", "指で回すのが話す邪魔にならないか", "縦に動かせる範囲（仮に 10〜75 度）は広すぎ・狭すぎないか", "回した後の「↺」とダブルタップで、初期の向きに戻せると気付けるか", "「話し終えた」を確認なしで止めてよいか"],
+    },
+    wait: {
+      title: "5 待機", id: "waiting",
+      role: "話し終えた人が、ほかの人の録音と採点が終わるのを待つ。点数は発表まで伏せる。",
+      check: ["一覧だけの簡素な画面で、待っていることが伝わるか（見出し・残り N 人は外した）", "状態の色を紫にそろえ、アイコンの形だけで見分けられるか", "締め切りを 2 秒押せないことと、確認のシート"],
+    },
+  };
+
+  // ---------- 状態 ----------
+  const state = {
+    view: "intro",
+    running: false,
+    host: true,
+    roundStart: 0,   // ラウンド開始の時刻（performance.now）
+    selfStop: 0,     // 自分の録音が終わった時刻（ラウンド開始からの ms）
+    selfGradeMs: 0,
+    waitEnter: 0,    // 待機に入った時刻（performance.now）
+    angle: 0,
+    tilt: TILT,
+    resetting: false, // 「↺」・ダブルタップで初期の向きに戻している途中
+    others: [],
+    offline: false,
+    finished: false,
+  };
+
+  const SELF = { name: "ゆうき", color: "#5b5be6" };
+  const OTHERS = [
+    { name: "たろう", color: "#f29a3a" },
+    { name: "はなこ", color: "#b06ad9" },
+    { name: "けん", color: "#2fae9b" },
+  ];
+
+  const $ = (s) => document.querySelector(s);
+  const rand = (a, b) => a + Math.random() * (b - a);
+
+  // ---------- できごとの記録 ----------
+  function log(msg) {
+    const li = document.createElement("li");
+    const d = new Date();
+    li.innerHTML = `<time>${d.toTimeString().slice(0, 8)}</time>`;
+    li.append(msg);
+    $("#log").prepend(li);
+  }
+
+  // ---------- 3D ジオラマ ----------
+  function shade(hex, f) {
+    const n = parseInt(hex.slice(1), 16);
+    const ch = [n >> 16, (n >> 8) & 255, n & 255].map((c) =>
+      Math.round(Math.max(0, Math.min(255, f >= 1 ? c + (255 - c) * (f - 1) : c * f))));
+    return `rgb(${ch.join(",")})`;
+  }
+
+  // 底面の中心を (x, y, z) に置く直方体。y は地面からの高さ（上が正）
+  function box(parent, { x = 0, y = 0, z = 0, w, h, d, c, top, side }) {
+    const g = document.createElement("div");
+    g.className = "bx";
+    g.style.transform = `translate3d(${x}px, ${-(y + h / 2)}px, ${z}px)`;
+    const faces = [
+      [w, h, `translateZ(${d / 2}px)`, side || shade(c, 0.92)],
+      [w, h, `rotateY(180deg) translateZ(${d / 2}px)`, side || shade(c, 0.72)],
+      [d, h, `rotateY(90deg) translateZ(${w / 2}px)`, side || shade(c, 0.8)],
+      [d, h, `rotateY(-90deg) translateZ(${w / 2}px)`, side || shade(c, 0.86)],
+      [w, d, `rotateX(90deg) translateZ(${h / 2}px)`, top || shade(c, 1.12)],
+    ];
+    for (const [fw, fh, t, bg] of faces) {
+      const f = document.createElement("div");
+      f.className = "face";
+      f.style.cssText = `width:${fw}px;height:${fh}px;left:${-fw / 2}px;top:${-fh / 2}px;transform:${t};background:${bg}`;
+      g.append(f);
+    }
+    parent.append(g);
+  }
+
+  function buildWorld(scene, scale) {
+    const world = document.createElement("div");
+    world.className = "world";
+    scene.prepend(world);
+
+    // 地面
+    box(world, { y: -22, w: 230, h: 22, d: 230, c: "#8ed456", top: "#8ed456",
+      side: "linear-gradient(#79c447 0 32%, #a86f3d 32%, #8f5b30)" });
+
+    // 木
+    const T = { x: 62, z: -60 };
+    box(world, { ...T, w: 14, h: 42, d: 14, c: "#8b5a2b" });
+    box(world, { ...T, y: 34, w: 58, h: 52, d: 58, c: "#5fb83e" });
+    box(world, { ...T, y: 86, w: 36, h: 18, d: 36, c: "#6cc24a" });
+
+    // ベンチ
+    const B = { x: -58, z: -58 };
+    for (const [lx, lz] of [[-26, -6], [26, -6], [-26, 6], [26, 6]])
+      box(world, { x: B.x + lx, z: B.z + lz, w: 5, h: 15, d: 5, c: "#3a3f4b" });
+    box(world, { ...B, y: 15, w: 68, h: 6, d: 22, c: "#c98a4b" });
+    box(world, { x: B.x, z: B.z - 10, y: 21, w: 68, h: 20, d: 5, c: "#c98a4b" });
+
+    // 男の子
+    const K = { x: 42, z: 38 };
+    box(world, { x: K.x - 5, z: K.z, w: 8, h: 18, d: 8, c: "#f6c9a0" });
+    box(world, { x: K.x + 5, z: K.z, w: 8, h: 18, d: 8, c: "#f6c9a0" });
+    box(world, { ...K, y: 12, w: 22, h: 10, d: 12, c: "#24346b" });
+    box(world, { ...K, y: 22, w: 22, h: 22, d: 12, c: "#ffd43b" });
+    box(world, { x: K.x - 14, z: K.z, y: 26, w: 6, h: 18, d: 6, c: "#ffd43b" });
+    box(world, { x: K.x + 14, z: K.z, y: 26, w: 6, h: 18, d: 6, c: "#ffd43b" });
+    box(world, { ...K, y: 44, w: 22, h: 20, d: 20, c: "#f6c9a0" });
+    box(world, { ...K, y: 62, w: 24, h: 8, d: 22, c: "#2b2b33" });
+
+    // 犬
+    const D = { x: -50, z: 44 };
+    for (const [lx, lz] of [[-11, -5], [11, -5], [-11, 5], [11, 5]])
+      box(world, { x: D.x + lx, z: D.z + lz, w: 6, h: 10, d: 6, c: "#d69a5b" });
+    box(world, { ...D, y: 10, w: 34, h: 15, d: 16, c: "#d69a5b" });
+    box(world, { x: D.x + 19, z: D.z, y: 16, w: 4, h: 14, d: 14, c: "#e23b3b" });
+    box(world, { x: D.x + 26, z: D.z, y: 18, w: 16, h: 16, d: 16, c: "#d69a5b" });
+    box(world, { x: D.x + 36, z: D.z, y: 19, w: 6, h: 7, d: 9, c: "#f1d1a8" });
+    box(world, { x: D.x + 26, z: D.z - 9, y: 22, w: 8, h: 12, d: 3, c: "#8a5a2e" });
+    box(world, { x: D.x + 26, z: D.z + 9, y: 22, w: 8, h: 12, d: 3, c: "#8a5a2e" });
+    box(world, { x: D.x - 20, z: D.z, y: 20, w: 5, h: 12, d: 5, c: "#d69a5b" });
+
+    // 草
+    for (const [gx, gz] of [[-90, -10], [-20, -85], [95, 20], [10, 90], [-95, 80], [85, -95], [-30, 10], [100, 95]]) {
+      box(world, { x: gx, z: gz, w: 3, h: 9, d: 3, c: "#4fa52f" });
+      box(world, { x: gx + 4, z: gz + 2, w: 3, h: 6, d: 3, c: "#4fa52f" });
+    }
+
+    // ボール（いつも正面を向く円）
+    const ballWrap = document.createElement("div");
+    ballWrap.className = "bx";
+    const ball = document.createElement("div");
+    ball.className = "ball";
+    ballWrap.append(ball);
+    world.append(ballWrap);
+
+    return {
+      set(angle, tilt) {
+        world.style.transform = `scale3d(${scale},${scale},${scale}) rotateX(${-tilt}deg) rotateY(${angle}deg)`;
+        ballWrap.style.transform = `translate3d(-2px, -11px, 46px) rotateY(${-angle}deg) rotateX(${tilt}deg)`;
+      },
+    };
+  }
+
+  // 回転中と録音中で同じジオラマを使い、位置も大きさも変えない
+  const world3d = buildWorld($("#scene"), 1.15);
+
+  // 録音中は指（マウス）で回せる。横は何周でも、縦は TILT_MIN〜TILT_MAX の間だけ。離すとその角度で止まる
+  const isTurned = () => Math.abs(state.angle) > 0.5 || Math.abs(state.tilt - TILT) > 0.5;
+  function resetView() {
+    if (!isTurned()) return;
+    state.angle = ((state.angle % 360) + 540) % 360 - 180; // 近い向きから戻す
+    state.resetting = true;
+  }
+  (() => {
+    const el = $("#scene");
+    let last = null, downAt = null, lastTap = 0;
+    el.addEventListener("pointerdown", (e) => {
+      if (state.view !== "rec" || e.target.closest("#btn-reset")) return;
+      last = { x: e.clientX, y: e.clientY };
+      downAt = { ...last, t: performance.now() };
+      state.resetting = false;
+      el.setPointerCapture(e.pointerId);
+      el.classList.add("dragging");
+    });
+    el.addEventListener("pointermove", (e) => {
+      if (last === null) return;
+      state.angle += (e.clientX - last.x) * 0.6 / fitScale;
+      state.tilt = Math.min(TILT_MAX, Math.max(TILT_MIN, state.tilt + (e.clientY - last.y) * 0.4 / fitScale));
+      last = { x: e.clientX, y: e.clientY };
+      if (isTurned()) $("#drag-hint").classList.add("used");
+    });
+    const end = (e) => {
+      if (last === null) return;
+      last = null;
+      el.classList.remove("dragging");
+      // ほとんど動かさずに 2 回続けて叩いたら、初期の向きに戻す
+      const moved = Math.hypot(e.clientX - downAt.x, e.clientY - downAt.y);
+      const now = performance.now();
+      if (e.type === "pointerup" && moved < 8 && now - downAt.t < 300) {
+        if (now - lastTap < 350) { resetView(); lastTap = 0; } else lastTap = now;
+      }
+    };
+    el.addEventListener("pointerup", end);
+    el.addEventListener("pointercancel", end);
+    $("#btn-reset").addEventListener("click", resetView);
+  })();
+
+  // ---------- 音量メーター（仮の動き） ----------
+  const BARS = 19;
+  const bars = Array.from({ length: BARS }, () => {
+    const i = document.createElement("i");
+    $("#meter").append(i);
+    return i;
+  });
+  const levels = new Array(BARS).fill(0.05);
+  let talking = true, talkUntil = 0, lastPush = 0;
+  function meterTick(now) {
+    if (now - lastPush < 70) return;
+    lastPush = now;
+    if (now > talkUntil) {
+      talking = !talking;
+      talkUntil = now + (talking ? rand(900, 2600) : rand(250, 900));
+    }
+    const target = talking ? rand(0.3, 1) : rand(0.03, 0.1);
+    const prev = levels[levels.length - 1];
+    levels.push(prev + (target - prev) * 0.6);
+    levels.shift();
+    levels.forEach((v, i) => { bars[i].style.height = `${6 + v * 32}px`; });
+  }
+
+  // ---------- 待機の参加者 ----------
+  function makeOthers() {
+    state.others = OTHERS.map((p, i) => {
+      const recEnd = INTRO_MS + rand(7000, REC_MS);
+      return { ...p, recEnd, gradeEnd: recEnd + rand(2500, 6000), offline: state.offline && i === OTHERS.length - 1 };
+    });
+  }
+
+  function statusOf(p, r) {
+    if (p.offline && r > INTRO_MS + 6000) return "offline";
+    if (r < p.recEnd) return "talking";
+    if (r < p.gradeEnd) return "grading";
+    return "done";
+  }
+
+  const STATE_VIEW = {
+    talking: ['<span class="ico talking"><svg width="12" height="16" viewBox="0 0 12 16"><rect x="3" y="0" width="6" height="10" rx="3" fill="#5b5be6"/><path d="M1 7a5 5 0 0 0 10 0M6 12v3" fill="none" stroke="#5b5be6" stroke-width="2" stroke-linecap="round"/></svg></span>', "話している"],
+    grading: ['<span class="spin"></span>', "採点中…"],
+    done: ['<span class="ico done"><svg width="14" height="12" viewBox="0 0 14 12"><path d="M2 6.5 5.5 10 12 2" fill="none" stroke="#fff" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></svg></span>', "完了"],
+    offline: ['<span class="ico offline"><svg width="14" height="14" viewBox="0 0 14 14"><path d="M3 3l8 8M11 3l-8 8" stroke="#9a9db3" stroke-width="2.4" stroke-linecap="round"/></svg></span>', "切断中"],
+  };
+
+  let lastListKey = "";
+  function renderWait(now) {
+    const r = now - state.roundStart;
+    const selfStatus = r < state.selfStop + state.selfGradeMs ? "grading" : "done";
+    const rows = [{ ...SELF, me: true, st: selfStatus }, ...state.others.map((p) => ({ ...p, st: statusOf(p, r) }))];
+    const remaining = rows.filter((p) => p.st !== "done").length;
+
+    const key = rows.map((p) => p.st).join();
+    if (key !== lastListKey) {
+      lastListKey = key;
+      $("#plist").innerHTML = rows.map((p) => `
+        <div class="prow">
+          <div class="avatar" style="background:${p.color}">${p.name[0]}</div>
+          <div class="pname">${p.name}${p.me ? '<span class="you">あなた</span>' : ""}</div>
+          <div class="pstate ${p.st}">${STATE_VIEW[p.st][0]}${STATE_VIEW[p.st][1]}</div>
+        </div>`).join("");
+    }
+
+    // 締め切りのボタン: 待機に入ってから 2 秒は押せない
+    const lockP = Math.min(1, (now - state.waitEnter) / CLOSE_LOCK_MS);
+    $("#close-fill").style.width = lockP < 1 ? `${lockP * 100}%` : "0";
+    $("#btn-close").disabled = lockP < 1;
+
+    if (remaining === 0 && !state.finished) finish("全員の採点がそろった");
+    return remaining;
+  }
+
+  // ---------- 画面の切り替え ----------
+  function show(view) {
+    state.view = view;
+    // 回転中と録音中は同じ画面（#v-play）で、段階だけ変える
+    $("#v-play").classList.toggle("active", view !== "wait");
+    $("#v-wait").classList.toggle("active", view === "wait");
+    $("#v-play").dataset.phase = view === "rec" ? "rec" : "intro";
+    const info = INFO[view];
+    $("#info").innerHTML = `
+      <h2>${info.title} <span class="id">${info.id}.md</span></h2>
+      <div>${info.role}</div>
+      <h3>レビューで見てほしいこと</h3>
+      <ul>${info.check.map((c) => `<li>${c}</li>`).join("")}</ul>`;
+  }
+
+  function reset() {
+    state.running = false;
+    state.finished = false;
+    state.angle = 0;
+    state.tilt = TILT;
+    state.resetting = false;
+    closeSheet();
+    $("#count").textContent = "";
+    $("#count").classList.remove("pop");
+    $("#paused-note").style.visibility = "visible";
+    $("#tb-start").disabled = false;
+    show("intro");
+  }
+
+  function startRound(offsetMs = 0) {
+    state.running = true;
+    state.finished = false;
+    state.roundStart = performance.now() - offsetMs;
+    state.selfStop = Infinity;
+    makeOthers();
+    lastCount = null;
+    $("#paused-note").style.visibility = "hidden";
+    $("#tb-start").disabled = true;
+    $("#drag-hint").classList.remove("used");
+  }
+
+  function stopRecording(reason) {
+    if (state.view !== "rec") return;
+    const r = performance.now() - state.roundStart;
+    state.selfStop = r;
+    state.selfGradeMs = rand(2500, 4500);
+    state.waitEnter = performance.now();
+    lastListKey = "";
+    log(reason);
+    show("wait");
+  }
+
+  function finish(reason) {
+    state.finished = true;
+    closeSheet();
+    log(`${reason} → 結果発表（#10）へ。モックは最初に戻る`);
+    setTimeout(reset, 900);
+  }
+
+  // ---------- 締め切り ----------
+  function closeSheet() { $("#sheet").classList.remove("open"); }
+  $("#btn-close").addEventListener("click", () => {
+    const remaining = renderWait(performance.now());
+    if (state.finished) return;
+    $("#sheet-msg").textContent = `まだ ${remaining} 人が完了していません。`;
+    $("#sheet").classList.add("open");
+  });
+  $("#btn-close-yes").addEventListener("click", () => finish("ホストが締め切った"));
+  $("#btn-close-no").addEventListener("click", closeSheet);
+
+  $("#btn-done").addEventListener("click", () => stopRecording("「話し終えた」で録音を止めた"));
+
+  // ---------- 操作盤 ----------
+  $("#tb-start").addEventListener("click", () => { startRound(); log("ホストがスタートした"); });
+  $("#tb-reset").addEventListener("click", () => { reset(); log("最初に戻した"); });
+  const roleBtns = document.querySelectorAll("[data-role]");
+  for (const b of roleBtns) {
+    b.addEventListener("click", () => {
+      state.host = b.dataset.role === "host";
+      for (const x of roleBtns) x.setAttribute("aria-pressed", String(x === b));
+      $("#host-area").style.display = state.host ? "" : "none";
+      if (!state.host) closeSheet();
+    });
+  }
+  for (const b of document.querySelectorAll("[data-jump]")) {
+    b.addEventListener("click", () => {
+      const to = b.dataset.jump;
+      reset();
+      if (to === "rec") { startRound(INTRO_MS); show("rec"); }
+      if (to === "wait") { startRound(INTRO_MS + 9000); show("rec"); stopRecording("（待機の画面へ飛んだ）"); }
+    });
+  }
+  $("#tb-offline").addEventListener("change", (e) => {
+    state.offline = e.target.checked;
+    log(state.offline ? "次のラウンドから、けんが途中で切断する" : "切断中の人を入れない");
+  });
+
+  // ---------- 毎フレームの更新 ----------
+  let lastCount = null;
+  function tick(now) {
+    if (state.running && !state.finished) {
+      const r = now - state.roundStart;
+      if (state.view === "intro") {
+        const p = Math.min(1, r / INTRO_MS);
+        state.angle = p * 360;
+        const n = 3 - Math.floor(r / 1000);
+        if (n !== lastCount && n >= 1) {
+          lastCount = n;
+          const c = $("#count");
+          c.textContent = n;
+          c.classList.remove("pop");
+          void c.offsetWidth;
+          c.classList.add("pop");
+        }
+        if (r >= INTRO_MS) {
+          state.angle = 0;
+          $("#count").textContent = "";
+          show("rec");
+          log("1 周し終え、録音が始まった");
+        }
+      } else if (state.view === "rec") {
+        const left = Math.max(0, INTRO_MS + REC_MS - r);
+        $("#remain-sec").textContent = Math.ceil(left / 1000);
+        $("#tbar").style.width = `${(left / REC_MS) * 100}%`;
+        meterTick(now);
+        if (left <= 0) stopRecording("20 秒たって録音が止まった");
+      } else if (state.view === "wait") {
+        renderWait(now);
+      }
+    }
+    if (state.resetting) {
+      state.angle *= 0.8;
+      state.tilt += (TILT - state.tilt) * 0.2;
+      if (!isTurned()) { state.angle = 0; state.tilt = TILT; state.resetting = false; }
+    }
+    $("#btn-reset").classList.toggle("shown", state.view === "rec" && isTurned() && !state.resetting);
+    world3d.set(state.angle, state.tilt);
+    requestAnimationFrame(tick);
+  }
+
+  // ---------- 端末の枠を画面に収める ----------
+  let fitScale = 1;
+  function fit() {
+    const availW = Math.min(window.innerWidth - 32, 410);
+    const availH = window.innerHeight - $(".toolbar").offsetHeight - 40;
+    fitScale = Math.min(1, availW / 410, Math.max(0.55, availH / 864));
+    $("#phone").style.transform = `scale(${fitScale})`;
+    $("#phone-fit").style.width = `${410 * fitScale}px`;
+    $("#phone-fit").style.height = `${864 * fitScale}px`;
+  }
+  window.addEventListener("resize", fit);
+
+  fit();
+  reset();
+  // play.html#rec・#wait で、その画面から始める
+  const hashJump = document.querySelector(`[data-jump="${location.hash.slice(1)}"]`);
+  if (hashJump) hashJump.click();
+  requestAnimationFrame(tick);
+})();
+</script>
+</body>
+</html>

@@ -17,6 +17,7 @@ python3 scripts/ui-spec/build.py --pdf    # 同名の .pdf も（Google Chrome �
 - `screens/<id>.md` — 画面ごとの元データ。TOML の frontmatter（`+++ … +++`）に役割・入り口・出口・操作・データ・備考・画像のファイル名、本文の `## 課題` `## 改善案` `## 決定` に議論を書く（空なら「（未記入）」と出る）
 - `images/<image>` — 固まった仮の画面。commit する
 - `drafts/<image>` — 仮の画面の下書き。gitignore 済みで、`images/` に無いときに使う
+- `mocks/<まとまり>.html` — 操作できる HTML のモック（自己完結。ブラウザで開くだけで見られる）。例: `mocks/play.html`（プレイの 3 画面、#9）
 
 仮の画面は Codex の image gen で作る。固まったら `drafts/` から `images/` に移して commit する。
 
