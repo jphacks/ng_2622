@@ -1,0 +1,1118 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>部屋の画面モック</title>
+<!--
+  部屋の画面（ホーム・部屋に入る・待合）の HTML モック。issue #8。
+  元データ: docs/design/ui/screens/{home,join,lobby}.md、仮の画面: docs/design/ui/images/{1-home,2-join,3-lobby}.png
+  バックエンドとはつながず、仮のデータで動く。部屋のコード 4821 だけが「ある部屋」として入れる。
+-->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=M+PLUS+Rounded+1c:wght@500;700;800&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --indigo: #4f52e6;
+    --indigo-dark: #3b3ec4;
+    --indigo-soft: #eceefe;
+    --yellow: #ffd23f;
+    --yellow-soft: #fff1b8;
+    --ink: #161a3a;
+    --sub: #6b7090;
+    --line: #e2e4f0;
+    --bg: #f6f7fd;
+    --card: #fff;
+    --ok: #3fbf6a;
+    --warn: #f0a020;
+    --error: #e5484d;
+    --round: "M PLUS Rounded 1c", "Hiragino Maru Gothic ProN", "Hiragino Sans", "Yu Gothic UI", sans-serif;
+  }
+  * { box-sizing: border-box; }
+  /* display を指定した要素でも hidden 属性で隠れるようにする */
+  .phone [hidden] { display: none; }
+  body {
+    margin: 0;
+    min-height: 100vh;
+    background: #dfe2f3;
+    color: var(--ink);
+    font-family: var(--round);
+    display: flex;
+    flex-wrap: wrap;
+    gap: 32px;
+    justify-content: center;
+    align-items: flex-start;
+    padding: 32px 16px;
+  }
+  button { font: inherit; color: inherit; cursor: pointer; border: 0; background: none; }
+  button:disabled { cursor: not-allowed; }
+
+  /* ---------- スマホの枠 ---------- */
+  .phone {
+    width: 390px;
+    max-width: 100%;
+    height: 844px;
+    background: var(--bg);
+    border-radius: 48px;
+    box-shadow: 0 0 0 10px #161a3a, 0 30px 60px rgba(22, 26, 58, .35);
+    position: relative;
+    overflow: hidden;
+    flex-shrink: 0;
+  }
+  .status {
+    height: 50px;
+    padding: 18px 30px 0;
+    display: flex;
+    justify-content: space-between;
+    font-weight: 700;
+    font-size: 15px;
+  }
+  .home-bar {
+    position: absolute;
+    bottom: 8px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 134px;
+    height: 5px;
+    border-radius: 3px;
+    background: var(--ink);
+  }
+  .screen {
+    position: absolute;
+    inset: 50px 0 0;
+    padding: 8px 20px 40px;
+    display: none;
+    flex-direction: column;
+    overflow-y: auto;
+  }
+  .screen.active { display: flex; animation: slide-in .25s ease-out; }
+  .screen.active.back { animation-name: slide-back; }
+  @keyframes slide-in { from { transform: translateX(40px); opacity: 0; } }
+  @keyframes slide-back { from { transform: translateX(-40px); opacity: 0; } }
+
+  /* ---------- 共通の部品 ---------- */
+  .btn {
+    width: 100%;
+    height: 64px;
+    border-radius: 20px;
+    font-size: 20px;
+    font-weight: 800;
+    transition: transform .1s, opacity .2s;
+  }
+  .btn:active:not(:disabled) { transform: scale(.98); }
+  .btn-primary { background: var(--indigo); color: #fff; box-shadow: 0 8px 20px rgba(79, 82, 230, .3); }
+  .btn-outline { background: #fff; color: var(--indigo); border: 2px solid var(--indigo); }
+  .btn:disabled { opacity: .4; box-shadow: none; }
+  .header {
+    display: grid;
+    grid-template-columns: 48px 1fr 48px;
+    align-items: center;
+    height: 56px;
+    margin-bottom: 8px;
+  }
+  .header h1 { margin: 0; text-align: center; font-size: 22px; font-weight: 800; }
+  .icon-btn {
+    width: 44px;
+    height: 44px;
+    border-radius: 14px;
+    background: var(--indigo-soft);
+    color: var(--indigo);
+    display: grid;
+    place-items: center;
+  }
+  .card {
+    background: var(--card);
+    border-radius: 24px;
+    padding: 18px 20px;
+    box-shadow: 0 4px 16px rgba(22, 26, 58, .06);
+    margin-bottom: 14px;
+  }
+  .card-title { display: flex; align-items: center; gap: 8px; font-weight: 800; font-size: 17px; margin: 0 0 10px; }
+  .muted { color: var(--sub); font-weight: 500; }
+  .avatar {
+    width: 44px;
+    height: 44px;
+    border-radius: 50%;
+    display: grid;
+    place-items: center;
+    font-size: 19px;
+    font-weight: 800;
+    color: #fff;
+    flex-shrink: 0;
+  }
+  .toast {
+    position: absolute;
+    left: 20px;
+    right: 20px;
+    bottom: 40px;
+    padding: 14px 18px;
+    border-radius: 16px;
+    background: var(--ink);
+    color: #fff;
+    font-size: 15px;
+    text-align: center;
+    opacity: 0;
+    transform: translateY(10px);
+    transition: .25s;
+    pointer-events: none;
+    z-index: 20;
+  }
+  .toast.show { opacity: 1; transform: none; }
+
+  /* ---------- 1 ホーム ---------- */
+  #home { padding-top: 0; }
+  /* 回るジオラマ。作品の核（同じ 3D の場面を見る）を開いた瞬間に見せる */
+  .diorama {
+    height: 300px;
+    margin: 0 -20px;
+    position: relative;
+    perspective: 900px;
+    background: radial-gradient(ellipse at 50% 60%, #fff 0%, #eef0fd 55%, var(--bg) 75%);
+    flex-shrink: 0;
+  }
+  .stage {
+    position: absolute;
+    left: 50%;
+    top: 58%;
+    width: 210px;
+    height: 210px;
+    margin: -105px 0 0 -105px;
+    border-radius: 34px;
+    background: linear-gradient(135deg, #9fe07f, #6cc456);
+    transform-style: preserve-3d;
+    animation: spin 20s linear infinite;
+  }
+  .stage::before, .stage::after { content: ""; position: absolute; inset: 0; border-radius: 34px; }
+  .stage::before { background: #4f9c3c; transform: translateZ(-16px); }
+  .stage::after { background: rgba(22, 26, 58, .18); transform: translateZ(-60px) scale(1.05); filter: blur(10px); }
+  @keyframes spin {
+    from { transform: rotateX(62deg) rotateZ(0); }
+    to { transform: rotateX(62deg) rotateZ(360deg); }
+  }
+  .path { position: absolute; left: 88px; top: -1px; width: 34px; height: 212px; background: #ecdcb6; border-radius: 4px; transform: translateZ(1px); }
+  .prop { position: absolute; width: 0; height: 0; transform-style: preserve-3d; }
+  /* 部品は板のように立て、ジオラマと逆に回してずっと正面を向かせる */
+  .prop span {
+    position: absolute;
+    left: 0;
+    bottom: 0;
+    display: block;
+    line-height: 1;
+    transform-origin: 50% 100%;
+    animation: face 20s linear infinite;
+  }
+  @keyframes face {
+    from { transform: translateX(-50%) rotateZ(0) rotateX(-90deg); }
+    to { transform: translateX(-50%) rotateZ(-360deg) rotateX(-90deg); }
+  }
+  .bubble {
+    position: absolute;
+    max-width: 210px;
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+    opacity: 0;
+    transform: translateY(8px) scale(.95);
+    transition: opacity .35s, transform .35s;
+    z-index: 2;
+  }
+  .bubble.show { opacity: 1; transform: none; }
+  .bubble .avatar { width: 30px; height: 30px; font-size: 14px; }
+  .bubble .say {
+    margin: 0;
+    padding: 8px 12px;
+    border-radius: 14px 14px 14px 4px;
+    background: #fff;
+    box-shadow: 0 6px 16px rgba(22, 26, 58, .12);
+    font-family: "Nunito", var(--round);
+    font-size: 14px;
+    font-weight: 700;
+    line-height: 1.35;
+  }
+  .bubble.left { left: 14px; top: 26px; }
+  .bubble.right { right: 14px; top: 206px; flex-direction: row-reverse; }
+  .bubble.right .say { border-radius: 14px 14px 4px 14px; }
+  .logo {
+    text-align: center;
+    font-size: 40px;
+    font-weight: 800;
+    color: var(--indigo);
+    letter-spacing: .01em;
+    margin: -4px 0 2px;
+  }
+  .tagline { text-align: center; color: var(--sub); font-size: 15px; font-weight: 700; margin: 0 0 10px; }
+  .steps { display: flex; justify-content: center; align-items: center; gap: 6px; margin-bottom: 18px; font-size: 13px; font-weight: 800; }
+  .steps span { padding: 5px 10px; border-radius: 999px; background: var(--indigo-soft); color: var(--indigo); }
+  .steps i { color: #b5b8d6; font-style: normal; }
+  .player-card { padding: 14px 16px 12px; margin-bottom: 14px; }
+  .field-label { display: block; font-weight: 800; font-size: 14px; color: var(--sub); margin-bottom: 6px; }
+  .name-row { display: flex; gap: 10px; align-items: center; }
+  .name-row .avatar { width: 52px; height: 52px; font-size: 22px; transition: background .2s; }
+  .colors { display: flex; gap: 8px; margin-top: 10px; }
+  .colors button { width: 26px; height: 26px; border-radius: 50%; border: 3px solid #fff; box-shadow: 0 0 0 1px var(--line); }
+  .colors button.on { box-shadow: 0 0 0 2px var(--ink); }
+  .text-input {
+    width: 100%;
+    height: 60px;
+    border: 2px solid var(--line);
+    border-radius: 18px;
+    padding: 0 20px;
+    font: inherit;
+    font-size: 20px;
+    font-weight: 700;
+    color: var(--ink);
+    background: #fff;
+    outline: none;
+  }
+  .text-input:focus { border-color: var(--indigo); }
+  .name-row .text-input { height: 52px; font-size: 19px; }
+  .stack { display: flex; flex-direction: column; gap: 12px; position: relative; z-index: 1; }
+  .stack .btn { height: 58px; }
+
+  /* ---------- 小さなジオラマ（待合のシーンの確認、スタート） ---------- */
+  .mini {
+    position: absolute;
+    left: 50%;
+    top: 56%;
+    width: var(--s);
+    height: var(--s);
+    margin: calc(var(--s) / -2) 0 0 calc(var(--s) / -2);
+    border-radius: calc(var(--s) * .16);
+    background: var(--top);
+    transform-style: preserve-3d;
+    animation: spin 20s linear infinite;
+  }
+  .mini::before, .mini::after { content: ""; position: absolute; inset: 0; border-radius: inherit; }
+  .mini::before { background: var(--side); transform: translateZ(calc(var(--s) * -.075)); }
+  .mini::after { background: rgba(22, 26, 58, .18); transform: translateZ(calc(var(--s) * -.3)) scale(1.05); filter: blur(10px); }
+  .mini-strip { position: absolute; left: 42%; top: 0; width: 16%; height: 100%; border-radius: 3px; transform: translateZ(1px); }
+
+  /* ---------- 2 部屋に入る ---------- */
+  .me-chip {
+    align-self: center;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 5px 14px 5px 5px;
+    border-radius: 999px;
+    background: #fff;
+    box-shadow: 0 4px 12px rgba(22, 26, 58, .06);
+    font-weight: 800;
+    font-size: 14px;
+  }
+  .me-chip .avatar { width: 30px; height: 30px; font-size: 14px; }
+  .me-chip span { color: var(--sub); font-weight: 700; }
+  .code-lead { text-align: center; font-size: 17px; font-weight: 800; margin: 26px 0 14px; }
+  .code-boxes { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; }
+  .code-box {
+    height: 84px;
+    background: #fff;
+    border: 2px solid var(--line);
+    border-radius: 20px;
+    display: grid;
+    place-items: center;
+    font-size: 44px;
+    font-weight: 800;
+    transition: border-color .15s, background .15s, transform .15s;
+  }
+  .code-box.filled { animation: pop .2s ease-out; }
+  .code-box.cursor { border-color: var(--indigo); box-shadow: 0 0 0 4px var(--indigo-soft); }
+  .code-boxes.error .code-box { border-color: var(--error); animation: shake .35s; }
+  .code-boxes.ok .code-box { border-color: var(--ok); background: #eafaf0; color: #1f8a46; }
+  @keyframes shake { 25% { transform: translateX(-5px); } 75% { transform: translateX(5px); } }
+  @keyframes pop { from { transform: scale(.85); opacity: 0; } }
+  .join-msg { text-align: center; font-size: 14px; font-weight: 700; min-height: 22px; margin: 10px 0 12px; color: var(--error); }
+  .join-msg.ok { color: #1f8a46; }
+  .btn-qr { display: flex; align-items: center; justify-content: center; gap: 10px; height: 52px; font-size: 17px; margin-bottom: 14px; }
+  .keypad { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+  .keypad button {
+    height: 56px;
+    border-radius: 16px;
+    background: #fff;
+    font-size: 26px;
+    font-weight: 800;
+    box-shadow: 0 2px 0 #dfe1ef;
+    transition: transform .08s, background .1s;
+  }
+  .keypad button:active { transform: translateY(2px); box-shadow: none; background: var(--indigo-soft); }
+  .keypad .key-sub { background: transparent; box-shadow: none; color: var(--sub); font-size: 22px; }
+
+  .scanner {
+    position: absolute;
+    inset: 0;
+    background: #0d0f24;
+    color: #fff;
+    display: none;
+    flex-direction: column;
+    align-items: center;
+    padding: 70px 24px;
+    z-index: 10;
+  }
+  .scanner.show { display: flex; }
+  .scanner h2 { font-size: 20px; margin: 30px 0 8px; }
+  .scan-frame {
+    width: 250px;
+    height: 250px;
+    margin-top: 60px;
+    border-radius: 28px;
+    position: relative;
+    background: radial-gradient(circle at 50% 50%, #2a2e55, #15183a);
+    overflow: hidden;
+    box-shadow: 0 0 0 4px var(--yellow);
+  }
+  .scan-frame svg { position: absolute; inset: 35px; width: 180px; height: 180px; opacity: .55; }
+  .scan-line {
+    position: absolute;
+    left: 10px;
+    right: 10px;
+    height: 3px;
+    background: var(--yellow);
+    box-shadow: 0 0 14px var(--yellow);
+    animation: scan 1.6s ease-in-out infinite alternate;
+  }
+  @keyframes scan { from { top: 12px; } to { top: 235px; } }
+  .scanner .close { margin-top: auto; color: #fff; font-size: 17px; font-weight: 700; padding: 12px 30px; border-radius: 16px; background: rgba(255, 255, 255, .15); }
+
+  /* ---------- 3 待合 ---------- */
+  .leave { font-size: 14px; font-weight: 700; color: var(--sub); }
+  /* 部屋のコードは切り取り線つきのチケットにする（招待状のイメージ） */
+  .ticket { display: flex; align-items: stretch; padding: 0; overflow: visible; position: relative; }
+  .ticket-main { flex: 1; padding: 14px 4px 14px 20px; }
+  .ticket-label { font-size: 13px; color: var(--sub); font-weight: 800; }
+  .room-code { font-size: 52px; font-weight: 800; color: var(--indigo); line-height: 1.05; letter-spacing: .06em; }
+  .ticket-hint { font-size: 12px; color: var(--sub); font-weight: 700; }
+  .ticket-qr { padding: 12px 14px; border-left: 2px dashed var(--line); position: relative; }
+  .ticket-qr::before, .ticket-qr::after {
+    content: "";
+    position: absolute;
+    left: -11px;
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    background: var(--bg);
+  }
+  .ticket-qr::before { top: -10px; }
+  .ticket-qr::after { bottom: -10px; }
+  .qr-box { display: block; width: 92px; height: 92px; }
+
+  .seats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px 6px; }
+  .seat { text-align: center; font-size: 13px; font-weight: 800; min-width: 0; }
+  .seat.new { animation: pop .45s cubic-bezier(.3, 1.6, .5, 1); }
+  .seat .avatar { width: 52px; height: 52px; margin: 0 auto 4px; font-size: 22px; position: relative; }
+  .seat .crown { position: absolute; top: -13px; left: 50%; transform: translateX(-50%) rotate(-10deg); font-size: 17px; }
+  .seat .badge { position: absolute; right: -1px; bottom: -1px; width: 14px; height: 14px; border-radius: 50%; border: 2px solid #fff; background: var(--ok); }
+  .seat.off .avatar { filter: grayscale(1); opacity: .5; }
+  .seat.off .badge { background: var(--warn); }
+  .seat .nm { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .seat .sub { font-size: 11px; color: var(--sub); }
+  .seat .sub.you { color: var(--indigo); }
+  .seat.empty .avatar { background: transparent; border: 2px dashed #c9cce3; color: #c9cce3; font-size: 18px; }
+  .seat.empty .nm { color: #b5b8d6; font-weight: 700; }
+
+  .scene-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
+  .scene-head .card-title { margin: 0; }
+  .btn-random {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 7px 14px;
+    border-radius: 999px;
+    background: var(--yellow-soft);
+    font-weight: 800;
+    font-size: 14px;
+  }
+  .preview {
+    height: 150px;
+    border-radius: 18px;
+    position: relative;
+    overflow: hidden;
+    perspective: 700px;
+    background: radial-gradient(ellipse at 50% 65%, #fff 0%, #eef0fd 70%);
+  }
+  .preview.pop .mini { animation: spin 20s linear infinite, rise .5s cubic-bezier(.3, 1.5, .5, 1); }
+  @keyframes rise { from { opacity: 0; } }
+  .preview-empty {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    border: 2px dashed #d3d6ea;
+    border-radius: 18px;
+    color: var(--sub);
+    font-size: 14px;
+    font-weight: 700;
+    text-align: center;
+  }
+  .preview-name {
+    position: absolute;
+    left: 10px;
+    bottom: 10px;
+    padding: 4px 12px;
+    border-radius: 999px;
+    background: rgba(255, 255, 255, .9);
+    font-weight: 800;
+    font-size: 15px;
+  }
+  .preview-note { position: absolute; right: 12px; bottom: 13px; font-size: 11px; color: var(--sub); font-weight: 700; }
+  .scene-chips { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-top: 10px; }
+  .chip {
+    height: 42px;
+    border-radius: 14px;
+    border: 2px solid var(--line);
+    background: #fff;
+    font-weight: 800;
+    font-size: 15px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+    transition: transform .12s;
+  }
+  .chip.on { border-color: var(--indigo); background: var(--indigo-soft); color: var(--indigo); }
+  .chip.flash { transform: scale(1.06); }
+  .guest-wait { text-align: center; padding-top: 10px; color: var(--sub); font-weight: 700; font-size: 14px; }
+  .pulse { display: inline-flex; gap: 6px; margin-top: 6px; }
+  .pulse i { width: 8px; height: 8px; border-radius: 50%; background: var(--indigo); animation: blink 1.2s infinite; }
+  .pulse i:nth-child(2) { animation-delay: .2s; }
+  .pulse i:nth-child(3) { animation-delay: .4s; }
+  @keyframes blink { 0%, 80%, 100% { opacity: .2; } 40% { opacity: 1; } }
+  .start-hint { text-align: center; font-size: 13px; color: var(--sub); font-weight: 700; min-height: 18px; margin: 2px 0 8px; }
+  .btn-start { display: flex; align-items: center; justify-content: center; gap: 10px; flex-shrink: 0; height: 60px; }
+  .btn-start:not(:disabled) { animation: breathe 1.6s ease-in-out infinite; }
+  @keyframes breathe { 50% { box-shadow: 0 8px 20px rgba(79, 82, 230, .3), 0 0 0 8px rgba(79, 82, 230, .15); } }
+
+  .start-overlay {
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(180deg, #4f52e6, #3b3ec4);
+    color: #fff;
+    display: none;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    z-index: 15;
+    text-align: center;
+    padding: 30px;
+  }
+  .start-overlay.show { display: flex; animation: fade .3s; }
+  @keyframes fade { from { opacity: 0; } }
+  .start-stage { width: 100%; height: 260px; position: relative; perspective: 800px; }
+  .start-overlay .big { font-size: 30px; font-weight: 800; }
+  .start-overlay button { margin-top: 18px; padding: 12px 26px; border-radius: 16px; background: rgba(255, 255, 255, .2); color: #fff; font-weight: 700; }
+
+  /* ---------- レビュー用の操作パネル ---------- */
+  .panel {
+    width: 340px;
+    max-width: 100%;
+    background: #fff;
+    border-radius: 20px;
+    padding: 20px 22px;
+    font-family: -apple-system, BlinkMacSystemFont, "Hiragino Sans", "Yu Gothic UI", "Meiryo", sans-serif;
+    font-size: 14px;
+    line-height: 1.6;
+    box-shadow: 0 10px 30px rgba(22, 26, 58, .12);
+  }
+  .panel h2 { font-size: 16px; margin: 0 0 4px; }
+  .panel h3 { font-size: 13px; color: var(--sub); margin: 18px 0 6px; }
+  .panel p { margin: 0 0 6px; color: var(--sub); }
+  .panel .row { display: flex; flex-wrap: wrap; gap: 6px; }
+  .panel button {
+    padding: 6px 12px;
+    border-radius: 10px;
+    border: 1px solid var(--line);
+    background: var(--bg);
+    font-size: 13px;
+  }
+  .panel button.on { background: var(--indigo); color: #fff; border-color: var(--indigo); }
+  .panel ul { margin: 0; padding-left: 18px; }
+  .panel li { margin-bottom: 6px; }
+  .panel code { background: var(--indigo-soft); padding: 1px 5px; border-radius: 5px; }
+</style>
+</head>
+<body>
+
+<div class="phone" id="phone">
+  <div class="status"><span>9:41</span><span>●●● ▮</span></div>
+
+  <!-- 1 ホーム -->
+  <section class="screen" id="home">
+    <!-- ジオラマ（アプリではプレイと同じ 3D シーンを RealityKit でゆっくり回す想定） -->
+    <div class="diorama" aria-hidden="true">
+      <div class="stage">
+        <div class="path"></div>
+        <div class="prop" style="left:40px;top:44px"><span style="font-size:58px">🌳</span></div>
+        <div class="prop" style="left:168px;top:56px"><span style="font-size:50px">🌳</span></div>
+        <div class="prop" style="left:160px;top:150px"><span style="font-size:30px">🪑</span></div>
+        <div class="prop" style="left:104px;top:120px"><span style="font-size:38px">🚶</span></div>
+        <div class="prop" style="left:50px;top:150px"><span style="font-size:30px">🐕</span></div>
+        <div class="prop" style="left:66px;top:186px"><span style="font-size:16px">🔴</span></div>
+        <div class="prop" style="left:186px;top:186px"><span style="font-size:26px">🌷</span></div>
+      </div>
+      <div class="bubble left" id="bubble-left"><div class="avatar"></div><p class="say"></p></div>
+      <div class="bubble right" id="bubble-right"><div class="avatar"></div><p class="say"></p></div>
+    </div>
+    <h1 class="logo">ScenEnglish</h1>
+    <p class="tagline">同じ景色を、ちがう英語で。</p>
+    <div class="steps"><span>👀 見る</span><i>›</i><span>🎙 話す</span><i>›</i><span>🏆 比べる</span></div>
+    <div class="card player-card">
+      <label class="field-label" for="name">プレイヤー</label>
+      <div class="name-row">
+        <div class="avatar" id="my-avatar">？</div>
+        <input class="text-input" id="name" maxlength="10" placeholder="名前を入れてね" autocomplete="off">
+      </div>
+      <div class="colors" id="colors"></div>
+    </div>
+    <div class="stack">
+      <button type="button" class="btn btn-primary" id="create" disabled>部屋を作る</button>
+      <button type="button" class="btn btn-outline" id="to-join" disabled>部屋に入る</button>
+    </div>
+  </section>
+
+  <!-- 2 部屋に入る -->
+  <section class="screen" id="join">
+    <div class="header">
+      <button type="button" class="icon-btn" data-back aria-label="戻る">
+        <svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>
+      </button>
+      <h1>部屋に入る</h1>
+    </div>
+    <div class="me-chip"><div class="avatar" id="join-avatar"></div><b id="join-name"></b><span>として入る</span></div>
+    <p class="code-lead">ホストの画面の 4 桁のコード</p>
+    <div class="code-boxes" id="code-boxes" aria-live="polite">
+      <div class="code-box"></div><div class="code-box"></div><div class="code-box"></div><div class="code-box"></div>
+    </div>
+    <p class="join-msg" id="join-msg"></p>
+    <button type="button" class="btn btn-outline btn-qr" id="scan">
+      <svg aria-hidden="true" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linejoin="round"><path d="M4 8a2 2 0 0 1 2-2h2l1.5-2h5L16 6h2a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2z"/><circle cx="12" cy="12.5" r="3.5"/></svg>
+      QR を読み取って入る
+    </button>
+    <div class="keypad" id="keypad">
+      <button type="button" data-key="1">1</button><button type="button" data-key="2">2</button><button type="button" data-key="3">3</button>
+      <button type="button" data-key="4">4</button><button type="button" data-key="5">5</button><button type="button" data-key="6">6</button>
+      <button type="button" data-key="7">7</button><button type="button" data-key="8">8</button><button type="button" data-key="9">9</button>
+      <span></span><button type="button" data-key="0">0</button><button type="button" class="key-sub" data-key="del" aria-label="1 文字消す">⌫</button>
+    </div>
+
+    <div class="scanner" id="scanner">
+      <h2>QR を枠に合わせてください</h2>
+      <p class="muted" style="color:#aab">ホストの待合の画面に出ている QR</p>
+      <div class="scan-frame"><svg aria-hidden="true" id="scan-qr" viewBox="0 0 29 29"></svg><div class="scan-line"></div></div>
+      <button type="button" class="close" id="scan-close">キャンセル</button>
+    </div>
+  </section>
+
+  <!-- 3 待合 -->
+  <section class="screen" id="lobby">
+    <div class="header">
+      <button type="button" class="leave" id="leave">退出</button>
+      <h1>待合</h1>
+    </div>
+    <div class="card ticket">
+      <div class="ticket-main">
+        <div class="ticket-label">部屋のコード</div>
+        <div class="room-code" id="room-code">4821</div>
+        <div class="ticket-hint">コードか QR を見せて、友だちを招待</div>
+      </div>
+      <div class="ticket-qr"><svg class="qr-box" id="qr" viewBox="0 0 29 29" role="img" aria-label="部屋の QR"></svg></div>
+    </div>
+    <div class="card">
+      <p class="card-title">参加者 <span class="muted" id="member-count">1/8</span></p>
+      <div class="seats" id="seats"></div>
+    </div>
+    <div class="card">
+      <div class="scene-head">
+        <p class="card-title">シーン</p>
+        <button type="button" class="btn-random" id="random"><span>🎲</span>おまかせ</button>
+      </div>
+      <div class="preview" id="preview"></div>
+      <div class="scene-chips" id="scene-chips"></div>
+      <div class="guest-wait" id="guest-wait" hidden>
+        <div id="guest-wait-text">ホストがシーンを選んでいます</div>
+        <div class="pulse"><i></i><i></i><i></i></div>
+      </div>
+    </div>
+    <p class="start-hint" id="start-hint"></p>
+    <button type="button" class="btn btn-primary btn-start" id="start" disabled>スタート <span aria-hidden="true">›</span></button>
+  </section>
+
+  <div class="start-overlay" id="start-overlay">
+    <div class="start-stage" id="start-stage"></div>
+    <div class="big">全員の画面でスタート！</div>
+    <div id="start-desc"></div>
+    <div style="opacity:.75;font-size:13px">（ここから先はプレイの画面。issue #9 で作る）</div>
+    <button type="button" id="again">待合に戻る</button>
+  </div>
+
+  <div class="toast" id="toast"></div>
+  <div class="home-bar"></div>
+</div>
+
+<aside class="panel">
+  <h2>レビュー用の操作</h2>
+  <p>スマホの枠の外の操作で、ほかの端末の動きを再現する。アプリには出ない。</p>
+
+  <h3>画面に飛ぶ</h3>
+  <div class="row">
+    <button type="button" data-jump="home">1 ホーム</button>
+    <button type="button" data-jump="join">2 部屋に入る</button>
+    <button type="button" data-jump="lobby-host">3 待合（ホスト）</button>
+    <button type="button" data-jump="lobby-guest">3 待合（参加者）</button>
+  </div>
+
+  <h3>待合の再現</h3>
+  <div class="row">
+    <button type="button" id="sim-join">参加者を足す</button>
+    <button type="button" id="sim-drop">最後の人を切断／復帰</button>
+    <button type="button" id="sim-host-pick">（参加者のとき）ホストがシーンを選ぶ</button>
+    <button type="button" id="sim-host-start">（参加者のとき）ホストがスタート</button>
+  </div>
+
+  <h3>試し方</h3>
+  <ul>
+    <li>部屋に入るときは、コード <code>4821</code> だけが「ある部屋」。ほかのコードはエラーになる。画面のキーパッドのほか、PC のキーボードの数字でも打てる。</li>
+    <li>部屋を作ると、2 秒後に「はなこ」が入ってくる。スタートは 2 人以上・シーンを選んだら押せる。</li>
+    <li>名前はこのブラウザに保存され、次に開いたときに入っている（アプリでは端末に保存する想定）。</li>
+  </ul>
+
+  <h3>レビューで決めたいこと</h3>
+  <ul>
+    <li><b>ホームの演出</b>: 仮の画面（名前とボタンだけ）から変えた提案。回る 3D ジオラマと、別々のプレイヤーの英文の吹き出しで「同じ景色を、ちがう英語で」を説明なしで見せる（発表の録画の最初の 10 秒で伝えるため）。自分の色を選び、待合のアイコンにも使う。アプリではプレイと同じ 3D シーンを回すだけなので、素材は増えない。</li>
+    <li><b>部屋に入る</b>: キーパッドで 4 桁そろったら自動で確かめるので、「入る」ボタンは無くした（screens/join.md の「入る」から変えた）。上に、ホームで決めた自分の名前と色を出す。</li>
+    <li><b>待合のシーン</b>: 選んだシーンが小さな 3D で回る。参加者の画面にも同じものが出て、「全員が同じ場面を見る」を待合のうちから伝える。仮の画面のサムネイル画像は、アプリでは 3D の表示に置き換わる。</li>
+    <li><b>参加者</b>: 一覧ではなく座席のように並べ、空き席を点線で出した。ホストは 👑。</li>
+    <li><b>呼び方</b>: 仮の画面は「ルームコード」、文書は「部屋のコード」。モックは文書に合わせた。</li>
+    <li><b>準備完了</b>: 仮の画面にあるが未決定。モックでは押す操作を入れず、接続の状態（接続中・切断中）だけ出した。</li>
+    <li><b>人数の上限</b>: 8 人（architecture.md の初期値）で「1/8」と出した。本番は 2 人。</li>
+    <li><b>スタートの条件</b>: 2 人以上でないと押せないようにした。1 人でも始められるべきか。</li>
+    <li><b>退出</b>: 仕様に無いが、待合から抜ける手段が要ると考えて左上に置いた。</li>
+    <li><b>QR の見た目</b>: 本物の QR ではなく、点の模様の飾り。実装では誤り訂正 H で自前で描く（lobby.md）。</li>
+  </ul>
+</aside>
+
+<script>
+  const $ = (id) => document.getElementById(id);
+  const VALID_CODE = "4821";
+  const SCENES = [
+    {
+      id: "park", name: "公園", emoji: "🌳",
+      top: "linear-gradient(135deg,#9fe07f,#6cc456)", side: "#4f9c3c", strip: "#ecdcb6",
+      props: [["🌳", 0.2, 0.22, 1.4], ["🌳", 0.82, 0.28, 1.2], ["🚶", 0.5, 0.56, 0.95], ["🐕", 0.24, 0.72, 0.75], ["🪑", 0.78, 0.72, 0.7], ["🌷", 0.9, 0.92, 0.6]],
+    },
+    {
+      id: "classroom", name: "教室", emoji: "🏫",
+      top: "linear-gradient(135deg,#f3dfb5,#e2c38b)", side: "#b98f55", strip: null,
+      props: [["🧑‍🏫", 0.5, 0.2, 1], ["📚", 0.14, 0.2, 0.75], ["🪴", 0.88, 0.2, 0.9], ["🪑", 0.24, 0.58, 0.8], ["🪑", 0.5, 0.62, 0.8], ["🪑", 0.76, 0.58, 0.8]],
+    },
+    {
+      id: "station", name: "駅前", emoji: "🚉",
+      top: "linear-gradient(135deg,#e3e7f0,#c3cadb)", side: "#8f98ad", strip: "#f5f0e1",
+      props: [["🚉", 0.5, 0.14, 1.2], ["🕐", 0.18, 0.3, 0.85], ["🚶", 0.42, 0.6, 0.9], ["🧳", 0.6, 0.64, 0.6], ["🚕", 0.82, 0.8, 0.9], ["🌳", 0.14, 0.82, 1.1]],
+    },
+  ];
+  const AVATAR_COLORS = ["#4f52e6", "#f07aa8", "#28b5a0", "#f0a020", "#8a5cf6", "#3aa0e8", "#e5484d", "#5fae3c"];
+  const GUEST_NAMES = ["はなこ", "けん", "さくら", "ゆうと", "みお", "そうた", "あおい"];
+  const MAX_MEMBERS = 8;
+
+  const state = {
+    me: "",
+    myColor: "#4f52e6",
+    isHost: false,
+    code: VALID_CODE,
+    members: [],
+    scene: null,
+    history: [],
+    timers: [],
+  };
+
+  // ---------- 画面の切り替え ----------
+  function show(id, { back = false } = {}) {
+    document.querySelectorAll(".screen").forEach((s) => { s.classList.remove("active", "back"); });
+    const el = $(id);
+    el.classList.add("active");
+    if (back) el.classList.add("back");
+  }
+  function go(id) {
+    const current = document.querySelector(".screen.active");
+    if (current) state.history.push(current.id);
+    show(id);
+    if (id === "join") resetCode();
+  }
+  function goBack() {
+    show(state.history.pop() || "home", { back: true });
+  }
+  document.querySelectorAll("[data-back]").forEach((b) => { b.addEventListener("click", goBack); });
+
+  let toastTimer;
+  function toast(text) {
+    const t = $("toast");
+    t.textContent = text;
+    t.classList.add("show");
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => t.classList.remove("show"), 2200);
+  }
+  function later(ms, fn) {
+    state.timers.push(setTimeout(fn, ms));
+  }
+  function clearTimers() {
+    state.timers.forEach(clearTimeout);
+    state.timers = [];
+  }
+
+  // ---------- 1 ホーム ----------
+  const nameInput = $("name");
+  function loadName() {
+    try { return localStorage.getItem("room-mock-name") || ""; } catch { return ""; }
+  }
+  function saveName(v) {
+    try { localStorage.setItem("room-mock-name", v); } catch {}
+  }
+  function updateName() {
+    const v = nameInput.value.trim();
+    $("create").disabled = $("to-join").disabled = !v;
+    $("my-avatar").textContent = v ? v.slice(0, 1) : "？";
+    $("my-avatar").style.background = state.myColor;
+  }
+  nameInput.value = loadName();
+  nameInput.addEventListener("input", updateName);
+
+  // 自分の色。待合の参加者一覧でも使う
+  function renderColors() {
+    $("colors").innerHTML = AVATAR_COLORS.slice(0, 6).map((c) =>
+      `<button type="button" aria-label="色" data-color="${c}" class="${c === state.myColor ? "on" : ""}" style="background:${c}"></button>`).join("");
+    for (const b of $("colors").querySelectorAll("[data-color]")) {
+      b.addEventListener("click", () => { state.myColor = b.dataset.color; renderColors(); updateName(); });
+    }
+  }
+  renderColors();
+  updateName();
+
+  // ジオラマのまわりに、別々のプレイヤーの描写を順に出す（同じ場面でも言い方が違う、を見せる）
+  const SAMPLE_LINES = [
+    { name: "たろう", color: "#4f52e6", text: "A dog is chasing a red ball!" },
+    { name: "はなこ", color: "#f07aa8", text: "A man is taking a walk in the park." },
+    { name: "けん", color: "#28b5a0", text: "Nobody is sitting on the bench." },
+    { name: "さくら", color: "#f0a020", text: "The puppy looks so happy!" },
+    { name: "ゆうと", color: "#8a5cf6", text: "There are two big trees and flowers." },
+  ];
+  let lineIndex = 0;
+  function nextBubble() {
+    const side = lineIndex % 2 === 0 ? "bubble-left" : "bubble-right";
+    const el = $(side);
+    const line = SAMPLE_LINES[lineIndex % SAMPLE_LINES.length];
+    el.classList.remove("show");
+    setTimeout(() => {
+      el.querySelector(".avatar").textContent = line.name.slice(0, 1);
+      el.querySelector(".avatar").style.background = line.color;
+      el.querySelector("p").textContent = line.text;
+      el.classList.add("show");
+    }, 350);
+    lineIndex++;
+  }
+  nextBubble();
+  setTimeout(nextBubble, 900);
+  setInterval(nextBubble, 2600);
+
+  $("create").addEventListener("click", () => {
+    state.me = nameInput.value.trim();
+    saveName(state.me);
+    enterLobby({ host: true, code: String(1000 + Math.floor(Math.random() * 9000)) });
+    go("lobby");
+  });
+  $("to-join").addEventListener("click", () => {
+    state.me = nameInput.value.trim();
+    saveName(state.me);
+    go("join");
+  });
+
+  // ---------- 小さなジオラマ ----------
+  // props は [絵文字, 横の位置 0〜1, 奥行きの位置 0〜1, 大きさ]。アプリでは配置 JSON から 3D を組み立てる
+  function diorama(scene, size) {
+    const strip = scene.strip ? `<div class="mini-strip" style="background:${scene.strip}"></div>` : "";
+    const props = scene.props.map(([emoji, x, y, k]) =>
+      `<div class="prop" style="left:${x * size}px;top:${y * size}px"><span style="font-size:${Math.round(k * size * 0.2)}px">${emoji}</span></div>`).join("");
+    return `<div class="mini" style="--s:${size}px;--top:${scene.top};--side:${scene.side}">${strip}${props}</div>`;
+  }
+
+  // ---------- 2 部屋に入る ----------
+  let code = "";
+  let joining = false;
+  function renderCode() {
+    document.querySelectorAll(".code-box").forEach((box, i) => {
+      const was = box.textContent;
+      box.textContent = code[i] || "";
+      box.classList.toggle("filled", !was && !!code[i]);
+      box.classList.toggle("cursor", i === code.length);
+    });
+  }
+  function setJoinMsg(text, ok = false) {
+    $("join-msg").textContent = text;
+    $("join-msg").classList.toggle("ok", ok);
+  }
+  function resetCode() {
+    code = "";
+    joining = false;
+    setJoinMsg("");
+    $("code-boxes").classList.remove("error", "ok");
+    $("join-avatar").textContent = state.me.slice(0, 1);
+    $("join-avatar").style.background = state.myColor;
+    $("join-name").textContent = state.me;
+    renderCode();
+  }
+  function pressKey(key) {
+    if (joining) return;
+    if (key === "del") code = code.slice(0, -1);
+    else if (code.length < 4) code += key;
+    setJoinMsg("");
+    $("code-boxes").classList.remove("error");
+    renderCode();
+    // 4 桁そろったら「入る」を押さなくても確かめる
+    if (code.length === 4) later(180, tryJoin);
+  }
+  for (const b of $("keypad").querySelectorAll("[data-key]")) {
+    b.addEventListener("click", () => pressKey(b.dataset.key));
+  }
+  // PC で見るときはキーボードの数字でも打てる
+  document.addEventListener("keydown", (e) => {
+    if (!$("join").classList.contains("active") || $("scanner").classList.contains("show")) return;
+    if (/^\d$/.test(e.key)) pressKey(e.key);
+    else if (e.key === "Backspace") pressKey("del");
+  });
+
+  function tryJoin() {
+    const boxes = $("code-boxes");
+    if (code !== VALID_CODE) {
+      boxes.classList.remove("error");
+      void boxes.offsetWidth; // アニメーションをやり直す
+      boxes.classList.add("error");
+      setJoinMsg("その部屋は見つかりません。コードを確かめてね");
+      joining = true;
+      later(700, () => { code = ""; joining = false; renderCode(); });
+      return;
+    }
+    joining = true;
+    boxes.classList.add("ok");
+    setJoinMsg("たろうさんの部屋が見つかりました！", true);
+    later(750, joinAsGuest);
+  }
+  function joinAsGuest() {
+    enterLobby({ host: false, code: VALID_CODE });
+    go("lobby");
+  }
+
+  $("scan").addEventListener("click", () => {
+    $("scanner").classList.add("show");
+    drawQr($("scan-qr"), VALID_CODE, "#ffffff");
+    later(1800, () => {
+      if (!$("scanner").classList.contains("show")) return;
+      $("scanner").classList.remove("show");
+      toast("QR を読み取りました");
+      joinAsGuest();
+    });
+  });
+  $("scan-close").addEventListener("click", () => $("scanner").classList.remove("show"));
+
+  // ---------- 3 待合 ----------
+  function enterLobby({ host, code: roomCode }) {
+    clearTimers();
+    state.isHost = host;
+    state.code = roomCode;
+    state.scene = null;
+    if (host) {
+      state.members = [{ name: state.me, host: true, off: false, color: state.myColor }];
+      later(2000, () => addMember());
+    } else {
+      // 参加者として入ると、ホストのたろうがもういる
+      state.members = [
+        { name: "たろう", host: true, off: false, color: pickColor([state.myColor]) },
+        { name: state.me, host: false, off: false, color: state.myColor, fresh: true },
+      ];
+    }
+    $("room-code").textContent = roomCode;
+    drawQr($("qr"), roomCode, "#4f52e6");
+    renderLobby();
+  }
+
+  // まだ誰も使っていない色を選ぶ（同じ色が並ばないように）
+  function pickColor(used) {
+    return AVATAR_COLORS.find((c) => !used.includes(c)) || AVATAR_COLORS[used.length % AVATAR_COLORS.length];
+  }
+
+  function addMember() {
+    if (state.members.length >= MAX_MEMBERS) return toast(`満員です（${MAX_MEMBERS} 人まで）`);
+    const used = new Set(state.members.map((m) => m.name));
+    const name = GUEST_NAMES.find((n) => !used.has(n)) || `ゲスト${state.members.length}`;
+    state.members.push({ name, host: false, off: false, fresh: true, color: pickColor(state.members.map((m) => m.color)) });
+    renderLobby();
+    toast(`${name} さんが入りました`);
+  }
+
+  function renderSeats() {
+    $("member-count").textContent = `${state.members.length}/${MAX_MEMBERS}`;
+    // 空いている席も点線で見せ、「まだ入れる」が分かるようにする（4 席ずつ増やす）
+    const total = Math.min(MAX_MEMBERS, Math.max(4, Math.ceil((state.members.length + 1) / 4) * 4));
+    let html = state.members.map((m) => `
+      <div class="seat${m.off ? " off" : ""}${m.fresh ? " new" : ""}">
+        <div class="avatar" style="background:${m.color}">
+          ${m.host ? '<span class="crown" aria-label="ホスト">👑</span>' : ""}${escapeHtml(m.name.slice(0, 1))}<span class="badge"></span>
+        </div>
+        <div class="nm">${escapeHtml(m.name)}</div>
+        <div class="sub${m.name === state.me ? " you" : ""}">${m.off ? "切断中" : m.name === state.me ? "あなた" : m.host ? "ホスト" : "接続中"}</div>
+      </div>`).join("");
+    for (let i = state.members.length; i < total; i++) {
+      html += '<div class="seat empty"><div class="avatar">＋</div><div class="nm">空き</div></div>';
+    }
+    $("seats").innerHTML = html;
+    state.members.forEach((m) => { delete m.fresh; });
+  }
+
+  let shownScene = null;
+  function renderPreview() {
+    const s = SCENES.find((x) => x.id === state.scene);
+    if (!s) {
+      shownScene = null;
+      $("preview").innerHTML = `<div class="preview-empty">${state.isHost
+        ? "<div style='font-size:26px'>🧊</div>下からシーンを選ぶと<br>ここに 3D が出ます"
+        : "<div style='font-size:26px'>🧊</div>ホストが選んだシーンが<br>ここに出ます"}</div>`;
+      return;
+    }
+    if (shownScene === s.id) return; // 同じシーンなら回転をやり直さない
+    shownScene = s.id;
+    $("preview").classList.remove("pop");
+    $("preview").innerHTML = `${diorama(s, 120)}<div class="preview-name">${s.emoji} ${s.name}</div><div class="preview-note">全員の画面に同じ場面</div>`;
+    void $("preview").offsetWidth;
+    $("preview").classList.add("pop");
+  }
+
+  function renderLobby() {
+    renderSeats();
+    renderPreview();
+    // ホストはシーンを選ぶ。参加者は選ばれたシーンを見て待つ
+    $("scene-chips").hidden = !state.isHost;
+    $("random").hidden = !state.isHost;
+    $("guest-wait").hidden = state.isHost;
+    $("start").hidden = !state.isHost;
+    if (state.isHost) {
+      $("scene-chips").innerHTML = SCENES.map((s) =>
+        `<button type="button" class="chip${state.scene === s.id ? " on" : ""}" data-scene="${s.id}">${s.emoji} ${s.name}</button>`).join("");
+      for (const b of $("scene-chips").querySelectorAll("[data-scene]")) {
+        b.addEventListener("click", () => { state.scene = b.dataset.scene; renderLobby(); });
+      }
+    } else {
+      $("guest-wait-text").textContent = state.scene ? "ホストのスタートを待っています" : "ホストがシーンを選んでいます";
+    }
+    updateStart();
+  }
+
+  function updateStart() {
+    const online = state.members.filter((m) => !m.off).length;
+    let hint = "";
+    if (!state.isHost) hint = "";
+    else if (online < 2) hint = "もう 1 人以上入るとスタートできます";
+    else if (!state.scene) hint = "シーンを選ぶとスタートできます";
+    else if (state.members.some((m) => m.off)) hint = "切断中の人がいます（戻るのを待つか、このまま始める）";
+    else hint = `${online} 人で「${SCENES.find((s) => s.id === state.scene).name}」を始めます`;
+    $("start-hint").textContent = hint;
+    $("start").disabled = !state.isHost || online < 2 || !state.scene;
+  }
+
+  $("random").addEventListener("click", () => {
+    // チップを順に光らせてから 1 つに決める
+    let n = 0;
+    const steps = 7 + Math.floor(Math.random() * SCENES.length);
+    const tick = () => {
+      state.scene = SCENES[n % SCENES.length].id;
+      renderLobby();
+      $("scene-chips").querySelector(`[data-scene="${state.scene}"]`).classList.add("flash");
+      if (++n < steps) setTimeout(tick, 70 + n * 12);
+      else toast(`「${SCENES.find((s) => s.id === state.scene).name}」に決まりました`);
+    };
+    tick();
+  });
+
+  $("start").addEventListener("click", startRound);
+  function startRound() {
+    const s = SCENES.find((x) => x.id === state.scene);
+    $("start-stage").innerHTML = diorama(s, 190);
+    $("start-desc").textContent = `「${s.name}」が全員の画面に出て、1 周回ったら録音が始まります`;
+    $("start-overlay").classList.add("show");
+  }
+  $("again").addEventListener("click", () => $("start-overlay").classList.remove("show"));
+
+  $("leave").addEventListener("click", () => {
+    const msg = state.isHost ? "部屋を閉じてホームに戻りますか？（ホストが抜けると部屋がなくなる想定）" : "部屋を出てホームに戻りますか？";
+    if (!confirm(msg)) return;
+    clearTimers();
+    state.history = [];
+    show("home", { back: true });
+  });
+
+  // ---------- 飾りの QR（本物の QR ではない） ----------
+  function drawQr(svg, seedText, color) {
+    // 同じコードなら毎回同じ模様になるよう、コードから作った種で乱数を回す
+    let seed = [...seedText].reduce((a, c) => a * 31 + c.charCodeAt(0), 7);
+    const rand = () => {
+      seed = (Math.imul(seed, 1103515245) + 12345) >>> 0;
+      return seed / 4294967296;
+    };
+    const N = 29;
+    const inFinder = (x, y) => [[0, 0], [N - 7, 0], [0, N - 7]].some(([fx, fy]) => x >= fx - 1 && x < fx + 8 && y >= fy - 1 && y < fy + 8);
+    const inCenter = (x, y) => Math.abs(x - 14) <= 4 && Math.abs(y - 14) <= 4;
+    let out = "";
+    for (let y = 0; y < N; y++) {
+      for (let x = 0; x < N; x++) {
+        if (inFinder(x, y) || inCenter(x, y) || rand() < 0.5) continue;
+        out += `<circle cx="${x + 0.5}" cy="${y + 0.5}" r="0.42"/>`;
+      }
+    }
+    const eye = (x, y) => `<rect x="${x + 0.5}" y="${y + 0.5}" width="6" height="6" rx="1.8" fill="none" stroke="${color}" stroke-width="1"/><rect x="${x + 2}" y="${y + 2}" width="3" height="3" rx="0.9"/>`;
+    // 真ん中のアイコンは仮（lobby.md）。立方体と吹き出しで「3D を見て話す」を表す
+    const icon = `<rect x="10.5" y="10.5" width="8" height="8" rx="2.2"/><rect x="13" y="13" width="3" height="3" rx="0.4" fill="${color === "#ffffff" ? "#15183a" : "#ffd23f"}"/>`;
+    svg.innerHTML = `<g fill="${color}">${out}${eye(0, 0)}${eye(N - 7, 0)}${eye(0, N - 7)}${icon}</g>`;
+  }
+
+  function escapeHtml(s) {
+    return s.replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
+  }
+
+  // ---------- レビュー用の操作 ----------
+  for (const b of document.querySelectorAll("[data-jump]")) b.addEventListener("click", () => {
+    $("start-overlay").classList.remove("show");
+    $("scanner").classList.remove("show");
+    state.history = [];
+    const to = b.dataset.jump;
+    if (!state.me) state.me = nameInput.value.trim() || "たろう";
+    if (to === "lobby-host") { enterLobby({ host: true, code: VALID_CODE }); show("lobby"); }
+    else if (to === "lobby-guest") { state.me = state.me === "たろう" ? "はなこ" : state.me; enterLobby({ host: false, code: VALID_CODE }); show("lobby"); }
+    else { if (to === "join") resetCode(); show(to); }
+  });
+  $("sim-join").addEventListener("click", addMember);
+  $("sim-drop").addEventListener("click", () => {
+    const m = state.members[state.members.length - 1];
+    if (!m || state.members.length < 2) return toast("切断できる参加者がいません");
+    m.off = !m.off;
+    renderLobby();
+    toast(m.off ? `${m.name} さんの接続が切れました` : `${m.name} さんが戻りました`);
+  });
+  $("sim-host-pick").addEventListener("click", () => {
+    if (state.isHost) return toast("参加者として待合にいるときに使えます");
+    state.scene = SCENES[Math.floor(Math.random() * SCENES.length)].id;
+    renderLobby();
+  });
+  $("sim-host-start").addEventListener("click", () => {
+    if (state.isHost) return toast("参加者として待合にいるときに使えます");
+    if (!state.scene) state.scene = "park";
+    startRound();
+  });
+
+  // room.html#lobby-host のように、URL の # で画面を直接開ける（レビューでリンクを貼る用）
+  const jump = document.querySelector(`[data-jump="${location.hash.slice(1)}"]`);
+  if (jump) jump.click();
+  else show("home");
+</script>
+</body>
+</html>
