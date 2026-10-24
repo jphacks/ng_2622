@@ -1,4 +1,4 @@
-# PR で backend/ の型チェックとビルドを確かめる。壊れたものが main に入ってデプロイで落ちるのを防ぐ。
+# PR で backend/ の型チェック、openapi.json が最新か、ビルドを確かめる。壊れたものが main に入ってデプロイで落ちるのを防ぐ。
 # backend を触らない PR では動かないので、ruleset の必須チェックには入れていない。
 name: backend-checks
 
@@ -39,6 +39,9 @@ jobs:
         run: pnpm install --frozen-lockfile
       - name: 型チェック
         run: pnpm typecheck
+      # iOS が読む openapi.json を、コードから生成し直したものと突き合わせる
+      - name: openapi.json が最新か
+        run: pnpm openapi:check
       # 実際にはデプロイせず、バンドルできるかだけを確かめる（secret は要らない）
       - name: ビルド
         run: pnpm exec wrangler deploy --dry-run --outdir dist
