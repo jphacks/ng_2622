@@ -1,3 +1,4 @@
+import { createMiddleware } from "hono/factory";
 import { resolver } from "hono-openapi";
 import type { z } from "zod";
 import type { ErrorCode } from "../schemas/common";
@@ -17,4 +18,10 @@ export const errorBody = (
   message: string,
 ) => ({
   error: { code, message },
+});
+
+/** ENABLE_DEV_ROUTES=true（pnpm dev が付ける）のときだけ通す。本番とプレビューでは 404 */
+export const devOnly = createMiddleware<AppEnv>(async (c, next) => {
+  if (c.env.ENABLE_DEV_ROUTES !== "true") return c.notFound();
+  await next();
 });

@@ -15,6 +15,7 @@ pnpm openapi          # openapi.json を生成し直す
 
 - API の画面（Swagger UI）: http://localhost:8787/docs
 - OpenAPI: http://localhost:8787/openapi.json
+- `/docs`・`/openapi.json`・`/dev/score` は `ENABLE_DEV_ROUTES=true` のときだけ開く。`pnpm dev` が自動で付けるので、手元では何もしなくてよい。本番とプレビューでは 404 になる。
 
 ## 採点（`src/scoring/`）
 
@@ -44,7 +45,7 @@ say -o test.wav --data-format=LEI16@16000 "There is a red bench under a big tree
 curl -F audio=@test.wav -F sceneId=park http://localhost:8787/dev/score
 ```
 
-`/dev/score` は `ENABLE_DEV_ROUTES=true` のときだけ開く。デプロイ先には入れない。
+`/dev/score` は `ENABLE_DEV_ROUTES=true` のときだけ開く（`pnpm dev` が自動で付ける）。デプロイ先には入れない。
 
 ## デプロイ
 
