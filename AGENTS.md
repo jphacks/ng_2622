@@ -15,6 +15,7 @@
 .github/          PR・issue テンプレート、ラベル定義、Actions（pr-checks・format-check・Discord 通知・backend の検査・PR ごとのプレビュー・デプロイ）
 .claude/skills/   共有の Claude Code skill（.agents は .claude への symlink）
 backend/          バックエンド（Hono on Cloudflare Workers）。PR ごとにプレビュー、main に入るとデプロイされる
+ios/              iOS アプリ（SwiftUI）。project.yml から xcodegen で Xcode プロジェクトを作る（*.xcodeproj は commit しない）
 docs/adr/         設計・運用の意思決定ログ
 docs/design/      仕様の正本（使い方・画面の流れ・アーキテクチャ・採点・コスト対策）
 docs/design/ui/   画面設計書の元データ（screens/*.md、仮の画面の画像）
@@ -77,6 +78,7 @@ python3 scripts/ui-spec/build.py            # 画面設計書 docs/design/ui/bui
 python3 scripts/overview/build.py           # チーム向けの説明資料 docs/design/overview/overview.html を生成（生成物も commit する）
 (cd backend && pnpm install && pnpm dev)    # バックエンドを手元で起動（http://localhost:8787/health）
 (cd backend && pnpm typecheck)              # バックエンドの型チェック
+(cd ios && xcodegen generate)               # iOS の Xcode プロジェクトを作る（要 brew install xcodegen）
 ```
 
 ## AI エージェント向けの補足

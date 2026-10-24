@@ -43,3 +43,6 @@ docs/design/ui/drafts/
 
 # misc
 *.local
+
+# Xcode（ios/ は project.yml から xcodegen で作る）
+ios/*.xcodeproj/
