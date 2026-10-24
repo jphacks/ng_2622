@@ -3,6 +3,8 @@ import SwiftUI
 /// 振り返り。自分の合計と順位、3 項目の内訳、講評と模範表現
 struct ReviewView: View {
   let results: RoundResults
+  /// このラウンドで録った自分の声。あれば「あなたの描写」から聞き直せる
+  var recording: RecordedAudio?
   let onBack: () -> Void
 
   var body: some View {
@@ -50,7 +52,7 @@ struct ReviewView: View {
 
       // 自分が話した英文。下の模範表現と見比べる
       if !me.transcript.isEmpty {
-        TranscriptCard(transcript: me.transcript)
+        TranscriptCard(transcript: me.transcript, recording: recording)
       }
 
       ReviewCard(title: "講評") {
@@ -104,9 +106,17 @@ private struct ScoreBar: View {
   }
 }
 
-/// あなたの描写。見出しの右には、録音を聞き直すボタンを後で足す
+/// あなたの描写。録音があれば、見出しの右のボタンで聞き直せる（再生中はカードの地を薄い紫にする）
 private struct TranscriptCard: View {
   let transcript: String
+  let recording: RecordedAudio?
+  @State private var player = VoicePlayer()
+
+  /// 端末にファイルが残っているときだけボタンを出す
+  private var playable: RecordedAudio? {
+    guard let recording, FileManager.default.fileExists(atPath: recording.url.path) else { return nil }
+    return recording
+  }
 
   var body: some View {
     VStack(alignment: .leading, spacing: 10) {
@@ -115,6 +125,9 @@ private struct TranscriptCard: View {
           .font(Theme.font(13, .heavy))
           .foregroundStyle(Theme.muted)
         Spacer()
+        if let playable {
+          speakerButton(playable)
+        }
       }
       .frame(minHeight: 22)
       Text(transcript)
@@ -125,7 +138,25 @@ private struct TranscriptCard: View {
     }
     .padding(20)
     .frame(maxWidth: .infinity, alignment: .leading)
-    .resultCard()
+    // 再生中は板の地を薄い紫にする（形と影は resultCard と同じ）
+    .background(player.isPlaying ? Theme.accentSoft : Theme.card, in: RoundedRectangle(cornerRadius: 22))
+    .shadow(color: Theme.ink.opacity(0.07), radius: 10, y: 6)
+    .animation(.easeInOut(duration: 0.2), value: player.isPlaying)
+    .onDisappear { player.stop() }
+  }
+
+  private func speakerButton(_ audio: RecordedAudio) -> some View {
+    Button {
+      player.toggle(audio)
+    } label: {
+      Image(systemName: player.isPlaying ? "stop.fill" : "speaker.wave.2.fill")
+        .font(.system(size: player.isPlaying ? 13 : 15, weight: .bold))
+        .foregroundStyle(Theme.accent)
+        .frame(width: 32, height: 32)
+        .background(player.isPlaying ? Theme.card : Theme.accentSoft, in: Circle())
+        .contentTransition(.symbolEffect(.replace))
+    }
+    .accessibilityLabel(player.isPlaying ? "停止" : "自分の録音を再生")
   }
 }
 

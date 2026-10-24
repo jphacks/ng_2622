@@ -15,8 +15,8 @@ protocol GameClient: AnyObject {
 
   /// ホストがラウンドを始める（start）
   func startRound(sceneID: String) async throws
-  /// 自分が話し終えた（後の PR で録音した音声を載せる）
-  func finishSpeaking() async throws
+  /// 自分が話し終えた。録音した音声を送る（POST /rooms/:id/rounds/:n/audio）。録れなかったときは nil
+  func finishSpeaking(audio: RecordedAudio?) async throws
   /// ホストが締め切って発表する（close）
   func closeRound() async throws
   /// ホストが同じ顔ぶれでもう一度遊ぶ（again）

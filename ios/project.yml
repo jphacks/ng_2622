@@ -39,6 +39,8 @@ targets:
         INFOPLIST_KEY_CFBundleDisplayName: ScenEnglish
         INFOPLIST_KEY_UILaunchScreen_Generation: YES
         INFOPLIST_KEY_NSCameraUsageDescription: 部屋の QR を読み取るためにカメラを使います
+        # 録音のときに出す、マイクを使う理由
+        INFOPLIST_KEY_NSMicrophoneUsageDescription: 英語で話した声を録音して採点するために使います。
         # iPhone は縦向きだけ。iPad 向けの値は、全向きを入れないと警告が出るので入れておく（iPad では配らない）
         INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone: UIInterfaceOrientationPortrait
         INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad: "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight"

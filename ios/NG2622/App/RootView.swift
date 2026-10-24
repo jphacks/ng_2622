@@ -69,6 +69,7 @@ private struct AppFlow: View {
     creating = true
     Task {
       defer { creating = false }
+      await MicPermission.request()
       guard (try? await session.create()) != nil else { return }
       self.session = session
       go(.room)
@@ -76,6 +77,8 @@ private struct AppFlow: View {
   }
 
   private func join(_ code: String) async throws {
+    // ラウンドの途中で確認が出ないよう、部屋に入る前に聞く
+    await MicPermission.request()
     let session = newSession()
     do {
       try await session.join(code: code)

@@ -4,6 +4,8 @@ import SwiftUI
 /// 3D は同じ位置・大きさのまま、上のカウントダウンが「● 録音中」と残り時間のバーに入れ替わる
 struct PlayView: View {
   let round: RoundInfo
+  /// 録音中の間だけ録る
+  let recorder: VoiceRecorder
   /// 「話し終えた」か 20 秒たった
   let onFinish: () -> Void
 
@@ -136,7 +138,7 @@ struct PlayView: View {
         .padding(.trailing, 22)
     }
     .overlay(alignment: .bottom) {
-      VolumeMeter()
+      VolumeMeter(level: recorder.meterLevel)
         .padding(.bottom, 14)
         .opacity(isRecording ? 1 : 0)
         .offset(y: isRecording ? 0 : 24)
@@ -197,6 +199,7 @@ struct PlayView: View {
       if Task.isCancelled { return }
     }
     isRecording = true
+    recorder.start(duration: recordingEnd.timeIntervalSinceNow)
     try? await Task.sleep(for: .seconds(max(0, recordingEnd.timeIntervalSinceNow)))
     if Task.isCancelled { return }
     onFinish()
