@@ -79,7 +79,7 @@ bash tests/run-tests.sh                     # 検査スクリプトの self-test
 scripts/setup-github-repo.sh --dry-run      # GitHub 設定（ラベル・merge 方式・ruleset）の差分確認
 python3 scripts/ui-spec/build.py            # 画面設計書 docs/design/ui/build/ui-spec.html を生成（要 graphviz・librsvg）
 python3 scripts/overview/build.py           # チーム向けの説明資料 docs/design/overview/overview.html を生成（生成物も commit する）
-blender --background --factory-startup --python scripts/scene/park.py  # 3D シーン assets/scenes/park.usdz と画像を生成（classroom.py・station.py も同じ。要 Blender 4.5 LTS）
+blender --background --factory-startup --python scripts/scene/park.py  # 3D シーン assets/scenes/park.usdz と画像を生成（classroom.py・station.py・rainy_street.py・beach.py・cafe.py も同じ。要 Blender 4.5 LTS）
 (cd backend && pnpm install && pnpm dev)    # バックエンドを手元で起動（http://localhost:8787/health）
 (cd backend && pnpm typecheck)              # バックエンドの型チェック
 (cd backend && pnpm openapi)                # API の型から backend/openapi.json を生成（iOS が読む。生成物も commit する）
