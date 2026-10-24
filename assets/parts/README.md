@@ -103,6 +103,7 @@ blender --background --factory-startup --python scripts/scene/parts.py -- --meta
 blender --background --factory-startup --python scripts/scene/check_parts.py                      # プロトコルに合っているかを確かめる
 blender --background --factory-startup --python scripts/scene/check_parts.py -- --sheet           # 確かめて、contact_sheet.png も作る
 python3 scripts/scene/preview_parts.py                                                            # 部品を 3D で回して見る HTML（下記）
+blender --background --factory-startup --python scripts/scene/render_layout.py -- <layout.json> ... --out <dir>  # 配置の JSON をこの部品で組んで PNG に描く（例は scripts/scene/samples/）
 ```
 
 `check_parts.py` は USDZ を読み直し、次を確かめる（1 つでも合わなければ終了コード 1）。

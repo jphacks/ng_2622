@@ -84,6 +84,7 @@ python3 scripts/overview/build.py           # チーム向けの説明資料 doc
 python3 scripts/scene/preview_parts.py      # 3D の部品を 1 個ずつ回して見る assets/parts/build/preview.html を生成（要 Blender・npm。commit しない）
 blender --background --factory-startup --python scripts/scene/park.py  # 3D シーン assets/scenes/park.usdz と画像を生成（classroom.py・station.py・rainy_street.py・beach.py・cafe.py も同じ。要 Blender 4.5 LTS）
 blender --background --factory-startup --python scripts/scene/parts.py  # 部品 assets/parts/<id>/1.usdz・1.json と index.json を生成（-- --only <id> で 1 個だけ。確かめは check_parts.py、-- --sheet で一覧の画像も作る）
+blender --background --factory-startup --python scripts/scene/render_layout.py -- scripts/scene/samples/*.json --out <dir>  # 配置の JSON（scenenglish.scene/1）を部品で組んで <dir>/<名前>.png に描く（AI が作った場面の目での確かめ用）
 (cd backend && pnpm install && pnpm dev)    # バックエンドを手元で起動（http://localhost:8787/health）
 (cd backend && pnpm typecheck)              # バックエンドの型チェック
 (cd backend && pnpm openapi)                # API の型から backend/openapi.json を生成（iOS が読む。生成物も commit する）
