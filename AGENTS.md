@@ -12,9 +12,9 @@
 ## リポジトリ構成
 
 ```
-.github/          PR・issue テンプレート、ラベル定義、Actions（pr-checks・Discord 通知・backend の検査とデプロイ）
+.github/          PR・issue テンプレート、ラベル定義、Actions（pr-checks・Discord 通知・backend の検査・PR ごとのプレビュー・デプロイ）
 .claude/skills/   共有の Claude Code skill（.agents は .claude への symlink）
-backend/          バックエンド（Hono on Cloudflare Workers）。main に入るとデプロイされる
+backend/          バックエンド（Hono on Cloudflare Workers）。PR ごとにプレビュー、main に入るとデプロイされる
 docs/adr/         設計・運用の意思決定ログ
 docs/design/      仕様の正本（使い方・画面の流れ・アーキテクチャ・採点・コスト対策）
 docs/design/ui/   画面設計書の元データ（screens/*.md、仮の画面の画像）
