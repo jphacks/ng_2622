@@ -10,7 +10,11 @@ pnpm を使う（版は `package.json` の `packageManager` で固定。pnpm 10 
 pnpm install
 pnpm dev              # http://localhost:8787/health が ok を返す
 pnpm typecheck
+pnpm openapi          # openapi.json を生成し直す
 ```
+
+- API の画面（Swagger UI）: http://localhost:8787/docs
+- OpenAPI: http://localhost:8787/openapi.json
 
 ## 採点（`src/scoring/`）
 
@@ -45,6 +49,15 @@ curl -F audio=@test.wav -F sceneId=park http://localhost:8787/dev/score
 ## デプロイ
 
 main に `backend/` の変更が入ると、GitHub Actions（`.github/workflows/deploy-backend.yml`）が自動でデプロイする。手で出すときは `pnpm run deploy`（要 `pnpm exec wrangler login`）。
+
+## API のスキーマ（OpenAPI）
+
+API の型は zod で書き、[hono-openapi](https://hono.dev/examples/hono-openapi) が OpenAPI を生成する。iOS はリポジトリにある `backend/openapi.json` から型を作る。
+
+- ルートは `src/app.ts`、型は `src/schemas/` に置く。`.meta({ ref: "名前" })` を付けた型が、OpenAPI の `components.schemas` に名前付きで出る。
+- WebSocket のメッセージは OpenAPI の paths では表せないので、`components.schemas` の `ClientMessage`（iPhone → 部屋）と `ServerMessage`（部屋 → iPhone）に型だけを載せている。どちらも `type` の値で種類を見分ける（`oneOf` ＋ `discriminator`）。
+- ルートや型を変えたら `pnpm openapi` で `openapi.json` を生成し直し、一緒に commit する。PR では backend-checks が `pnpm openapi:check` で生成し忘れを検査する。
+- `openapi.json` は生成物なので Biome の整形の対象から外している（`biome.json`）。
 
 ## PR ごとのプレビュー
 
