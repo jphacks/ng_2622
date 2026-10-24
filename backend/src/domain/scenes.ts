@@ -10,6 +10,10 @@ export const sceneName = (id: string) =>
 /** 選べるシーンか */
 export const isSceneId = (id: string) => SCENE_IDS.includes(id);
 
+/** 選べるシーンの一覧。kind は今はバニラ（最初から入っているシーン）だけ */
+export const listScenes = () =>
+  scenes.map((s) => ({ id: s.id, name: s.name, kind: "vanilla" as const }));
+
 /** おまかせのときのシーン */
 export const pickRandomSceneId = () =>
   SCENE_IDS[Math.floor(Math.random() * SCENE_IDS.length)];

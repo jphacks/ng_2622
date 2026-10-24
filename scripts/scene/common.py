@@ -126,12 +126,23 @@ class Part:
             v.co += d.normalized() * r * bumpy * noise.noise(d / r * 1.8 + offset)
         self._merge(tb, mat, smooth)
 
-    def slab(self, size, z_top, thickness, radius, mat, segments=10):
-        """角の丸い板（島の地面と土の層）。縦の辺だけを丸める。"""
+    def slab(self, size, z_top, thickness, radius, mat, segments=10, center=(0, 0), corners=None):
+        """角の丸い板（島の地面や土台の層、道路）。縦の辺だけを丸める。
+
+        size は一辺の長さか (幅, 奥行き)。corners は丸める角を (x の符号, y の符号) の組で選ぶ（None ですべて）。
+        """
+        w, d = (size, size) if isinstance(size, (int, float)) else size
+        cx, cy = center
         tb = bmesh.new()
         bmesh.ops.create_cube(tb, size=1.0, matrix=Matrix.LocRotScale(
-            Vector((0, 0, z_top - thickness / 2)), Euler((0, 0, 0)), Vector((size, size, thickness))))
-        vertical = [e for e in tb.edges if abs(e.verts[0].co.z - e.verts[1].co.z) > 1e-4]
+            Vector((cx, cy, z_top - thickness / 2)), Euler((0, 0, 0)), Vector((w, d, thickness))))
+
+        def corner(e):
+            co = e.verts[0].co
+            return (1 if co.x > cx else -1, 1 if co.y > cy else -1)
+
+        vertical = [e for e in tb.edges if abs(e.verts[0].co.z - e.verts[1].co.z) > 1e-4
+                    and (corners is None or corner(e) in corners)]
         bmesh.ops.bevel(tb, geom=vertical, offset=radius, segments=segments, profile=0.5, affect="EDGES")
         self._merge(tb, mat, smooth=False)
 
@@ -217,6 +228,31 @@ class Part:
 POSES = ("stand", "walk", "sit", "raise_hand", "point", "phone", "run", "kneel")
 
 
+def _heights(pose: str) -> tuple[float, float]:
+    """腰と肩の高さ。"""
+    hip_z = 0.48 if pose in ("sit", "raise_hand") else 0.5 if pose == "kneel" else 0.78 if pose == "run" else 0.8
+    return hip_z, hip_z + 0.5
+
+
+def hand_points(pose: str, point_side: int = 1) -> list[Vector]:
+    """両手の位置（人物の中の座標、-X 側の手から）。スーツケースの持ち手などを手に合わせるのにも使う。"""
+    hip_z, sh_z = _heights(pose)
+    hands = {
+        "stand": [(-0.27, 0.0, sh_z - 0.52), (0.27, 0.0, sh_z - 0.52)],
+        # 腕は同じ側の脚と逆に振る（-X 側の脚が後ろなので、-X 側の手は前）
+        "walk": [(-0.26, -0.17, sh_z - 0.5), (0.26, 0.17, sh_z - 0.5)],
+        "sit": [(-0.2, -0.32, hip_z + 0.27), (0.2, -0.32, hip_z + 0.27)],
+        "raise_hand": [(-0.2, -0.32, hip_z + 0.27), (0.36, -0.06, sh_z + 0.66)],
+        "point": [(-0.27, 0.0, sh_z - 0.52), (0.27, 0.0, sh_z - 0.52)],
+        "phone": [(-0.08, -0.26, sh_z - 0.22), (0.08, -0.26, sh_z - 0.22)],
+        "run": [(-0.22, -0.3, sh_z - 0.3), (0.24, 0.24, sh_z - 0.42)],
+        "kneel": [(-0.16, -0.42, 0.2), (0.16, -0.42, 0.2)],
+    }[pose]
+    if pose == "point":
+        hands[(point_side + 1) // 2] = (0.78 * point_side, -0.08, sh_z + 0.05)
+    return [Vector(h) for h in hands]
+
+
 def person(root, name, loc, rot_z, outfit: dict, pose="stand", scale=1.0, point_side=1, hands=None, lift=0.0):
     """デフォルメした人物。正面は -Y。
 
@@ -229,8 +265,7 @@ def person(root, name, loc, rot_z, outfit: dict, pose="stand", scale=1.0, point_
     p = Part(name)
     o = outfit
     sitting = pose in ("sit", "raise_hand")
-    hip_z = 0.48 if sitting else 0.5 if pose == "kneel" else 0.78 if pose == "run" else 0.8
-    sh_z = hip_z + 0.5
+    hip_z, sh_z = _heights(pose)
     head_z = sh_z + 0.22
     leg_mat = o["skin"] if o.get("skirt") else o["bottom"]
 
@@ -289,21 +324,9 @@ def person(root, name, loc, rot_z, outfit: dict, pose="stand", scale=1.0, point_
         p.sphere(0.02, (0, -0.145, head_z - 0.065), o["mouth"], scale=(1.3, 0.5, 0.6), segs=10)
 
     # 腕（肩から手まで）
-    hands = [(x, y, sh_z + dz) for x, y, dz in hands] if hands else {
-        "stand": [(-0.27, 0.0, sh_z - 0.52), (0.27, 0.0, sh_z - 0.52)],
-        "walk": [(-0.26, 0.17, sh_z - 0.5), (0.26, -0.17, sh_z - 0.5)],
-        "sit": [(-0.2, -0.32, hip_z + 0.27), (0.2, -0.32, hip_z + 0.27)],
-        "raise_hand": [(-0.2, -0.32, hip_z + 0.27), (0.36, -0.06, sh_z + 0.66)],
-        "point": [(-0.27, 0.0, sh_z - 0.52), (0.27, 0.0, sh_z - 0.52)],
-        "phone": [(-0.08, -0.26, sh_z - 0.22), (0.08, -0.26, sh_z - 0.22)],
-        "run": [(-0.22, -0.3, sh_z - 0.3), (0.24, 0.24, sh_z - 0.42)],
-        "kneel": [(-0.16, -0.42, 0.2), (0.16, -0.42, 0.2)],
-    }[pose]
-    if pose == "point":
-        hands[(point_side + 1) // 2] = (0.78 * point_side, -0.08, sh_z + 0.05)
-    for sx, hand in zip((-1, 1), hands):
+    points = [Vector((x, y, sh_z + dz)) for x, y, dz in hands] if hands else hand_points(pose, point_side)
+    for sx, hand in zip((-1, 1), points):
         shoulder = Vector((sx * 0.22, 0, sh_z - 0.02))
-        hand = Vector(hand)
         elbow = shoulder + (hand - shoulder) * 0.32
         p.limb(shoulder, elbow, 0.062, 0.058, o["top"])
         p.limb(elbow, hand, 0.048, 0.042, o["skin"])

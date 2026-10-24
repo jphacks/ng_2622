@@ -1,9 +1,9 @@
 import Foundation
 
 extension RoundResults {
-  /// 仮の結果。参加者の名前・色・自分かどうか・採点できたかを受け取り、点数・文字起こし・講評を作る
+  /// 仮の結果。シーンと、参加者の名前・色・自分かどうか・採点できたかを受け取り、点数・文字起こし・講評を作る
   static func mock(
-    sceneName: String,
+    sceneID: String,
     players: [(id: String, name: String, color: UInt32, isSelf: Bool, graded: Bool)]
   ) -> RoundResults {
     var graded: [PlayerResult] = []
@@ -17,7 +17,8 @@ extension RoundResults {
         continue
       }
       // 並び順で文例を割り当てる（プレビューで毎回同じになるように）
-      let sample = MockSample.all[i % MockSample.all.count]
+      let samples = MockSample.samples(for: sceneID)
+      let sample = samples[i % samples.count]
       graded.append(
         PlayerResult(
           id: p.id, name: p.name, color: p.color, isSelf: p.isSelf,
@@ -27,11 +28,12 @@ extension RoundResults {
 
     // 点数の高い順。採点できなかった人は最後
     graded.sort { ($0.score?.total ?? 0) > ($1.score?.total ?? 0) }
-    return RoundResults(sceneName: sceneName, players: graded + ungraded, myReview: myReview)
+    return RoundResults(
+      sceneID: sceneID, sceneName: SceneCatalog.name(of: sceneID), players: graded + ungraded, myReview: myReview)
   }
 }
 
-/// 仮の文例（公園のシーン）。上手さに幅を持たせる
+/// 仮の文例（シーンごと）。上手さに幅を持たせる
 private struct MockSample {
   let content: Int
   let expression: Int
@@ -46,7 +48,15 @@ private struct MockSample {
     return PlayerResult.Score(content: content, expression: expression, speaking: speaking, total: Int(total))
   }
 
-  static let all: [MockSample] = [
+  static func samples(for sceneID: String) -> [MockSample] {
+    switch sceneID {
+    case "classroom": classroom
+    case "station": station
+    default: park
+    }
+  }
+
+  static let park: [MockSample] = [
     MockSample(
       content: 76, expression: 70, speaking: 88,
       transcript: "There is a bench in the park. There is a tree. A dog is near the bench.",
@@ -115,11 +125,85 @@ private struct MockSample {
   ]
 }
 
+extension MockSample {
+  static let classroom: [MockSample] = [
+    MockSample(
+      content: 90, expression: 86, speaking: 84,
+      transcript:
+        "A teacher is pointing at the blackboard, and a boy in a yellow shirt is raising his hand. The other students are writing in their notebooks.",
+      comment: "先生と生徒の動きを両方言えている。",
+      review: RoundResults.Review(
+        comment: "先生・手を挙げた男の子・ノートを書く生徒と、動きをまとめて伝えられています。この調子です。",
+        modelSentence: "A boy is raising his hand while the teacher points at the blackboard.",
+        modelSentenceJa: "先生が黒板を指していて、男の子が手を挙げています。")),
+    MockSample(
+      content: 74, expression: 70, speaking: 82,
+      transcript: "There is a classroom. There are many desks. There is a clock on the wall.",
+      comment: "物は挙がっている。人の動きも言いたい。",
+      review: RoundResults.Review(
+        comment: "机や時計は押さえています。先生や生徒が何をしているかを足すと、内容の点が上がります。",
+        modelSentence: "Students are sitting at their desks, and a clock is on the wall.",
+        modelSentenceJa: "生徒たちが机に座っていて、壁に時計があります。")),
+    MockSample(
+      content: 62, expression: 64, speaking: 70,
+      transcript: "Teacher, blackboard. A boy... hand up. Apple.",
+      comment: "要素は挙がっているが、文になっていない。",
+      review: RoundResults.Review(
+        comment: "見えているものは挙げられています。「A boy is raising his hand.」のように文にしてみましょう。",
+        modelSentence: "There is an apple and a globe on the teacher's desk.",
+        modelSentenceJa: "先生の机の上に、りんごと地球儀があります。")),
+    MockSample(
+      content: 82, expression: 80, speaking: 76,
+      transcript: "In the classroom, the teacher is standing by the blackboard. I can see two windows with yellow curtains and a bookshelf.",
+      comment: "教室の様子を広く描けている。",
+      review: RoundResults.Review(
+        comment: "教室の様子を広く描けています。生徒の動きにも一言触れると、場面がもっと伝わります。",
+        modelSentence: "The teacher is standing by the blackboard next to the windows.",
+        modelSentenceJa: "先生が、窓のそばの黒板の横に立っています。")),
+  ]
+
+  static let station: [MockSample] = [
+    MockSample(
+      content: 88, expression: 84, speaking: 86,
+      transcript:
+        "A woman is walking out of the station with a pink suitcase. A man in a suit is looking at his phone at the bus stop.",
+      comment: "人の動きと持ち物まで言えている。",
+      review: RoundResults.Review(
+        comment: "スーツケースの女性とバス停の男性を、動きまで含めて伝えられています。この調子です。",
+        modelSentence: "A woman pulling a pink suitcase is walking out of the station.",
+        modelSentenceJa: "ピンクのスーツケースを引いた女性が、駅から出てきています。")),
+    MockSample(
+      content: 72, expression: 68, speaking: 80,
+      transcript: "There is a station. There is a clock. There is a yellow taxi.",
+      comment: "物は挙がっている。人にも触れたい。",
+      review: RoundResults.Review(
+        comment: "駅・時計・タクシーは押さえています。人が何をしているかを足すと、内容の点が上がります。",
+        modelSentence: "A yellow taxi is waiting on the road in front of the station.",
+        modelSentenceJa: "駅の前の道で、黄色いタクシーが待っています。")),
+    MockSample(
+      content: 60, expression: 62, speaking: 68,
+      transcript: "Station, big clock. Taxi is yellow. Man phone.",
+      comment: "短い語で言えている。文にしたい。",
+      review: RoundResults.Review(
+        comment: "見えているものは挙げられています。「A man is looking at his phone.」のように文にしてみましょう。",
+        modelSentence: "A man is looking at his phone at the bus stop.",
+        modelSentenceJa: "バス停で、男の人がスマホを見ています。")),
+    MockSample(
+      content: 80, expression: 82, speaking: 74,
+      transcript: "In front of the station, there is a red vending machine and a blue bicycle. A taxi is next to the crosswalk.",
+      comment: "位置の関係が描けている。発音に少し揺れがある。",
+      review: RoundResults.Review(
+        comment: "物の位置の関係がよく描けています。ゆっくり区切って話すと、話し方の点が上がります。",
+        modelSentence: "A taxi is waiting next to the crosswalk in front of the station.",
+        modelSentenceJa: "駅の前の横断歩道のそばで、タクシーが待っています。")),
+  ]
+}
+
 extension RoundResults {
   /// プレビュー用（5 人、全員採点できた）
   static var previewFive: RoundResults {
     .mock(
-      sceneName: "公園",
+      sceneID: "park",
       players: [
         ("me", "ゆうき", 0x5B5BE6, true, true),
         ("p0", "たろう", 0xF29A3A, false, true),
@@ -132,7 +216,7 @@ extension RoundResults {
   /// プレビュー用（8 人、2 人は採点できなかった）
   static var previewEight: RoundResults {
     .mock(
-      sceneName: "公園",
+      sceneID: "park",
       players: [
         ("me", "ゆうき", 0x5B5BE6, true, true),
         ("p0", "たろう", 0xF29A3A, false, true),
@@ -148,7 +232,7 @@ extension RoundResults {
   /// プレビュー用（自分が採点できなかった）
   static var previewSelfUngraded: RoundResults {
     .mock(
-      sceneName: "公園",
+      sceneID: "park",
       players: [
         ("me", "ゆうき", 0x5B5BE6, true, false),
         ("p0", "たろう", 0xF29A3A, false, true),

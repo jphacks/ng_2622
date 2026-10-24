@@ -25,7 +25,7 @@ pnpm openapi          # openapi.json を生成し直す
 - 内容・表現・講評・模範表現: Claude（既定は `claude-haiku-5-5`）に文字起こしとシーンの説明を渡す。
 - 合計は `SCORE_WEIGHTS`（内容,表現,話し方。既定 `50,25,25`）で重み付けする。
 - `SCORING_MODE=fixed` で外部 API を呼ばず固定の点数を返す。デプロイ先は `wrangler.jsonc` で fixed にしてある。
-- シーンは仮で `src/scoring/scenes.json` に置いている。
+- シーンは仮で `src/scoring/scenes.json` に置いている。`id` は 3D シーン（`assets/scenes/<id>`）と同じにする。
 
 ### 手元で採点を試す
 
@@ -41,7 +41,7 @@ CLAUDE_API_KEY=...
 
 ```sh
 # 16 kHz・16 bit・モノラルの WAV を作って送る（1 回で Azure と Claude を 1 回ずつ呼ぶ）
-say -o test.wav --data-format=LEI16@16000 "There is a red bench under a big tree."
+say -o test.wav --data-format=LEI16@16000 "A boy is running in the park and a dog is running to a red ball."
 curl -F audio=@test.wav -F sceneId=park http://localhost:8787/dev/score
 ```
 
@@ -74,6 +74,7 @@ API の型は zod で書き、[hono-openapi](https://hono.dev/examples/hono-open
 - WebSocket のメッセージは OpenAPI の paths では表せないので、`components.schemas` の `ClientMessage`（iPhone → 部屋）と `ServerMessage`（部屋 → iPhone）に型だけを載せている。どちらも `type` の値で種類を見分ける（`oneOf` ＋ `discriminator`）。
 - ルートや型を変えたら `pnpm openapi` で `openapi.json` を生成し直し、一緒に commit する。PR では backend-checks が `pnpm openapi:check` で生成し忘れを検査する。
 - `openapi.json` は生成物なので Biome の整形の対象から外している（`biome.json`）。
+- `.nullable()` の項目は、iOS の生成器（swift-openapi-generator）が `anyOf` の中の `{ "type": "null" }` を読めないので、出すときに `"type": ["integer", "null"]` などの形へ書き換えている（`src/openapi.ts` の `normalizeNullable`）。
 
 ### HTTP の API を足す手順
 

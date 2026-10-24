@@ -64,12 +64,15 @@ sequenceDiagram
 | `GET /rooms/:id` | HTTP | 部屋があるか、満員でないかを返す（部屋に入る画面で使う） |
 | `GET /rooms/:id/ws` | WebSocket | 部屋に入る。最初に `join`（名前とアバターの色。ホストと復帰する人は参加者 ID と合言葉も）を送る。以後、部屋の状態・開始・進み具合・結果を受け取る |
 | `POST /rooms/:id/rounds/:n/audio` | HTTP | 自分の音声（WAV、最長 20 秒、約 0.6 MB）を本文にそのまま載せて送る。参加者 ID と合言葉をヘッダーに付ける。すぐ 202 を返し、採点は裏で続ける |
+| `GET /scenes` | HTTP | シーンの一覧と、それぞれの★の平均・評価した人数（待合のシーン選びに出す） |
+| `GET /scenes/:id/reviews` | HTTP | シーンの評価（★とコメント）を新しい順に返す |
+| `PUT /scenes/:id/reviews` | HTTP | シーンを評価する（★ 1〜5、コメントは 200 文字までで任意）。端末ごとの ID を付け、同じ ID で送り直すと上書きする（結果発表の下で送る） |
 
 API の型の正本は `backend/src/schemas/`（zod）で、そこから生成した `backend/openapi.json` を iOS が読む（2026-10-24 に決定）。WebSocket のメッセージは OpenAPI の `components.schemas` の `ClientMessage`・`ServerMessage` に載せる。
 
 WebSocket のメッセージ（ThatsFight の `src/shared/protocol.ts` に倣う）:
 
-- 端末から: `join`、`start`（ホスト、シーン ID）、`close`（ホスト、締め切り）、`again`（ホスト、同じ顔ぶれでもう一度）、`leave`（退出。ホストが抜けたら次に入った人がホストになる）
+- 端末から: `join`、`start`（ホスト、シーン ID）、`close`（ホスト、締め切り）、`again`（ホスト、同じ顔ぶれでもう一度）、`skip`（音声なしで終える。マイクが使えないときなど）、`leave`（退出。ホストが抜けたら次に入った人がホストになる）
 - 部屋から: `welcome`（本人にだけ。参加者 ID と合言葉）、`room`（参加者と状態）、`round`（シーン ID と開始時刻）、`progress`（各自の状態）、`results`（順位・全員の描写と内訳。自分の分は参加者 ID で選ぶ）、`error`
 
 ## データ
@@ -77,6 +80,7 @@ WebSocket のメッセージ（ThatsFight の `src/shared/protocol.ts` に倣う
 - シーンの定義（ID、名前、Claude に渡す場面の説明、描写してほしい要素の一覧、3D モデルのファイル名）は、リポジトリに JSON で置き、Worker とアプリの両方が読む（推測）。
 - 3D モデルはアプリに同梱する（推測）。会場の回線に左右されないため。
 - 音声と採点の結果は、部屋が閉じたら消す。長く保存しない（推測）。
+- シーンの評価（★とコメント）は、全体で 1 つの Durable Object `SceneReviews` の SQLite に残す（[ADR](../adr/20261024-store-scene-reviews-in-a-global-durable-object.md)）。今後のユーザーが作るシーンも同じ表に足す。
 
 ## コスト破産への備え（[`cost-safety.md`](./cost-safety.md) の具体化）
 

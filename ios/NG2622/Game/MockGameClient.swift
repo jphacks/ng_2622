@@ -21,6 +21,8 @@ final class MockGameClient: GameClient {
 
   private var code = ""
   private var isHost = false
+  /// いまのラウンドのシーン
+  private var roundSceneID = ""
   /// 部屋にいる人（入った順。自分も入る）
   private var members: [Participant] = []
   /// ラウンドの途中で切断する人の ID
@@ -80,11 +82,12 @@ final class MockGameClient: GameClient {
     // ホストは先にいる。ほかの人は後から入ってくる
     let others = makeOthers(for: player, count: max(1, options.otherPlayers), hostFirst: true)
     enter(as: player, present: Array(others.prefix(1)), joining: Array(others.dropFirst()))
+    // ホストは「おまかせ」でスタートする（シーンはスタートのときに決まる）
     let delay = options.hostStartDelay
     hostTask = Task { [weak self] in
       try? await Task.sleep(for: .seconds(delay))
       if Task.isCancelled { return }
-      try? await self?.beginRound()
+      try? await self?.beginRound(sceneID: nil)
     }
   }
 
@@ -96,9 +99,9 @@ final class MockGameClient: GameClient {
     continuation.finish()
   }
 
-  func startRound(sceneID: String) async throws {
+  func startRound(sceneID: String?) async throws {
     guard isHost else { return }
-    try await beginRound()
+    try await beginRound(sceneID: sceneID)
   }
 
   func playAgain() async throws {
@@ -144,8 +147,10 @@ final class MockGameClient: GameClient {
 
   // MARK: - ラウンド
 
-  private func beginRound() async throws {
+  /// sceneID が nil なら「おまかせ」で、ここでランダムに選ぶ（本物は部屋の側が選ぶ）
+  private func beginRound(sceneID: String?) async throws {
     guard !roundRunning else { return }
+    roundSceneID = sceneID ?? SceneCatalog.randomID()
     // まだ入ってきていない人は、このラウンドには入れない
     joinTask?.cancel()
     hostTask?.cancel()
@@ -159,7 +164,7 @@ final class MockGameClient: GameClient {
       let recordingEnd = RoundTiming.intro + .random(in: 7...RoundTiming.recording)
       plans[p.id] = Plan(recordingEnd: recordingEnd, gradingEnd: recordingEnd + .random(in: 2.5...6))
     }
-    continuation.yield(.roundStarted(RoundInfo(sceneID: "park", startsAt: start)))
+    continuation.yield(.roundStarted(RoundInfo(sceneID: roundSceneID, startsAt: start)))
     publish()
 
     ticker?.cancel()
@@ -219,7 +224,7 @@ final class MockGameClient: GameClient {
     ticker?.cancel()
     let final = lastSent
     let results = RoundResults.mock(
-      sceneName: "公園",
+      sceneID: roundSceneID,
       players: final.map { (id: $0.id, name: $0.name, color: $0.color, isSelf: $0.isSelf, graded: $0.status == .done) }
     )
     // 待合に戻ったときのために、切断した人は切断中のまま、ほかの人は待合の状態に戻す

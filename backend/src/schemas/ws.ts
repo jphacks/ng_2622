@@ -57,6 +57,17 @@ export const AgainMessage = z.object({ type: z.literal("again") }).meta({
     "ホストだけが送れる。結果発表から同じ顔ぶれで待合に戻る（phase が lobby の room が全員に届く）",
 });
 
+export const SkipMessage = z
+  .object({
+    type: z.literal("skip"),
+    round: z.int().min(1).meta({ description: "round の round" }),
+  })
+  .meta({
+    ref: "SkipMessage",
+    description:
+      "音声を送らずにこのラウンドを終える（マイクが使えない・録れなかったとき）。その人は done になり、結果では「採点できませんでした」（rank・score が null）になる。音声を送った後は already_submitted",
+  });
+
 export const LeaveMessage = z.object({ type: z.literal("leave") }).meta({
   ref: "LeaveMessage",
   description:
@@ -69,6 +80,7 @@ export const ClientMessage = z
     StartMessage,
     CloseMessage,
     AgainMessage,
+    SkipMessage,
     LeaveMessage,
   ])
   .meta({
@@ -80,6 +92,7 @@ export const ClientMessage = z
         start: "#/components/schemas/StartMessage",
         close: "#/components/schemas/CloseMessage",
         again: "#/components/schemas/AgainMessage",
+        skip: "#/components/schemas/SkipMessage",
         leave: "#/components/schemas/LeaveMessage",
       },
     },

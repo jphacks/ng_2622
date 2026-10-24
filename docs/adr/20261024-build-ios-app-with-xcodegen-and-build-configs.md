@@ -31,6 +31,10 @@
 - Mock の振る舞い（ほかの参加者の数、途中で切断する人を入れるか、参加者として入ったときにホストがスタートするまでの秒数）も、同じ道筋で xcconfig の `MOCK_*` から入れる。既定値は `Mock.xcconfig`、各自の変更は `Local.xcconfig` に書く（2026-10-24、issue #22）。アプリはホームから始まり、開発用の入り口の画面は置かない。
 - 対応する iOS は 26 以上にする。手元の iPhone に合わせた。
 - 3D は RealityKit の `RealityView` で描く。USDZ のモデルができるまでは箱を組んで作り、できたら読み込みに差し替える。
+  - 追記（2026-10-24）: `assets/scenes/*.usdz` の読み込みに差し替え、箱の公園は消した。
+- API の型とクライアントは、`backend/openapi.json` から swift-openapi-generator のビルドプラグインで、ビルドのたびに作る。ローカルの Swift パッケージ `ios/Packages/BackendAPI` に、`backend/openapi.json` への symlink と設定を置き、アプリは `import BackendAPI` で使う（2026-10-24）。
+  - 理由: 手で写した型が openapi.json とずれない。パッケージに分けると、アプリの `SWIFT_DEFAULT_ACTOR_ISOLATION=MainActor` が作られたコードにかからない。
+  - 見送った案: 作ったコードを commit する（作り直し忘れでずれる）。
 
 ## Consequences
 - ファイルを足しても `project.pbxproj` の衝突が起きない。代わりに、Mac のメンバーは xcodegen を入れ、clone や `project.yml` の変更のあとに `(cd ios && xcodegen)` を打つ必要がある。
@@ -38,3 +42,4 @@
 - Mock と Live を scheme で選ぶだけで切り替えられ、iPhone に入れたあとも選んだ方のまま動く。切り替えるにはビルドし直す。
 - iOS 26 より古い iPhone のメンバーは、アプリを入れられない。デモは iOS 26 以上の 2 台で足りる。
 - 箱で組んだ 3D は見た目が仮のもので、USDZ ができたら差し替える手間が残る。
+- 各 Mac で一度、Xcode でビルドプラグインを信頼する（Trust & Enable）必要がある。xcodebuild では `-skipPackagePluginValidation` を付ける。
