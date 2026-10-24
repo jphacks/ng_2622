@@ -1,0 +1,16 @@
+{
+  "id": "park",
+  "name": "公園",
+  "model": "park.usdz",
+  "description": "A small park on a sunny spring day. A boy in a yellow shirt is running along a stone path. A brown dog is running toward a red ball on the grass. There is a pond with lily pads, a pink cherry blossom tree, two green trees, an empty wooden bench, a street lamp, a wooden fence, bushes, and some flowers.",
+  "elements": [
+    "a boy in a yellow shirt running on the stone path",
+    "a brown dog running toward a red ball",
+    "a small pond with lily pads and rocks",
+    "a pink cherry blossom tree",
+    "an empty wooden bench",
+    "a street lamp",
+    "a wooden fence and green trees",
+    "flowers and bushes on the grass"
+  ]
+}
