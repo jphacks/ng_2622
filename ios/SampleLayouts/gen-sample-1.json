@@ -1,0 +1,86 @@
+{
+  "protocol": "scenenglish.scene/1",
+  "id": "gen-sample-1",
+  "name": "リンゴが落ちる公園",
+  "difficulty": "easy",
+  "description": "A sunny park. A red apple is falling from a tree. A man is walking past the tree. A brown dog is running toward a red ball. There is an empty bench.",
+  "elements": [
+    {
+      "id": "place",
+      "label": "公園で",
+      "points": 10,
+      "accept": "park, garden, lawn"
+    },
+    {
+      "id": "apple_fall",
+      "label": "リンゴが木から落ちている",
+      "points": 30,
+      "accept": "an apple is falling from the tree",
+      "partial": "mentions an apple or the tree, without saying it is falling"
+    },
+    {
+      "id": "man_walk",
+      "label": "男の人が歩いている",
+      "points": 25,
+      "accept": "a man is walking",
+      "partial": "mentions a man or a person, without saying he is walking"
+    },
+    {
+      "id": "dog_ball",
+      "label": "犬がボールに向かって走っている",
+      "points": 25,
+      "accept": "a dog is running toward a ball",
+      "partial": "mentions a dog or a ball, without saying the dog is running toward it"
+    }
+  ],
+  "extraMax": 10,
+  "items": [
+    { "key": "ground", "part": "grass_patch", "position": [0, 0, 0] },
+    {
+      "key": "tree",
+      "part": "tree",
+      "position": [0, 0, -1.6],
+      "motion": { "type": "sway", "angle": 3, "duration": 4 }
+    },
+    {
+      "key": "apple",
+      "part": "apple_red",
+      "position": [0.5, 2.3, -1.0],
+      "scale": 2,
+      "motion": { "type": "fall", "duration": 1.2, "delay": 0.5, "loop": true }
+    },
+    {
+      "key": "man",
+      "part": "person_walk_adult_a",
+      "position": [2.8, 0, 0.6],
+      "yaw": -90,
+      "motion": {
+        "type": "move",
+        "to": [-2.8, 0, 0.6],
+        "duration": 8,
+        "loop": true
+      }
+    },
+    { "key": "bench", "part": "bench", "position": [-2.2, 0, -1.4], "yaw": 20 },
+    { "key": "ball", "part": "ball_red", "position": [-1.4, 0, 2.2] },
+    {
+      "key": "dog",
+      "part": "animal_run_dog_a",
+      "position": [1.6, 0, 2.2],
+      "yaw": -90,
+      "motion": {
+        "type": "move",
+        "to": [-0.9, 0, 2.2],
+        "duration": 3,
+        "loop": true
+      }
+    },
+    { "key": "flower1", "part": "flower", "position": [2.6, 0, -2.4] },
+    {
+      "key": "flower2",
+      "part": "flower",
+      "position": [3.0, 0, -2.0],
+      "yaw": 40
+    }
+  ]
+}

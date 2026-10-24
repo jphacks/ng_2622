@@ -32,6 +32,7 @@
 - 対応する iOS は 26 以上にする。手元の iPhone に合わせた。
 - 3D は RealityKit の `RealityView` で描く。USDZ のモデルができるまでは箱を組んで作り、できたら読み込みに差し替える。
   - 追記（2026-10-24）: `assets/scenes/*.usdz` の読み込みに差し替え、箱の公園は消した。
+  - 追記（2026-10-25）: AI で作った場面（sceneId が `gen-`）は、配置の JSON（[`scene-protocol.md`](../design/scene-protocol.md)）から部品を並べて出す（`SceneComposer`）。部品は、`project.yml` の Run Script（`Copy scene parts`）が `assets/parts` からアプリの読む `index.json` と `<id>/<version>.usdz` だけを rsync で写して同梱する（アプリの中では `parts/<id>/<version>.usdz`）。どの部品も `1.usdz` なので、`assets/scenes` のように平らに並べると名前がぶつかるため。フォルダの参照にしないのは、中身を選べず README・確かめの画像・メタデータの JSON・ignore した `build/` まで全部入ってしまうから。Mock で出す配置の見本は `ios/SampleLayouts/` に置く。
 - API の型とクライアントは、`backend/openapi.json` から swift-openapi-generator のビルドプラグインで、ビルドのたびに作る。ローカルの Swift パッケージ `ios/Packages/BackendAPI` に、`backend/openapi.json` への symlink と設定を置き、アプリは `import BackendAPI` で使う（2026-10-24）。
   - 理由: 手で写した型が openapi.json とずれない。パッケージに分けると、アプリの `SWIFT_DEFAULT_ACTOR_ISOLATION=MainActor` が作られたコードにかからない。
   - 見送った案: 作ったコードを commit する（作り直し忘れでずれる）。

@@ -40,6 +40,10 @@ targets:
           - "*.usdz"
           - "*.png"
           - "*.json"
+      # Mock で出す、AI で作った場面の見本（配置の JSON）。アプリの中では SampleLayouts/<sceneId>.json になる
+      - path: SampleLayouts
+        type: folder
+        buildPhase: resources
     settings:
       base:
         PRODUCT_NAME: NG2622
@@ -58,6 +62,16 @@ targets:
         INFOPLIST_KEY_UIApplicationSceneManifest_Generation: YES
         MARKETING_VERSION: "0.1.0"
         CURRENT_PROJECT_VERSION: "1"
+    # 場面を組み立てる部品は、アプリが読む index.json と <id>/<version>.usdz だけを assets/parts から写す（ios/ には写さない）。
+    # フォルダごと入れると README.md・contact_sheet.png・メタデータの <version>.json・手元の build/ まで入ってしまう。
+    # どの部品も 1.usdz なので、平らに並べると名前がぶつかる。アプリの中では parts/<id>/<version>.usdz になる
+    postCompileScripts:
+      - name: Copy scene parts
+        basedOnDependencyAnalysis: false
+        script: |
+          rsync -a --delete --prune-empty-dirs --exclude='build/' --include='*/' --include='/index.json' \
+            --include='/*/[0-9]*.usdz' --exclude='*' \
+            "$SRCROOT/../assets/parts/" "$TARGET_BUILD_DIR/$UNLOCALIZED_RESOURCES_FOLDER_PATH/parts/"
     dependencies:
       - package: BackendAPI
   # アプリの中の、通信や画面に依らない変換（部屋のメッセージ → 画面のできごとなど）を確かめる

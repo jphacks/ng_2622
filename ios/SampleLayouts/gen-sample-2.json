@@ -1,0 +1,69 @@
+{
+  "protocol": "scenenglish.scene/1",
+  "id": "gen-sample-2",
+  "name": "テーブルのある部屋",
+  "difficulty": "easy",
+  "description": "A room with a table. A cup and a book are on the table. A woman is sitting on a chair at the table. A bag is next to the chair. A man is carrying a box behind her.",
+  "elements": [
+    {
+      "id": "cup_book",
+      "label": "テーブルの上にコップと本がある",
+      "points": 25,
+      "accept": "a cup and a book are on the table",
+      "partial": "mentions a cup, a book or a table, without saying they are on the table"
+    },
+    {
+      "id": "woman_sit",
+      "label": "女の人が椅子に座っている",
+      "points": 25,
+      "accept": "a woman is sitting on a chair",
+      "partial": "mentions a woman or a chair, without saying she is sitting"
+    },
+    {
+      "id": "bag",
+      "label": "椅子の横にかばんがある",
+      "points": 15,
+      "accept": "a bag is next to the chair",
+      "partial": "mentions a bag"
+    },
+    {
+      "id": "man_carry",
+      "label": "男の人が箱を運んでいる",
+      "points": 25,
+      "accept": "a man is carrying a box",
+      "partial": "mentions a man or a box, without saying he is carrying it"
+    }
+  ],
+  "extraMax": 10,
+  "items": [
+    { "key": "table", "part": "table", "position": [0, 0, 0.2] },
+    { "key": "cup", "part": "cup", "position": [-0.3, 0.72, 0.35], "yaw": 30 },
+    {
+      "key": "book",
+      "part": "book",
+      "position": [0.25, 0.72, 0.3],
+      "yaw": -15
+    },
+    { "key": "bottle", "part": "bottle", "position": [0.45, 0.72, 0.05] },
+    { "key": "chair", "part": "chair", "position": [0, 0, -0.5] },
+    {
+      "key": "woman",
+      "part": "person_sit_woman_a",
+      "position": [0, -0.02, -0.325]
+    },
+    { "key": "bag", "part": "bag", "position": [0.55, 0, -0.55], "yaw": 70 },
+    { "key": "sofa", "part": "sofa", "position": [-2.0, 0, -1.6], "yaw": 30 },
+    {
+      "key": "man",
+      "part": "person_carry_adult_a",
+      "position": [-2.6, 0, -2.4],
+      "yaw": 90,
+      "motion": {
+        "type": "move",
+        "to": [2.6, 0, -2.4],
+        "duration": 7,
+        "loop": true
+      }
+    }
+  ]
+}
