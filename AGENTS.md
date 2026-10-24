@@ -12,7 +12,7 @@
 ## リポジトリ構成
 
 ```
-.github/          PR・issue テンプレート、ラベル定義、Actions（pr-checks・Discord 通知・backend の検査・PR ごとのプレビュー・デプロイ）
+.github/          PR・issue テンプレート、ラベル定義、Actions（pr-checks・format-check・Discord 通知・backend の検査・PR ごとのプレビュー・デプロイ）
 .claude/skills/   共有の Claude Code skill（.agents は .claude への symlink）
 backend/          バックエンド（Hono on Cloudflare Workers）。PR ごとにプレビュー、main に入るとデプロイされる
 docs/adr/         設計・運用の意思決定ログ
@@ -20,7 +20,8 @@ docs/design/      仕様の正本（使い方・画面の流れ・アーキテ�
 docs/design/ui/   画面設計書の元データ（screens/*.md、仮の画面の画像）
 scripts/          規約の検査スクリプト、GitHub 設定スクリプト、画面設計書の生成（ui-spec/）
 tests/            scripts/ の self-test
-lefthook.yml      git hook（commit-msg / pre-push）
+lefthook.yml      git hook（pre-commit / commit-msg / pre-push）
+biome.json        Biome（TypeScript・JSON などの整形と lint）の設定
 ```
 
 ## はじめに（各メンバーが一度だけ行う）
@@ -28,7 +29,15 @@ lefthook.yml      git hook（commit-msg / pre-push）
 ```sh
 brew install lefthook gh
 lefthook install
+npm install        # Biome を入れる（commit 時の整形に使う）
 ```
+
+## コードの整形
+
+- TypeScript・JSON などは Biome で整形する。インデントはスペース 2（[ADR](./docs/adr/20261023-format-with-biome.md)）。Swift のフォーマッターは入れていない。
+- commit すると、lefthook の pre-commit が stage したファイルを自動で整形し、stage し直す。
+- PR では format-check（GitHub Actions）が整形し忘れを検査する。merge の条件にはしていない。
+- Markdown は整形しない。
 
 ## 開発フロー
 
@@ -61,6 +70,7 @@ PR を作成すると（draft は ready for review にしたときに）Discord 
 ## コマンド
 
 ```sh
+npm run format                              # Biome で整形と lint の自動修正（format:check で検査のみ）
 bash tests/run-tests.sh                     # 検査スクリプトの self-test
 scripts/setup-github-repo.sh --dry-run      # GitHub 設定（ラベル・merge 方式・ruleset）の差分確認
 python3 scripts/ui-spec/build.py            # 画面設計書 docs/design/ui/build/ui-spec.html を生成（要 graphviz・librsvg）
