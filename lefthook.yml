@@ -10,9 +10,9 @@ pre-commit:
   commands:
     format-biome:
       # TypeScript・JSON などを Biome で整形・lint し、直した分を stage し直す（Markdown は biome.json で対象外）
-      # --no: node_modules に Biome が無いときに npx が別の版を取ってこないようにする（先に `npm install`）
+      # pnpm exec は node_modules の Biome だけを使い、別の版を取ってこない（先に `pnpm install`）
       glob: "*.{js,ts,cjs,mjs,jsx,tsx,json,jsonc,css}"
-      run: npx --no biome check --write --no-errors-on-unmatched {staged_files}
+      run: pnpm exec biome check --write --no-errors-on-unmatched {staged_files}
       stage_fixed: true
 
 pre-push:
