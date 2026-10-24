@@ -58,7 +58,7 @@ RealityKit に合わせる。
 | `pose` | 文字列（任意） | 人物と動物のポーズ。`stand`・`walk`・`run`・`sit`・`kneel`・`raise_hand`・`point`・`phone` など |
 | `size` | `[幅, 高さ, 奥行き]` | 外接する箱の大きさ（m）。配置を書く側が、重なりや大きさを考える手がかり |
 | `label` | 文字列 | 日本語の名前（一覧で人が読む用） |
-| `anchors` | 物（任意） | 置き方の手がかりの点（未確定、2026-10-24）。`top`: 上に物を置ける面の高さ（m。例: table は 0.72）。`seat`: 座る点 `[x, y, z]`（例: chair は `[0, 0.46, 0]`）。`hip`: 座るポーズの人の腰の点 `[x, y, z]`（例: `[0, 0.48, -0.2]`）。AI で場面を作るとき、座らせる・上に置く座標の計算に使う |
+| `anchors` | 物（任意） | 置き方の手がかりの点（2026-10-24 に追加）。`top`: 上に物を置ける面の高さ（m。例: table は 0.72）。`seat`: 座る点 `[x, y, z]`（例: chair は `[0, 0.46, 0]`）。`hip`: 座るポーズの人の腰の点 `[x, y, z]`（例: `[0, 0.48, -0.2]`）。AI で場面を作るとき、座らせる・上に置く座標の計算に使う |
 
 ## 配置の JSON
 
@@ -186,9 +186,7 @@ v1 の基本は止まった場面で、動作は人物のポーズで表す。�
 - 部屋の流れは今のまま。ホストは `start` で `sceneId` を送り、部屋は round で全員に配る。採点は、同梱のシーンなら `backend/src/scoring/scenes.json`、`gen-` のシーンなら R2 の配置の JSON の `description`・`elements`・`extraMax` を使う。
 - 同梱のシーン（公園・教室・駅前など）は、焼き込んだ USDZ のまま残す。プロトコルに直すのは、確かめのための 1 つだけ。
 
-## AI で場面を作る（`POST /scenes/generate`、2026-10-24、未確定）
-
-> 未確定: grill の途中。まとめに合意するまで、この節は「未確定」とする。
+## AI で場面を作る（`POST /scenes/generate`、2026-10-24 に決定）
 
 ホストの一言から、今ある部品だけで配置の JSON を作る。亀井さんのスクラッチのエージェントとは別の、軽い生成。Claude の Messages API を、出力の形（JSON Schema）を決めて 1 回呼ぶ。ツールを使うループ（エージェント）にはしない。
 
@@ -200,6 +198,42 @@ v1 の基本は止まった場面で、動作は人物のポーズで表す。�
 - 履歴: 作った場面は待合の一覧に出さず、使い回さない。配置の JSON（R2 の `scenes/<sceneId>.json`）に、一言・難しさ・使ったモデル・作った日時を R2 のメタデータとして付けて残す。部品の ID と座標がそろっているので、部品と合わせれば過去の場面をそのまま再現できる。
 - 不適切な一言: system に「実在の人の名前や悪口・差別・性的・暴力的な言葉は、名前・説明・要素に使わず、日常の場面に置き換える」と書いてかわす。Claude が断ったときは「作れませんでした」にする。言葉の一覧での検査はしない。
 - 失敗したとき: 自動で 1 回だけやり直す。それでもだめなら、理由を付けて「作れませんでした」を返す。ホストは言い方を変えて頼み直すか、同梱のシーンを選べる。待つのは長くて 20 秒。
+
+### Claude に書かせる形と呼び方
+
+Claude には次の形（JSON Schema）で書かせる。部品の ID は `enum` にし、一覧に無い部品は返らないようにする。
+
+```
+{ name, description,
+  items: [{ key, part,
+            place: { relation: ground | on | in | under | next_to | in_front_of | behind | near | between | sit_on,
+                     target?, target2?（between のとき）, zone?（手前・真ん中・奥 × 左・中・右の 9 区画） },
+            facing?: camera | left | right | away | toward（key）,
+            motion?: { type: fall | move | rotate | sway, toward?（key か区画）, duration } }],
+  elements: [{ id, label, points, accept, partial? }] }
+```
+
+バックエンドは、これを上の「配置の JSON」に直して保存する。
+
+- 地面に置くもの（`ground`）は、区画の中に `size` で重ならないよう並べる。
+- `on` は相手の `anchors.top`（無ければ高さ）の上に置く。`sit_on` は相手の `anchors.seat` に人の `anchors.hip` を合わせる。ほかの関係は、相手の `size` に 10 cm の隙間を足した位置に置く。
+- 向き（`facing`）と動きの行き先（`motion.toward`）は、相手の座標から計算する。
+- 配点は合計 90 に直し、`extraMax` は 10 にする。知らない `target` は無視し、区画の真ん中に置く。
+
+Claude の API（Messages API）に渡すもの:
+
+| パラメーター | 値 |
+| --- | --- |
+| `model` | 環境変数（既定は `claude-haiku-5-5`） |
+| `max_tokens` | 8000 |
+| `output_config` | `{ effort: "medium", format: { type: "json_schema", schema } }` |
+| `system` | 規則・関係の意味・部品の一覧（`index.json` から id・label・category・words・pose・size・anchors）・例 1〜2 個。`cache_control` でキャッシュする |
+| `messages` | `[{ role: "user", content: "難しさ: easy\nお題: リンゴが落ちる公園" }]` |
+| `thinking` | 指定しない（Haiku 5.5 は既定で考える） |
+| `temperature` | 送らない（2026-10-21 から 400 になる） |
+| SDK の設定 | `timeout` 20 秒、`maxRetries` 1 |
+
+`stop_reason` が `end_turn` でなければ失敗とする。Haiku 5.5 には断ったとき（`refusal`）にサーバー側で別のモデルへ回す仕組みが無いので、断られたら「作れませんでした」にする。
 
 ## アプリの組み立て
 
@@ -237,5 +271,5 @@ deep research（[`research/scene-parts-research.md`](./research/scene-parts-rese
 - 最初に用意する部品の一覧は上で決めた（2026-10-24）。数の決め方の目安は次のとおり。
   - 目安: ほぼ同じ文も含めて 1000 通り以上の描写の文が作れればよい。文の数はおよそ N × P × (N − 1) ＋ A × P × N（N は名前で呼べる部品の数、P は前置詞の数、A は人物・動物のポーズの部品の数）で、部品の数の 2 乗で増える。例えば物 18・ポーズ 8・地面 4 の 30 部品で、P = 8 なら約 6,900 通り、15 部品でも約 1,600 通りになる。
   - 言える動詞の数は、ポーズの数と動きの 4 種類でしか増えない。物を足しても動詞は増えないので、部品を選ぶときはポーズ（動詞）の数を重く見る。
-- `POST /scenes/generate` に使う Claude のモデルと、1 回の費用の上限（[`cost-safety.md`](./cost-safety.md)）。
+- `POST /scenes/generate` の 1 回の費用の上限（[`cost-safety.md`](./cost-safety.md)）。モデルは上の「AI で場面を作る」で決めた。
 - 端末のキャッシュの持ち方と容量。
