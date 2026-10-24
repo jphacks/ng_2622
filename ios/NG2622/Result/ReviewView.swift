@@ -48,6 +48,11 @@ struct ReviewView: View {
       .padding(20)
       .resultCard()
 
+      // 自分が話した英文。下の模範表現と見比べる
+      if !me.transcript.isEmpty {
+        TranscriptCard(transcript: me.transcript)
+      }
+
       ReviewCard(title: "講評") {
         Text(review.comment)
           .font(Theme.font(16, .bold))
@@ -96,6 +101,31 @@ private struct ScoreBar: View {
     .onAppear {
       withAnimation(.easeOut(duration: 0.7).delay(0.15)) { grown = true }
     }
+  }
+}
+
+/// あなたの描写。見出しの右には、録音を聞き直すボタンを後で足す
+private struct TranscriptCard: View {
+  let transcript: String
+
+  var body: some View {
+    VStack(alignment: .leading, spacing: 10) {
+      HStack {
+        Text("あなたの描写")
+          .font(Theme.font(13, .heavy))
+          .foregroundStyle(Theme.muted)
+        Spacer()
+      }
+      .frame(minHeight: 22)
+      Text(transcript)
+        .font(Theme.font(17, .bold))
+        .lineSpacing(5)
+        .foregroundStyle(Theme.ink)
+        .fixedSize(horizontal: false, vertical: true)
+    }
+    .padding(20)
+    .frame(maxWidth: .infinity, alignment: .leading)
+    .resultCard()
   }
 }
 
