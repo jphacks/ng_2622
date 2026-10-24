@@ -1,0 +1,18 @@
+{
+  "id": "bed",
+  "version": 1,
+  "file": "parts/bed/1.usdz",
+  "category": "furniture",
+  "words": [
+    {
+      "word": "bed",
+      "pos": "noun"
+    }
+  ],
+  "size": [2.0, 0.9, 1.037],
+  "label": "ベッド（1 人用）",
+  "anchors": {
+    "top": 0.49,
+    "seat": [0.2, 0.49, 0.296]
+  }
+}

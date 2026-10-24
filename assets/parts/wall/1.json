@@ -1,0 +1,14 @@
+{
+  "id": "wall",
+  "version": 1,
+  "file": "parts/wall/1.usdz",
+  "category": "building",
+  "words": [
+    {
+      "word": "wall",
+      "pos": "noun"
+    }
+  ],
+  "size": [4.0, 2.4, 0.1],
+  "label": "壁（長さ 4 m）"
+}

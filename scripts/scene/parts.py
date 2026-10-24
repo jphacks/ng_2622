@@ -27,6 +27,7 @@ import re
 import sys
 from pathlib import Path
 
+import bmesh
 import bpy
 from mathutils import Euler, Matrix, Vector
 
@@ -78,6 +79,20 @@ def make_materials() -> None:
         "knit_rose": ("#e07a8a", 0.8), "skirt_navy": ("#2f3b63", 0.8), "shoe_white": ("#f2f2f2", 0.5),
         "shirt_yellow": ("#ffcf3a", 0.7), "shorts_blue": ("#3d6fb6", 0.7), "shoe_red": ("#e3483c", 0.5),
         "dress_pink": ("#f29bb5", 0.75),
+        # 建物の部分（扉・壁・窓）
+        "door": ("#b07a4a", 0.55), "door_panel": ("#9a6538", 0.55), "door_frame": ("#ece6da", 0.6),
+        "wall": ("#efe8dc", 0.9), "baseboard": ("#8a6a4a", 0.6), "window_frame": ("#d8dde3", 0.4),
+        # 店（レジ・棚・かご・カート）
+        "counter": ("#ece7dd", 0.6), "counter_top": ("#6b5a4a", 0.4), "register": ("#3a3f4a", 0.4), "receipt": ("#ffffff", 0.8),
+        "shelf": ("#a46d40", 0.6), "basket": ("#d9352b", 0.5), "basket_rim": ("#a8261f", 0.5),
+        # 台所と家の物（皿・フライパン・シャツ・ノートパソコン・時計・ベッド）
+        "dish": ("#ffffff", 0.25), "dish_rim": ("#3f6fc8", 0.4),
+        "pan": ("#2b2b30", 0.35), "pan_inside": ("#55585f", 0.5), "pan_handle": ("#5a3a24", 0.6),
+        "shirt": ("#5b8fd9", 0.8), "button": ("#ffffff", 0.4),
+        "laptop": ("#c9cdd3", 0.35), "clock_face": ("#ffffff", 0.4),
+        "bed_frame": ("#a8683a", 0.55), "mattress": ("#f4f1ea", 0.8), "blanket": ("#7fb5d9", 0.85), "pillow": ("#ffffff", 0.85),
+        # 乗り物の座席
+        "seat_fabric": ("#3d6f9e", 0.85),
     }))
     M["iron"] = material("iron", "#2b2b30", 0.35, metal=0.8)
     M["ball"] = material("ball", "#e8352b", 0.3, coat=0.6)
@@ -93,6 +108,16 @@ def make_materials() -> None:
     M["chair_back"] = material("chair_back", "#c48a55", 0.5)
     M["sofa_back"] = material("sofa_back", "#5a86b8", 0.85)
     M["bike_basket"] = material("bike_basket", "#8e959e", 0.4)
+    M["window_sill"] = material("window_sill", "#d8dde3", 0.4)
+    M["counter_front"] = material("counter_front", "#2f8f5b", 0.5)
+    M["shelf_back"] = material("shelf_back", "#8e5c35", 0.6)
+    M["shirt_collar"] = material("shirt_collar", "#f4f4f0", 0.7)
+    M["seat_back"] = material("seat_back", "#3d6f9e", 0.85)
+    M["trackpad"] = material("trackpad", "#a9aeb6", 0.3)
+    M["cart_handle"] = material("cart_handle", "#d9352b", 0.5)
+    M["laptop_screen"] = material("laptop_screen", "#3f78c8", 0.2, emit=0.6)   # screen（スマートフォン）より暗くして、白く飛ばないようにする
+    # 窓のガラスの向こうは明るい空（classroom.py の sky と同じ）
+    M["window_glass"] = material("window_glass", "#9fd0ff", 0.2, emit=0.5)
 
 
 CHILD_SCALE = 0.75   # 子どもの大きさ（大人に対する倍率）
@@ -511,6 +536,330 @@ def build_cup(root):
     p.cyl(0.037, 0.037, 0.005, (0, 0, z + 0.072), M["coffee"], segs=16, smooth=False)
     p.limb((0.04, 0, z + 0.055), (0.065, 0, z + 0.03), 0.01, 0.01, M["cup"], segs=6)
     p.finish(root)
+
+
+# ---------- 建物の部分・店・家の物 ----------
+
+def lathe(p, profile, mats, segs=32, scale=(1.0, 1.0), angle0=0.0, smooth=True):
+    """断面 [(r, z), ...] を Z 軸まわりに回した形（皿・フライパン・かご）。
+
+    断面は外の底の中心から外へ、縁を回って内側を下り、内の底の中心まで順にたどる（r が 0 の点は 1 点にまとめる）。
+    mats は 1 つのマテリアルか、断面の区間ごとのマテリアルの並び。scale は X・Y の倍率（segs=4 で四角くできる）。
+    """
+    if not isinstance(mats, (list, tuple)):
+        mats = [mats] * (len(profile) - 1)
+    sx, sy = scale
+    for i in range(len(profile) - 1):
+        tb = bmesh.new()
+        rings = []
+        for r, z in profile[i:i + 2]:
+            if r == 0:
+                rings.append([tb.verts.new((0, 0, z))] * segs)
+            else:
+                rings.append([tb.verts.new((r * math.cos(angle0 + k / segs * math.tau) * sx,
+                                            r * math.sin(angle0 + k / segs * math.tau) * sy, z)) for k in range(segs)])
+        a, b = rings
+        for k in range(segs):
+            k2 = (k + 1) % segs
+            quad = [a[k], a[k2], b[k2], b[k]]   # この回り順で、表が形の外を向く
+            verts = [v for j, v in enumerate(quad) if v not in quad[:j]]
+            if len(verts) >= 3:
+                tb.faces.new(verts)
+        p._merge(tb, mats[i], smooth)
+
+
+@part("door", "building", "扉（ドア）", [("door", "noun")])
+def build_door(root):
+    """枠つきの開き戸。扉は幅 0.8 m・高さ 2.0 m。原点は枠の底面の中心（ちょうつがいの側ではない）。
+
+    取っ手は +X 側で、表（+Z）と裏の両方に付ける。表と裏は同じ形なので向きは確かめない。
+    """
+    w, h, t = 0.8, 2.0, 0.04
+    frame_w, frame_d = 0.07, 0.12
+    p = Part("door")
+    p.box((w, t, h), (0, 0, h / 2), M["door"], bevel=0.006)
+    for sy in (-1, 1):   # 扉の表と裏の、上下 2 枚の飾りの板
+        for cz, ph in ((1.45, 0.75), (0.55, 0.7)):
+            p.box((w - 0.24, 0.01, ph), (0, sy * (t / 2 + 0.004), cz), M["door_panel"], bevel=0.004)
+    for sx in (-1, 1):
+        p.box((frame_w, frame_d, h + frame_w), (sx * (w / 2 + frame_w / 2), 0, (h + frame_w) / 2), M["door_frame"], bevel=0.008)
+    p.box((w + frame_w * 2, frame_d, frame_w), (0, 0, h + frame_w / 2), M["door_frame"], bevel=0.008)
+    for sy in (-1, 1):   # レバーの取っ手
+        y = sy * (t / 2 + 0.012)
+        p.cyl(0.028, 0.028, 0.012, (w / 2 - 0.08, y, 0.95), M["metal"], rot=(math.pi / 2, 0, 0), segs=14, smooth=False)
+        p.limb((w / 2 - 0.08, y + sy * 0.03, 0.95), (w / 2 - 0.2, y + sy * 0.03, 0.95), 0.012, 0.012, M["metal"], segs=8)
+        p.limb((w / 2 - 0.08, y, 0.95), (w / 2 - 0.08, y + sy * 0.035, 0.95), 0.012, 0.012, M["metal"], segs=8)
+    p.finish(root)
+
+
+@part("wall", "building", "壁（長さ 4 m）", [("wall", "noun")])
+def build_wall(root):
+    """部屋の壁の板。長さ 4 m（X）・高さ 2.4 m・厚さ 0.1 m。下の 8 cm は幅木（色違い、厚さは同じ）。表と裏は同じ形。"""
+    length, h, t, base = 4.0, 2.4, 0.1, 0.08
+    p = Part("wall")
+    p.box((length, t, base), (0, 0, base / 2), M["baseboard"])
+    p.box((length, t, h - base), (0, 0, base + (h - base) / 2), M["wall"])
+    p.finish(root)
+
+
+@part("window", "building", "窓", [("window", "noun")], front=("window_sill", 1))
+def build_window(root):
+    """引き違いの窓。幅 1.2 m・高さ 1.0 m。壁（厚さ 0.1 m）に重ねて、高さを上げて置く。
+
+    原点は枠の底面の中心。枠は厚さ 0.14 m で壁の両面に 2 cm ずつ出る。ガラスは壁に隠れないよう、
+    壁の表と裏の外に 1 枚ずつ置く。窓台は表（+Z）の側だけにある。
+    """
+    w, h, d, fw = 1.2, 1.0, 0.14, 0.06
+    p = Part("window")
+    for sx in (-1, 1):
+        p.box((fw, d, h), (sx * (w / 2 - fw / 2), 0, h / 2), M["window_frame"], bevel=0.006)
+    for z in (fw / 2, h - fw / 2):
+        p.box((w - fw * 2, d, fw), (0, 0, z), M["window_frame"], bevel=0.006)
+    for sy in (-1, 1):
+        y = sy * (d / 2 - 0.012)
+        p.box((w - fw * 2, 0.004, h - fw * 2), (0, y, h / 2), M["window_glass"])
+        p.box((0.04, 0.012, h - fw * 2), (0.02 * sy, y + sy * 0.004, h / 2), M["window_frame"])   # 2 枚の戸の合わせ目
+    p.box((w + 0.08, 0.1, 0.04), (0, -(d / 2 + 0.05), 0.02), M["window_sill"], bevel=0.006)   # 窓台（表だけ）
+    p.finish(root)
+
+
+@part("checkout_counter", "furniture", "レジのカウンター", [("checkout counter", "noun"), ("cash register", "noun"), ("counter", "noun")],
+      front=("counter_front", 1))
+def build_checkout_counter(root):
+    """店のレジのカウンター。幅 1.5 m・天板の高さ 0.9 m。客の側が正面（+Z）で、緑の帯がある。
+
+    レジは天板の +X 側にあり、店員の側（-Z）に画面を向ける。客の側には小さな表示がある。
+    """
+    w, d, h = 1.5, 0.65, 0.9
+    p = Part("checkout_counter")
+    p.box((w - 0.1, d - 0.06, 0.08), (0, 0, 0.04), M["dark"], bevel=0.01)                        # 台座
+    p.box((w - 0.06, d - 0.04, h - 0.12), (0, 0, 0.08 + (h - 0.12) / 2), M["counter"], bevel=0.01)   # 胴
+    p.box((w, d, 0.04), (0, 0, h - 0.02), M["counter_top"], bevel=0.008)                         # 天板
+    p.box((w - 0.06, 0.012, 0.14), (0, -(d - 0.04) / 2 - 0.004, 0.62), M["counter_front"])       # 客の側の帯
+    # レジ（cafe.py の build_register の形）
+    rx = w / 2 - 0.3
+    p.box((0.38, 0.32, 0.1), (rx, 0.05, h + 0.05), M["register"], bevel=0.02)
+    p.box((0.3, 0.04, 0.2), (rx, 0.12, h + 0.2), M["register"], rot=(0.3, 0, 0), bevel=0.01)
+    p.box((0.26, 0.01, 0.15), (rx, 0.146, h + 0.198), M["screen"], rot=(0.3, 0, 0))              # 店員に向けた画面
+    p.box((0.12, 0.03, 0.07), (rx, -0.1, h + 0.135), M["register"], bevel=0.01)                   # 客に向けた表示
+    p.box((0.1, 0.006, 0.05), (rx, -0.117, h + 0.135), M["screen"])
+    p.box((0.08, 0.01, 0.12), (rx + 0.12, -0.08, h + 0.13), M["receipt"])
+    p.finish(root)
+    return {"top": h}   # 天板の上面（レジの無いところに物を置く）
+
+
+@part("shelf", "furniture", "棚（商品棚・本棚）", [("shelf", "noun"), ("bookshelf", "noun")], front=("shelf_back", -1))
+def build_shelf(root):
+    """前の開いた木の棚。幅 1.2 m・高さ 1.8 m・奥行き 0.4 m。板は 5 枚（いちばん上は天板）で、背板は奥（-Z）。"""
+    w, h, d, t = 1.2, 1.8, 0.4, 0.03
+    p = Part("shelf")
+    for sx in (-1, 1):
+        p.box((t, d, h), (sx * (w / 2 - t / 2), 0, h / 2), M["shelf"], bevel=0.004)
+    p.box((w - 2 * t, 0.015, h - 0.01), (0, d / 2 - 0.0075, h / 2), M["shelf_back"])
+    p.box((w - 2 * t, 0.02, 0.08), (0, -d / 2 + 0.03, 0.04), M["shelf"])   # 下の幕板
+    boards = [0.08 + t / 2 + k * (h - 0.08 - t) / 4 for k in range(5)]
+    for z in boards:
+        p.box((w - 2 * t if z < boards[-1] else w, d - 0.02, t), (0, 0.005, z), M["shelf"], bevel=0.003)
+    p.finish(root)
+    return {"top": boards[-1] + t / 2}   # いちばん上の板（天板）の上面
+
+
+@part("basket", "thing", "買い物かご", [("basket", "noun"), ("shopping basket", "noun")])
+def build_basket(root):
+    """スーパーの赤い買い物かご。上の口は 0.48 m × 0.33 m、高さ 0.24 m。持ち手 2 本を立てた形。左右・前後とも対称。"""
+    hw, hd, h = 0.24, 0.165, 0.24
+    p = Part("basket")
+    r = math.sqrt(2)   # 4 角の lathe で、半径 √2 の点が (±1, ±1) に来る
+    lathe(p, [(0, 0), (r * 0.86, 0), (r, h), (r * 0.955, h), (r * 0.82, 0.012), (0, 0.012)],
+          [M["basket"], M["basket"], M["basket_rim"], M["basket"], M["basket"]], segs=4, scale=(hw, hd), angle0=math.pi / 4, smooth=False)
+    # 口の縁の太い帯と、横の穴の列（濃い色の細長い板を外側に貼る）
+    for sy in (-1, 1):
+        p.box((hw * 2 + 0.008, 0.012, 0.03), (0, sy * (hd + 0.002), h - 0.015), M["basket_rim"], rot=(sy * 0.05, 0, 0))
+    for sx in (-1, 1):
+        p.box((0.012, hd * 2 + 0.008, 0.03), (sx * (hw + 0.002), 0, h - 0.015), M["basket_rim"], rot=(0, -sx * 0.05, 0))
+    slant = (hd - hd * 0.86) / h
+    for row, z in enumerate((0.07, 0.13, 0.19)):
+        for k in range(7):
+            x = (k - 3) * 0.06
+            for sy in (-1, 1):
+                p.box((0.035, 0.006, 0.03), (x, sy * (hd * 0.86 + slant * z + 0.004), z), M["basket_rim"], rot=(-sy * math.atan(slant), 0, 0))
+    # 持ち手（黒）。長い辺の縁から立てて、上で少し内へ寄せる
+    for sy in (-1, 1):
+        pts = [Vector((-0.12, sy * hd, h)), Vector((-0.1, sy * hd * 0.7, h + 0.12)), Vector((0.1, sy * hd * 0.7, h + 0.12)), Vector((0.12, sy * hd, h))]
+        for a, b in zip(pts, pts[1:]):
+            p.limb(a, b, 0.009, 0.009, M["dark"], segs=8)
+    p.finish(root)
+
+
+@part("plate", "thing", "皿", [("plate", "noun"), ("dish", "noun")])
+def build_plate(root):
+    """白い丸い皿。直径 0.24 m、縁に青い線。真ん中のくぼみの面に物を置く。"""
+    p = Part("plate")
+    well = 0.01
+    lathe(p, [(0, 0), (0.07, 0), (0.075, 0.006), (0.112, 0.02), (0.12, 0.023), (0.117, 0.025),
+              (0.108, 0.0225), (0.1, 0.0195), (0.075, well), (0, well)],
+          [M["dish"], M["dish"], M["dish"], M["dish"], M["dish"], M["dish_rim"], M["dish"], M["dish"], M["dish"]], segs=40)
+    p.finish(root)
+    return {"top": well}   # くぼみの底の面
+
+
+@part("shirt", "thing", "シャツ（たたんだ）", [("shirt", "noun")], front=("shirt_collar", 1))
+def build_shirt(root):
+    """たたんで平らに置いた水色のシャツ。0.26 m × 0.32 m、厚さ 4 cm。白いえりが正面（+Z）の側。"""
+    w, d, t = 0.26, 0.32, 0.035
+    p = Part("shirt")
+    p.box((w, d, t), (0, 0, t / 2), M["shirt"], bevel=0.012)
+    p.box((w - 0.04, d - 0.06, 0.004), (0, 0.02, t + 0.001), M["shirt"], bevel=0.002)   # 身ごろを折った段
+    y0, z = -d / 2 + 0.07, t + 0.008
+    arc = [Vector((0.07 * math.cos(k / 10 * math.pi), y0 + 0.055 * math.sin(k / 10 * math.pi), z)) for k in range(11)]
+    for a, b in zip(arc, arc[1:]):   # えりの後ろの帯（白。奥へ丸く回る）
+        p.limb(a, b, 0.015, 0.015, M["shirt_collar"], segs=8)
+    for sx in (-1, 1):   # えりの先（前へとがった 2 枚）
+        root_pt = Vector((sx * 0.078, y0 + 0.01, z))
+        p.poly([root_pt, Vector((sx * 0.01, y0 - 0.058, z)), Vector((sx * 0.06, y0 - 0.042, z))][::sx], M["shirt_collar"])
+    for k in range(4):   # ボタン
+        p.cyl(0.006, 0.006, 0.003, (0, y0 - 0.02 + k * 0.06, t + 0.004), M["button"], segs=10, smooth=False)
+    p.finish(root)
+
+
+@part("seat", "furniture", "座席（バス・電車、2 人がけ）", [("seat", "noun")], front=("seat_back", -1))
+def build_seat(root):
+    """バスや電車の 2 人がけの座席。幅 0.9 m、座面 0.46 m、背もたれは奥（-Z）で高さ 1.05 m。上に握り棒。"""
+    w = 0.9
+    p = Part("seat")
+    cushion_t, cushion_y, cushion_d = 0.07, -0.02, 0.44
+    for sx in (-1, 1):
+        p.box((0.06, 0.4, 0.04), (sx * 0.34, 0, 0.02), M["metal"], bevel=0.01)                       # 足の板
+        p.box((0.05, 0.05, 0.34), (sx * 0.34, 0.02, 0.19), M["metal"], bevel=0.01)                   # 足
+        p.box((0.42, cushion_d, cushion_t), (sx * 0.215, cushion_y, SEAT_Z - cushion_t / 2), M["seat_fabric"], bevel=0.025)
+        p.box((0.42, 0.08, 0.5), (sx * 0.215, 0.24, SEAT_Z + 0.3), M["seat_fabric"], rot=(-0.12, 0, 0), bevel=0.03)   # 背のクッション
+    p.box((w, 0.48, 0.05), (0, 0, SEAT_Z - cushion_t - 0.025), M["metal"], bevel=0.01)                 # 座面の台
+    p.box((w, 0.06, 0.6), (0, 0.3, SEAT_Z + 0.29), M["seat_back"], rot=(-0.12, 0, 0), bevel=0.02)      # 背もたれ
+    top = Vector((0, 0.3 + math.sin(0.12) * 0.3, SEAT_Z + 0.29 + math.cos(0.12) * 0.3))
+    for sx in (-1, 1):
+        p.limb(top + Vector((sx * 0.4, 0, -0.02)), top + Vector((sx * 0.4, -0.02, 0.08)), 0.012, 0.012, M["metal"], segs=8)
+    p.limb(top + Vector((-0.4, -0.02, 0.08)), top + Vector((0.4, -0.02, 0.08)), 0.014, 0.014, M["metal"], segs=10)   # 握り棒
+    p.finish(root)
+    return {"seat": (0, cushion_y, SEAT_Z)}   # 2 つの座面のクッションの真ん中の上面
+
+
+@part("laptop", "thing", "ノートパソコン（開いた）", [("laptop", "noun"), ("computer", "noun")], front=("trackpad", 1))
+def build_laptop(root):
+    """開いたノートパソコン。幅 0.32 m・奥行き 0.22 m。画面は使う人（+Z）に向けて少し後ろへ倒す。"""
+    w, d, t = 0.32, 0.22, 0.016
+    p = Part("laptop")
+    p.box((w, d, t), (0, 0, t / 2), M["laptop"], bevel=0.004)
+    p.box((w - 0.04, 0.1, 0.002), (0, 0.02, t + 0.001), M["dark"])                  # キーボード
+    p.box((0.1, 0.06, 0.002), (0, -0.07, t + 0.001), M["trackpad"])
+    tilt = Euler((-0.26, 0, 0))   # 画面を後ろ（-Z）へ 15 度ほど倒す
+    hinge = Vector((0, d / 2 - 0.005, t))
+    up = tilt.to_matrix() @ Vector((0, 0, 1))
+    front = tilt.to_matrix() @ Vector((0, -1, 0))
+    p.box((w, 0.008, 0.21), hinge + up * 0.105, M["laptop"], rot=tilt, bevel=0.003)
+    p.box((w - 0.03, 0.002, 0.18), hinge + up * 0.11 + front * 0.005, M["laptop_screen"], rot=tilt)
+    p.finish(root)
+
+
+@part("clock", "thing", "時計（壁掛け）", [("clock", "noun")])
+def build_clock(root):
+    """丸い壁掛け時計（classroom.py の build_clock を半分にしたもの）。直径 0.34 m・厚さ 5 cm。
+
+    文字盤は正面（+Z）。原点は底面の中心なので、壁に掛けるときは高さを上げる。薄いので向きは確かめない。
+    """
+    r = 0.17
+    p = Part("clock")
+    z = r
+    p.cyl(r, r, 0.05, (0, 0, z), M["dark"], rot=(math.pi / 2, 0, 0), segs=32, smooth=False)
+    p.cyl(0.15, 0.15, 0.052, (0, -0.001, z), M["clock_face"], rot=(math.pi / 2, 0, 0), segs=32, smooth=False)
+    y = -0.03
+    p.box((0.015, 0.01, 0.1), (0, y, z + 0.04), M["dark"])                               # 長針
+    p.box((0.015, 0.01, 0.07), (0.025, y, z - 0.015), M["dark"], rot=(0, -2.1, 0))     # 短針
+    p.cyl(0.01, 0.01, 0.012, (0, y, z), M["dark"], rot=(math.pi / 2, 0, 0), segs=10, smooth=False)
+    for k in range(12):
+        a = k / 12 * math.tau
+        p.box((0.01, 0.006, 0.022 if k % 3 == 0 else 0.014), (math.sin(a) * 0.125, y + 0.002, z + math.cos(a) * 0.125), M["dark"], rot=(0, -a, 0))
+    p.finish(root)
+
+
+@part("cart", "thing", "ショッピングカート", [("cart", "noun"), ("shopping cart", "noun")], front=("cart_handle", -1))
+def build_cart(root):
+    """スーパーのショッピングカート。長さ 0.9 m・幅 0.55 m・高さ 1.0 m。押す人の側の取っ手（赤）が奥（-Z）。"""
+    p = Part("cart")
+    top_z, bot_z = 0.95, 0.55
+    top = [Vector(v) for v in ((-0.27, -0.45, top_z), (0.27, -0.45, top_z), (0.27, 0.35, top_z), (-0.27, 0.35, top_z))]
+    bot = [Vector(v) for v in ((-0.22, -0.3, bot_z), (0.22, -0.3, bot_z), (0.22, 0.3, bot_z), (-0.22, 0.3, bot_z))]
+
+    def wire(a, b, r=0.005):
+        p.limb(a, b, r, r, M["metal"], segs=6)
+
+    for k in range(4):   # かごの枠
+        wire(top[k], top[(k + 1) % 4], 0.009)
+        wire(bot[k], bot[(k + 1) % 4], 0.008)
+        wire(top[k], bot[k], 0.008)
+    for f in (0.25, 0.5, 0.75):   # 横の針金（高さごとに一周）
+        ring = [b.lerp(t, f) for t, b in zip(top, bot)]
+        for k in range(4):
+            wire(ring[k], ring[(k + 1) % 4])
+    for k in range(4):   # 縦の針金
+        n = 9 if k % 2 else 6
+        for j in range(1, n):
+            f = j / n
+            wire(top[k].lerp(top[(k + 1) % 4], f), bot[k].lerp(bot[(k + 1) % 4], f))
+    for j in range(1, 6):   # 底の針金
+        f = j / 6
+        wire(bot[0].lerp(bot[3], f), bot[1].lerp(bot[2], f))
+    # 下の台と足、車輪
+    base = [Vector(v) for v in ((-0.2, -0.38, 0.12), (0.2, -0.38, 0.12), (0.22, 0.33, 0.12), (-0.22, 0.33, 0.12))]
+    for k in range(4):
+        wire(base[k], base[(k + 1) % 4], 0.012)
+    for j in range(1, 5):
+        wire(base[0].lerp(base[1], j / 5), base[3].lerp(base[2], j / 5), 0.005)
+    for k in (2, 3):   # 後ろの足は取っ手まで
+        wire(base[k], top[k] + Vector((0, 0.05, 0.05)), 0.012)
+    for k in (0, 1):
+        wire(base[k], bot[k].lerp(bot[3 - k], 0.15), 0.012)
+    for b in base:
+        p.cyl(0.05, 0.05, 0.03, (b.x, b.y, 0.05), M["tire"], rot=(0, math.pi / 2, 0), segs=16, smooth=False)
+        wire(Vector((b.x, b.y, 0.05)), b, 0.01)
+    p.limb((-0.29, 0.42, 1.0), (0.29, 0.42, 1.0), 0.02, 0.02, M["cart_handle"], segs=12)   # 取っ手
+    for sx in (-1, 1):
+        wire(Vector((sx * 0.27, 0.4, 1.0)), Vector((sx * 0.27, 0.35, top_z)), 0.01)
+    p.finish(root)
+
+
+@part("pan", "thing", "フライパン", [("pan", "noun"), ("frying pan", "noun")])
+def build_pan(root):
+    """黒いフライパン。直径 0.26 m・深さ 4.5 cm。持ち手は +X（cup と同じ向き）。"""
+    p = Part("pan")
+    h = 0.045
+    lathe(p, [(0, 0), (0.11, 0), (0.13, h), (0.125, h + 0.002), (0.106, 0.006), (0, 0.006)],
+          [M["pan"], M["pan"], M["pan"], M["pan_inside"], M["pan_inside"]], segs=36)
+    p.limb((0.115, 0, 0.032), (0.2, 0, 0.05), 0.012, 0.01, M["metal"], segs=10)
+    p.limb((0.19, 0, 0.048), (0.34, 0, 0.068), 0.016, 0.014, M["pan_handle"], segs=12)
+    p.finish(root)
+
+
+@part("bed", "furniture", "ベッド（1 人用）", [("bed", "noun")])
+def build_bed(root):
+    """1 人用のベッド。長さ 2.0 m を左右（X）に置き、頭の側の板（高さ 0.9 m）は -X。長い辺が正面（+Z）。
+
+    掛け布団の上面 0.49 m に物を置き、正面の側の縁に座る。前後は同じ形なので向きは確かめない。
+    """
+    length, width = 2.0, 1.0
+    p = Part("bed")
+    for sx in (-1, 1):
+        for sy in (-1, 1):
+            p.box((0.06, 0.06, 0.12), (sx * (length / 2 - 0.08), sy * (width / 2 - 0.06), 0.06), M["bed_frame"])
+    p.box((length - 0.1, width, 0.22), (0, 0, 0.23), M["bed_frame"], bevel=0.015)                # 台
+    p.box((length - 0.12, width - 0.04, 0.12), (0, 0, 0.4), M["mattress"], bevel=0.03)            # マットレス（上面 0.46）
+    p.box((0.05, width + 0.02, 0.9), (-length / 2 + 0.025, 0, 0.45), M["bed_frame"], bevel=0.012)  # 頭の側の板
+    p.box((0.05, width + 0.02, 0.55), (length / 2 - 0.025, 0, 0.275), M["bed_frame"], bevel=0.012) # 足の側の板
+    p.sphere(0.2, (-length / 2 + 0.3, 0, 0.5), M["pillow"], scale=(1.0, 1.8, 0.4))
+    blanket_top = 0.49
+    p.box((1.35, width + 0.03, 0.05), (length / 2 - 0.08 - 0.675, 0, blanket_top - 0.025), M["blanket"], bevel=0.02)
+    p.box((1.35, 0.015, 0.2), (length / 2 - 0.08 - 0.675, -(width / 2 + 0.015), blanket_top - 0.1), M["blanket"], bevel=0.007)  # 前に垂れた布団
+    p.finish(root)
+    return {"top": blanket_top, "seat": (0.2, -(width / 2) + 0.2, blanket_top)}   # 布団の上面、正面の縁から 0.2 m の点
 
 
 # ---------- 動物 ----------

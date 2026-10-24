@@ -337,6 +337,250 @@
     "label": "コーヒーカップ"
   },
   {
+    "id": "door",
+    "version": 1,
+    "file": "parts/door/1.usdz",
+    "category": "building",
+    "words": [
+      {
+        "word": "door",
+        "pos": "noun"
+      }
+    ],
+    "size": [0.94, 2.07, 0.148],
+    "label": "扉（ドア）"
+  },
+  {
+    "id": "wall",
+    "version": 1,
+    "file": "parts/wall/1.usdz",
+    "category": "building",
+    "words": [
+      {
+        "word": "wall",
+        "pos": "noun"
+      }
+    ],
+    "size": [4.0, 2.4, 0.1],
+    "label": "壁（長さ 4 m）"
+  },
+  {
+    "id": "window",
+    "version": 1,
+    "file": "parts/window/1.usdz",
+    "category": "building",
+    "words": [
+      {
+        "word": "window",
+        "pos": "noun"
+      }
+    ],
+    "size": [1.28, 1.0, 0.24],
+    "label": "窓"
+  },
+  {
+    "id": "checkout_counter",
+    "version": 1,
+    "file": "parts/checkout_counter/1.usdz",
+    "category": "furniture",
+    "words": [
+      {
+        "word": "checkout counter",
+        "pos": "noun"
+      },
+      {
+        "word": "cash register",
+        "pos": "noun"
+      },
+      {
+        "word": "counter",
+        "pos": "noun"
+      }
+    ],
+    "size": [1.5, 1.199, 0.65],
+    "label": "レジのカウンター",
+    "anchors": {
+      "top": 0.9
+    }
+  },
+  {
+    "id": "shelf",
+    "version": 1,
+    "file": "parts/shelf/1.usdz",
+    "category": "furniture",
+    "words": [
+      {
+        "word": "shelf",
+        "pos": "noun"
+      },
+      {
+        "word": "bookshelf",
+        "pos": "noun"
+      }
+    ],
+    "size": [1.2, 1.8, 0.4],
+    "label": "棚（商品棚・本棚）",
+    "anchors": {
+      "top": 1.8
+    }
+  },
+  {
+    "id": "basket",
+    "version": 1,
+    "file": "parts/basket/1.usdz",
+    "category": "thing",
+    "words": [
+      {
+        "word": "basket",
+        "pos": "noun"
+      },
+      {
+        "word": "shopping basket",
+        "pos": "noun"
+      }
+    ],
+    "size": [0.497, 0.369, 0.347],
+    "label": "買い物かご"
+  },
+  {
+    "id": "plate",
+    "version": 1,
+    "file": "parts/plate/1.usdz",
+    "category": "thing",
+    "words": [
+      {
+        "word": "plate",
+        "pos": "noun"
+      },
+      {
+        "word": "dish",
+        "pos": "noun"
+      }
+    ],
+    "size": [0.24, 0.025, 0.24],
+    "label": "皿",
+    "anchors": {
+      "top": 0.01
+    }
+  },
+  {
+    "id": "shirt",
+    "version": 1,
+    "file": "parts/shirt/1.usdz",
+    "category": "thing",
+    "words": [
+      {
+        "word": "shirt",
+        "pos": "noun"
+      }
+    ],
+    "size": [0.26, 0.058, 0.32],
+    "label": "シャツ（たたんだ）"
+  },
+  {
+    "id": "seat",
+    "version": 1,
+    "file": "parts/seat/1.usdz",
+    "category": "furniture",
+    "words": [
+      {
+        "word": "seat",
+        "pos": "noun"
+      }
+    ],
+    "size": [0.9, 1.142, 0.603],
+    "label": "座席（バス・電車、2 人がけ）",
+    "anchors": {
+      "seat": [0.0, 0.46, 0.082]
+    }
+  },
+  {
+    "id": "laptop",
+    "version": 1,
+    "file": "parts/laptop/1.usdz",
+    "category": "thing",
+    "words": [
+      {
+        "word": "laptop",
+        "pos": "noun"
+      },
+      {
+        "word": "computer",
+        "pos": "noun"
+      }
+    ],
+    "size": [0.32, 0.219, 0.272],
+    "label": "ノートパソコン（開いた）"
+  },
+  {
+    "id": "clock",
+    "version": 1,
+    "file": "parts/clock/1.usdz",
+    "category": "thing",
+    "words": [
+      {
+        "word": "clock",
+        "pos": "noun"
+      }
+    ],
+    "size": [0.34, 0.34, 0.061],
+    "label": "時計（壁掛け）"
+  },
+  {
+    "id": "cart",
+    "version": 1,
+    "file": "parts/cart/1.usdz",
+    "category": "thing",
+    "words": [
+      {
+        "word": "cart",
+        "pos": "noun"
+      },
+      {
+        "word": "shopping cart",
+        "pos": "noun"
+      }
+    ],
+    "size": [0.58, 1.02, 0.898],
+    "label": "ショッピングカート"
+  },
+  {
+    "id": "pan",
+    "version": 1,
+    "file": "parts/pan/1.usdz",
+    "category": "thing",
+    "words": [
+      {
+        "word": "pan",
+        "pos": "noun"
+      },
+      {
+        "word": "frying pan",
+        "pos": "noun"
+      }
+    ],
+    "size": [0.472, 0.082, 0.26],
+    "label": "フライパン"
+  },
+  {
+    "id": "bed",
+    "version": 1,
+    "file": "parts/bed/1.usdz",
+    "category": "furniture",
+    "words": [
+      {
+        "word": "bed",
+        "pos": "noun"
+      }
+    ],
+    "size": [2.0, 0.9, 1.037],
+    "label": "ベッド（1 人用）",
+    "anchors": {
+      "top": 0.49,
+      "seat": [0.2, 0.49, 0.296]
+    }
+  },
+  {
     "id": "animal_run_dog_a",
     "version": 1,
     "file": "parts/animal_run_dog_a/1.usdz",
