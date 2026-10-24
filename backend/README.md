@@ -74,6 +74,7 @@ API の型は zod で書き、[hono-openapi](https://hono.dev/examples/hono-open
 - WebSocket のメッセージは OpenAPI の paths では表せないので、`components.schemas` の `ClientMessage`（iPhone → 部屋）と `ServerMessage`（部屋 → iPhone）に型だけを載せている。どちらも `type` の値で種類を見分ける（`oneOf` ＋ `discriminator`）。
 - ルートや型を変えたら `pnpm openapi` で `openapi.json` を生成し直し、一緒に commit する。PR では backend-checks が `pnpm openapi:check` で生成し忘れを検査する。
 - `openapi.json` は生成物なので Biome の整形の対象から外している（`biome.json`）。
+- `.nullable()` の項目は、iOS の生成器（swift-openapi-generator）が `anyOf` の中の `{ "type": "null" }` を読めないので、出すときに `"type": ["integer", "null"]` などの形へ書き換えている（`src/openapi.ts` の `normalizeNullable`）。
 
 ### HTTP の API を足す手順
 
