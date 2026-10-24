@@ -197,18 +197,24 @@ def build_dog(root, loc, rot_z):
 
 def build_boy(root, loc, rot_z):
     p = Part("boy")
-    # 走る姿勢: 右足が前、左足が後ろ。腕は逆に振る
+    # 走る姿勢: 右足（-X）が前、左足が後ろ。腕は逆に振る。swing は前（-Y）へ振る角度
     for sx, swing in ((-1, 0.55), (1, -0.55)):
-        p.cyl(0.055, 0.05, 0.42, (sx * 0.08, -math.sin(swing) * 0.12, 0.3), M["skin"], rot=(swing, 0, 0), segs=10)
-        p.box((0.1, 0.17, 0.08), (sx * 0.08, -math.sin(swing) * 0.24 - 0.03, 0.05), M["shoe"], rot=(swing * 0.4, 0, 0), bevel=0.03)
-        p.cyl(0.06, 0.06, 0.06, (sx * 0.08, -math.sin(swing) * 0.22, 0.11), M["white"], rot=(swing, 0, 0), segs=10)
+        hip = Vector((sx * 0.08, 0, 0.52))
+        ankle = hip + Vector((0, -math.sin(swing), -math.cos(swing))) * 0.49
+        p.limb(hip, ankle, 0.055, 0.05, M["skin"], segs=10)
+        p.limb(ankle + Vector((0, math.sin(swing), math.cos(swing))) * 0.06, ankle, 0.06, 0.06, M["white"], segs=10)  # 靴下
+        # 前の足はつま先を上げ、後ろの足はつま先で地面をける
+        p.box((0.1, 0.17, 0.08), (ankle.x, ankle.y - 0.03, 0.05), M["shoe"], rot=(-swing * 0.4, 0, 0), bevel=0.03)
     p.sphere(0.17, (0, 0, 0.56), M["shorts"], scale=(1, 0.85, 0.7))
     p.cyl(0.17, 0.15, 0.36, (0, 0, 0.75), M["shirt"], segs=16)
     p.sphere(0.15, (0, 0, 0.93), M["shirt"], scale=(1.12, 0.9, 0.5))
     for sx, swing in ((-1, -0.7), (1, 0.7)):
-        p.cyl(0.06, 0.055, 0.14, (sx * 0.2, -math.sin(swing) * 0.05, 0.88), M["shirt"], rot=(swing, sx * 0.25, 0), segs=10)
-        p.cyl(0.042, 0.038, 0.3, (sx * 0.23, -math.sin(swing) * 0.15, 0.74), M["skin"], rot=(swing, sx * 0.25, 0), segs=10)
-        p.sphere(0.05, (sx * 0.25, -math.sin(swing) * 0.26, 0.62), M["skin"], segs=10)
+        shoulder = Vector((sx * 0.19, 0, 0.92))
+        hand = Vector((sx * 0.25, -math.sin(swing) * 0.26, 0.62))
+        elbow = shoulder + (hand - shoulder) * 0.35
+        p.limb(shoulder, elbow, 0.06, 0.055, M["shirt"], segs=10)
+        p.limb(elbow, hand, 0.042, 0.038, M["skin"], segs=10)
+        p.sphere(0.05, tuple(hand), M["skin"], segs=10)
     p.cyl(0.06, 0.06, 0.08, (0, 0, 1.0), M["skin"], segs=10)
     p.sphere(0.2, (0, 0, 1.17), M["skin"])
     p.sphere(0.21, (0, 0.035, 1.23), M["hair"], scale=(1, 1, 0.82))

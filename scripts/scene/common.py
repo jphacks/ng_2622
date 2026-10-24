@@ -161,6 +161,29 @@ class Part:
 POSES = ("stand", "walk", "sit", "raise_hand", "point", "phone")
 
 
+def _heights(pose: str) -> tuple[float, float]:
+    """腰と肩の高さ。"""
+    hip_z = 0.48 if pose in ("sit", "raise_hand") else 0.8
+    return hip_z, hip_z + 0.5
+
+
+def hand_points(pose: str, point_side: int = 1) -> list[Vector]:
+    """両手の位置（人物の中の座標、-X 側の手から）。スーツケースの持ち手などを手に合わせるのにも使う。"""
+    hip_z, sh_z = _heights(pose)
+    hands = {
+        "stand": [(-0.27, 0.0, sh_z - 0.52), (0.27, 0.0, sh_z - 0.52)],
+        # 腕は同じ側の脚と逆に振る（-X 側の脚が後ろなので、-X 側の手は前）
+        "walk": [(-0.26, -0.17, sh_z - 0.5), (0.26, 0.17, sh_z - 0.5)],
+        "sit": [(-0.2, -0.32, hip_z + 0.27), (0.2, -0.32, hip_z + 0.27)],
+        "raise_hand": [(-0.2, -0.32, hip_z + 0.27), (0.36, -0.06, sh_z + 0.66)],
+        "point": [(-0.27, 0.0, sh_z - 0.52), (0.27, 0.0, sh_z - 0.52)],
+        "phone": [(-0.08, -0.26, sh_z - 0.22), (0.08, -0.26, sh_z - 0.22)],
+    }[pose]
+    if pose == "point":
+        hands[(point_side + 1) // 2] = (0.78 * point_side, -0.08, sh_z + 0.05)
+    return [Vector(h) for h in hands]
+
+
 def person(root, name, loc, rot_z, outfit: dict, pose="stand", scale=1.0, point_side=1):
     """デフォルメした人物。正面は -Y。
 
@@ -171,8 +194,7 @@ def person(root, name, loc, rot_z, outfit: dict, pose="stand", scale=1.0, point_
     p = Part(name)
     o = outfit
     sitting = pose in ("sit", "raise_hand")
-    hip_z = 0.48 if sitting else 0.8
-    sh_z = hip_z + 0.5
+    hip_z, sh_z = _heights(pose)
     head_z = sh_z + 0.22
     leg_mat = o["skin"] if o.get("skirt") else o["bottom"]
 
@@ -210,19 +232,8 @@ def person(root, name, loc, rot_z, outfit: dict, pose="stand", scale=1.0, point_
         p.sphere(0.03, (sx * 0.15, 0, head_z), o["skin"], segs=8)
 
     # 腕（肩から手まで）
-    hands = {
-        "stand": [(-0.27, 0.0, sh_z - 0.52), (0.27, 0.0, sh_z - 0.52)],
-        "walk": [(-0.26, 0.17, sh_z - 0.5), (0.26, -0.17, sh_z - 0.5)],
-        "sit": [(-0.2, -0.32, hip_z + 0.27), (0.2, -0.32, hip_z + 0.27)],
-        "raise_hand": [(-0.2, -0.32, hip_z + 0.27), (0.36, -0.06, sh_z + 0.66)],
-        "point": [(-0.27, 0.0, sh_z - 0.52), (0.27, 0.0, sh_z - 0.52)],
-        "phone": [(-0.08, -0.26, sh_z - 0.22), (0.08, -0.26, sh_z - 0.22)],
-    }[pose]
-    if pose == "point":
-        hands[(point_side + 1) // 2] = (0.78 * point_side, -0.08, sh_z + 0.05)
-    for sx, hand in zip((-1, 1), hands):
+    for sx, hand in zip((-1, 1), hand_points(pose, point_side)):
         shoulder = Vector((sx * 0.22, 0, sh_z - 0.02))
-        hand = Vector(hand)
         elbow = shoulder + (hand - shoulder) * 0.32
         p.limb(shoulder, elbow, 0.062, 0.058, o["top"])
         p.limb(elbow, hand, 0.048, 0.042, o["skin"])
