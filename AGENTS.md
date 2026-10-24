@@ -89,6 +89,7 @@ open ios/NG2622.xcodeproj                   # scheme「NG2622 Mock」（仮の�
 # ↑ 初めてビルドすると「Validate plug-in “OpenAPIGenerator”」のエラーが出るので、Issue navigator で Trust & Enable を押す（Mac ごとに一度。generator の版を上げたらもう一度）
 # API の型（import BackendAPI）は backend/openapi.json からビルドのたびに作られ、commit しない。openapi.json が変わればビルドし直すだけでよい
 xcodebuild -project ios/NG2622.xcodeproj -scheme "NG2622 Mock" -destination 'generic/platform=iOS Simulator' -skipPackagePluginValidation build   # コマンドラインでビルドするときは -skipPackagePluginValidation を付ける
+(cd ios/Packages/BackendAPI && swift test)  # WebSocket のメッセージが openapi.json から作った型で読めるかを確かめる（Mac で動く。シミュレータは要らない）
 ```
 
 ## AI エージェント向けの補足

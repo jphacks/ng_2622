@@ -28,6 +28,8 @@ let package = Package(
       plugins: [
         .plugin(name: "OpenAPIGenerator", package: "swift-openapi-generator")
       ]
-    )
+    ),
+    // WebSocket のメッセージが作った型で読めるかの確認。cd ios/Packages/BackendAPI && swift test
+    .testTarget(name: "BackendAPITests", dependencies: ["BackendAPI"]),
   ]
 )
