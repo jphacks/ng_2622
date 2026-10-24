@@ -14,5 +14,14 @@
 	<string>$(MOCK_INCLUDES_OFFLINE)</string>
 	<key>MockHostStartDelay</key>
 	<string>$(MOCK_HOST_START_DELAY)</string>
+	<!-- 手元のバックエンド（http://localhost:8787 や Mac の IP）に http でつなげるよう、ローカルのネットワークだけ ATS を緩める -->
+	<key>NSAppTransportSecurity</key>
+	<dict>
+		<key>NSAllowsLocalNetworking</key>
+		<true/>
+	</dict>
+	<!-- 実機から Mac の IP につなぐときに出る、ローカルネットワークの許可の説明 -->
+	<key>NSLocalNetworkUsageDescription</key>
+	<string>開発用に、同じ Wi-Fi の Mac で動かしているバックエンドにつなぐために使います。</string>
 </dict>
 </plist>
