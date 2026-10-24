@@ -1,0 +1,4 @@
+# pnpm 10 は依存の install スクリプトを既定で止めるので、wrangler が要るものだけ許す
+onlyBuiltDependencies:
+  - esbuild
+  - workerd
