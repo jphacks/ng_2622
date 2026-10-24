@@ -111,6 +111,11 @@ def outfits() -> dict:
 CHILD_SCALE = 0.75   # 子どもの大きさ（大人に対する倍率）
 SH_STAND = 1.3       # 立つ・歩くポーズの肩の高さ（common.py の _heights）
 SEAT_Z = 0.46        # 座るポーズに合う座面の高さ。chair・sofa をこの高さにする（bench は 0.48）
+# 地面の板の厚さ。y = 0 に置いた小物（スマートフォン・本）が埋まらないよう薄くする。
+# road_patch は grass_patch に重ねて置くので、上面を芝の板とまだらより上にしてちらつかないようにする
+GRASS_THICK = 0.002  # 芝の板（上面 2 mm）。濃淡のまだらはその上に 0.5 mm
+ROAD_THICK = 0.003   # 道路の板（上面 3 mm）。白線はその上に 0.5 mm
+MARK_THICK = 0.0005  # 芝のまだら・道路の白線の厚さ
 
 
 # ---------- 部品の一覧 ----------
@@ -175,17 +180,17 @@ def build_flower(root):
 def build_grass_patch(root):
     """公園の芝の地面（park.py の build_island の上面と build_grass の草むら）。8 m × 8 m の薄い板。
 
-    人や物は y = 0 に置くので、板は 2 cm と薄くして足が埋まらないようにする。
+    人や物は y = 0 に置くので、板は 2 mm と薄くして小物が埋まらないようにする（草むらは上に出る）。
     """
     rng = random.Random(2622)
-    size, thick = 8.0, 0.02
+    size, thick = 8.0, GRASS_THICK
     p = Part("grass_patch")
     p.slab(size, thick, thick, 0.3, M["grass"], segments=6, center=(0, 0))
     # 色の濃い芝のまだら（平たい円）
     for _ in range(40):
         x, y = rng.uniform(-3.6, 3.6), rng.uniform(-3.6, 3.6)
         r = rng.uniform(0.25, 0.6)
-        p.cyl(r, r, 0.004, (x, y, thick + 0.002), rng.choice([M["grass_dark"], M["grass_light"]]), segs=14, smooth=False)
+        p.cyl(r, r, MARK_THICK, (x, y, thick + MARK_THICK / 2), rng.choice([M["grass_dark"], M["grass_light"]]), segs=14, smooth=False)
     # 草むら
     q = Part("grass_tufts")
     for _ in range(140):
@@ -194,7 +199,10 @@ def build_grass_patch(root):
         for _ in range(rng.randint(3, 5)):
             h = rng.uniform(0.06, 0.12)
             lean = (rng.uniform(-0.35, 0.35), rng.uniform(-0.35, 0.35), 0)
-            q.cyl(0.028, 0.0, h, (x + rng.uniform(-0.05, 0.05), y + rng.uniform(-0.05, 0.05), thick + h / 2 - 0.01), mat,
+            # 傾けた円すいの底の最も低い点が板の上面より 1 mm 下に来る高さに置く（板の下には出さない）
+            cos_t = math.cos(lean[0]) * math.cos(lean[1])
+            z = thick - 0.001 + h / 2 * cos_t + 0.028 * math.sqrt(1 - cos_t ** 2)
+            q.cyl(0.028, 0.0, h, (x + rng.uniform(-0.05, 0.05), y + rng.uniform(-0.05, 0.05), z), mat,
                   rot=lean, segs=4, smooth=False)
     p.finish(root)
     q.finish(root)
@@ -205,19 +213,20 @@ def build_road_patch(root):
     """駅前の道路（station.py の build_road）。片側 1 車線ずつの 2 車線で、長さ 8 m・幅 5.5 m。
 
     幅は日本の 2 車線の生活道路（1 車線 2.75 m）に合わせる。長い向きは X。真ん中に横断歩道がある。
+    板は 3 mm（白線の上面 3.5 mm）。grass_patch に重ねたとき、芝の板（2 mm）とまだら（2.5 mm）より上に来る。
     """
-    length, width, thick = 8.0, 5.5, 0.02
+    length, width, thick = 8.0, 5.5, ROAD_THICK
     p = Part("road_patch")
     p.slab((length, width), thick, thick, 0.05, M["asphalt"], segments=2)
-    top = thick + 0.003
+    top = thick + MARK_THICK / 2   # 白線の中心の高さ（白線の底は板の上面）
     # 横断歩道（白い帯。道路を横切る向きに長い）
     for k in range(7):
-        p.box((0.45, width - 1.0, 0.006), ((k - 3) * 0.9, 0, top), M["stripe"])
+        p.box((0.45, width - 1.0, MARK_THICK), ((k - 3) * 0.9, 0, top), M["stripe"])
     # 端の白線と、横断歩道の外の中央線（破線）
     for sy in (-1, 1):
-        p.box((length - 0.1, 0.12, 0.006), (0, sy * (width / 2 - 0.25), top), M["stripe"])
+        p.box((length - 0.1, 0.12, MARK_THICK), (0, sy * (width / 2 - 0.25), top), M["stripe"])
     for sx in (-1, 1):
-        p.box((0.7, 0.12, 0.006), (sx * 3.5, 0, top), M["stripe"])
+        p.box((0.7, 0.12, MARK_THICK), (sx * 3.5, 0, top), M["stripe"])
     p.finish(root)
 
 
