@@ -1,0 +1,19 @@
+{
+  "id": "cafe",
+  "name": "カフェ",
+  "model": "cafe.usdz",
+  "difficulty": "normal",
+  "description": "Inside a cozy cafe with a wooden floor. A waiter in a black apron is walking with a tray of two cups of coffee. A man in a blue shirt has knocked over his coffee cup, and the coffee is spilling off the table onto the floor. He is raising his hand in surprise. A woman in a yellow sweater is typing on a laptop at a table by the window, and a small dog is sleeping under her table. A girl in a red dress is eating a piece of strawberry cake, and her mother is taking a picture of the cake with her phone. Behind the counter, a barista in a green apron is making coffee with an espresso machine. On the counter there is a glass case with cakes and a cash register. There is a chalkboard menu on the wall, three lamps hanging from a beam, big windows with plants, a coat rack, and an empty table with flowers.",
+  "elements": [
+    "a waiter carrying a tray with two cups of coffee",
+    "a man who knocked over his coffee cup",
+    "coffee spilling from the table onto the floor",
+    "a woman typing on a laptop by the window",
+    "a dog sleeping under the table",
+    "a girl eating a piece of cake",
+    "a mother taking a picture with her phone",
+    "a barista making coffee with an espresso machine",
+    "a glass case with cakes on the counter",
+    "a chalkboard menu and lamps hanging over the counter"
+  ]
+}
