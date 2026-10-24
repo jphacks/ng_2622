@@ -47,25 +47,27 @@ export const beginGrading = (
   state: RoomState,
   input: { playerId: string; round: number },
 ): Result<{ state: RoomState; sceneId: string }> => {
-  const current = state.current;
-  if (
-    !current ||
-    (state.phase !== "playing" && state.phase !== "waiting") ||
-    current.round !== input.round
-  ) {
-    return fail("not_playing", `ラウンド ${input.round} は進行中でない`);
-  }
-  if (!current.playerIds.includes(input.playerId)) {
-    return fail("not_playing", "このラウンドに参加していない");
-  }
-  if (current.grades[input.playerId]) {
-    return fail("already_submitted", "このラウンドの音声はもう受け取った");
-  }
+  const current = submittableRound(state, input);
+  if (!current.ok) return current;
 
-  const next = withGrade(state, current, input.playerId, {
+  const next = withGrade(state, current.value, input.playerId, {
     status: "grading",
   });
-  return ok({ state: settleRound(next), sceneId: current.sceneId });
+  return ok({ state: settleRound(next), sceneId: current.value.sceneId });
+};
+
+/** 音声なしで終える（マイクが使えないときなど）。その人は「採点できませんでした」になる */
+export const skipAudio = (
+  state: RoomState,
+  input: { playerId: string; round: number },
+): Result<RoomState> => {
+  const current = submittableRound(state, input);
+  if (!current.ok) return current;
+
+  const next = withGrade(state, current.value, input.playerId, {
+    status: "failed",
+  });
+  return ok(settleRound(next));
 };
 
 /**
@@ -180,6 +182,28 @@ export const roundResults = (
     sceneName: sceneName(current.sceneId),
     players,
   };
+};
+
+/** 音声を送るか skip できるラウンド。進行中で、参加していて、まだ送っていないこと */
+const submittableRound = (
+  state: RoomState,
+  input: { playerId: string; round: number },
+): Result<Round> => {
+  const current = state.current;
+  if (
+    !current ||
+    (state.phase !== "playing" && state.phase !== "waiting") ||
+    current.round !== input.round
+  ) {
+    return fail("not_playing", `ラウンド ${input.round} は進行中でない`);
+  }
+  if (!current.playerIds.includes(input.playerId)) {
+    return fail("not_playing", "このラウンドに参加していない");
+  }
+  if (current.grades[input.playerId]) {
+    return fail("already_submitted", "このラウンドの音声はもう受け取った");
+  }
+  return ok(current);
 };
 
 /** このラウンドの参加者のうち、まだ部屋にいる人 */
