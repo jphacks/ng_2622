@@ -50,11 +50,25 @@ curl -F audio=@test.wav -F sceneId=park http://localhost:8787/dev/score
 
 main に `backend/` の変更が入ると、GitHub Actions（`.github/workflows/deploy-backend.yml`）が自動でデプロイする。手で出すときは `pnpm run deploy`（要 `pnpm exec wrangler login`）。
 
+## 部屋の仕組み
+
+- 部屋ごとに 1 つの Durable Object（`src/durable-objects/room.ts` の `Room`）が、参加者と進行を持つ。部屋のコード（数字 4 桁）を名前にして取り出す。
+- コードの置き場所:
+  - `routes/`: HTTP の受け口（入力の検証、OpenAPI の説明、レスポンス）
+  - `usecases/`: HTTP の処理の中身
+  - `repositories/`: 部屋の Durable Object へのアクセス
+  - `domain/`: 部屋のルール（参加・スタートの判定と状態の変化）。Cloudflare に依存しない
+  - `durable-objects/`: Durable Object（保存と WebSocket の送受信。判定は `domain/` に任せる）
+  - `schemas/`: API の型（zod）
+- WebSocket は Hibernation API で受ける。メッセージが無い間は DO が休止してメモリが消えるので、状態は変えるたびに DO の保存領域（SQLite）に書く。
+- 誰もつないでいない部屋は 2 時間で消える（DO の alarm）。
+- 選べるシーンは、採点と同じ `src/scoring/scenes.json` から読む（`src/domain/scenes.ts`）。
+
 ## API のスキーマ（OpenAPI）
 
 API の型は zod で書き、[hono-openapi](https://hono.dev/examples/hono-openapi) が OpenAPI を生成する。iOS はリポジトリにある `backend/openapi.json` から型を作る。
 
-- ルートは `src/app.ts`、型は `src/schemas/` に置く。`.meta({ ref: "名前" })` を付けた型が、OpenAPI の `components.schemas` に名前付きで出る。
+- ルートは `src/routes/`、型は `src/schemas/` に置く。`.meta({ ref: "名前" })` を付けた型が、OpenAPI の `components.schemas` に名前付きで出る。
 - WebSocket のメッセージは OpenAPI の paths では表せないので、`components.schemas` の `ClientMessage`（iPhone → 部屋）と `ServerMessage`（部屋 → iPhone）に型だけを載せている。どちらも `type` の値で種類を見分ける（`oneOf` ＋ `discriminator`）。
 - ルートや型を変えたら `pnpm openapi` で `openapi.json` を生成し直し、一緒に commit する。PR では backend-checks が `pnpm openapi:check` で生成し忘れを検査する。
 - `openapi.json` は生成物なので Biome の整形の対象から外している（`biome.json`）。

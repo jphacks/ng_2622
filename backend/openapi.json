@@ -266,9 +266,10 @@
           "unauthorized",
           "not_host",
           "not_in_lobby",
-          "unknown_scene"
+          "unknown_scene",
+          "server_busy"
         ],
-        "description": "room_not_found: 部屋が無い\nroom_full: 満員\ninvalid_message: メッセージの形が違う\nunauthorized: 参加者の ID と合言葉が合わない\nnot_host: ホストだけができる操作\nnot_in_lobby: 待合でしかできない操作\nunknown_scene: シーンの ID が無い"
+        "description": "room_not_found: 部屋が無い\nroom_full: 満員\ninvalid_message: メッセージの形が違う\nunauthorized: 参加者の ID と合言葉が合わない\nnot_host: ホストだけができる操作\nnot_in_lobby: 待合でしかできない操作\nunknown_scene: シーンの ID が無い\nserver_busy: 空いている部屋のコードが無い"
       },
       "ErrorMessage": {
         "type": "object",
@@ -338,6 +339,31 @@
         "additionalProperties": false,
         "description": "作った部屋と、ホストとして入るための ID と合言葉。続けて WebSocket の join で送る"
       },
+      "ErrorResponse": {
+        "type": "object",
+        "properties": {
+          "error": {
+            "type": "object",
+            "properties": {
+              "code": {
+                "$ref": "#/components/schemas/ErrorCode"
+              },
+              "message": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "code",
+              "message"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "required": [
+          "error"
+        ],
+        "additionalProperties": false
+      },
       "RoomSummary": {
         "type": "object",
         "properties": {
@@ -367,31 +393,6 @@
         ],
         "additionalProperties": false,
         "description": "部屋に入る前の確認用（あるか、満員でないか）"
-      },
-      "ErrorResponse": {
-        "type": "object",
-        "properties": {
-          "error": {
-            "type": "object",
-            "properties": {
-              "code": {
-                "$ref": "#/components/schemas/ErrorCode"
-              },
-              "message": {
-                "type": "string"
-              }
-            },
-            "required": [
-              "code",
-              "message"
-            ],
-            "additionalProperties": false
-          }
-        },
-        "required": [
-          "error"
-        ],
-        "additionalProperties": false
       },
       "RoomId": {
         "type": "string",
@@ -438,6 +439,16 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/CreateRoomResponse"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "空いている部屋のコードが無い（server_busy）",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
                 }
               }
             }
@@ -531,7 +542,14 @@
             }
           },
           "426": {
-            "description": "WebSocket の接続ではない"
+            "description": "WebSocket の接続ではない（invalid_message）",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
           }
         },
         "parameters": [

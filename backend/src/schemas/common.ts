@@ -53,6 +53,7 @@ export const ErrorCode = z
     "not_host",
     "not_in_lobby",
     "unknown_scene",
+    "server_busy",
   ])
   .meta({
     ref: "ErrorCode",
@@ -64,6 +65,7 @@ export const ErrorCode = z
       "not_host: ホストだけができる操作",
       "not_in_lobby: 待合でしかできない操作",
       "unknown_scene: シーンの ID が無い",
+      "server_busy: 空いている部屋のコードが無い",
     ].join("\n"),
   });
 

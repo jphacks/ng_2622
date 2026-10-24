@@ -12,12 +12,20 @@
     "SCORING_MODE": "fixed",
     "SCORE_WEIGHTS": "50,25,25"
   },
+  "durable_objects": {
+    "bindings": [{ "name": "ROOM", "class_name": "Room" }]
+  },
+  // 無料プランは SQLite 版のみ。出した tag は書き換えず、新しい tag で足す
+  "migrations": [{ "tag": "v1", "new_sqlite_classes": ["Room"] }],
   // PR ごとのプレビュー（wrangler preview）の設定。vars や DO の binding は上の階層から引き継がれないので、
   // プレビューでも使うものはここにも書く
   "previews": {
     "vars": {
       "SCORING_MODE": "fixed",
       "SCORE_WEIGHTS": "50,25,25"
+    },
+    "durable_objects": {
+      "bindings": [{ "name": "ROOM", "class_name": "Room" }]
     }
   }
 }
