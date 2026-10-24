@@ -12,6 +12,7 @@
       "!**/*.md",
       "!**/pnpm-lock.yaml",
       "!backend/openapi.json",
+      "!ios/Packages/BackendAPI/Sources/BackendAPI/openapi.json",
       "!**/worker-configuration.d.ts"
     ]
   },

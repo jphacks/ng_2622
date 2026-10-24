@@ -49,3 +49,7 @@ ios/*.xcodeproj/
 ios/Config/Local.xcconfig
 xcuserdata/
 DerivedData/
+# iOS のローカルの Swift パッケージを swift build したときにできるもの（版は Package.swift で固定している）
+ios/Packages/*/.build/
+ios/Packages/*/.swiftpm/
+ios/Packages/*/Package.resolved

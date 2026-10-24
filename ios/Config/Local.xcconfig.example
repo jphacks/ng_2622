@@ -10,6 +10,12 @@ PRODUCT_BUNDLE_IDENTIFIER = jp.jphacks.ng2622.yourname
 
 // 任意: Live でつなぐ先を PR のプレビューに変える。// はコメントになるので https:/$()/ と書く
 // BACKEND_URL = https:/$()/pr-12-ng-2622-backend.jphacks-ng2622.workers.dev
+// 任意: Live で手元のバックエンド（cd backend && pnpm dev）につなぐ。シミュレータからは localhost で届く
+// BACKEND_URL = http:/$()/localhost:8787
+// 実機の iPhone からは、iPhone 自身を指す localhost では Mac に届かない。同じ Wi-Fi で Mac の IP を書き、
+// バックエンドを外から受けられるように起動する（cd backend && pnpm dev --ip 0.0.0.0）。
+// http で IP につなぐのは Info.plist の NSAllowsLocalNetworking で許していて、初回はローカルネットワークの許可を聞かれる
+// BACKEND_URL = http:/$()/192.168.1.23:8787
 
 // 任意: Mock の振る舞いを変える（既定値は Mock.xcconfig）。アプリの画面には切り替えを置かない
 // MOCK_OTHER_PLAYERS = 3        // 自分のほかの参加者の数（0〜7）

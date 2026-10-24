@@ -23,6 +23,10 @@ settings:
     SWIFT_DEFAULT_ACTOR_ISOLATION: MainActor
     SWIFT_APPROACHABLE_CONCURRENCY: YES
     TARGETED_DEVICE_FAMILY: "1"
+# バックエンドの API の型（backend/openapi.json からビルドのときに作る。Packages/BackendAPI）
+packages:
+  BackendAPI:
+    path: Packages/BackendAPI
 targets:
   NG2622:
     type: application
@@ -54,6 +58,8 @@ targets:
         INFOPLIST_KEY_UIApplicationSceneManifest_Generation: YES
         MARKETING_VERSION: "0.1.0"
         CURRENT_PROJECT_VERSION: "1"
+    dependencies:
+      - package: BackendAPI
 schemes:
   NG2622 Mock:
     build:
