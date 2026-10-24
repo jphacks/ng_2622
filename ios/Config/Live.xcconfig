@@ -1,4 +1,4 @@
-// scheme「NG2622 Live」のビルド構成。BACKEND_URL のバックエンドにつなぐ（まだ未実装）
+// scheme「NG2622 Live」のビルド構成。BACKEND_URL のバックエンドにつなぐ（LiveGameClient）
 #include "Shared.xcconfig"
 
 BACKEND_MODE = live

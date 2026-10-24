@@ -60,6 +60,19 @@ targets:
         CURRENT_PROJECT_VERSION: "1"
     dependencies:
       - package: BackendAPI
+  # アプリの中の、通信や画面に依らない変換（部屋のメッセージ → 画面のできごとなど）を確かめる
+  NG2622Tests:
+    type: bundle.unit-test
+    platform: iOS
+    sources:
+      - path: NG2622Tests
+    settings:
+      base:
+        GENERATE_INFOPLIST_FILE: YES
+        PRODUCT_BUNDLE_IDENTIFIER: "$(inherited).tests"
+    # BackendAPI はアプリに静的に入っている（test から直接つなぐと動的なフレームワークになり、リンクできない）
+    dependencies:
+      - target: NG2622
 schemes:
   NG2622 Mock:
     build:
@@ -67,6 +80,10 @@ schemes:
         NG2622: all
     run:
       config: Debug-Mock
+    test:
+      config: Debug-Mock
+      targets:
+        - NG2622Tests
     profile:
       config: Release-Mock
     analyze:
@@ -79,6 +96,10 @@ schemes:
         NG2622: all
     run:
       config: Debug-Live
+    test:
+      config: Debug-Live
+      targets:
+        - NG2622Tests
     profile:
       config: Release-Live
     analyze:

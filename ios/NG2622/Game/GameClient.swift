@@ -1,7 +1,7 @@
 import Foundation
 
 /// 画面がバックエンドとやりとりする口。docs/design/architecture.md の WebSocket のメッセージに合わせる。
-/// いまは仮のデータを返す MockGameClient だけ。本物の API（WebSocket）につなぐ実装は後の PR で足す。
+/// 仮のデータを返す MockGameClient と、本物のバックエンドにつなぐ LiveGameClient がある
 protocol GameClient: AnyObject {
   /// バックエンドから届くできごと。1 か所だけで読む
   var events: AsyncStream<GameEvent> { get }
@@ -23,7 +23,7 @@ protocol GameClient: AnyObject {
   func playAgain() async throws
 }
 
-enum GameEvent: Sendable {
+enum GameEvent: Sendable, Equatable {
   /// 部屋の参加者と接続の状態（room）
   case room(RoomState)
   /// ラウンドが始まった。全員の端末で同じ時刻に回転を始める（round）
@@ -34,11 +34,24 @@ enum GameEvent: Sendable {
   case results(RoundResults)
   /// ホストが「もう一度」を選び、待合に戻った（again を受けた部屋が送る room）
   case returnedToLobby(RoomState)
+  /// ラウンド中か結果発表のときに、ホストが替わった（前のホストが抜けた）。isSelf なら自分が新しいホスト。
+  /// 待合では room の members の isHost で分かるので送らない
+  case hostChanged(isSelf: Bool)
 }
 
-enum GameError: Error {
+enum GameError: Error, Equatable {
   /// そのコードの部屋が無い
   case roomNotFound
+  /// 満員で入れない
+  case roomFull
+  /// ゲームが始まっていて入れない
+  case alreadyStarted
+  /// 空いている部屋のコードが無い（部屋を作れない）
+  case serverBusy
+  /// バックエンドにつながらない・返事が来ない
+  case connectionFailed
+  /// 部屋が受け付けなかった（WebSocket の error）。code は ErrorCode の値
+  case rejected(code: String, message: String)
 }
 
 /// 部屋の状態

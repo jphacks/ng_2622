@@ -1,0 +1,19 @@
+{
+  "id": "rainy_street",
+  "name": "雨のバス停",
+  "model": "rainy_street.usdz",
+  "difficulty": "normal",
+  "description": "A shopping street on a rainy day. A woman in a cream coat is waiting at the bus stop under a blue umbrella. A girl without an umbrella is running toward the bus stop with her bag over her head. A red car is driving through a big puddle and splashing water onto the sidewalk. A boy in a yellow raincoat and green boots is jumping into a puddle. An old man is sitting on the bench in the bus shelter and reading a newspaper. A gray cat is sitting on the windowsill of the bakery, staying dry under the awning. There is a bakery with a red and white striped awning and bread in the window, a flower shop with a green awning and buckets of flowers in front, a red mailbox, and a street lamp.",
+  "elements": [
+    "a woman with a blue umbrella waiting at the bus stop",
+    "a girl running with her bag over her head because she has no umbrella",
+    "a red car splashing water from a puddle",
+    "a boy in a yellow raincoat jumping into a puddle",
+    "an old man reading a newspaper on the bench in the bus shelter",
+    "a cat sitting on the bakery windowsill under the awning",
+    "a bakery with a red and white striped awning",
+    "a flower shop with buckets of flowers in front",
+    "a red mailbox",
+    "it is raining and there are puddles"
+  ]
+}
