@@ -13,15 +13,17 @@ import sys
 from pathlib import Path
 
 import bpy
+from mathutils import Matrix, Vector
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-from common import HALF, SIZE, Part, material, materials, person, run  # noqa: E402
+from common import HALF, SIZE, Part, hand_points, material, materials, person, run  # noqa: E402
 
 rng = random.Random(11)
 M: dict = {}
 
 ROAD_Y = -HALF + 0.75     # 道路の中心（手前）
 PLAZA_Y0 = -HALF + 1.6    # 広場の手前の端
+CROSSWALK_X = 0.0         # 横断歩道の中心
 
 
 def make_materials() -> None:
@@ -44,7 +46,7 @@ def make_materials() -> None:
         "hair_brown": ("#6b4428", 0.6), "hair_black": ("#2a1f1a", 0.6),
         "coat_beige": ("#d9b98a", 0.8), "skirt_green": ("#4f7d5a", 0.8), "shoe_brown": ("#6b4428", 0.5),
         "suit": ("#3d4a63", 0.7), "shirt_white": ("#f7f7f2", 0.7), "shoe_black": ("#222226", 0.5),
-        "suitcase": ("#e8706a", 0.45),
+        "suitcase": ("#f27aa6", 0.45),
     }))
     M["glass"] = material("glass", "#bfe3ff", 0.15, emit=0.35)
     M["shelter_glass"] = material("shelter_glass", "#d8efff", 0.1)
@@ -72,13 +74,14 @@ def build_ground(root):
 
 def build_road(root):
     p = Part("road")
-    p.box((SIZE - 0.5, 1.4, 0.02), (0, ROAD_Y, 0.01), M["asphalt"])
+    # 手前の角は、土台の角の丸み（半径 0.8）からはみ出さないように丸める
+    p.slab((SIZE - 0.5, 1.4), 0.02, 0.02, 0.6, M["asphalt"], center=(0, ROAD_Y), corners=((-1, -1), (1, -1)))
     p.box((SIZE - 0.5, 0.14, 0.1), (0, PLAZA_Y0 - 0.12, 0.05), M["curb"], bevel=0.02)
     # 横断歩道
     for k in range(7):
-        p.box((0.28, 1.1, 0.012), (-0.2 + (k - 3) * 0.52, ROAD_Y, 0.026), M["stripe"])
+        p.box((0.28, 1.1, 0.012), (CROSSWALK_X + (k - 3) * 0.52, ROAD_Y, 0.026), M["stripe"])
     # 道路の中央線（横断歩道の外側だけ）
-    for x in (2.0, 2.9):
+    for x in (2.25, 3.1):
         p.box((0.5, 0.06, 0.012), (x, ROAD_Y, 0.026), M["stripe"])
     p.finish(root)
 
@@ -226,14 +229,30 @@ def build_bicycle(root, loc, rot_z):
     p.finish(root, loc=loc, rot_z=rot_z)
 
 
-def build_suitcase(root, loc, rot_z):
+def build_suitcase(root, grip, rot_z, tilt=0.6):
+    """引かれているスーツケース。持ち手のにぎり（grip、床からの高さを含む）が手に来るように置く。
+
+    正面（-Y）が引く人のほう。車輪と持ち手は正面の側にあり、車輪を軸に tilt（rad）だけ人のほうへ傾ける。
+    """
     p = Part("suitcase")
-    p.box((0.4, 0.24, 0.55), (0, 0, 0.33), M["suitcase"], bevel=0.05)
+    wheel_y, wheel_z = -0.09, 0.04
+    # 傾けたときに、にぎりが grip の高さに来る持ち手の長さ
+    dy = -0.05
+    grip_z = wheel_z + (grip[2] - wheel_z - dy * math.sin(tilt)) / math.cos(tilt)
+    tilted = Matrix.Translation((0, wheel_y, wheel_z)) @ Matrix.Rotation(tilt, 4, "X") @ Matrix.Translation((0, -wheel_y, -wheel_z))
+
+    def at(x, y, z):
+        return tuple(tilted @ Vector((x, y, z)))
+
+    p.box((0.4, 0.24, 0.55), at(0, 0, 0.335), M["suitcase"], rot=(tilt, 0, 0), bevel=0.05)
     for sx in (-1, 1):
-        p.limb((sx * 0.1, -0.08, 0.6), (sx * 0.1, -0.08, 1.0), 0.012, 0.012, M["metal"], segs=6)
-        p.cyl(0.035, 0.035, 0.04, (sx * 0.15, 0.08, 0.04), M["tire"], rot=(0, math.pi / 2, 0), segs=10)
-    p.box((0.26, 0.04, 0.04), (0, -0.08, 1.0), M["dark"], bevel=0.015)
-    p.finish(root, loc=loc, rot_z=rot_z)
+        p.limb(at(sx * 0.1, wheel_y + dy, 0.55), at(sx * 0.1, wheel_y + dy, grip_z), 0.012, 0.012, M["metal"], segs=6)
+        p.cyl(0.035, 0.035, 0.04, (sx * 0.15, wheel_y, wheel_z), M["tire"], rot=(0, math.pi / 2, 0), segs=10)
+    p.box((0.26, 0.04, 0.04), at(0, wheel_y + dy, grip_z), M["dark"], rot=(tilt, 0, 0), bevel=0.015)
+    # にぎりが grip に来るように、スーツケース全体をずらす
+    g = Vector(at(0, wheel_y + dy, grip_z))
+    offset = Matrix.Rotation(rot_z, 3, "Z") @ Vector((g.x, g.y, 0))
+    p.finish(root, loc=(grip[0] - offset.x, grip[1] - offset.y, 0), rot_z=rot_z)
 
 
 def build_station_scene() -> bpy.types.Object:
@@ -244,7 +263,8 @@ def build_station_scene() -> bpy.types.Object:
     build_station(root)
     build_plaza_clock(root, (-1.35, -1.05))
     build_bus_stop(root, (2.4, -1.65))
-    build_taxi(root, (-2.75, ROAD_Y + 0.25), math.pi / 2)
+    # 横断歩道の左で待つタクシー。タイヤが歩道の縁石にかからず、鼻先が横断歩道にかからない位置
+    build_taxi(root, (-2.75, ROAD_Y + 0.12), math.pi / 2)
     build_vending(root, (3.3, 1.6), 0.0)
     build_planter_tree(root, "tree_left", (-3.1, 1.2))
     build_planter_tree(root, "tree_right", (3.2, 0.2))
@@ -257,8 +277,11 @@ def build_station_scene() -> bpy.types.Object:
     # 駅から出てきて、スーツケースを引いて歩く女性
     traveler = {"skin": M["skin"], "hair": M["hair_brown"], "top": M["coat_beige"], "bottom": M["skirt_green"],
                 "shoe": M["shoe_brown"], "eye": M["eye"], "skirt": True, "hair_style": "long"}
-    person(root, "traveler", (-0.2, 0.2), 0.15, traveler, pose="walk")
-    build_suitcase(root, (0.1, 0.55), 0.15)
+    traveler_loc, traveler_rot = Vector((-0.2, 0.2, 0)), 0.15
+    person(root, "traveler", traveler_loc.xy, traveler_rot, traveler, pose="walk")
+    # 後ろに振った左手（+X 側）で持ち手をにぎり、スーツケースは後ろについてくる
+    hand = traveler_loc + Matrix.Rotation(traveler_rot, 3, "Z") @ hand_points("walk")[1]
+    build_suitcase(root, hand, traveler_rot)
     # バス停でスマホを見ている男性
     commuter = {"skin": M["skin"], "hair": M["hair_black"], "top": M["suit"], "bottom": M["suit"],
                 "shoe": M["shoe_black"], "eye": M["eye"]}

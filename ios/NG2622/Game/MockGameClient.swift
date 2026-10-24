@@ -174,7 +174,8 @@ final class MockGameClient: GameClient {
     }
   }
 
-  func finishSpeaking() async throws {
+  /// 音声は送らない（採点は仮の結果）
+  func finishSpeaking(audio: RecordedAudio?) async throws {
     guard roundRunning, selfGradingEnd == nil, let elapsed = elapsed() else { return }
     selfGradingEnd = elapsed + .random(in: 2.5...4.5)
     publish()

@@ -24,6 +24,8 @@ final class RoomSession {
   private(set) var participants: [Participant] = []
   /// ホストが待合で選んだ 3D シーン。スタートでこのシーンを出す
   private(set) var selectedScene: SceneChoice = .park
+  /// 自分の声の録音。ラウンドが始まると用意し、録音中の画面で録り始める
+  let recorder = VoiceRecorder()
 
   /// 完了していない人（話している・採点中・切断中）の数
   var remainingCount: Int {
@@ -60,6 +62,7 @@ final class RoomSession {
   /// 部屋から抜ける
   func leave() {
     listener?.cancel()
+    recorder.discard()
     client.leaveRoom()
   }
 
@@ -80,7 +83,8 @@ final class RoomSession {
   func finishSpeaking() {
     guard case .playing = phase else { return }
     phase = .waiting(enteredAt: Date())
-    Task { try? await client.finishSpeaking() }
+    let audio = recorder.stop()
+    Task { try? await client.finishSpeaking(audio: audio) }
   }
 
   /// ホストが締め切る
@@ -110,6 +114,8 @@ final class RoomSession {
       code = room.code
       participants = room.members
     case .roundStarted(let info):
+      // 前のラウンドの録音は消す
+      recorder.prepare()
       phase = .playing(info)
     case .participantsChanged(let list):
       participants = list
