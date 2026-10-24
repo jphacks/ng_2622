@@ -24,6 +24,10 @@ WALL_H = 3.0
 WALL_T = 0.25
 BACK_Y = HALF - WALL_T / 2      # 奥の壁（黒板）
 LEFT_X = -HALF + WALL_T / 2     # 左の壁（窓）
+BASE_R = 0.35                   # 土台の角の丸み
+# 壁の立つ左奥の角だけは丸めない。ほかの角は丸め、壁はその丸みの手前で止める
+ROUND_CORNERS = ((-1, -1), (1, -1), (1, 1))
+WALL_END = HALF - BASE_R
 
 
 def make_materials() -> None:
@@ -52,18 +56,22 @@ def make_materials() -> None:
 
 def build_room(root):
     p = Part("room")
-    p.slab(SIZE, 0.0, 0.2, 0.35, M["base"])
-    p.slab(SIZE - 0.2, -0.2, 0.45, 0.3, M["base_dark"])
+    p.slab(SIZE, 0.0, 0.2, BASE_R, M["base"], corners=ROUND_CORNERS)
+    p.slab(SIZE - 0.2, -0.2, 0.45, BASE_R - 0.05, M["base_dark"], corners=ROUND_CORNERS)
     # 板張りの床
     planks = 16
     for i in range(planks):
         y = -HALF + 0.35 + (SIZE - 0.7) * (i + 0.5) / planks
         p.box((SIZE - 0.6, (SIZE - 0.7) / planks - 0.01, 0.02), (0.15, y, 0.01), M["floor_a"] if i % 2 else M["floor_b"])
-    # 奥と左の壁
-    p.box((SIZE, WALL_T, WALL_H), (0, BACK_Y, WALL_H / 2), M["wall"])
-    p.box((WALL_T, SIZE - WALL_T, WALL_H), (LEFT_X, -WALL_T / 2, WALL_H / 2), M["wall"])
-    p.box((SIZE, WALL_T + 0.04, 0.12), (0, BACK_Y, 0.06), M["baseboard"])
-    p.box((WALL_T + 0.04, SIZE - WALL_T, 0.12), (LEFT_X, -WALL_T / 2, 0.06), M["baseboard"])
+    # 奥と左の壁（左奥の角でつながる）
+    back_len = HALF + WALL_END
+    side_len = WALL_END + HALF - WALL_T
+    p.box((back_len, WALL_T, WALL_H), (WALL_END - back_len / 2, BACK_Y, WALL_H / 2), M["wall"])
+    p.box((WALL_T, side_len, WALL_H), (LEFT_X, -WALL_END + side_len / 2, WALL_H / 2), M["wall"])
+    # 幅木は壁より 0.02 m ずつ外へ出す。端の面が壁や別の幅木の面と重なると黒く写るので、
+    # 壁の端より 0.02 m 先まで伸ばし、左の幅木は奥の幅木の内側の面で止める
+    p.box((back_len + 0.04, WALL_T + 0.04, 0.12), (WALL_END - back_len / 2, BACK_Y, 0.06), M["baseboard"])
+    p.box((WALL_T + 0.04, side_len, 0.12), (LEFT_X, -WALL_END + side_len / 2 - 0.02, 0.06), M["baseboard"])
     p.finish(root)
 
 
@@ -114,7 +122,8 @@ def build_bulletin(root):
 def build_windows(root):
     p = Part("windows")
     x = LEFT_X + WALL_T / 2
-    for cy in (-1.6, 1.2):
+    # 手前の窓のカーテンが本棚にかからない位置
+    for cy in (-1.2, 1.2):
         p.box((0.04, 1.7, 1.4), (x + 0.005, cy, 1.75), M["sky"])
         for dy in (-0.85, 0, 0.85):
             p.box((0.08, 0.07, 1.48), (x + 0.04, cy + dy, 1.75), M["white"], bevel=0.01)
@@ -124,7 +133,7 @@ def build_windows(root):
         # 左右にまとめたカーテン
         for side in (-1, 1):
             p.box((0.1, 0.3, 1.6), (x + 0.14, cy + side * 1.0, 1.75), M["curtain"], bevel=0.04)
-        p.box((0.06, 2.4, 0.06), (x + 0.16, cy, 2.58), M["metal"])
+        p.box((0.06, 2.3, 0.06), (x + 0.16, cy, 2.58), M["metal"])
     p.finish(root)
 
 
@@ -172,7 +181,7 @@ def build_desk_set(root, name, loc, bag=False, notebook=False):
 
 def build_bookshelf(root):
     p = Part("bookshelf")
-    w, d, h = 0.4, 1.4, 1.5
+    w, d, h = 0.4, 1.1, 1.5
     p.box((w, d, 0.05), (0, 0, h), M["shelf"], bevel=0.01)
     for z in (0.03, 0.52, 1.01):
         p.box((w, d, 0.04), (0, 0, z), M["shelf"])
@@ -187,7 +196,7 @@ def build_bookshelf(root):
             bh = rng.uniform(0.3, 0.42)
             p.box((0.28, t, bh), (0.0, y + t / 2, z + bh / 2), M[rng.choice(books)], bevel=0.006)
             y += t + 0.01
-    p.finish(root, loc=(LEFT_X + WALL_T / 2 + 0.22, -3.1))
+    p.finish(root, loc=(LEFT_X + WALL_T / 2 + 0.22, -3.05))
 
 
 def build_plant(root, loc):
