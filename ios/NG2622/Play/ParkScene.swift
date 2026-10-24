@@ -2,10 +2,13 @@ import RealityKit
 import SwiftUI
 import UIKit
 
-/// 公園のボクセルのシーン（play.html の buildWorld と同じ配置）。
-/// 箱は自前のメッシュで組み、面ごとに明るさを変えた光の影響を受けない色で塗る（モックの見た目に合わせるため）。
-/// USDZ ができたら、ここを読み込みに差し替える。
+/// 3D シーンの表示。
+/// 1. `sceneURL`（AI が動的生成した USDZ）があればそれを読み込む
+/// 2. バンドル内の `<sceneID>.usdz`（park / classroom / station）があれば読み込む
+/// 3. どちらも無ければ内蔵のボクセル公園（ParkBuilder）にフォールバックする
 struct ParkSceneView: View {
+  var sceneID: String = "park"
+  var sceneURL: URL? = nil
   /// 縦の軸まわりの向き（度）。0 が初期の向き
   var yaw: Double
   /// 見下ろす角度（度）
@@ -14,7 +17,7 @@ struct ParkSceneView: View {
   var body: some View {
     RealityView { content in
       content.camera = .virtual
-      let world = ParkBuilder.makeWorld()
+      let world = await Self.makeSceneEntity(sceneID: sceneID, sceneURL: sceneURL)
       world.name = "world"
       content.add(world)
 
@@ -31,6 +34,51 @@ struct ParkSceneView: View {
       Self.apply(yaw: yaw, tilt: tilt, world: world, camera: camera)
     }
     .realityViewCameraControls(.none)
+  }
+
+  /// USDZ（URL またはバンドル名）を読み込み、無ければボクセルの公園を返す
+  private static func makeSceneEntity(sceneID: String, sceneURL: URL?) async -> Entity {
+    let loaded: Entity? =
+      if let sceneURL, let remote = try? await loadUSDZ(from: sceneURL) {
+        remote
+      } else if let bundled = try? await Entity(named: sceneID) {
+        bundled
+      } else {
+        nil
+      }
+
+    guard let model = loaded else {
+      return ParkBuilder.makeWorld()
+    }
+
+    let world = Entity()
+    // USDZ は 8m 四方、カメラの距離は 2.3m 四方に合わせてあるため縮小する
+    model.scale = [0.29, 0.29, 0.29]
+    world.addChild(model)
+
+    // USDZ の PBR マテリアルが暗くならないよう、主光源と補助光を足す
+    let sun = DirectionalLight()
+    sun.light.intensity = 4500
+    sun.look(at: .zero, from: [1.2, 2.5, 1.8], relativeTo: nil)
+    world.addChild(sun)
+
+    let fill = DirectionalLight()
+    fill.light.intensity = 2200
+    fill.look(at: .zero, from: [-1.4, 1.8, -1.2], relativeTo: nil)
+    world.addChild(fill)
+
+    return world
+  }
+
+  private static func loadUSDZ(from url: URL) async throws -> Entity {
+    if url.isFileURL {
+      return try await Entity(contentsOf: url)
+    }
+    let (tmpURL, _) = try await URLSession.shared.download(from: url)
+    let usdzURL = FileManager.default.temporaryDirectory
+      .appendingPathComponent(UUID().uuidString + ".usdz")
+    try FileManager.default.moveItem(at: tmpURL, to: usdzURL)
+    return try await Entity(contentsOf: usdzURL)
   }
 
   /// 中身を縦の軸まわりに回し、カメラを見下ろす角度の位置に置く
@@ -157,8 +205,14 @@ enum ParkBuilder {
     var faceMaterials: [UInt32] = []
     for (i, (n, r, u)) in faces.enumerated() {
       let base = UInt32(positions.count)
-      let c = n * 0.5
-      positions += [c - r * 0.5 - u * 0.5, c + r * 0.5 - u * 0.5, c + r * 0.5 + u * 0.5, c - r * 0.5 + u * 0.5]
+      let c: SIMD3<Float> = n * 0.5
+      let ru: SIMD3<Float> = r * 0.5 + u * 0.5
+      let rnu: SIMD3<Float> = r * 0.5 - u * 0.5
+      let v0: SIMD3<Float> = c - ru
+      let v1: SIMD3<Float> = c + rnu
+      let v2: SIMD3<Float> = c + ru
+      let v3: SIMD3<Float> = c - rnu
+      positions += [v0, v1, v2, v3]
       normals += Array(repeating: n, count: 4)
       indices += [base, base + 1, base + 2, base, base + 2, base + 3]
       faceMaterials += [UInt32(i), UInt32(i)]

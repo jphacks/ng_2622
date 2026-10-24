@@ -22,6 +22,8 @@ final class RoomSession {
   private(set) var code: String?
   /// 参加者と状態。待合では接続の状態、ラウンド中は進み具合
   private(set) var participants: [Participant] = []
+  /// ホストが待合で選んだ 3D シーン。スタートでこのシーンを出す
+  private(set) var selectedScene: SceneChoice = .park
 
   /// 完了していない人（話している・採点中・切断中）の数
   var remainingCount: Int {
@@ -61,10 +63,17 @@ final class RoomSession {
     client.leaveRoom()
   }
 
-  /// ホストがラウンドを始める。シーンの選び方ができるまでは公園だけ
+  /// ホストが待合でシーンを選ぶ
+  func choose(_ scene: SceneChoice) {
+    guard isHost, phase == .lobby else { return }
+    selectedScene = scene
+  }
+
+  /// ホストがラウンドを始める。選んだシーンを出す
   func start() {
     guard isHost, phase == .lobby else { return }
-    Task { try? await client.startRound(sceneID: "park") }
+    let scene = selectedScene
+    Task { try? await client.startRound(scene: scene) }
   }
 
   /// 「話し終えた」か、20 秒たった

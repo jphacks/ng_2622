@@ -8,6 +8,9 @@
 	<key>BackendURL</key>
 	<string>$(BACKEND_URL)</string>
 	<!-- Mock の振る舞い（Config/Mock.xcconfig）。Live では空になり、使わない -->
+	<!-- AI の 3D シーン生成サーバー（Config/Shared.xcconfig）。実機からは Mac の IP を Local.xcconfig で書く -->
+	<key>SceneGeneratorURL</key>
+	<string>$(SCENE_GENERATOR_URL)</string>
 	<key>MockOtherPlayers</key>
 	<string>$(MOCK_OTHER_PLAYERS)</string>
 	<key>MockIncludesOffline</key>

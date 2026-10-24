@@ -108,7 +108,7 @@ struct PlayView: View {
 
   private var scene: some View {
     ZStack {
-      ParkSceneView(yaw: orbit.yaw, tilt: orbit.tilt)
+      ParkSceneView(sceneID: round.sceneID, sceneURL: round.sceneURL, yaw: orbit.yaw, tilt: orbit.tilt)
         .allowsHitTesting(false)
       // 指の操作はこの面で受ける（録音中だけ）
       Color.clear

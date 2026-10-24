@@ -6,3 +6,6 @@ DEVELOPMENT_TEAM =
 
 // xcconfig では // がコメントになるので、URL は https:/$()/ と書く
 BACKEND_URL = https:/$()/ng-2622-backend.jphacks-ng2622.workers.dev
+
+// AI の 3D シーン生成サーバー（scripts/scene/ai_generator.py --serve）。実機からは Mac の IP（例: http:/$()/192.168.1.10:8790）を Local.xcconfig で書く
+SCENE_GENERATOR_URL = http:/$()/localhost:8790

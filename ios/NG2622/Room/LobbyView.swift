@@ -18,6 +18,11 @@ struct LobbyView: View {
       seats
         .padding(.top, 16)
 
+      if session.isHost {
+        SceneChooser(session: session)
+          .padding(.top, 12)
+      }
+
       Spacer(minLength: 12)
       if session.isHost {
         Button("スタート", action: session.start)

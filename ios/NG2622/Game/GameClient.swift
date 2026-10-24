@@ -13,8 +13,8 @@ protocol GameClient: AnyObject {
   /// 部屋から抜ける。以後 events は届かない
   func leaveRoom()
 
-  /// ホストがラウンドを始める（start）
-  func startRound(sceneID: String) async throws
+  /// ホストがラウンドを始める（start）。出すシーンは待合でホストが選んだもの
+  func startRound(scene: SceneChoice) async throws
   /// 自分が話し終えた（後の PR で録音した音声を載せる）
   func finishSpeaking() async throws
   /// ホストが締め切って発表する（close）
@@ -54,9 +54,27 @@ enum RoomLimit {
   static let members = 8
 }
 
-struct RoundInfo: Sendable, Equatable {
-  /// 出す 3D シーンの ID
+/// ホストが選ぶ 3D シーン。定番（バンドルの USDZ）か、AI が生成した USDZ（URL）
+struct SceneChoice: Equatable, Sendable {
+  /// "park" / "classroom" / "station" / "custom"
   let sceneID: String
+  /// AI が生成した USDZ の URL。定番のときは nil
+  let sceneURL: URL?
+  /// 結果の画面に出す名前
+  let title: String
+
+  static let park = SceneChoice(sceneID: "park", sceneURL: nil, title: "公園")
+  static let classroom = SceneChoice(sceneID: "classroom", sceneURL: nil, title: "教室")
+  static let station = SceneChoice(sceneID: "station", sceneURL: nil, title: "駅前")
+  /// 定番の 3 つ（待合の選択肢）
+  static let presets: [SceneChoice] = [.park, .classroom, .station]
+}
+
+struct RoundInfo: Sendable, Equatable {
+  /// 出す 3D シーンの ID（"park" / "classroom" / "station" / "custom"）
+  let sceneID: String
+  /// AI が動的に生成した USDZ の URL（指定されていればバンドルより優先して読み込む）
+  var sceneURL: URL? = nil
   /// 回転を始める時刻
   let startsAt: Date
 }

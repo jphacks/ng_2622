@@ -11,6 +11,8 @@ struct AppConfig {
 
   let mode: BackendMode
   let backendURL: URL?
+  /// AI の 3D シーン生成サーバー（scripts/scene/ai_generator.py）
+  let sceneGeneratorURL: URL
   /// Mock の振る舞い（Live では使わない）
   let mock: MockGameClient.Options
 
@@ -21,6 +23,7 @@ struct AppConfig {
     }
     let raw = string("BackendMode") ?? ""
     let url = string("BackendURL").flatMap(URL.init(string:))
+    let generator = string("SceneGeneratorURL").flatMap(URL.init(string:)) ?? URL(string: "http://localhost:8790")!
 
     // 値が無い・読めないときは Options の既定値を使う
     var mock = MockGameClient.Options()
@@ -34,6 +37,7 @@ struct AppConfig {
       mock.hostStartDelay = max(0, delay)
     }
     // 値が読めないときは、通信しない Mock にしておく
-    return AppConfig(mode: BackendMode(rawValue: raw) ?? .mock, backendURL: url, mock: mock)
+    return AppConfig(
+      mode: BackendMode(rawValue: raw) ?? .mock, backendURL: url, sceneGeneratorURL: generator, mock: mock)
   }()
 }
