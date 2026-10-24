@@ -66,6 +66,7 @@ export async function score(
       transcript: "(固定の点数のモードのため、文字起こしはありません)",
       comment: "固定の点数を返しています。",
       modelAnswer: scene.description,
+      elements: [],
       speechDetail: { accuracy: 60, fluency: 60, prosody: 60 },
       mode: "fixed",
       elapsedMs: Date.now() - started,
@@ -90,6 +91,7 @@ export async function score(
             expression: 0,
             comment: "もう少し長く話してみよう。",
             modelAnswer: scene.description,
+            elements: [],
           }
         : await gradeLanguage(env, scene, speech.transcript);
     return {
@@ -102,6 +104,7 @@ export async function score(
       transcript: speech.transcript,
       comment: language.comment,
       modelAnswer: language.modelAnswer,
+      elements: language.elements,
       speechDetail: {
         accuracy: speech.accuracy,
         fluency: speech.fluency,
