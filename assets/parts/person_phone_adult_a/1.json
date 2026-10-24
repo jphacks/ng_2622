@@ -1,0 +1,23 @@
+{
+  "id": "person_phone_adult_a",
+  "version": 1,
+  "file": "parts/person_phone_adult_a/1.usdz",
+  "category": "person",
+  "words": [
+    {
+      "word": "man",
+      "pos": "noun"
+    },
+    {
+      "word": "phone",
+      "pos": "noun"
+    },
+    {
+      "word": "look",
+      "pos": "verb"
+    }
+  ],
+  "pose": "phone",
+  "size": [0.551, 1.695, 0.514],
+  "label": "男の人（スマホを見る）"
+}

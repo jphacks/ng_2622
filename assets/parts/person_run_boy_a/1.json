@@ -1,0 +1,19 @@
+{
+  "id": "person_run_boy_a",
+  "version": 1,
+  "file": "parts/person_run_boy_a/1.usdz",
+  "category": "person",
+  "words": [
+    {
+      "word": "boy",
+      "pos": "noun"
+    },
+    {
+      "word": "run",
+      "pos": "verb"
+    }
+  ],
+  "pose": "run",
+  "size": [0.426, 1.256, 0.627],
+  "label": "男の子（走る）"
+}

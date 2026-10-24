@@ -1,0 +1,19 @@
+{
+  "id": "person_run_adult_a",
+  "version": 1,
+  "file": "parts/person_run_adult_a/1.usdz",
+  "category": "person",
+  "words": [
+    {
+      "word": "man",
+      "pos": "noun"
+    },
+    {
+      "word": "run",
+      "pos": "verb"
+    }
+  ],
+  "pose": "run",
+  "size": [0.568, 1.675, 0.836],
+  "label": "男の人（走る）"
+}

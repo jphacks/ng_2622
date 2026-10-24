@@ -1,0 +1,19 @@
+{
+  "id": "person_sit_woman_a",
+  "version": 1,
+  "file": "parts/person_sit_woman_a/1.usdz",
+  "category": "person",
+  "words": [
+    {
+      "word": "woman",
+      "pos": "noun"
+    },
+    {
+      "word": "sit",
+      "pos": "verb"
+    }
+  ],
+  "pose": "sit",
+  "size": [0.564, 1.375, 0.83],
+  "label": "女の人（座る）"
+}
