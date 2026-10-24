@@ -29,6 +29,11 @@ targets:
     platform: iOS
     sources:
       - path: NG2622
+      - path: ../assets/scenes
+        optional: true
+        buildPhase: resources
+        includes:
+          - "*.usdz"
     settings:
       base:
         PRODUCT_NAME: NG2622

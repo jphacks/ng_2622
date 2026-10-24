@@ -49,3 +49,6 @@ ios/*.xcodeproj/
 ios/Config/Local.xcconfig
 xcuserdata/
 DerivedData/
+
+# 動的に生成した 3D シーンの出力先
+assets/scenes/generated/

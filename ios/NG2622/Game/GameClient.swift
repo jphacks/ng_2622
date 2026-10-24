@@ -26,8 +26,10 @@ enum GameEvent: Sendable {
 }
 
 struct RoundInfo: Sendable, Equatable {
-  /// 出す 3D シーンの ID
+  /// 出す 3D シーンの ID（"park" / "classroom" / "station" / "custom"）
   let sceneID: String
+  /// AI が動的に生成した USDZ の URL（指定されていればバンドルより優先して読み込む）
+  var sceneURL: URL? = nil
   /// 回転を始める時刻
   let startsAt: Date
 }

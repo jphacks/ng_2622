@@ -6,6 +6,10 @@ final class MockGameClient: GameClient {
     var isHost = true
     /// 参加者の 1 人が途中で切断する
     var includesOffline = false
+    /// 定番シーンの ID（"park" / "classroom" / "station"）
+    var sceneID = "park"
+    /// AI が動的に生成した USDZ の URL（指定されていればこちらを表示）
+    var sceneURL: URL? = nil
   }
 
   let isHost: Bool
@@ -58,7 +62,7 @@ final class MockGameClient: GameClient {
         goesOffline: options.includesOffline && i == Self.names.count - 1
       )
     }
-    continuation.yield(.roundStarted(RoundInfo(sceneID: "park", startsAt: start)))
+    continuation.yield(.roundStarted(RoundInfo(sceneID: options.sceneID, sceneURL: options.sceneURL, startsAt: start)))
     publish()
 
     ticker?.cancel()
