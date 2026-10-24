@@ -1,0 +1,23 @@
+{
+  "id": "person_carry_woman_a",
+  "version": 1,
+  "file": "parts/person_carry_woman_a/1.usdz",
+  "category": "person",
+  "words": [
+    {
+      "word": "woman",
+      "pos": "noun"
+    },
+    {
+      "word": "carry",
+      "pos": "verb"
+    },
+    {
+      "word": "box",
+      "pos": "noun"
+    }
+  ],
+  "pose": "carry",
+  "size": [0.571, 1.695, 0.819],
+  "label": "女の人（箱を運ぶ）"
+}

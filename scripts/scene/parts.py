@@ -983,6 +983,8 @@ PEOPLE = [
     # 新しいポーズ
     ("hold", "woman_a"), ("hold", "girl_a"), ("put", "adult_a"), ("put", "woman_a"), ("put", "boy_a"),
     ("drink", "woman_a"), ("drink", "adult_a"), ("write", "boy_a"), ("write", "girl_a"), ("look", "girl_a"),
+    # 今あるポーズを別の見た目に広げたもの
+    ("carry", "boy_a"), ("carry", "woman_a"), ("carry", "girl_a"), ("sit", "girl_a"), ("sit", "boy_a"),
 ]
 
 
