@@ -2,7 +2,7 @@ import Foundation
 import RealityKit
 import os
 
-let sceneLog = Logger(subsystem: "jp.jphacks.ng2622", category: "Scene")
+nonisolated let sceneLog = Logger(subsystem: "jp.jphacks.ng2622", category: "Scene")
 
 /// 場面を組み立てる部品（USDZ）を読む所。同じ部品は 1 度だけ読み、使うたびに複製して渡す。
 /// 探す順は、同梱（assets/parts → アプリの parts/<id>/<version>.usdz）→ 端末のキャッシュ → バックエンドの

@@ -110,6 +110,21 @@ struct SceneComposerTests {
     #expect(throws: (any Error).self) { try SceneLayout.decode(Data(json.utf8)) }
   }
 
+  /// 壊れた item（位置が 2 つしかない・key が無い・物でない）は飛ばし、ほかの item は読む
+  @Test func skipsBrokenItems() throws {
+    let json = """
+      {"protocol":"scenenglish.scene/1","name":"テスト","items":[
+        {"key":"a","part":"tree","position":[0,0,0]},
+        {"key":"b","part":"tree","position":[1,0]},
+        {"part":"bench","position":[0,0,1]},
+        42,
+        {"key":"c","part":"ball_red","position":[2,0,0]}
+      ]}
+      """
+    let layout = try SceneLayout.decode(Data(json.utf8))
+    #expect(layout.items.map(\.key) == ["a", "c"])
+  }
+
   @Test func generatedID() {
     #expect(GeneratedScene.isGenerated("gen-7k2m9q4x3a"))
     #expect(!GeneratedScene.isGenerated("park"))

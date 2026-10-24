@@ -11,8 +11,47 @@ nonisolated struct SceneLayout: Decodable, Sendable, Equatable {
   /// 日本語の名前（待合と結果に出す）
   let name: String
   let difficulty: String?
-  /// 置く部品。上から順に置く
+  /// 置く部品。上から順に置く。読めない item は飛ばす（1 件が壊れていても、ほかは置く）
   let items: [Item]
+
+  enum CodingKeys: String, CodingKey {
+    case `protocol`, id, name, difficulty, items
+  }
+
+  init(protocol: String, id: String?, name: String, difficulty: String?, items: [Item]) {
+    self.protocol = `protocol`
+    self.id = id
+    self.name = name
+    self.difficulty = difficulty
+    self.items = items
+  }
+
+  init(from decoder: any Decoder) throws {
+    let c = try decoder.container(keyedBy: CodingKeys.self)
+    var list = try c.nestedUnkeyedContainer(forKey: .items)
+    var items: [Item] = []
+    while !list.isAtEnd {
+      let index = list.currentIndex
+      do {
+        items.append(try list.decode(Item.self))
+      } catch {
+        sceneLog.notice("配置の item を飛ばしました（\(index) 番目）: \(error, privacy: .public)")
+        // 読めなかった item は、中身を見ない値として読み、次へ進む（進めなければ残りもあきらめる）
+        guard (try? list.decode(Skipped.self)) != nil else { break }
+      }
+    }
+    self.init(
+      protocol: try c.decode(String.self, forKey: .protocol),
+      id: try c.decodeIfPresent(String.self, forKey: .id),
+      name: try c.decode(String.self, forKey: .name),
+      difficulty: try c.decodeIfPresent(String.self, forKey: .difficulty),
+      items: items)
+  }
+
+  /// 読めなかった item を読み飛ばすための、どんな値も受け取る型
+  private struct Skipped: Decodable {
+    init(from decoder: any Decoder) throws {}
+  }
 
   nonisolated struct Item: Decodable, Sendable, Equatable {
     /// シーンの中で重ならない名前
