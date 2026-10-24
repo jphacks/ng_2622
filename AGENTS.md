@@ -63,6 +63,7 @@ PR を作成すると（draft は ready for review にしたときに）Discord 
 bash tests/run-tests.sh                     # 検査スクリプトの self-test
 scripts/setup-github-repo.sh --dry-run      # GitHub 設定（ラベル・merge 方式・ruleset）の差分確認
 python3 scripts/ui-spec/build.py            # 画面設計書 docs/design/ui/build/ui-spec.html を生成（要 graphviz・librsvg）
+python3 scripts/overview/build.py           # チーム向けの説明資料 docs/design/overview/build/overview.html を生成
 ```
 
 ## AI エージェント向けの補足
