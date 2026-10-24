@@ -4,14 +4,20 @@ import SwiftUI
 struct ResultFlowView: View {
   let results: RoundResults
   let isHost: Bool
+  /// このラウンドで録った自分の声（振り返りで聞き直す）
+  let recording: RecordedAudio?
   /// ホストの「同じ顔ぶれでもう一度」
   let onAgain: () -> Void
   /// 「退出する」
   let onLeave: () -> Void
 
-  init(results: RoundResults, isHost: Bool, onAgain: @escaping () -> Void, onLeave: @escaping () -> Void) {
+  init(
+    results: RoundResults, isHost: Bool, recording: RecordedAudio? = nil, onAgain: @escaping () -> Void,
+    onLeave: @escaping () -> Void
+  ) {
     self.results = results
     self.isHost = isHost
+    self.recording = recording
     self.onAgain = onAgain
     self.onLeave = onLeave
   }
@@ -42,7 +48,7 @@ struct ResultFlowView: View {
         EveryoneView(results: results) { go(.ranking) }
           .transition(.move(edge: .trailing))
       case .review:
-        ReviewView(results: results) { go(.ranking) }
+        ReviewView(results: results, recording: recording) { go(.ranking) }
           .transition(.move(edge: .trailing))
       }
     }

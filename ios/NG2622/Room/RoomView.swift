@@ -17,7 +17,9 @@ struct RoomView: View {
         RoundView(session: session) { inRound = false }
           .transition(.opacity)
       } else if case .results(let results) = session.phase {
-        ResultFlowView(results: results, isHost: session.isHost, onAgain: session.again, onLeave: onLeave)
+        ResultFlowView(
+          results: results, isHost: session.isHost, recording: session.recorder.recording, onAgain: session.again,
+          onLeave: onLeave)
           .transition(.opacity)
       } else {
         LobbyView(session: session, onLeave: onLeave)
