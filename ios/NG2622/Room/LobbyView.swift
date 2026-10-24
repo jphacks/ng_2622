@@ -90,6 +90,8 @@ struct LobbyView: View {
 private struct ScenePicker: View {
   /// nil は「おまかせ」
   @Binding var selected: String?
+  /// シーンごとの★の平均。読めなければ出さない
+  @State private var ratings: [String: SceneRating] = [:]
 
   var body: some View {
     VStack(alignment: .leading, spacing: 10) {
@@ -108,6 +110,7 @@ private struct ScenePicker: View {
     .padding(14)
     .background(CardBackground())
     .animation(.easeOut(duration: 0.2), value: selected)
+    .task { ratings = (try? await SceneReviews.client.ratings()) ?? [:] }
   }
 
   /// 「おまかせ」。選ぶとスタートのときにランダムに決まる
@@ -153,6 +156,7 @@ private struct ScenePicker: View {
         Text(scene.name)
           .font(Theme.font(14, .heavy))
           .foregroundStyle(on ? Theme.accent : Theme.ink)
+        RatingBadge(rating: ratings[scene.id])
       }
       .frame(maxWidth: .infinity)
     }
