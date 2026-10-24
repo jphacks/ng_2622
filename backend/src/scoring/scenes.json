@@ -2,19 +2,20 @@
   {
     "id": "park",
     "name": "公園",
-    "description": "A sunny park. A person is playing with a dog and a ball on the grass.",
+    "description": "A small park on a sunny spring day. A boy in a yellow shirt is running along a stone path. A brown dog is running toward a red ball on the grass. There is a pond with lily pads, a pink cherry blossom tree, two green trees, an empty wooden bench, a street lamp, a wooden fence, bushes, and some flowers.",
     "elements": [
       {
         "id": "place",
         "label": "公園で",
-        "points": 20,
-        "accept": "park, playground, field, lawn"
+        "points": 15,
+        "accept": "park, garden, lawn, field"
       },
       {
-        "id": "person",
-        "label": "人",
+        "id": "boy",
+        "label": "男の子",
         "points": 15,
-        "accept": "person, man, woman, boy, girl, someone, owner"
+        "accept": "boy, kid, child",
+        "partial": "a person or someone, without saying it is a child"
       },
       {
         "id": "dog",
@@ -24,32 +25,46 @@
         "partial": "animal, pet"
       },
       {
-        "id": "ball",
-        "label": "ボール",
-        "points": 15,
-        "accept": "ball"
+        "id": "chase",
+        "label": "犬がボールに向かって走っている",
+        "points": 25,
+        "accept": "the dog is running toward or chasing the ball, e.g. the dog is going to get the red ball",
+        "partial": "mentions the ball, or says the dog is running, without connecting the dog and the ball"
       },
       {
-        "id": "play",
-        "label": "人と犬が一緒に遊んでいる",
-        "points": 25,
-        "accept": "the person and the dog are playing together, e.g. playing catch, throwing the ball to the dog",
-        "partial": "only says someone or something is playing, without connecting the person and the dog"
+        "id": "run",
+        "label": "男の子が走っている",
+        "points": 10,
+        "accept": "the boy is running or jogging, e.g. on the stone path",
+        "partial": "the boy is walking, or says someone is running without saying who"
+      },
+      {
+        "id": "cherry",
+        "label": "桜の木",
+        "points": 10,
+        "accept": "cherry blossom tree, cherry tree, sakura, a tree with pink flowers",
+        "partial": "a tree or trees, without saying it is a cherry tree or pink"
       }
     ],
-    "extraMax": 10,
-    "video": "park.mp4"
+    "extraMax": 10
   },
   {
-    "id": "school",
-    "name": "学校",
-    "description": "A classroom at school. A teacher is giving a lesson and the students are listening. Some students are absent, so a few desks are empty.",
+    "id": "classroom",
+    "name": "教室",
+    "description": "A bright classroom with wooden floors. A teacher in a blue cardigan is standing next to the blackboard and pointing at it. A boy in a yellow shirt is raising his hand. Other students are sitting at their desks, writing in notebooks and reading. There are two windows with yellow curtains, a bookshelf with colorful books, a clock on the wall, a bulletin board, a plant, and a red school bag next to a desk. On the teacher's desk there are books, an apple, and a globe.",
     "elements": [
       {
         "id": "place",
-        "label": "学校で",
+        "label": "教室で",
         "points": 15,
-        "accept": "school, classroom, class"
+        "accept": "classroom, class, school"
+      },
+      {
+        "id": "teacher",
+        "label": "先生",
+        "points": 15,
+        "accept": "teacher, instructor",
+        "partial": "a woman or an adult standing in front of the class"
       },
       {
         "id": "students",
@@ -59,71 +74,69 @@
         "partial": "people"
       },
       {
-        "id": "teacher",
-        "label": "先生",
-        "points": 15,
-        "accept": "teacher, instructor",
-        "partial": "an adult, a man or a woman in front of the class"
-      },
-      {
-        "id": "lesson",
-        "label": "生徒が先生の授業を受けている",
-        "points": 25,
-        "accept": "the teacher is teaching and the students are listening or studying, e.g. having a lesson, taking a class",
-        "partial": "says a lesson or studying without connecting the teacher and the students"
-      },
-      {
-        "id": "absent",
-        "label": "数名の生徒が欠席している",
+        "id": "pointing",
+        "label": "先生が黒板を指している",
         "points": 20,
-        "accept": "some students are absent or not here, some seats or desks are empty",
-        "partial": "mentions empty seats or desks without saying students are missing, or says all but one"
+        "accept": "the teacher is pointing at the blackboard, or teaching or explaining at the blackboard",
+        "partial": "mentions the blackboard, or says the teacher is teaching, without connecting the teacher and the blackboard"
+      },
+      {
+        "id": "hand",
+        "label": "男の子が手を挙げている",
+        "points": 25,
+        "accept": "a boy or a student is raising his hand, putting his hand up",
+        "partial": "says someone wants to ask or answer a question without saying a hand is raised"
       }
     ],
-    "extraMax": 10,
-    "video": "school.mp4"
+    "extraMax": 10
   },
   {
-    "id": "kitchen",
-    "name": "台所",
-    "description": "A small kitchen in the evening. A pot of soup is boiling on the stove, vegetables are on a cutting board, and a cat is sleeping on a chair.",
+    "id": "station",
+    "name": "駅前",
+    "description": "The square in front of a small train station. The station building has a big clock on its tower and a blue sign. A woman in a beige coat is walking out of the station, pulling a pink suitcase. A man in a dark suit is waiting at the bus stop and looking at his phone. A yellow taxi is waiting on the road next to a crosswalk. There is a clock on a pole in the square, a red vending machine, a blue bicycle, trees in round planters, flower beds, and street lamps.",
     "elements": [
       {
         "id": "place",
-        "label": "台所で",
+        "label": "駅前で",
         "points": 15,
-        "accept": "kitchen"
+        "accept": "station, train station, in front of the station"
       },
       {
-        "id": "soup",
-        "label": "鍋でスープを煮ている",
-        "points": 25,
-        "accept": "a pot or soup is boiling or cooking on the stove",
-        "partial": "mentions a pot, soup or stove without saying it is cooking"
+        "id": "woman",
+        "label": "女性",
+        "points": 10,
+        "accept": "woman, lady",
+        "partial": "a person or someone walking out of the station"
       },
       {
-        "id": "vegetables",
-        "label": "まな板の上の野菜",
-        "points": 15,
-        "accept": "vegetables on a cutting board",
-        "partial": "vegetables or a cutting board alone"
+        "id": "man",
+        "label": "男性",
+        "points": 10,
+        "accept": "man, businessman, a man in a suit",
+        "partial": "a person or someone waiting at the bus stop"
       },
       {
-        "id": "cat",
-        "label": "猫",
-        "points": 15,
-        "accept": "cat, kitten",
-        "partial": "animal, pet"
-      },
-      {
-        "id": "sleeping",
-        "label": "猫が椅子の上で寝ている",
+        "id": "suitcase",
+        "label": "女性がスーツケースを引いている",
         "points": 20,
-        "accept": "the cat is sleeping or napping on a chair",
-        "partial": "the cat is sleeping without the chair, or the cat is on a chair without sleeping"
+        "accept": "the woman is pulling or carrying a suitcase, e.g. a traveler with her luggage",
+        "partial": "mentions a suitcase or luggage without connecting it to the woman"
+      },
+      {
+        "id": "phone",
+        "label": "男性がバス停で携帯を見ている",
+        "points": 20,
+        "accept": "the man is looking at or using his phone, e.g. while waiting at the bus stop",
+        "partial": "mentions a phone, or says the man is waiting at the bus stop, without saying he is looking at the phone"
+      },
+      {
+        "id": "taxi",
+        "label": "タクシー",
+        "points": 15,
+        "accept": "taxi, cab, a yellow car",
+        "partial": "car, vehicle"
       }
     ],
-    "extraMax": 10,
-    "video": "kitchen.mp4"
+    "extraMax": 10
   }
 ]
