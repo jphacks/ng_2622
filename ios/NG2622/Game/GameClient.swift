@@ -1,28 +1,57 @@
 import Foundation
 
-/// プレイの画面がバックエンドとやりとりする口。
+/// 画面がバックエンドとやりとりする口。docs/design/architecture.md の WebSocket のメッセージに合わせる。
 /// いまは仮のデータを返す MockGameClient だけ。本物の API（WebSocket）につなぐ実装は後の PR で足す。
 protocol GameClient: AnyObject {
-  /// 自分がホストか（ホストだけが締め切れる）
-  var isHost: Bool { get }
   /// バックエンドから届くできごと。1 か所だけで読む
   var events: AsyncStream<GameEvent> { get }
 
-  /// ホストがラウンドを始める
-  func startRound() async throws
+  /// 部屋を作り、ホストとして入る（POST /rooms → join）。部屋のコードを返す
+  func createRoom(as player: PlayerProfile) async throws -> String
+  /// コードの部屋に入る（join）。部屋が無いときは GameError.roomNotFound
+  func joinRoom(code: String, as player: PlayerProfile) async throws
+  /// 部屋から抜ける。以後 events は届かない
+  func leaveRoom()
+
+  /// ホストがラウンドを始める（start）
+  func startRound(sceneID: String) async throws
   /// 自分が話し終えた（後の PR で録音した音声を載せる）
   func finishSpeaking() async throws
-  /// ホストが締め切って発表する
+  /// ホストが締め切って発表する（close）
   func closeRound() async throws
+  /// ホストが同じ顔ぶれでもう一度遊ぶ（again）
+  func playAgain() async throws
 }
 
 enum GameEvent: Sendable {
-  /// ラウンドが始まった。全員の端末で同じ時刻に回転を始める
+  /// 部屋の参加者と接続の状態（room）
+  case room(RoomState)
+  /// ラウンドが始まった。全員の端末で同じ時刻に回転を始める（round）
   case roundStarted(RoundInfo)
-  /// 参加者とその状態が変わった
+  /// ラウンド中の各自の状態が変わった（progress）
   case participantsChanged([Participant])
-  /// ラウンドが終わった（全員の採点がそろった／ホストが締め切った）
-  case roundFinished(RoundFinishReason)
+  /// ラウンドが終わり、結果がそろった（results）。全員の採点がそろったか、ホストが締め切った
+  case results(RoundResults)
+  /// ホストが「もう一度」を選び、待合に戻った（again を受けた部屋が送る room）
+  case returnedToLobby(RoomState)
+}
+
+enum GameError: Error {
+  /// そのコードの部屋が無い
+  case roomNotFound
+}
+
+/// 部屋の状態
+struct RoomState: Sendable, Equatable {
+  /// 部屋のコード（4 桁）
+  let code: String
+  /// 入った順。状態は待合では connected か offline
+  let members: [Participant]
+}
+
+/// 1 部屋の人数の上限（architecture.md の初期値）
+enum RoomLimit {
+  static let members = 8
 }
 
 struct RoundInfo: Sendable, Equatable {
@@ -32,13 +61,10 @@ struct RoundInfo: Sendable, Equatable {
   let startsAt: Date
 }
 
-enum RoundFinishReason: Sendable {
-  case allGraded
-  case closedByHost
-}
-
 struct Participant: Identifiable, Sendable, Equatable {
   enum Status: Sendable, Equatable {
+    /// 待合にいる
+    case connected
     case talking
     case grading
     case done
@@ -50,6 +76,7 @@ struct Participant: Identifiable, Sendable, Equatable {
   /// アバターの色（0xRRGGBB）
   let color: UInt32
   let isSelf: Bool
+  let isHost: Bool
   var status: Status
 }
 

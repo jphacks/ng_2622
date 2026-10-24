@@ -11,12 +11,29 @@ struct AppConfig {
 
   let mode: BackendMode
   let backendURL: URL?
+  /// Mock の振る舞い（Live では使わない）
+  let mock: MockGameClient.Options
 
   static let current: AppConfig = {
     let info = Bundle.main.infoDictionary ?? [:]
-    let raw = info["BackendMode"] as? String ?? ""
-    let url = (info["BackendURL"] as? String).flatMap(URL.init(string:))
+    func string(_ key: String) -> String? {
+      (info[key] as? String).map { $0.trimmingCharacters(in: .whitespaces) }.flatMap { $0.isEmpty ? nil : $0 }
+    }
+    let raw = string("BackendMode") ?? ""
+    let url = string("BackendURL").flatMap(URL.init(string:))
+
+    // 値が無い・読めないときは Options の既定値を使う
+    var mock = MockGameClient.Options()
+    if let n = string("MockOtherPlayers").flatMap(Int.init) {
+      mock.otherPlayers = min(max(n, 0), RoomLimit.members - 1)
+    }
+    if let flag = string("MockIncludesOffline") {
+      mock.includesOffline = ["YES", "TRUE", "1"].contains(flag.uppercased())
+    }
+    if let delay = string("MockHostStartDelay").flatMap(Double.init) {
+      mock.hostStartDelay = max(0, delay)
+    }
     // 値が読めないときは、通信しない Mock にしておく
-    return AppConfig(mode: BackendMode(rawValue: raw) ?? .mock, backendURL: url)
+    return AppConfig(mode: BackendMode(rawValue: raw) ?? .mock, backendURL: url, mock: mock)
   }()
 }

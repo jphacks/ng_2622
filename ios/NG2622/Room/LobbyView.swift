@@ -1,0 +1,176 @@
+import SwiftUI
+
+/// 待合。部屋のコードと QR、参加者を見せる。ホストだけが「スタート」を押せる
+struct LobbyView: View {
+  let session: RoomSession
+  let onLeave: () -> Void
+
+  var body: some View {
+    VStack(spacing: 0) {
+      HStack {
+        CircleIconButton(systemName: "xmark", label: "退出", action: onLeave)
+        Spacer()
+      }
+      .padding(.top, 8)
+
+      ticket
+        .padding(.top, 10)
+      seats
+        .padding(.top, 16)
+
+      Spacer(minLength: 12)
+      if session.isHost {
+        Button("スタート", action: session.start)
+          .buttonStyle(BigButtonStyle(kind: .primary))
+          .padding(.bottom, 30)
+      } else {
+        HostWaiting()
+          .frame(height: 64)
+          .padding(.bottom, 30)
+      }
+    }
+    .frame(width: 346)
+    .frame(maxWidth: .infinity)
+  }
+
+  /// 部屋のコードと QR
+  private var ticket: some View {
+    let code = session.code ?? "----"
+    return HStack(spacing: 0) {
+      Text(code)
+        .font(Theme.font(56, .black))
+        .monospacedDigit()
+        .tracking(4)
+        .foregroundStyle(Theme.accent)
+        .frame(maxWidth: .infinity)
+        .accessibilityLabel("部屋のコード \(code)")
+      Rectangle()
+        .fill(Theme.line)
+        .frame(width: 2)
+        .padding(.vertical, 14)
+      RoomQRCode(text: RoomLink.url(code: code))
+        .frame(width: 112, height: 112)
+        .padding(16)
+    }
+    .fixedSize(horizontal: false, vertical: true)
+    .background(CardBackground())
+  }
+
+  /// 参加者を席のように並べる。空いた席は点線
+  private var seats: some View {
+    let members = session.participants
+    let columns = Array(repeating: GridItem(.flexible(), spacing: 6), count: 4)
+    return LazyVGrid(columns: columns, spacing: 16) {
+      ForEach(0..<RoomLimit.members, id: \.self) { i in
+        if i < members.count {
+          Seat(participant: members[i])
+            .id(members[i].id)
+            .transition(.scale(scale: 0.4).combined(with: .opacity))
+        } else {
+          EmptySeat()
+        }
+      }
+    }
+    .animation(.spring(duration: 0.45, bounce: 0.45), value: members.map(\.id))
+    .padding(.horizontal, 12)
+    .padding(.vertical, 18)
+    .background(CardBackground())
+  }
+}
+
+/// 白いカードの下地。影は下地だけに付け、中の文字には付けない
+private struct CardBackground: View {
+  var body: some View {
+    RoundedRectangle(cornerRadius: 22)
+      .fill(Theme.card)
+      .shadow(color: Theme.ink.opacity(0.07), radius: 10, y: 6)
+  }
+}
+
+/// 部屋の QR に入れる文字列。読み取りは後の PR で作る
+enum RoomLink {
+  static func url(code: String) -> String { "scenenglish://room/\(code)" }
+}
+
+private struct Seat: View {
+  let participant: Participant
+
+  private var offline: Bool { participant.status == .offline }
+
+  var body: some View {
+    VStack(spacing: 4) {
+      Avatar(name: participant.name, color: offline ? 0xC9CBE0 : participant.color, size: 52)
+        .overlay(alignment: .top) {
+          if participant.isHost {
+            Image(systemName: "crown.fill")
+              .font(.system(size: 15, weight: .bold))
+              .foregroundStyle(Color(hex: 0xF5B82E))
+              .offset(y: -13)
+              .rotationEffect(.degrees(-8))
+          }
+        }
+        .overlay(alignment: .bottomTrailing) {
+          if offline {
+            Circle().fill(Theme.offlineIcon)
+              .frame(width: 20, height: 20)
+              .overlay {
+                Image(systemName: "xmark")
+                  .font(.system(size: 9, weight: .black))
+                  .foregroundStyle(Theme.gray)
+              }
+              .overlay { Circle().strokeBorder(.white, lineWidth: 2) }
+              .offset(x: 3, y: 3)
+          }
+        }
+      Text(participant.name)
+        .font(Theme.font(14, .heavy))
+        .foregroundStyle(offline ? Theme.gray : Theme.ink)
+        .lineLimit(1)
+      Text(subtitle)
+        .font(Theme.font(11, .heavy))
+        .foregroundStyle(offline ? Theme.gray : Theme.accent)
+        .frame(height: 13)
+    }
+    .accessibilityElement(children: .combine)
+  }
+
+  private var subtitle: String {
+    if offline { "切断中" } else if participant.isSelf { "あなた" } else { "" }
+  }
+}
+
+private struct EmptySeat: View {
+  var body: some View {
+    VStack(spacing: 4) {
+      Circle()
+        .strokeBorder(Theme.disabledBorder, style: StrokeStyle(lineWidth: 2, dash: [5, 4]))
+        .frame(width: 52, height: 52)
+      Text(" ").font(Theme.font(14, .heavy))
+      Text(" ").font(Theme.font(11, .heavy)).frame(height: 13)
+    }
+    .accessibilityHidden(true)
+  }
+}
+
+/// 参加者が、ホストのスタートを待つあいだの表示
+private struct HostWaiting: View {
+  @State private var phase = false
+
+  var body: some View {
+    VStack(spacing: 10) {
+      Text("ホストのスタートを待っています")
+        .font(Theme.font(16, .heavy))
+        .foregroundStyle(Theme.muted)
+      HStack(spacing: 8) {
+        ForEach(0..<3, id: \.self) { i in
+          Circle()
+            .fill(Theme.accent)
+            .frame(width: 9, height: 9)
+            .opacity(phase ? 1 : 0.25)
+            .animation(.easeInOut(duration: 0.6).repeatForever().delay(Double(i) * 0.2), value: phase)
+        }
+      }
+    }
+    .onAppear { phase = true }
+  }
+}

@@ -1,9 +1,8 @@
 import SwiftUI
 
-/// 画面の入り口。Mock なら付箋の画面、Live なら未実装の表示を出す
+/// 画面の入り口。Mock ならホームから始まり、Live なら未実装の表示を出す
 struct RootView: View {
   let config: AppConfig
-  @State private var session: RoundSession?
 
   var body: some View {
     ZStack {
@@ -12,24 +11,86 @@ struct RootView: View {
       case .live:
         LiveNotImplementedView(url: config.backendURL)
       case .mock:
+        AppFlow { MockGameClient(options: config.mock) }
+      }
+    }
+    .foregroundStyle(Theme.ink)
+  }
+}
+
+/// ホーム → 部屋に入る → 部屋（待合・プレイ・結果）の切り替え
+private struct AppFlow: View {
+  /// 部屋ごとに新しい GameClient を作る
+  let makeClient: () -> any GameClient
+
+  private enum Screen: Equatable {
+    case home
+    case join
+    case room
+  }
+
+  @State private var screen = Screen.home
+  @State private var profile = PlayerProfile.load()
+  @State private var session: RoomSession?
+  @State private var creating = false
+
+  var body: some View {
+    ZStack {
+      switch screen {
+      case .home:
+        HomeView(profile: $profile, onCreate: create, onJoin: { go(.join) })
+          .disabled(creating)
+          .transition(.opacity)
+      case .join:
+        JoinView(profile: profile, join: join, onBack: { go(.home) })
+          .transition(.opacity)
+      case .room:
         if let session {
-          RoundView(session: session) {
-            // 結果の画面は後の PR。いまは付箋の画面に戻る
-            self.session = nil
-          }
-          .transition(.opacity)
-        } else {
-          DevLauncherView { options in
-            let session = RoundSession(client: MockGameClient(options: options))
-            self.session = session
-            session.start()
-          }
-          .transition(.opacity)
+          RoomView(session: session, onLeave: leave)
+            .transition(.opacity)
         }
       }
     }
-    .animation(.easeInOut(duration: 0.35), value: session == nil)
-    .foregroundStyle(Theme.ink)
+    .animation(.easeInOut(duration: 0.3), value: screen)
+  }
+
+  private func go(_ next: Screen) {
+    screen = next
+  }
+
+  private func newSession() -> RoomSession {
+    profile.name = profile.name.trimmingCharacters(in: .whitespaces)
+    profile.save()
+    return RoomSession(client: makeClient(), me: profile)
+  }
+
+  private func create() {
+    let session = newSession()
+    creating = true
+    Task {
+      defer { creating = false }
+      guard (try? await session.create()) != nil else { return }
+      self.session = session
+      go(.room)
+    }
+  }
+
+  private func join(_ code: String) async throws {
+    let session = newSession()
+    do {
+      try await session.join(code: code)
+    } catch {
+      session.leave()
+      throw error
+    }
+    self.session = session
+    go(.room)
+  }
+
+  private func leave() {
+    session?.leave()
+    session = nil
+    go(.home)
   }
 }
 

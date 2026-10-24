@@ -1,8 +1,8 @@
 import SwiftUI
 
-/// 1 ラウンドの画面の切り替え（プレイ → 待機）。終わったら onExit を呼ぶ
+/// 1 ラウンドの画面の切り替え（プレイ → 待機）。結果がそろったら onExit を呼ぶ
 struct RoundView: View {
-  let session: RoundSession
+  let session: RoomSession
   let onExit: () -> Void
   /// 終わった後も少しのあいだ待機の画面を出しておくため、入った時刻を覚える
   @State private var waitingSince: Date?
@@ -21,9 +21,9 @@ struct RoundView: View {
     .onChange(of: session.phase) { _, phase in
       if case .waiting(let enteredAt) = phase { waitingSince = enteredAt }
     }
-    .task(id: session.phase == .finished) {
-      guard session.phase == .finished else { return }
-      // 結果発表に進む地点。いまは少し待って付箋の画面に戻る
+    .task(id: session.isRoundOver) {
+      guard session.isRoundOver else { return }
+      // 少し待ってから結果発表に進む
       try? await Task.sleep(for: .seconds(0.9))
       onExit()
     }

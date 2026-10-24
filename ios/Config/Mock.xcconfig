@@ -3,5 +3,13 @@
 
 BACKEND_MODE = mock
 
+// 仮のデータの振る舞い。変えるときは Local.xcconfig に書く（書き方は Local.xcconfig.example）
+// 自分のほかの参加者の数（0〜7）。部屋に入るときは、うち 1 人がホストになる（0 でも 1 人はいる）
+MOCK_OTHER_PLAYERS = 3
+// ほかの参加者の 1 人がラウンドの途中で切断する（YES / NO）
+MOCK_INCLUDES_OFFLINE = NO
+// 部屋に入ったあと、ホストがスタートするまでの秒数
+MOCK_HOST_START_DELAY = 6
+
 // 各自の設定で上書きする（無くてもよい）
 #include? "Local.xcconfig"
