@@ -224,7 +224,7 @@ final class MockGameClient: GameClient {
     ticker?.cancel()
     let final = lastSent
     let results = RoundResults.mock(
-      sceneName: "公園",
+      sceneID: roundSceneID,
       players: final.map { (id: $0.id, name: $0.name, color: $0.color, isSelf: $0.isSelf, graded: $0.status == .done) }
     )
     // 待合に戻ったときのために、切断した人は切断中のまま、ほかの人は待合の状態に戻す
