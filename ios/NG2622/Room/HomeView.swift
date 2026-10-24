@@ -96,7 +96,8 @@ private struct SpinningPark: View {
   var body: some View {
     TimelineView(.animation) { context in
       let t = context.date.timeIntervalSince(start)
-      ParkSceneView(yaw: (t / Self.period * 360).truncatingRemainder(dividingBy: 360), tilt: SceneOrbit.defaultTilt)
+      DioramaView(
+        sceneID: "park", yaw: (t / Self.period * 360).truncatingRemainder(dividingBy: 360), tilt: SceneOrbit.defaultTilt)
     }
     .allowsHitTesting(false)
     .accessibilityHidden(true)
