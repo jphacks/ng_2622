@@ -286,6 +286,15 @@ final class LiveGameClient: GameClient {
   }
 }
 
+#if DEBUG
+  extension LiveGameClient {
+    /// テスト用。いまの接続を部屋に知らせずに切り、つなぎ直しを始めさせる
+    func dropConnectionForTesting() {
+      socket?.close()
+    }
+  }
+#endif
+
 extension GameError {
   /// WebSocket の error を、画面が見分ける理由に直す
   init(code: Components.Schemas.ErrorCode, message: String) {

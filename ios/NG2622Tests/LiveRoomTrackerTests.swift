@@ -142,3 +142,54 @@ struct LiveRoomTrackerTests {
     #expect(updates == [.error(code: .notInLobby, message: "始まっている")])
   }
 }
+
+/// 手元のバックエンド（pnpm dev）で、参加者として入ってから「もう一度」で待合に戻るまでに実際に届いたメッセージ。
+/// 途中で 1 度切断し、welcome の ID と合言葉でつなぎ直している（2 つ目の welcome から）。合言葉は伏せた
+struct LiveRoomTrackerTranscriptTests {
+  static let transcript = #"""
+    {"type":"welcome","playerId":"2a17275a-de46-44f1-8ddb-a09a5cf691fc","token":"<redacted>","isHost":false}
+    {"type":"room","roomId":"4101","phase":"lobby","hostId":"7c93bda4-cedd-4265-90cf-099bf79291c3","maxPlayers":5,"players":[{"id":"7c93bda4-cedd-4265-90cf-099bf79291c3","name":"はなこ","color":15760040,"isHost":true,"connected":true},{"id":"2a17275a-de46-44f1-8ddb-a09a5cf691fc","name":"たろう","color":5987302,"isHost":false,"connected":true}]}
+    {"type":"error","code":"not_host","message":"スタートできるのはホストだけ"}
+    {"type":"room","roomId":"4101","phase":"playing","hostId":"7c93bda4-cedd-4265-90cf-099bf79291c3","maxPlayers":5,"players":[{"id":"7c93bda4-cedd-4265-90cf-099bf79291c3","name":"はなこ","color":15760040,"isHost":true,"connected":true},{"id":"2a17275a-de46-44f1-8ddb-a09a5cf691fc","name":"たろう","color":5987302,"isHost":false,"connected":true}]}
+    {"type":"round","round":1,"sceneId":"park","startAt":1792832005826}
+    {"type":"progress","round":1,"players":[{"id":"7c93bda4-cedd-4265-90cf-099bf79291c3","status":"talking"},{"id":"2a17275a-de46-44f1-8ddb-a09a5cf691fc","status":"talking"}]}
+    {"type":"room","roomId":"4101","phase":"playing","hostId":"7c93bda4-cedd-4265-90cf-099bf79291c3","maxPlayers":5,"players":[{"id":"7c93bda4-cedd-4265-90cf-099bf79291c3","name":"はなこ","color":15760040,"isHost":true,"connected":true},{"id":"2a17275a-de46-44f1-8ddb-a09a5cf691fc","name":"たろう","color":5987302,"isHost":false,"connected":true}]}
+    {"type":"progress","round":1,"players":[{"id":"7c93bda4-cedd-4265-90cf-099bf79291c3","status":"talking"},{"id":"2a17275a-de46-44f1-8ddb-a09a5cf691fc","status":"grading"}]}
+    {"type":"room","roomId":"4101","phase":"playing","hostId":"7c93bda4-cedd-4265-90cf-099bf79291c3","maxPlayers":5,"players":[{"id":"7c93bda4-cedd-4265-90cf-099bf79291c3","name":"はなこ","color":15760040,"isHost":true,"connected":true},{"id":"2a17275a-de46-44f1-8ddb-a09a5cf691fc","name":"たろう","color":5987302,"isHost":false,"connected":true}]}
+    {"type":"progress","round":1,"players":[{"id":"7c93bda4-cedd-4265-90cf-099bf79291c3","status":"talking"},{"id":"2a17275a-de46-44f1-8ddb-a09a5cf691fc","status":"done"}]}
+    {"type":"room","roomId":"4101","phase":"results","hostId":"7c93bda4-cedd-4265-90cf-099bf79291c3","maxPlayers":5,"players":[{"id":"7c93bda4-cedd-4265-90cf-099bf79291c3","name":"はなこ","color":15760040,"isHost":true,"connected":true},{"id":"2a17275a-de46-44f1-8ddb-a09a5cf691fc","name":"たろう","color":5987302,"isHost":false,"connected":true}]}
+    {"type":"results","round":1,"sceneId":"park","sceneName":"公園","players":[{"id":"2a17275a-de46-44f1-8ddb-a09a5cf691fc","name":"たろう","color":5987302,"score":{"content":60,"expression":60,"speech":60,"total":60},"transcript":"(固定の点数のモードのため、文字起こしはありません)","comment":"固定の点数を返しています。","modelAnswer":"A sunny park. A person is playing with a dog and a ball on the grass.","rank":1},{"id":"7c93bda4-cedd-4265-90cf-099bf79291c3","name":"はなこ","color":15760040,"score":null,"transcript":"","comment":"","modelAnswer":"","rank":null}]}
+    {"type":"welcome","playerId":"2a17275a-de46-44f1-8ddb-a09a5cf691fc","token":"<redacted>","isHost":false}
+    {"type":"room","roomId":"4101","phase":"results","hostId":"7c93bda4-cedd-4265-90cf-099bf79291c3","maxPlayers":5,"players":[{"id":"7c93bda4-cedd-4265-90cf-099bf79291c3","name":"はなこ","color":15760040,"isHost":true,"connected":true},{"id":"2a17275a-de46-44f1-8ddb-a09a5cf691fc","name":"たろう","color":5987302,"isHost":false,"connected":true}]}
+    {"type":"results","round":1,"sceneId":"park","sceneName":"公園","players":[{"id":"2a17275a-de46-44f1-8ddb-a09a5cf691fc","name":"たろう","color":5987302,"score":{"content":60,"expression":60,"speech":60,"total":60},"transcript":"(固定の点数のモードのため、文字起こしはありません)","comment":"固定の点数を返しています。","modelAnswer":"A sunny park. A person is playing with a dog and a ball on the grass.","rank":1},{"id":"7c93bda4-cedd-4265-90cf-099bf79291c3","name":"はなこ","color":15760040,"score":null,"transcript":"","comment":"","modelAnswer":"","rank":null}]}
+    {"type":"room","roomId":"4101","phase":"lobby","hostId":"7c93bda4-cedd-4265-90cf-099bf79291c3","maxPlayers":5,"players":[{"id":"7c93bda4-cedd-4265-90cf-099bf79291c3","name":"はなこ","color":15760040,"isHost":true,"connected":true},{"id":"2a17275a-de46-44f1-8ddb-a09a5cf691fc","name":"たろう","color":5987302,"isHost":false,"connected":true}]}
+    """#
+
+  @Test func guestTranscript() throws {
+    var tracker = LiveRoomTracker()
+    var kinds: [String] = []
+    for line in Self.transcript.split(separator: "\n") {
+      let message = try JSONDecoder().decode(Components.Schemas.ServerMessage.self, from: Data(line.utf8))
+      for update in tracker.apply(message) {
+        switch update {
+        case .welcome: kinds.append("welcome")
+        case .error(let code, _): kinds.append("error:\(code.rawValue)")
+        case .event(.room): kinds.append("room")
+        case .event(.roundStarted): kinds.append("round")
+        case .event(.participantsChanged(let list)): kinds.append("progress:" + list.map { "\($0.status)" }.joined(separator: ","))
+        case .event(.results(let results)):
+          kinds.append("results:" + results.players.map { $0.score.map { "\($0.total)" } ?? "-" }.joined(separator: ","))
+          #expect(results.players.first?.isSelf == true)
+          #expect(results.myReview?.modelSentence.hasPrefix("A sunny park.") == true)
+        case .event(.returnedToLobby): kinds.append("lobby")
+        }
+      }
+    }
+    // つなぎ直したときに送り直される results は渡さない
+    #expect(
+      kinds == [
+        "welcome", "room", "error:not_host", "round", "progress:talking,talking", "progress:talking,grading",
+        "progress:talking,done", "results:60,-", "welcome", "lobby",
+      ])
+  }
+}
