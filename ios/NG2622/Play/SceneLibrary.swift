@@ -52,10 +52,11 @@ final class SceneLibrary {
   /// 焼き込んだ USDZ。見た目の範囲に合わせて縮める
   private static func baked(_ id: String) async -> SceneComposer.Composed? {
     guard let model = try? await Entity(named: id, in: .main) else { return nil }
-    return SceneComposer.Composed(root: fit(model, minSpan: 0.001), moving: [])
+    let bounds = model.visualBounds(relativeTo: nil)
+    return SceneComposer.Composed(root: fit(model, bounds: bounds, minSpan: 0.001), moving: [])
   }
 
-  /// 配置の JSON から部品を並べる。動く部品は初めの位置で範囲を測る
+  /// 配置の JSON から部品を並べる。範囲は初めの位置と、move の行き先で測る
   private static func compose(_ id: String) async -> SceneComposer.Composed? {
     let layout: SceneLayout
     do {
@@ -68,12 +69,13 @@ final class SceneLibrary {
       sceneLog.error("部品を 1 つも置けませんでした（\(id, privacy: .public)）")
       return nil
     }
-    return SceneComposer.Composed(root: fit(composed.root, minSpan: minComposedSpan), moving: composed.moving)
+    let bounds = SceneComposer.bounds(of: composed)
+    return SceneComposer.Composed(
+      root: fit(composed.root, bounds: bounds, minSpan: minComposedSpan), moving: composed.moving)
   }
 
-  /// 見た目の範囲から、地面の中心を原点に置き、横幅を footprint にそろえる。地面（y = 0）の高さは変えない
-  private static func fit(_ model: Entity, minSpan: Float) -> Entity {
-    let bounds = model.visualBounds(relativeTo: nil)
+  /// 範囲（model の座標）から、地面の中心を原点に置き、横幅を footprint にそろえる。地面（y = 0）の高さは変えない
+  private static func fit(_ model: Entity, bounds: BoundingBox, minSpan: Float) -> Entity {
     let size = bounds.extents
     let scale = footprint / max(size.x, size.z, minSpan)
     model.position = [-bounds.center.x, 0, -bounds.center.z]

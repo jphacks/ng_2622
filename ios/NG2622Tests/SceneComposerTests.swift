@@ -166,6 +166,24 @@ struct SceneComposerTests {
       items: [.init(key: "x", part: "no_such_part", position: .zero)])
     #expect(await SceneComposer.compose(none, parts: parts) == nil)
   }
+
+  /// 場面の範囲には、move の部品が行き先（to）に着いたときの範囲も入る
+  @Test func boundsIncludeMoveDestination() async throws {
+    let parts = PartLibrary(bundle: .main, remoteBaseURL: nil)
+    let layout = SceneLayout(
+      protocol: SceneLayout.protocolName, id: "gen-test3", name: "t", difficulty: nil,
+      items: [
+        .init(key: "a", part: "ball_red", position: .zero),
+        .init(key: "b", part: "ball_red", position: [1, 0, 0], motion: .init(type: .move, duration: 2, to: [6, 0, -4])),
+      ])
+    let composed = try #require(await SceneComposer.compose(layout, parts: parts))
+    let still = composed.root.visualBounds(relativeTo: composed.root)
+    #expect(still.max.x < 2)
+    let bounds = SceneComposer.bounds(of: composed)
+    #expect(bounds.max.x > 5.9)
+    #expect(bounds.min.z < -3.9)
+    #expect(bounds.min.x == still.min.x)
+  }
 }
 
 /// 「AI で作る」の状態の移り変わり

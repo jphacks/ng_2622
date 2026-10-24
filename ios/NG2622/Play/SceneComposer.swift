@@ -49,6 +49,18 @@ enum SceneComposer {
     guard !root.children.isEmpty else { return nil }
     return Composed(root: root, moving: moving)
   }
+
+  /// 場面の範囲（root の座標）。move の部品は行き先（to）に着いたときの範囲も含め、動いて画面の外に出ないようにする
+  static func bounds(of composed: Composed) -> BoundingBox {
+    var bounds = composed.root.visualBounds(relativeTo: composed.root)
+    for m in composed.moving {
+      guard let motion = m.item.motion, motion.type == .move, let to = motion.to else { continue }
+      let start = m.entity.visualBounds(relativeTo: composed.root)
+      let shift = to - m.item.position
+      bounds = bounds.union(BoundingBox(min: start.min + shift, max: start.max + shift))
+    }
+    return bounds
+  }
 }
 
 /// 部品の向きと動きの計算（画面に依らない。test で確かめる）
