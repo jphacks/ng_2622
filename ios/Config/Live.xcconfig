@@ -1,0 +1,7 @@
+// scheme「NG2622 Live」のビルド構成。BACKEND_URL のバックエンドにつなぐ（まだ未実装）
+#include "Shared.xcconfig"
+
+BACKEND_MODE = live
+
+// 各自の設定で上書きする（無くてもよい）。PR のプレビューにつなぐときは BACKEND_URL を書く
+#include? "Local.xcconfig"

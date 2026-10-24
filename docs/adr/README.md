@@ -39,3 +39,4 @@
 | 2026-10-21 | [仕様の正本を repo の docs/design/ に置く](./20261021-keep-product-specs-in-docs-design.md) | accepted |
 | 2026-10-23 | [TypeScript は Biome で整形し、commit 時に自動でかける](./20261023-format-with-biome.md) | accepted |
 | 2026-10-24 | [JavaScript の道具は repo 全体で pnpm で入れる](./20261024-use-pnpm-for-javascript-tools.md) | accepted |
+| 2026-10-24 | [iOS アプリは xcodegen で作り、仮のデータと本物の API は scheme ごとのビルド構成で切り替える](./20261024-build-ios-app-with-xcodegen-and-build-configs.md) | accepted |

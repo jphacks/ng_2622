@@ -6,7 +6,7 @@
 ## プロジェクト
 
 - JPHACKS 2026 の作品（チーム 5 人）。プロダクトの概要は `README.md` に書く。
-- 技術スタック: iOS は SwiftUI のネイティブアプリ、バックエンドは TypeScript on Cloudflare Workers ＋ Durable Objects。外部 API（Azure の発音評価・Claude）はバックエンドだけが呼ぶ（[ADR](./docs/adr/20261021-adopt-swiftui-app-and-cloudflare-workers-backend.md)）。アプリとバックエンドのコードを足したら、下の「リポジトリ構成」「コマンド」も更新する。
+- 技術スタック: iOS は SwiftUI のネイティブアプリ、バックエンドは TypeScript on Cloudflare Workers ＋ Durable Objects。外部 API（Azure の発音評価・Claude）はバックエンドだけが呼ぶ（[ADR](./docs/adr/20261021-adopt-swiftui-app-and-cloudflare-workers-backend.md)）。iOS のプロジェクトの作り方と仮のデータの切り替えは [ADR](./docs/adr/20261024-build-ios-app-with-xcodegen-and-build-configs.md)。アプリとバックエンドのコードを足したら、下の「リポジトリ構成」「コマンド」も更新する。
 - 仕様の正本は `docs/design/`（[ADR](./docs/adr/20261021-keep-product-specs-in-docs-design.md)）。入口は `docs/design/usecase.md`。
 
 ## リポジトリ構成
@@ -18,6 +18,7 @@ backend/          バックエンド（Hono on Cloudflare Workers）。PR ごと
 docs/adr/         設計・運用の意思決定ログ
 docs/design/      仕様の正本（使い方・画面の流れ・アーキテクチャ・採点・コスト対策）
 docs/design/ui/   画面設計書の元データ（screens/*.md、仮の画面の画像）
+ios/              iOS アプリ（SwiftUI）。xcodegen で ios/project.yml から作り、.xcodeproj は commit しない
 scripts/          規約の検査スクリプト、GitHub 設定スクリプト、画面設計書の生成（ui-spec/）
 tests/            scripts/ の self-test
 lefthook.yml      git hook（pre-commit / commit-msg / pre-push）
@@ -28,8 +29,10 @@ biome.json        Biome（TypeScript・JSON などの整形と lint）の設定
 
 ```sh
 brew install lefthook gh pnpm
+brew install xcodegen   # Mac でアプリをビルドする人だけ
 lefthook install
 pnpm install       # Biome を入れる（commit 時の整形に使う）
+cp ios/Config/Local.xcconfig.example ios/Config/Local.xcconfig   # アプリをビルドする人だけ。自分のチーム ID と bundle ID を書く
 ```
 
 ## コードの整形
@@ -77,6 +80,8 @@ python3 scripts/ui-spec/build.py            # 画面設計書 docs/design/ui/bui
 python3 scripts/overview/build.py           # チーム向けの説明資料 docs/design/overview/overview.html を生成（生成物も commit する）
 (cd backend && pnpm install && pnpm dev)    # バックエンドを手元で起動（http://localhost:8787/health）
 (cd backend && pnpm typecheck)              # バックエンドの型チェック
+(cd ios && xcodegen)                        # ios/NG2622.xcodeproj を作る（clone 後と ios/project.yml を変えたあと）
+open ios/NG2622.xcodeproj                   # scheme「NG2622 Mock」（仮のデータ）か「NG2622 Live」（本物のバックエンド。まだ未実装）を選んでビルド
 ```
 
 ## AI エージェント向けの補足

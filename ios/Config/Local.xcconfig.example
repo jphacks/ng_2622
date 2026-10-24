@@ -1,0 +1,12 @@
+// 各自の署名の設定。このファイルを Local.xcconfig という名前で写し、自分の値を書く
+// Local.xcconfig は .gitignore 済みで、commit しない
+//   cp ios/Config/Local.xcconfig.example ios/Config/Local.xcconfig
+
+// Apple Developer のチーム ID（Xcode の Settings > Accounts か、developer.apple.com の Membership で見られる）
+DEVELOPMENT_TEAM = XXXXXXXXXX
+
+// bundle ID は世界で 1 つしか登録できないので、メンバーごとに変える（例: 末尾に自分の名前）
+PRODUCT_BUNDLE_IDENTIFIER = jp.jphacks.ng2622.yourname
+
+// 任意: Live でつなぐ先を PR のプレビューに変える。// はコメントになるので https:/$()/ と書く
+// BACKEND_URL = https:/$()/pr-12-ng-2622-backend.jphacks-ng2622.workers.dev

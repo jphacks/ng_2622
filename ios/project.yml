@@ -1,0 +1,71 @@
+# xcodegen の設定。`cd ios && xcodegen` で NG2622.xcodeproj を作る（.xcodeproj は commit しない）
+name: NG2622
+options:
+  bundleIdPrefix: jp.jphacks.ng2622
+  deploymentTarget:
+    iOS: "26.0"
+  createIntermediateGroups: true
+  # 仮のデータで動かす Mock を既定にする
+  defaultConfig: Debug-Mock
+configs:
+  Debug-Mock: debug
+  Release-Mock: release
+  Debug-Live: debug
+  Release-Live: release
+configFiles:
+  Debug-Mock: Config/Mock.xcconfig
+  Release-Mock: Config/Mock.xcconfig
+  Debug-Live: Config/Live.xcconfig
+  Release-Live: Config/Live.xcconfig
+settings:
+  base:
+    SWIFT_VERSION: "6.0"
+    SWIFT_DEFAULT_ACTOR_ISOLATION: MainActor
+    SWIFT_APPROACHABLE_CONCURRENCY: YES
+    TARGETED_DEVICE_FAMILY: "1"
+targets:
+  NG2622:
+    type: application
+    platform: iOS
+    sources:
+      - path: NG2622
+    settings:
+      base:
+        PRODUCT_NAME: NG2622
+        CODE_SIGN_STYLE: Automatic
+        # 署名のチーム ID と bundle ID は Config/Local.xcconfig（各自で作る）から入る
+        GENERATE_INFOPLIST_FILE: YES
+        INFOPLIST_FILE: Config/Info.plist
+        INFOPLIST_KEY_CFBundleDisplayName: ScenEnglish
+        INFOPLIST_KEY_UILaunchScreen_Generation: YES
+        # iPhone は縦向きだけ。iPad 向けの値は、全向きを入れないと警告が出るので入れておく（iPad では配らない）
+        INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone: UIInterfaceOrientationPortrait
+        INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad: "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight"
+        INFOPLIST_KEY_UIApplicationSceneManifest_Generation: YES
+        MARKETING_VERSION: "0.1.0"
+        CURRENT_PROJECT_VERSION: "1"
+schemes:
+  NG2622 Mock:
+    build:
+      targets:
+        NG2622: all
+    run:
+      config: Debug-Mock
+    profile:
+      config: Release-Mock
+    analyze:
+      config: Debug-Mock
+    archive:
+      config: Release-Mock
+  NG2622 Live:
+    build:
+      targets:
+        NG2622: all
+    run:
+      config: Debug-Live
+    profile:
+      config: Release-Live
+    analyze:
+      config: Debug-Live
+    archive:
+      config: Release-Live

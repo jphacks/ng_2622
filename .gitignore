@@ -43,3 +43,9 @@ docs/design/ui/drafts/
 
 # misc
 *.local
+
+# iOS（xcodegen で作るプロジェクトと、各自の署名の設定）
+ios/*.xcodeproj/
+ios/Config/Local.xcconfig
+xcuserdata/
+DerivedData/
