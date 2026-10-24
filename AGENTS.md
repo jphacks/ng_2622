@@ -80,6 +80,7 @@ python3 scripts/ui-spec/build.py            # 画面設計書 docs/design/ui/bui
 python3 scripts/overview/build.py           # チーム向けの説明資料 docs/design/overview/overview.html を生成（生成物も commit する）
 (cd backend && pnpm install && pnpm dev)    # バックエンドを手元で起動（http://localhost:8787/health）
 (cd backend && pnpm typecheck)              # バックエンドの型チェック
+(cd backend && pnpm openapi)                # API の型から backend/openapi.json を生成（iOS が読む。生成物も commit する）
 (cd ios && xcodegen)                        # ios/NG2622.xcodeproj を作る（clone 後と ios/project.yml を変えたあと）
 open ios/NG2622.xcodeproj                   # scheme「NG2622 Mock」（仮のデータ）か「NG2622 Live」（本物のバックエンド。まだ未実装）を選んでビルド
 ```

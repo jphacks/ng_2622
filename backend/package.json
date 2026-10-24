@@ -5,13 +5,21 @@
     "dev": "wrangler dev",
     "deploy": "wrangler deploy --minify",
     "typecheck": "tsc",
-    "cf-typegen": "wrangler types --env-interface CloudflareBindings"
+    "openapi": "tsx scripts/generate-openapi.ts",
+    "openapi:check": "tsx scripts/generate-openapi.ts --check",
+    "cf-typegen": "wrangler types --env-interface CloudflareBindings",
+    "cf-typegen:check": "wrangler types --env-interface CloudflareBindings --check"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^1.3.0",
-    "hono": "^4.13.13"
+    "@hono/standard-validator": "^0.4.0",
+    "@hono/swagger-ui": "^0.6.1",
+    "hono": "^4.13.13",
+    "hono-openapi": "^1.5.0",
+    "zod": "^4.6.7"
   },
   "devDependencies": {
+    "tsx": "^4.23.15",
     "typescript": "^7.0.2",
     "wrangler": "^4.152.0"
   },
