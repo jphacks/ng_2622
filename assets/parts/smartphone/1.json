@@ -1,0 +1,18 @@
+{
+  "id": "smartphone",
+  "version": 1,
+  "file": "parts/smartphone/1.usdz",
+  "category": "thing",
+  "words": [
+    {
+      "word": "smartphone",
+      "pos": "noun"
+    },
+    {
+      "word": "phone",
+      "pos": "noun"
+    }
+  ],
+  "size": [0.075, 0.01, 0.155],
+  "label": "スマートフォン"
+}

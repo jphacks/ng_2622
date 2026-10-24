@@ -1,0 +1,14 @@
+{
+  "id": "bottle",
+  "version": 1,
+  "file": "parts/bottle/1.usdz",
+  "category": "thing",
+  "words": [
+    {
+      "word": "bottle",
+      "pos": "noun"
+    }
+  ],
+  "size": [0.072, 0.21, 0.072],
+  "label": "ペットボトル"
+}

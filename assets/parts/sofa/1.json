@@ -1,0 +1,18 @@
+{
+  "id": "sofa",
+  "version": 1,
+  "file": "parts/sofa/1.usdz",
+  "category": "furniture",
+  "words": [
+    {
+      "word": "sofa",
+      "pos": "noun"
+    },
+    {
+      "word": "couch",
+      "pos": "noun"
+    }
+  ],
+  "size": [1.8, 0.85, 0.88],
+  "label": "ソファ"
+}

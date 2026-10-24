@@ -1,0 +1,14 @@
+{
+  "id": "car",
+  "version": 1,
+  "file": "parts/car/1.usdz",
+  "category": "vehicle",
+  "words": [
+    {
+      "word": "car",
+      "pos": "noun"
+    }
+  ],
+  "size": [1.925, 1.493, 3.998],
+  "label": "車"
+}

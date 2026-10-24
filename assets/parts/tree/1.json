@@ -1,0 +1,14 @@
+{
+  "id": "tree",
+  "version": 1,
+  "file": "parts/tree/1.usdz",
+  "category": "plant",
+  "words": [
+    {
+      "word": "tree",
+      "pos": "noun"
+    }
+  ],
+  "size": [2.532, 3.569, 2.387],
+  "label": "木"
+}

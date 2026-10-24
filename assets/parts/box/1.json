@@ -1,0 +1,14 @@
+{
+  "id": "box",
+  "version": 1,
+  "file": "parts/box/1.usdz",
+  "category": "thing",
+  "words": [
+    {
+      "word": "box",
+      "pos": "noun"
+    }
+  ],
+  "size": [0.45, 0.353, 0.356],
+  "label": "段ボール箱"
+}

@@ -1,0 +1,18 @@
+{
+  "id": "trash_bin",
+  "version": 1,
+  "file": "parts/trash_bin/1.usdz",
+  "category": "thing",
+  "words": [
+    {
+      "word": "trash can",
+      "pos": "noun"
+    },
+    {
+      "word": "trash bin",
+      "pos": "noun"
+    }
+  ],
+  "size": [0.42, 0.467, 0.42],
+  "label": "ごみ箱"
+}

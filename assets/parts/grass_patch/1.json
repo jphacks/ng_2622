@@ -1,0 +1,14 @@
+{
+  "id": "grass_patch",
+  "version": 1,
+  "file": "parts/grass_patch/1.usdz",
+  "category": "ground",
+  "words": [
+    {
+      "word": "grass",
+      "pos": "noun"
+    }
+  ],
+  "size": [8.0, 0.128, 8.0],
+  "label": "芝生（8 m 四方の地面）"
+}

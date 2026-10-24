@@ -1,0 +1,19 @@
+{
+  "id": "animal_run_dog_a",
+  "version": 1,
+  "file": "parts/animal_run_dog_a/1.usdz",
+  "category": "animal",
+  "words": [
+    {
+      "word": "dog",
+      "pos": "noun"
+    },
+    {
+      "word": "run",
+      "pos": "verb"
+    }
+  ],
+  "pose": "run",
+  "size": [0.397, 0.861, 1.201],
+  "label": "走る犬"
+}

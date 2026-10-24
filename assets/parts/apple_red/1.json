@@ -1,0 +1,14 @@
+{
+  "id": "apple_red",
+  "version": 1,
+  "file": "parts/apple_red/1.usdz",
+  "category": "food",
+  "words": [
+    {
+      "word": "apple",
+      "pos": "noun"
+    }
+  ],
+  "size": [0.079, 0.089, 0.079],
+  "label": "赤いリンゴ"
+}

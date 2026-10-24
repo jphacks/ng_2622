@@ -1,0 +1,14 @@
+{
+  "id": "ball_red",
+  "version": 1,
+  "file": "parts/ball_red/1.usdz",
+  "category": "thing",
+  "words": [
+    {
+      "word": "ball",
+      "pos": "noun"
+    }
+  ],
+  "size": [0.24, 0.24, 0.24],
+  "label": "赤いボール"
+}

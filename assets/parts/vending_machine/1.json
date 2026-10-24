@@ -1,0 +1,14 @@
+{
+  "id": "vending_machine",
+  "version": 1,
+  "file": "parts/vending_machine/1.usdz",
+  "category": "thing",
+  "words": [
+    {
+      "word": "vending machine",
+      "pos": "noun"
+    }
+  ],
+  "size": [0.9, 1.8, 0.76],
+  "label": "自動販売機"
+}
