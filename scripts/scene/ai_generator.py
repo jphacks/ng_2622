@@ -475,7 +475,6 @@ except ImportError:
             export_global_forward_selection="NEGATIVE_Z",
             export_global_up_selection="Y",
         )
-'''
 
 SCENE_ID = {scene_id!r}
 SPEC = {spec_json_repr}
