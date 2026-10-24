@@ -63,7 +63,7 @@ struct BigButtonStyle: ButtonStyle {
         .background {
           // primary だけ、下に濃い影を付けて押せるボタンに見せる
           if kind == .primary {
-            Capsule().fill(Theme.accentShadow).offset(y: pressed ? 3 : 6)
+            Capsule().fill(isEnabled ? Theme.accentShadow : Theme.gray).offset(y: pressed ? 3 : 6)
           }
         }
         .offset(y: kind == .primary && pressed ? 3 : 0)
@@ -80,7 +80,7 @@ struct BigButtonStyle: ButtonStyle {
 
     @ViewBuilder private var background: some View {
       switch kind {
-      case .primary: Theme.accent
+      case .primary: isEnabled ? Theme.accent : Theme.disabledBorder
       case .outlined: Color.white
       case .plain: Theme.line
       }

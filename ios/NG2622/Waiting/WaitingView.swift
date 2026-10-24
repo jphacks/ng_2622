@@ -2,7 +2,7 @@ import SwiftUI
 
 /// 待機の画面。参加者の一覧と、ホストだけの「締め切って発表する」
 struct WaitingView: View {
-  let session: RoundSession
+  let session: RoomSession
   let enteredAt: Date
 
   @State private var confirming = false
@@ -33,8 +33,8 @@ struct WaitingView: View {
         confirming = false
       }
     }
-    .onChange(of: session.phase == .finished) { _, finished in
-      if finished { confirming = false }
+    .onChange(of: session.isRoundOver) { _, over in
+      if over { confirming = false }
     }
   }
 }
@@ -109,6 +109,7 @@ private struct StatusLabel: View {
 
   private var text: String {
     switch status {
+    case .connected: "接続中"
     case .talking: "話している"
     case .grading: "採点中…"
     case .done: "完了"
@@ -118,6 +119,8 @@ private struct StatusLabel: View {
 
   @ViewBuilder private var icon: some View {
     switch status {
+    case .connected:
+      Circle().fill(Theme.accentSoft)
     case .talking:
       BlinkingMic()
     case .grading:

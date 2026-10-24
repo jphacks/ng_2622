@@ -10,3 +10,9 @@ PRODUCT_BUNDLE_IDENTIFIER = jp.jphacks.ng2622.yourname
 
 // 任意: Live でつなぐ先を PR のプレビューに変える。// はコメントになるので https:/$()/ と書く
 // BACKEND_URL = https:/$()/pr-12-ng-2622-backend.jphacks-ng2622.workers.dev
+
+// 任意: Mock の振る舞いを変える（既定値は Mock.xcconfig）。アプリの画面には切り替えを置かない
+// MOCK_OTHER_PLAYERS = 3        // 自分のほかの参加者の数（0〜7）
+// MOCK_INCLUDES_OFFLINE = YES   // ほかの参加者の 1 人がラウンドの途中で切断する
+// MOCK_HOST_START_DELAY = 6     // 部屋に入ったあと、ホストがスタートするまでの秒数
+// 部屋に入る画面では、コード 0000 だけが「部屋が見つかりません」になり、ほかの 4 桁は入れる

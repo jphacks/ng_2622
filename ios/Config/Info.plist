@@ -7,5 +7,12 @@
 	<string>$(BACKEND_MODE)</string>
 	<key>BackendURL</key>
 	<string>$(BACKEND_URL)</string>
+	<!-- Mock の振る舞い（Config/Mock.xcconfig）。Live では空になり、使わない -->
+	<key>MockOtherPlayers</key>
+	<string>$(MOCK_OTHER_PLAYERS)</string>
+	<key>MockIncludesOffline</key>
+	<string>$(MOCK_INCLUDES_OFFLINE)</string>
+	<key>MockHostStartDelay</key>
+	<string>$(MOCK_HOST_START_DELAY)</string>
 </dict>
 </plist>
