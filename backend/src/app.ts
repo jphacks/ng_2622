@@ -5,7 +5,7 @@ import { openAPIOptions } from "./openapi";
 import { devRoutes } from "./routes/dev";
 import { healthRoutes } from "./routes/health";
 import { roomRoutes } from "./routes/rooms";
-import type { AppEnv } from "./routes/shared";
+import { type AppEnv, devOnly } from "./routes/shared";
 
 // Worker の入口（index.ts）と OpenAPI の生成スクリプトの両方から読むので、Cloudflare の実行環境にしか無いもの（cloudflare:workers など）はここから import しない
 
@@ -14,7 +14,8 @@ const app = new Hono<AppEnv>()
   .route("/", roomRoutes)
   .route("/", devRoutes);
 
-app.get("/openapi.json", openAPIRouteHandler(app, openAPIOptions));
-app.get("/docs", swaggerUI({ url: "/openapi.json" }));
+// API の説明は手元だけで見られるようにする（iOS は commit 済みの openapi.json を読む）
+app.get("/openapi.json", devOnly, openAPIRouteHandler(app, openAPIOptions));
+app.get("/docs", devOnly, swaggerUI({ url: "/openapi.json" }));
 
 export default app;

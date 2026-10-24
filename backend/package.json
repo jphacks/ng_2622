@@ -2,7 +2,7 @@
   "name": "backend",
   "type": "module",
   "scripts": {
-    "dev": "wrangler dev",
+    "dev": "wrangler dev --var ENABLE_DEV_ROUTES:true",
     "deploy": "wrangler deploy --minify",
     "typecheck": "tsc",
     "openapi": "tsx scripts/generate-openapi.ts",
