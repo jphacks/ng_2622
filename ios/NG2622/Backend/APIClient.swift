@@ -6,8 +6,12 @@ import Foundation
 enum APIClient {
   /// BACKEND_URL（Config/*.xcconfig）につなぐ Client。URL が無いときは nil
   static func make(config: AppConfig = .current) -> Client? {
-    guard let url = config.backendURL else { return nil }
-    return Client(serverURL: url, transport: URLSessionTransport())
+    config.backendURL.map { make(url: $0) }
+  }
+
+  /// url につなぐ Client。音声を送るときは middlewares に BearerToken（合言葉）を入れる
+  static func make(url: URL, middlewares: [any ClientMiddleware] = []) -> Client {
+    Client(serverURL: url, transport: URLSessionTransport(), middlewares: middlewares)
   }
 
   /// バックエンドが動いているか（GET /health が 200 を返すか）

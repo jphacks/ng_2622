@@ -1,6 +1,6 @@
 import SwiftUI
 
-/// 画面の入り口。Mock ならホームから始まり、Live なら未実装の表示を出す
+/// 画面の入り口。どちらもホームから始まる。Mock は仮のデータで、Live は BACKEND_URL のバックエンドにつないで動く
 struct RootView: View {
   let config: AppConfig
 
@@ -9,7 +9,11 @@ struct RootView: View {
       Theme.background.ignoresSafeArea()
       switch config.mode {
       case .live:
-        LiveNotImplementedView(url: config.backendURL)
+        if let url = config.backendURL {
+          AppFlow { LiveGameClient(baseURL: url) }
+        } else {
+          MissingBackendURLView()
+        }
       case .mock:
         AppFlow { MockGameClient(options: config.mock) }
       }
@@ -99,27 +103,20 @@ private struct AppFlow: View {
   }
 }
 
-/// Live の scheme で開いたときの表示
-struct LiveNotImplementedView: View {
-  let url: URL?
-
+/// Live なのに BACKEND_URL が無い・読めないときの表示
+struct MissingBackendURLView: View {
   var body: some View {
     VStack(spacing: 16) {
       Image(systemName: "network.slash")
         .font(.system(size: 48, weight: .bold))
         .foregroundStyle(Theme.gray)
-      Text("本物の API との通信はまだ実装していません")
+      Text("バックエンドの URL がありません")
         .font(Theme.font(20))
         .multilineTextAlignment(.center)
-      Text("仮のデータで動かすには、scheme「NG2622 Mock」でビルドしてください。")
+      Text("Config/*.xcconfig の BACKEND_URL を確かめるか、scheme「NG2622 Mock」でビルドしてください。")
         .font(Theme.font(14, .bold))
         .foregroundStyle(Theme.muted)
         .multilineTextAlignment(.center)
-      if let url {
-        Text(url.absoluteString)
-          .font(.system(size: 12, design: .monospaced))
-          .foregroundStyle(Theme.muted)
-      }
     }
     .padding(32)
   }

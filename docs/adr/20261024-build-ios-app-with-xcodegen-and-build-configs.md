@@ -35,6 +35,9 @@
 - API の型とクライアントは、`backend/openapi.json` から swift-openapi-generator のビルドプラグインで、ビルドのたびに作る。ローカルの Swift パッケージ `ios/Packages/BackendAPI` に、`backend/openapi.json` への symlink と設定を置き、アプリは `import BackendAPI` で使う（2026-10-24）。
   - 理由: 手で写した型が openapi.json とずれない。パッケージに分けると、アプリの `SWIFT_DEFAULT_ACTOR_ISOLATION=MainActor` が作られたコードにかからない。
   - 見送った案: 作ったコードを commit する（作り直し忘れでずれる）。
+- アプリの unit test は、`ios/project.yml` の test target `NG2622Tests`（Swift Testing、アプリに載せて動かす）に置き、両 scheme の test に入れる。BackendAPI はアプリに静的に入っているものを使い、test target からは直接つながない（2026-10-24）。
+  - 理由: 部屋のメッセージを画面のできごとに直す変換（`LiveRoomTracker`）はアプリの型を使うので、BackendAPI パッケージの test には置けない。
+  - 手元のバックエンドとの結合テストは、`TEST_RUNNER_LIVE_BACKEND_URL` を渡したときだけ動かす。
 
 ## Consequences
 - ファイルを足しても `project.pbxproj` の衝突が起きない。代わりに、Mac のメンバーは xcodegen を入れ、clone や `project.yml` の変更のあとに `(cd ios && xcodegen)` を打つ必要がある。
