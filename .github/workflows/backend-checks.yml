@@ -1,0 +1,40 @@
+# PR で backend/ の型チェックとビルドを確かめる。壊れたものが main に入ってデプロイで落ちるのを防ぐ。
+# backend を触らない PR では動かないので、ruleset の必須チェックには入れていない。
+name: backend-checks
+
+on:
+  pull_request:
+    paths:
+      - "backend/**"
+      - ".github/workflows/backend-checks.yml"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: backend-checks-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  backend-checks:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: backend/package-lock.json
+      - name: 依存を入れる
+        run: npm ci
+      - name: 型チェック
+        run: npm run typecheck
+      # 実際にはデプロイせず、バンドルできるかだけを確かめる（secret は要らない）
+      - name: ビルド
+        run: npx wrangler deploy --dry-run --outdir dist
