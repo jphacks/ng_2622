@@ -13,8 +13,8 @@ protocol GameClient: AnyObject {
   /// 部屋から抜ける。以後 events は届かない
   func leaveRoom()
 
-  /// ホストがラウンドを始める（start）
-  func startRound(sceneID: String) async throws
+  /// ホストがラウンドを始める（start）。sceneID が nil なら「おまかせ」で、部屋の側がランダムに選ぶ
+  func startRound(sceneID: String?) async throws
   /// 自分が話し終えた。録音した音声を送る（POST /rooms/:id/rounds/:n/audio）。録れなかったときは nil
   func finishSpeaking(audio: RecordedAudio?) async throws
   /// ホストが締め切って発表する（close）

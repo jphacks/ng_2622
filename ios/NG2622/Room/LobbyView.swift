@@ -1,9 +1,13 @@
 import SwiftUI
 
-/// 待合。部屋のコードと QR、参加者を見せる。ホストだけが「スタート」を押せる
+/// 待合。部屋のコードと QR、参加者を見せる。ホストだけがシーンを選び、「スタート」を押せる。
+/// 選んだシーンは参加者には見せない（ラウンドが始まると全員の画面に出る）
 struct LobbyView: View {
   let session: RoomSession
   let onLeave: () -> Void
+
+  /// ホストが選んだシーンの ID。nil は「おまかせ」
+  @State private var sceneID: String?
 
   var body: some View {
     VStack(spacing: 0) {
@@ -17,10 +21,14 @@ struct LobbyView: View {
         .padding(.top, 10)
       seats
         .padding(.top, 16)
+      if session.isHost {
+        ScenePicker(selected: $sceneID)
+          .padding(.top, 16)
+      }
 
       Spacer(minLength: 12)
       if session.isHost {
-        Button("スタート", action: session.start)
+        Button("スタート") { session.start(sceneID: sceneID) }
           .buttonStyle(BigButtonStyle(kind: .primary))
           .padding(.bottom, 30)
       } else {
@@ -75,6 +83,82 @@ struct LobbyView: View {
     .padding(.horizontal, 12)
     .padding(.vertical, 18)
     .background(CardBackground())
+  }
+}
+
+/// シーンの一覧（ホストだけ）。既定は「おまかせ」
+private struct ScenePicker: View {
+  /// nil は「おまかせ」
+  @Binding var selected: String?
+
+  var body: some View {
+    VStack(alignment: .leading, spacing: 10) {
+      HStack {
+        Text("シーン")
+          .font(Theme.font(16, .heavy))
+        Spacer()
+        randomButton
+      }
+      HStack(spacing: 8) {
+        ForEach(SceneCatalog.all) { scene in
+          tile(scene)
+        }
+      }
+    }
+    .padding(14)
+    .background(CardBackground())
+    .animation(.easeOut(duration: 0.2), value: selected)
+  }
+
+  /// 「おまかせ」。選ぶとスタートのときにランダムに決まる
+  private var randomButton: some View {
+    let on = selected == nil
+    return Button {
+      selected = nil
+    } label: {
+      HStack(spacing: 5) {
+        Image(systemName: "dice.fill")
+          .font(.system(size: 13, weight: .bold))
+        Text("おまかせ")
+          .font(Theme.font(14, .heavy))
+      }
+      .foregroundStyle(on ? .white : Theme.accent)
+      .padding(.horizontal, 14)
+      .frame(height: 32)
+      .background(on ? Theme.accent : Theme.accentSoft, in: Capsule())
+    }
+    .accessibilityAddTraits(on ? .isSelected : [])
+  }
+
+  private func tile(_ scene: SceneInfo) -> some View {
+    let on = selected == scene.id
+    return Button {
+      selected = scene.id
+    } label: {
+      VStack(spacing: 5) {
+        Color.clear
+          .aspectRatio(1.4, contentMode: .fit)
+          .overlay {
+            if let image = SceneCatalog.thumbnail(scene.id) {
+              Image(uiImage: image)
+                .resizable()
+                .scaledToFill()
+            }
+          }
+          .clipShape(RoundedRectangle(cornerRadius: 12))
+          .overlay {
+            RoundedRectangle(cornerRadius: 12)
+              .strokeBorder(on ? Theme.accent : Theme.line, lineWidth: on ? 3 : 1.5)
+          }
+        Text(scene.name)
+          .font(Theme.font(14, .heavy))
+          .foregroundStyle(on ? Theme.accent : Theme.ink)
+      }
+      .frame(maxWidth: .infinity)
+    }
+    .buttonStyle(.plain)
+    .accessibilityLabel(scene.name)
+    .accessibilityAddTraits(on ? .isSelected : [])
   }
 }
 

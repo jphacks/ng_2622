@@ -7,8 +7,6 @@ struct SceneInfo: Identifiable, Decodable, Hashable, Sendable {
   /// 画面に出す名前（例: 公園）
   let name: String
 
-  /// 一覧に出すサムネイル（<id>.png）
-  var thumbnail: UIImage? { UIImage(named: id) }
 }
 
 enum SceneCatalog {
@@ -39,6 +37,16 @@ enum SceneCatalog {
   static func name(of id: String) -> String {
     scene(id)?.name ?? id
   }
+
+  /// 一覧に出す小さなサムネイル。元の <id>.png（1600×1000）は大きいので、縮めて覚えておく
+  static func thumbnail(_ id: String) -> UIImage? {
+    if let image = thumbnails[id] { return image }
+    let image = UIImage(named: id)?.preparingThumbnail(of: CGSize(width: 384, height: 240))
+    thumbnails[id] = image
+    return image
+  }
+
+  private static var thumbnails: [String: UIImage] = [:]
 
   /// 「おまかせ」で選ぶシーン
   static func randomID() -> String {

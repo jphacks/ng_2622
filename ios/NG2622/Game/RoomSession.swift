@@ -64,10 +64,11 @@ final class RoomSession {
     client.leaveRoom()
   }
 
-  /// ホストがラウンドを始める。シーンの選び方ができるまでは公園だけ
-  func start() {
+  /// ホストがラウンドを始める。sceneID が nil なら「おまかせ」（部屋の側がランダムに選ぶ）。
+  /// 選んだシーンは参加者には前もって伝えず、ラウンドが始まったときに round で届く
+  func start(sceneID: String?) {
     guard isHost, phase == .lobby else { return }
-    Task { try? await client.startRound(sceneID: "park") }
+    Task { try? await client.startRound(sceneID: sceneID) }
   }
 
   /// 「話し終えた」か、20 秒たった
