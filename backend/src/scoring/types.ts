@@ -20,8 +20,6 @@ export type Scene = {
   elements: SceneElement[];
   // 一覧にない正しい描写に出す点の上限。elements の points と足して 100 にする
   extraMax: number;
-  // アプリに同梱する動画のファイル名
-  video: string;
 };
 
 export type SceneElement = {
