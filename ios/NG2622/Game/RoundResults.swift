@@ -3,6 +3,8 @@ import Foundation
 /// 1 ラウンドの結果。全員の採点がそろうか、ホストが締め切ると届く。
 /// 結果の画面（結果発表・みんなの描写・振り返り）はこれだけを見る。
 struct RoundResults: Sendable, Equatable {
+  /// 遊んだシーンの ID（シーンの評価に使う）
+  let sceneID: String
   /// 遊んだシーンの名前（例: 公園）
   let sceneName: String
   /// 順位の順（1 位が先頭）。採点できなかった人は最後に並ぶ

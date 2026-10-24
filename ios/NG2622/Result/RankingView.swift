@@ -33,6 +33,11 @@ struct RankingView: View {
               .transition(.scale(scale: 0.6).combined(with: .opacity))
           }
           Spacer(minLength: 28)
+          if winnerShown, let me = results.me {
+            SceneRatingCard(sceneID: results.sceneID, sceneName: results.sceneName, playerName: me.name)
+              .padding(.bottom, 20)
+              .transition(.opacity)
+          }
           actions
             .padding(.bottom, 24)
         }

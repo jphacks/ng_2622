@@ -40,13 +40,6 @@
       }
     },
     "schemas": {
-      "PlayerName": {
-        "type": "string",
-        "minLength": 1,
-        "maxLength": 20,
-        "description": "表示名（1〜20 文字）",
-        "example": "はなこ"
-      },
       "PlayerColor": {
         "type": "integer",
         "minimum": 0,
@@ -85,12 +78,6 @@
         ],
         "additionalProperties": false,
         "description": "接続したら最初に送る。ホストは POST /rooms で受け取った playerId と token を、切断から戻る人は welcome で受け取ったものを付ける。初めて入る人は name だけ"
-      },
-      "SceneId": {
-        "type": "string",
-        "minLength": 1,
-        "description": "シーンの ID（シーンの JSON の id）",
-        "example": "park"
       },
       "StartMessage": {
         "type": "object",
@@ -698,6 +685,189 @@
         "format": "uuid",
         "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$",
         "description": "部屋の中での参加者の ID"
+      },
+      "RatingSummary": {
+        "type": "object",
+        "properties": {
+          "average": {
+            "description": "★の平均（小数第 1 位まで）。評価が無ければ null",
+            "example": 4.2,
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "count": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991,
+            "description": "評価した人数"
+          }
+        },
+        "required": [
+          "average",
+          "count"
+        ],
+        "additionalProperties": false
+      },
+      "SceneSummary": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "$ref": "#/components/schemas/SceneId"
+          },
+          "name": {
+            "type": "string",
+            "example": "公園"
+          },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "vanilla"
+            ],
+            "description": "vanilla: 最初から入っているシーン（今後、ユーザーが作るシーンを足す）"
+          },
+          "rating": {
+            "$ref": "#/components/schemas/RatingSummary"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "kind",
+          "rating"
+        ],
+        "additionalProperties": false
+      },
+      "ListScenesResponse": {
+        "type": "object",
+        "properties": {
+          "scenes": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/SceneSummary"
+            }
+          }
+        },
+        "required": [
+          "scenes"
+        ],
+        "additionalProperties": false
+      },
+      "SceneReview": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "$ref": "#/components/schemas/PlayerName"
+          },
+          "rating": {
+            "$ref": "#/components/schemas/Rating"
+          },
+          "comment": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time",
+            "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+          }
+        },
+        "required": [
+          "name",
+          "rating",
+          "comment",
+          "updatedAt"
+        ],
+        "additionalProperties": false,
+        "description": "評価 1 件（新しい順に並ぶ）"
+      },
+      "ListReviewsResponse": {
+        "type": "object",
+        "properties": {
+          "reviews": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/SceneReview"
+            }
+          }
+        },
+        "required": [
+          "reviews"
+        ],
+        "additionalProperties": false
+      },
+      "SceneId": {
+        "type": "string",
+        "minLength": 1,
+        "description": "シーンの ID（シーンの JSON の id）",
+        "example": "park"
+      },
+      "SubmitReviewResponse": {
+        "type": "object",
+        "properties": {
+          "average": {
+            "type": "number",
+            "example": 4.2
+          },
+          "count": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 9007199254740991
+          }
+        },
+        "required": [
+          "average",
+          "count"
+        ],
+        "additionalProperties": false,
+        "description": "保存したあとの、そのシーンの★の平均と人数"
+      },
+      "PlayerName": {
+        "type": "string",
+        "minLength": 1,
+        "maxLength": 20,
+        "description": "表示名（1〜20 文字）",
+        "example": "はなこ"
+      },
+      "Rating": {
+        "type": "integer",
+        "minimum": 1,
+        "maximum": 5,
+        "description": "★の数（1〜5）",
+        "example": 4
+      },
+      "SubmitReviewRequest": {
+        "type": "object",
+        "properties": {
+          "reviewerId": {
+            "type": "string",
+            "format": "uuid",
+            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$",
+            "description": "評価した人の ID。端末ごとに 1 つ作って覚えておく。同じ ID で送り直すと上書きする"
+          },
+          "name": {
+            "$ref": "#/components/schemas/PlayerName"
+          },
+          "rating": {
+            "$ref": "#/components/schemas/Rating"
+          },
+          "comment": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "maxLength": 200,
+            "description": "コメント（200 文字まで。空なら無し）"
+          }
+        },
+        "required": [
+          "reviewerId",
+          "name",
+          "rating"
+        ]
       }
     }
   },
@@ -986,6 +1156,153 @@
             "description": "Bearer と合言葉（welcome の token）"
           }
         ]
+      }
+    },
+    "/scenes": {
+      "get": {
+        "operationId": "listScenes",
+        "tags": [
+          "scenes"
+        ],
+        "summary": "シーンの一覧と★の平均",
+        "description": "選べるシーンと、それぞれの★の平均と評価した人数を返す。",
+        "responses": {
+          "200": {
+            "description": "一覧",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ListScenesResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/scenes/{sceneId}/reviews": {
+      "get": {
+        "operationId": "listReviews",
+        "tags": [
+          "scenes"
+        ],
+        "summary": "シーンの評価を見る",
+        "description": "評価（★とコメント）を新しい順に返す。",
+        "responses": {
+          "200": {
+            "description": "評価",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ListReviewsResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "limit の形が違う（invalid_message）",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "シーンが無い（unknown_scene）",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "in": "path",
+            "name": "sceneId",
+            "schema": {
+              "$ref": "#/components/schemas/SceneId"
+            },
+            "required": true,
+            "description": "シーンの ID（シーンの JSON の id）"
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "schema": {
+              "default": 20,
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100
+            },
+            "description": "何件返すか（1〜100、既定 20）"
+          }
+        ]
+      },
+      "put": {
+        "operationId": "submitReview",
+        "tags": [
+          "scenes"
+        ],
+        "summary": "シーンを評価する",
+        "description": "★（1〜5）と任意のコメントを送る。同じ reviewerId で送り直すと上書きする。",
+        "responses": {
+          "200": {
+            "description": "保存した",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SubmitReviewResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "本文の形が違う（invalid_message）",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "シーンが無い（unknown_scene）",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "in": "path",
+            "name": "sceneId",
+            "schema": {
+              "$ref": "#/components/schemas/SceneId"
+            },
+            "required": true,
+            "description": "シーンの ID（シーンの JSON の id）"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SubmitReviewRequest"
+              }
+            }
+          }
+        }
       }
     }
   }

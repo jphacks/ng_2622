@@ -12,11 +12,18 @@
     "SCORING_MODE": "fixed",
     "SCORE_WEIGHTS": "50,25,25"
   },
+  // SCENE_REVIEWS はシーンの評価（全シーンで 1 つ）
   "durable_objects": {
-    "bindings": [{ "name": "ROOM", "class_name": "Room" }]
+    "bindings": [
+      { "name": "ROOM", "class_name": "Room" },
+      { "name": "SCENE_REVIEWS", "class_name": "SceneReviews" }
+    ]
   },
   // 無料プランは SQLite 版のみ。出した tag は書き換えず、新しい tag で足す
-  "migrations": [{ "tag": "v1", "new_sqlite_classes": ["Room"] }],
+  "migrations": [
+    { "tag": "v1", "new_sqlite_classes": ["Room"] },
+    { "tag": "v2", "new_sqlite_classes": ["SceneReviews"] }
+  ],
   // PR ごとのプレビュー（wrangler preview）の設定。vars や DO の binding は上の階層から引き継がれないので、
   // プレビューでも使うものはここにも書く
   "previews": {
@@ -25,7 +32,10 @@
       "SCORE_WEIGHTS": "50,25,25"
     },
     "durable_objects": {
-      "bindings": [{ "name": "ROOM", "class_name": "Room" }]
+      "bindings": [
+        { "name": "ROOM", "class_name": "Room" },
+        { "name": "SCENE_REVIEWS", "class_name": "SceneReviews" }
+      ]
     }
   }
 }
