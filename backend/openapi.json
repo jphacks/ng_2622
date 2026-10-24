@@ -47,11 +47,12 @@
         "description": "表示名（1〜20 文字）",
         "example": "はなこ"
       },
-      "PlayerId": {
-        "type": "string",
-        "format": "uuid",
-        "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$",
-        "description": "部屋の中での参加者の ID"
+      "PlayerColor": {
+        "type": "integer",
+        "minimum": 0,
+        "maximum": 16777215,
+        "description": "アバターの色。0xRRGGBB を整数で表す",
+        "example": 5987302
       },
       "PlayerToken": {
         "type": "string",
@@ -67,6 +68,9 @@
           },
           "name": {
             "$ref": "#/components/schemas/PlayerName"
+          },
+          "color": {
+            "$ref": "#/components/schemas/PlayerColor"
           },
           "playerId": {
             "$ref": "#/components/schemas/PlayerId"
@@ -105,6 +109,48 @@
         "additionalProperties": false,
         "description": "ホストだけが送れる。待合のときだけ有効"
       },
+      "CloseMessage": {
+        "type": "object",
+        "properties": {
+          "type": {
+            "type": "string",
+            "const": "close"
+          }
+        },
+        "required": [
+          "type"
+        ],
+        "additionalProperties": false,
+        "description": "ホストだけが送れる。ラウンドを締め切って結果発表に進む。採点がまだの人は「採点できませんでした」になる"
+      },
+      "AgainMessage": {
+        "type": "object",
+        "properties": {
+          "type": {
+            "type": "string",
+            "const": "again"
+          }
+        },
+        "required": [
+          "type"
+        ],
+        "additionalProperties": false,
+        "description": "ホストだけが送れる。結果発表から同じ顔ぶれで待合に戻る（phase が lobby の room が全員に届く）"
+      },
+      "LeaveMessage": {
+        "type": "object",
+        "properties": {
+          "type": {
+            "type": "string",
+            "const": "leave"
+          }
+        },
+        "required": [
+          "type"
+        ],
+        "additionalProperties": false,
+        "description": "部屋から抜ける。席が空き、以後は同じ合言葉でも戻れない。ホストが抜けたら、次に入った人がホストになる。部屋が接続を閉じる"
+      },
       "ClientMessage": {
         "oneOf": [
           {
@@ -112,13 +158,25 @@
           },
           {
             "$ref": "#/components/schemas/StartMessage"
+          },
+          {
+            "$ref": "#/components/schemas/CloseMessage"
+          },
+          {
+            "$ref": "#/components/schemas/AgainMessage"
+          },
+          {
+            "$ref": "#/components/schemas/LeaveMessage"
           }
         ],
         "discriminator": {
           "propertyName": "type",
           "mapping": {
             "join": "#/components/schemas/JoinMessage",
-            "start": "#/components/schemas/StartMessage"
+            "start": "#/components/schemas/StartMessage",
+            "close": "#/components/schemas/CloseMessage",
+            "again": "#/components/schemas/AgainMessage",
+            "leave": "#/components/schemas/LeaveMessage"
           }
         }
       },
@@ -167,6 +225,9 @@
           "name": {
             "$ref": "#/components/schemas/PlayerName"
           },
+          "color": {
+            "$ref": "#/components/schemas/PlayerColor"
+          },
           "isHost": {
             "type": "boolean"
           },
@@ -178,6 +239,7 @@
         "required": [
           "id",
           "name",
+          "color",
           "isHost",
           "connected"
         ],
@@ -257,6 +319,189 @@
         "additionalProperties": false,
         "description": "ホストがスタートしたら全員へ送る"
       },
+      "PlayerStatus": {
+        "type": "string",
+        "enum": [
+          "talking",
+          "grading",
+          "done",
+          "offline"
+        ],
+        "description": "ラウンド中の各自の状態。talking: 話している（音声がまだ届いていない）、grading: 採点中、done: 完了（採点できなかった人も含む）、offline: 切断中"
+      },
+      "ProgressMessage": {
+        "type": "object",
+        "properties": {
+          "type": {
+            "type": "string",
+            "const": "progress"
+          },
+          "round": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 9007199254740991
+          },
+          "players": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "$ref": "#/components/schemas/PlayerId"
+                },
+                "status": {
+                  "$ref": "#/components/schemas/PlayerStatus"
+                }
+              },
+              "required": [
+                "id",
+                "status"
+              ],
+              "additionalProperties": false
+            }
+          }
+        },
+        "required": [
+          "type",
+          "round",
+          "players"
+        ],
+        "additionalProperties": false,
+        "description": "ラウンド中の各自の状態。変わるたびに全員へ送る。名前と色は room に載っている。点数は伏せる"
+      },
+      "PlayerScore": {
+        "type": "object",
+        "properties": {
+          "content": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 100
+          },
+          "expression": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 100
+          },
+          "speech": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 100,
+            "description": "話し方"
+          },
+          "total": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 100,
+            "description": "重み付きの合計。順位はこれで決める"
+          }
+        },
+        "required": [
+          "content",
+          "expression",
+          "speech",
+          "total"
+        ],
+        "additionalProperties": false,
+        "description": "点数（各 0〜100 の整数）"
+      },
+      "PlayerResult": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "$ref": "#/components/schemas/PlayerId"
+          },
+          "name": {
+            "$ref": "#/components/schemas/PlayerName"
+          },
+          "color": {
+            "$ref": "#/components/schemas/PlayerColor"
+          },
+          "rank": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 9007199254740991
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "順位。同点は同じ順位。採点できなかった人は null"
+          },
+          "score": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/PlayerScore"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "採点できなかった人（締め切られた・失敗した）は null"
+          },
+          "transcript": {
+            "type": "string",
+            "description": "文字起こし。採点できなかった人は空"
+          },
+          "comment": {
+            "type": "string",
+            "description": "講評の一言。採点できなかった人は空"
+          },
+          "modelAnswer": {
+            "type": "string",
+            "description": "模範表現（英文）。採点できなかった人は空"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "color",
+          "rank",
+          "score",
+          "transcript",
+          "comment",
+          "modelAnswer"
+        ],
+        "additionalProperties": false
+      },
+      "ResultsMessage": {
+        "type": "object",
+        "properties": {
+          "type": {
+            "type": "string",
+            "const": "results"
+          },
+          "round": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 9007199254740991
+          },
+          "sceneId": {
+            "$ref": "#/components/schemas/SceneId"
+          },
+          "sceneName": {
+            "type": "string",
+            "example": "公園"
+          },
+          "players": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PlayerResult"
+            },
+            "description": "順位の順（1 位が先頭）。採点できなかった人は最後。全員分の内訳を載せるので、自分の分は playerId で選ぶ"
+          }
+        },
+        "required": [
+          "type",
+          "round",
+          "sceneId",
+          "sceneName",
+          "players"
+        ],
+        "additionalProperties": false,
+        "description": "全員の採点がそろうか、ホストが締め切ったら全員へ送る。結果発表のときに戻ってきた人にも送り直す"
+      },
       "ErrorCode": {
         "type": "string",
         "enum": [
@@ -267,9 +512,13 @@
           "not_host",
           "not_in_lobby",
           "unknown_scene",
-          "server_busy"
+          "server_busy",
+          "not_playing",
+          "already_submitted",
+          "invalid_audio",
+          "not_in_results"
         ],
-        "description": "room_not_found: 部屋が無い\nroom_full: 満員\ninvalid_message: メッセージの形が違う\nunauthorized: 参加者の ID と合言葉が合わない\nnot_host: ホストだけができる操作\nnot_in_lobby: 待合でしかできない操作\nunknown_scene: シーンの ID が無い\nserver_busy: 空いている部屋のコードが無い"
+        "description": "room_not_found: 部屋が無い\nroom_full: 満員\ninvalid_message: メッセージの形が違う\nunauthorized: 参加者の ID と合言葉が合わない\nnot_host: ホストだけができる操作\nnot_in_lobby: 待合でしかできない操作\nunknown_scene: シーンの ID が無い\nserver_busy: 空いている部屋のコードが無い\nnot_playing: ラウンド中でない、ラウンドの番号が違う、またはそのラウンドに参加していない\nalready_submitted: このラウンドの音声はもう受け取った\ninvalid_audio: 音声が 1 MB までの WAV でない\nnot_in_results: 結果発表のときにしかできない操作"
       },
       "ErrorMessage": {
         "type": "object",
@@ -305,6 +554,12 @@
             "$ref": "#/components/schemas/RoundMessage"
           },
           {
+            "$ref": "#/components/schemas/ProgressMessage"
+          },
+          {
+            "$ref": "#/components/schemas/ResultsMessage"
+          },
+          {
             "$ref": "#/components/schemas/ErrorMessage"
           }
         ],
@@ -314,6 +569,8 @@
             "welcome": "#/components/schemas/WelcomeMessage",
             "room": "#/components/schemas/RoomMessage",
             "round": "#/components/schemas/RoundMessage",
+            "progress": "#/components/schemas/ProgressMessage",
+            "results": "#/components/schemas/ResultsMessage",
             "error": "#/components/schemas/ErrorMessage"
           }
         }
@@ -399,6 +656,26 @@
         "pattern": "^\\d{4}$",
         "description": "部屋のコード（数字 4 桁）",
         "example": "0427"
+      },
+      "SubmitAudioResponse": {
+        "type": "object",
+        "properties": {
+          "status": {
+            "type": "string",
+            "const": "grading"
+          }
+        },
+        "required": [
+          "status"
+        ],
+        "additionalProperties": false,
+        "description": "受け取って採点を始めた。点数は返さず、全員の採点がそろったら WebSocket の results で届く"
+      },
+      "PlayerId": {
+        "type": "string",
+        "format": "uuid",
+        "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$",
+        "description": "部屋の中での参加者の ID"
       }
     }
   },
@@ -561,6 +838,130 @@
             },
             "required": true,
             "description": "部屋のコード（数字 4 桁）"
+          }
+        ]
+      }
+    },
+    "/rooms/{roomId}/rounds/{round}/audio": {
+      "post": {
+        "operationId": "submitAudio",
+        "tags": [
+          "rounds"
+        ],
+        "summary": "自分の音声を送る",
+        "description": "話し終えたら、録音した WAV（16 kHz・16 bit・モノラル、1 MB まで）を本文にそのまま載せて送る。1 ラウンドに 1 回だけ。受け取ったらすぐ 202 を返し、採点は部屋の側で続ける。進み具合は WebSocket の progress、点数は全員の採点がそろったら results で届く。",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "audio/wav": {
+              "schema": {
+                "type": "string",
+                "format": "binary"
+              }
+            }
+          }
+        },
+        "responses": {
+          "202": {
+            "description": "受け取って採点を始めた",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SubmitAudioResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "コード・番号・ヘッダーの形が違う（invalid_message）、または音声が WAV でない（invalid_audio）",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "参加者の ID と合言葉が合わない（unauthorized）",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "部屋が無い（room_not_found）",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "ラウンド中でない・番号が違う・参加していない（not_playing）、またはもう送った（already_submitted）",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "1 MB を超えている（invalid_audio）",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "in": "path",
+            "name": "roomId",
+            "schema": {
+              "$ref": "#/components/schemas/RoomId"
+            },
+            "required": true,
+            "description": "部屋のコード（数字 4 桁）"
+          },
+          {
+            "in": "path",
+            "name": "round",
+            "schema": {
+              "type": "string",
+              "pattern": "^[1-9]\\d*$",
+              "example": "1"
+            },
+            "required": true,
+            "description": "ラウンドの番号（round の round）"
+          },
+          {
+            "in": "header",
+            "name": "x-player-id",
+            "schema": {
+              "$ref": "#/components/schemas/PlayerId"
+            },
+            "required": true,
+            "description": "部屋の中での参加者の ID"
+          },
+          {
+            "in": "header",
+            "name": "authorization",
+            "schema": {
+              "type": "string",
+              "pattern": "^Bearer \\S+$"
+            },
+            "required": true,
+            "description": "Bearer と合言葉（welcome の token）"
           }
         ]
       }

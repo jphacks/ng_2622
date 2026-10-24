@@ -58,11 +58,12 @@ main に `backend/` の変更が入ると、GitHub Actions（`.github/workflows/
   - `routes/`: HTTP の受け口（入力の検証、OpenAPI の説明、レスポンス）
   - `usecases/`: HTTP の処理の中身
   - `repositories/`: 部屋の Durable Object へのアクセス
-  - `domain/`: 部屋のルール（参加・スタートの判定と状態の変化）。Cloudflare に依存しない
+  - `domain/`: 部屋のルール（参加・スタート・採点の受け付け・締め切り・退出の判定と状態の変化）。Cloudflare に依存しない
   - `durable-objects/`: Durable Object（保存と WebSocket の送受信。判定は `domain/` に任せる）
   - `schemas/`: API の型（zod）
 - WebSocket は Hibernation API で受ける。メッセージが無い間は DO が休止してメモリが消えるので、状態は変えるたびに DO の保存領域（SQLite）に書く。
 - 誰もつないでいない部屋は 2 時間で消える（DO の alarm）。
+- 音声（`POST /rooms/{roomId}/rounds/{round}/audio`）は Worker が受け取り、部屋に「採点中」と記録してから 202 を返す。採点（`score()`）は `waitUntil` で応答の後に続け、終わったら部屋に書き込む。全員の採点がそろうか、ホストが `close` すると、部屋が `results` を配る。
 - 選べるシーンは、採点と同じ `src/scoring/scenes.json` から読む（`src/domain/scenes.ts`）。
 
 ## API のスキーマ（OpenAPI）

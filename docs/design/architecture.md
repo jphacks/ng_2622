@@ -62,15 +62,15 @@ sequenceDiagram
 | --- | --- | --- |
 | `POST /rooms` | HTTP | 部屋を作る。部屋のコード（数字 4 桁）と、ホストの参加者 ID・合言葉を返す |
 | `GET /rooms/:id` | HTTP | 部屋があるか、満員でないかを返す（部屋に入る画面で使う） |
-| `GET /rooms/:id/ws` | WebSocket | 部屋に入る。最初に `join`（名前。ホストと復帰する人は参加者 ID と合言葉も）を送る。以後、部屋の状態・開始・進み具合・結果を受け取る |
-| `POST /rooms/:id/rounds/:n/audio` | HTTP | 自分の音声（WAV、最長 20 秒、約 0.6 MB）を送る。合言葉が要る |
+| `GET /rooms/:id/ws` | WebSocket | 部屋に入る。最初に `join`（名前とアバターの色。ホストと復帰する人は参加者 ID と合言葉も）を送る。以後、部屋の状態・開始・進み具合・結果を受け取る |
+| `POST /rooms/:id/rounds/:n/audio` | HTTP | 自分の音声（WAV、最長 20 秒、約 0.6 MB）を本文にそのまま載せて送る。参加者 ID と合言葉をヘッダーに付ける。すぐ 202 を返し、採点は裏で続ける |
 
 API の型の正本は `backend/src/schemas/`（zod）で、そこから生成した `backend/openapi.json` を iOS が読む（2026-10-24 に決定）。WebSocket のメッセージは OpenAPI の `components.schemas` の `ClientMessage`・`ServerMessage` に載せる。
 
 WebSocket のメッセージ（ThatsFight の `src/shared/protocol.ts` に倣う）:
 
-- 端末から: `join`、`start`（ホスト、シーン ID）、`close`（ホスト、締め切り）、`again`（ホスト、同じ顔ぶれでもう一度）
-- 部屋から: `welcome`（本人にだけ。参加者 ID と合言葉）、`room`（参加者と状態）、`round`（シーン ID と開始時刻）、`progress`（各自の状態）、`results`（順位・全員の描写・自分の内訳）、`error`
+- 端末から: `join`、`start`（ホスト、シーン ID）、`close`（ホスト、締め切り）、`again`（ホスト、同じ顔ぶれでもう一度）、`leave`（退出。ホストが抜けたら次に入った人がホストになる）
+- 部屋から: `welcome`（本人にだけ。参加者 ID と合言葉）、`room`（参加者と状態）、`round`（シーン ID と開始時刻）、`progress`（各自の状態）、`results`（順位・全員の描写と内訳。自分の分は参加者 ID で選ぶ）、`error`
 
 ## データ
 

@@ -39,3 +39,27 @@ export const ErrorResponse = z
   .meta({ ref: "ErrorResponse" });
 
 export const RoomIdParam = z.object({ roomId: RoomId });
+
+export const AudioParams = z.object({
+  roomId: RoomId,
+  round: z
+    .string()
+    .regex(/^[1-9]\d*$/)
+    .meta({ description: "ラウンドの番号（round の round）", example: "1" }),
+});
+
+export const AudioHeaders = z.object({
+  "x-player-id": PlayerId,
+  authorization: z
+    .string()
+    .regex(/^Bearer \S+$/)
+    .meta({ description: "Bearer と合言葉（welcome の token）" }),
+});
+
+export const SubmitAudioResponse = z
+  .object({ status: z.literal("grading") })
+  .meta({
+    ref: "SubmitAudioResponse",
+    description:
+      "受け取って採点を始めた。点数は返さず、全員の採点がそろったら WebSocket の results で届く",
+  });

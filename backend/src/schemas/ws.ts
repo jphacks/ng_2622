@@ -3,8 +3,10 @@ import {
   ErrorCode,
   MAX_PLAYERS,
   Player,
+  PlayerColor,
   PlayerId,
   PlayerName,
+  PlayerStatus,
   PlayerToken,
   RoomId,
   RoomPhase,
@@ -19,6 +21,9 @@ export const JoinMessage = z
   .object({
     type: z.literal("join"),
     name: PlayerName,
+    color: PlayerColor.optional().meta({
+      description: "省くと部屋の側で空いている色を選ぶ",
+    }),
     playerId: PlayerId.optional(),
     token: PlayerToken.optional(),
   })
@@ -40,8 +45,32 @@ export const StartMessage = z
     description: "ホストだけが送れる。待合のときだけ有効",
   });
 
+export const CloseMessage = z.object({ type: z.literal("close") }).meta({
+  ref: "CloseMessage",
+  description:
+    "ホストだけが送れる。ラウンドを締め切って結果発表に進む。採点がまだの人は「採点できませんでした」になる",
+});
+
+export const AgainMessage = z.object({ type: z.literal("again") }).meta({
+  ref: "AgainMessage",
+  description:
+    "ホストだけが送れる。結果発表から同じ顔ぶれで待合に戻る（phase が lobby の room が全員に届く）",
+});
+
+export const LeaveMessage = z.object({ type: z.literal("leave") }).meta({
+  ref: "LeaveMessage",
+  description:
+    "部屋から抜ける。席が空き、以後は同じ合言葉でも戻れない。ホストが抜けたら、次に入った人がホストになる。部屋が接続を閉じる",
+});
+
 export const ClientMessage = z
-  .discriminatedUnion("type", [JoinMessage, StartMessage])
+  .discriminatedUnion("type", [
+    JoinMessage,
+    StartMessage,
+    CloseMessage,
+    AgainMessage,
+    LeaveMessage,
+  ])
   .meta({
     ref: "ClientMessage",
     discriminator: {
@@ -49,6 +78,9 @@ export const ClientMessage = z
       mapping: {
         join: "#/components/schemas/JoinMessage",
         start: "#/components/schemas/StartMessage",
+        close: "#/components/schemas/CloseMessage",
+        again: "#/components/schemas/AgainMessage",
+        leave: "#/components/schemas/LeaveMessage",
       },
     },
   });
@@ -99,6 +131,71 @@ export const RoundMessage = z
     description: "ホストがスタートしたら全員へ送る",
   });
 
+export const ProgressMessage = z
+  .object({
+    type: z.literal("progress"),
+    round: z.int().min(1),
+    players: z.array(z.object({ id: PlayerId, status: PlayerStatus })),
+  })
+  .meta({
+    ref: "ProgressMessage",
+    description:
+      "ラウンド中の各自の状態。変わるたびに全員へ送る。名前と色は room に載っている。点数は伏せる",
+  });
+
+const Points = z.int().min(0).max(100);
+
+export const PlayerScore = z
+  .object({
+    content: Points,
+    expression: Points,
+    speech: Points.meta({ description: "話し方" }),
+    total: Points.meta({ description: "重み付きの合計。順位はこれで決める" }),
+  })
+  .meta({ ref: "PlayerScore", description: "点数（各 0〜100 の整数）" });
+
+export const PlayerResult = z
+  .object({
+    id: PlayerId,
+    name: PlayerName,
+    color: PlayerColor,
+    rank: z
+      .int()
+      .min(1)
+      .nullable()
+      .meta({ description: "順位。同点は同じ順位。採点できなかった人は null" }),
+    score: PlayerScore.nullable().meta({
+      description: "採点できなかった人（締め切られた・失敗した）は null",
+    }),
+    transcript: z
+      .string()
+      .meta({ description: "文字起こし。採点できなかった人は空" }),
+    comment: z
+      .string()
+      .meta({ description: "講評の一言。採点できなかった人は空" }),
+    modelAnswer: z
+      .string()
+      .meta({ description: "模範表現（英文）。採点できなかった人は空" }),
+  })
+  .meta({ ref: "PlayerResult" });
+
+export const ResultsMessage = z
+  .object({
+    type: z.literal("results"),
+    round: z.int().min(1),
+    sceneId: SceneId,
+    sceneName: z.string().meta({ example: "公園" }),
+    players: z.array(PlayerResult).meta({
+      description:
+        "順位の順（1 位が先頭）。採点できなかった人は最後。全員分の内訳を載せるので、自分の分は playerId で選ぶ",
+    }),
+  })
+  .meta({
+    ref: "ResultsMessage",
+    description:
+      "全員の採点がそろうか、ホストが締め切ったら全員へ送る。結果発表のときに戻ってきた人にも送り直す",
+  });
+
 export const ErrorMessage = z
   .object({
     type: z.literal("error"),
@@ -115,6 +212,8 @@ export const ServerMessage = z
     WelcomeMessage,
     RoomMessage,
     RoundMessage,
+    ProgressMessage,
+    ResultsMessage,
     ErrorMessage,
   ])
   .meta({
@@ -125,6 +224,8 @@ export const ServerMessage = z
         welcome: "#/components/schemas/WelcomeMessage",
         room: "#/components/schemas/RoomMessage",
         round: "#/components/schemas/RoundMessage",
+        progress: "#/components/schemas/ProgressMessage",
+        results: "#/components/schemas/ResultsMessage",
         error: "#/components/schemas/ErrorMessage",
       },
     },
