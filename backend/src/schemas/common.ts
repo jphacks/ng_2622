@@ -30,6 +30,12 @@ export const PlayerName = z.string().trim().min(1).max(20).meta({
   example: "はなこ",
 });
 
+export const PlayerColor = z.int().min(0).max(0xffffff).meta({
+  ref: "PlayerColor",
+  description: "アバターの色。0xRRGGBB を整数で表す",
+  example: 0x5b5be6,
+});
+
 export const SceneId = z.string().min(1).meta({
   ref: "SceneId",
   description: "シーンの ID（シーンの JSON の id）",
@@ -54,6 +60,10 @@ export const ErrorCode = z
     "not_in_lobby",
     "unknown_scene",
     "server_busy",
+    "not_playing",
+    "already_submitted",
+    "invalid_audio",
+    "not_in_results",
   ])
   .meta({
     ref: "ErrorCode",
@@ -66,6 +76,10 @@ export const ErrorCode = z
       "not_in_lobby: 待合でしかできない操作",
       "unknown_scene: シーンの ID が無い",
       "server_busy: 空いている部屋のコードが無い",
+      "not_playing: ラウンド中でない、ラウンドの番号が違う、またはそのラウンドに参加していない",
+      "already_submitted: このラウンドの音声はもう受け取った",
+      "invalid_audio: 音声が 1 MB までの WAV でない",
+      "not_in_results: 結果発表のときにしかできない操作",
     ].join("\n"),
   });
 
@@ -73,9 +87,18 @@ export const Player = z
   .object({
     id: PlayerId,
     name: PlayerName,
+    color: PlayerColor,
     isHost: z.boolean(),
     connected: z
       .boolean()
       .meta({ description: "false のときは切断中（復帰を待っている）" }),
   })
   .meta({ ref: "Player" });
+
+export const PlayerStatus = z
+  .enum(["talking", "grading", "done", "offline"])
+  .meta({
+    ref: "PlayerStatus",
+    description:
+      "ラウンド中の各自の状態。talking: 話している（音声がまだ届いていない）、grading: 採点中、done: 完了（採点できなかった人も含む）、offline: 切断中",
+  });
