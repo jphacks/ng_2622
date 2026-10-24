@@ -40,6 +40,11 @@ targets:
           - "*.usdz"
           - "*.png"
           - "*.json"
+      # 場面を組み立てる部品（<id>/<version>.usdz と index.json）は assets/parts をフォルダのまま入れる（ios/ には写さない）。
+      # どの部品も 1.usdz なので、平らに並べると名前がぶつかる。アプリの中では parts/<id>/<version>.usdz になる
+      - path: ../assets/parts
+        type: folder
+        buildPhase: resources
     settings:
       base:
         PRODUCT_NAME: NG2622
