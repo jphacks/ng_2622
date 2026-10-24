@@ -27,9 +27,9 @@ biome.json        Biome（TypeScript・JSON などの整形と lint）の設定
 ## はじめに（各メンバーが一度だけ行う）
 
 ```sh
-brew install lefthook gh
+brew install lefthook gh pnpm
 lefthook install
-npm install        # Biome を入れる（commit 時の整形に使う）
+pnpm install       # Biome を入れる（commit 時の整形に使う）
 ```
 
 ## コードの整形
@@ -70,7 +70,7 @@ PR を作成すると（draft は ready for review にしたときに）Discord 
 ## コマンド
 
 ```sh
-npm run format                              # Biome で整形と lint の自動修正（format:check で検査のみ）
+pnpm format                                 # Biome で整形と lint の自動修正（pnpm format:check で検査のみ）
 bash tests/run-tests.sh                     # 検査スクリプトの self-test
 scripts/setup-github-repo.sh --dry-run      # GitHub 設定（ラベル・merge 方式・ruleset）の差分確認
 python3 scripts/ui-spec/build.py            # 画面設計書 docs/design/ui/build/ui-spec.html を生成（要 graphviz・librsvg）

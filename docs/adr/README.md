@@ -38,3 +38,4 @@
 | 2026-10-21 | [話し方と文字起こしは Azure の発音評価、内容・表現と講評は Claude で採点する](./20261021-score-speech-with-azure-and-claude.md) | accepted |
 | 2026-10-21 | [仕様の正本を repo の docs/design/ に置く](./20261021-keep-product-specs-in-docs-design.md) | accepted |
 | 2026-10-23 | [TypeScript は Biome で整形し、commit 時に自動でかける](./20261023-format-with-biome.md) | accepted |
+| 2026-10-24 | [JavaScript の道具は repo 全体で pnpm で入れる](./20261024-use-pnpm-for-javascript-tools.md) | accepted |
