@@ -9,27 +9,31 @@
      python3 scripts/scene/ai_generator.py --serve --port 8790
 
 AI バックエンドの優先順位:
-  1. 環境変数 ANTHROPIC_API_KEY があれば Claude API を使用
-  2. ローカルの Ollama (http://127.0.0.1:11434) が動いていればローカル LLM を使用
-  3. 環境変数 USE_CLAUDE_CLI=1 があれば `~/.local/bin/claude -p` を使用
-  4. キー無し・オフラインでも即座（約 2 秒）に動く自然言語シーン合成エンジン（バイオーム・個数・色・配置をプロンプトから自動構築）
+  1. 環境変数または .env / backend/.dev.vars の ANTHROPIC_API_KEY で Claude API を使用
+  2. ローカルの Ollama (http://127.0.0.1:11434、既定モデル qwen2.5-coder:7b。無料) を使用
+  3. ローカルの Claude Code CLI (`~/.local/bin/claude -p`) を使用
+  4. キー無し・オフラインでも即座（約 2 秒）に動く高ディテール自然言語シーン合成エンジン
 """
 from __future__ import annotations
 
 import argparse
 import hashlib
 import json
-import math
 import os
-import random
 import re
 import shutil
 import subprocess
 import sys
 import time
+import urllib.error
 import urllib.request
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from object_spec import (  # noqa: E402
+    BIOMES, COLORS, agent_schema, arrange_groups, filter_by_prompt, validate_objects,
+)
 
 REPO = Path(__file__).resolve().parents[2]
 SCENE_SCRIPTS_DIR = REPO / "scripts" / "scene"
@@ -59,6 +63,20 @@ def find_blender() -> str:
     )
 
 
+def find_claude_cli() -> str | None:
+    """ローカルの Claude Code CLI を探す。"""
+    if os.environ.get("DISABLE_CLAUDE_CLI") == "1":
+        return None
+    for candidate in (
+        os.environ.get("CLAUDE_BIN"),
+        shutil.which("claude"),
+        str(Path.home() / ".local" / "bin" / "claude"),
+    ):
+        if candidate and Path(candidate).exists():
+            return str(candidate)
+    return None
+
+
 def count_in_prompt(low: str, keywords: tuple[str, ...], default_if_present: int = 1) -> int:
     """プロンプト内のキーワードと直前の数詞（例: 'three dogs', '2 cars'）から個数を返す。"""
     for kw in keywords:
@@ -70,7 +88,6 @@ def count_in_prompt(low: str, keywords: tuple[str, ...], default_if_present: int
                 return max(1, min(8, int(tok)))
             return WORD_NUMS.get(tok, default_if_present)
         if re.search(rf"\b{re.escape(kw)}s?\b", low):
-            # 複数形なら 2 個、単数形なら default_if_present
             if re.search(rf"\b{re.escape(kw)}s\b", low) and not kw.endswith("s"):
                 return max(2, default_if_present)
             return default_if_present
@@ -81,10 +98,9 @@ def parse_prompt_to_scene_spec(prompt: str) -> dict:
     """プロンプトの自然言語からバイオーム（場所・季節・時間帯）と登場オブジェクトの種類・個数を抽出する。"""
     low = prompt.lower()
 
-    # 1. バイオーム（舞台）の判定
     if any(w in low for w in ("beach", "ocean", "sea", "island", "coast", "surf", "tropical", "海", "ビーチ", "砂浜")):
         biome = "beach"
-    elif any(w in low for w in ("classroom", "school", "room", "kitchen", "office", "indoor", "study", "教室", "部屋", "室内", "台所")):
+    elif any(w in low for w in ("classroom", "school", "room", "kitchen", "office", "indoor", "study", "cafe", "coffee", "shop", "教室", "部屋", "室内", "台所", "カフェ")):
         biome = "indoor"
     elif any(w in low for w in ("city", "street", "station", "road", "town", "crosswalk", "downtown", "駅", "街", "道路", "都会")):
         biome = "city"
@@ -99,7 +115,6 @@ def parse_prompt_to_scene_spec(prompt: str) -> dict:
 
     is_night = any(w in low for w in ("night", "evening", "dark", "midnight", "夜"))
 
-    # 特定種類の木（桜・松・ヤシ）を数えたあと、一般の「tree」と二重カウントしないよう除外した文字列を作る
     cherry_count = count_in_prompt(low, ("cherry", "blossom", "sakura", "桜"))
     pine_count = count_in_prompt(low, ("pine", "fir", "christmas tree", "松", "針葉樹"))
     palm_count = count_in_prompt(low, ("palm", "coconut", "ヤシ"))
@@ -109,7 +124,6 @@ def parse_prompt_to_scene_spec(prompt: str) -> dict:
         low,
     )
 
-    # 2. 各オブジェクトの個数をプロンプトから抽出
     spec = {
         "biome": biome,
         "is_night": is_night,
@@ -143,7 +157,6 @@ def parse_prompt_to_scene_spec(prompt: str) -> dict:
         ),
     }
 
-    # 3. バイオームごとの自然なデフォルト補完（プロンプトで指定されなかった背景要素を少し足す）
     total_props = sum(
         v for k, v in spec.items() if k not in ("biome", "is_night") and isinstance(v, int)
     )
@@ -183,12 +196,20 @@ def parse_prompt_to_scene_spec(prompt: str) -> dict:
         if spec["rocks"] == 0:
             spec["rocks"] = 3
     else:
-        # park / autumn
         if total_props == 0:
             spec["trees"] = 2
+            spec["cherry_trees"] = 1
+            spec["pond"] = 1
             spec["bench"] = 1
+            spec["lamp"] = 1
             spec["dog"] = 1
             spec["people"] = 1
+        else:
+            # 公園・秋でも花や岩・ベンチ・街灯を少し補完して華やかにする
+            if spec["flowers"] == 0:
+                spec["flowers"] = 3
+            if spec["rocks"] == 0:
+                spec["rocks"] = 2
 
     return spec
 
@@ -208,127 +229,228 @@ def load_anthropic_api_key() -> str | None:
     return None
 
 
-def call_claude_for_spec(prompt: str, base_spec: dict, api_key: str) -> dict | None:
-    """ANTHROPIC_API_KEY があるとき、Claude API でプロンプトから Scene Spec JSON を抽出する。"""
+AGENT_TRIES = 3
+BIOME_NAMES = BIOMES
+
+
+def _build_agent_prompt(prompt: str, base_spec: dict, errors: list[str] | None = None) -> str:
+    """Claude / Ollama に渡すプロンプト。Blender のコードは書かせず、決まった物の一覧で返してもらう。"""
+    text = (
+        "You arrange a small 3D diorama for a speaking game. Return ONLY one JSON object. No prose, no code.\n"
+        f"Scene description from the host: {prompt!r}\n"
+        "The diorama is 8 m by 8 m. The floor is at z=0. x and y are metres from the centre, in [-3.0, 3.0]. "
+        "Negative y is the front (toward the viewer), positive y is the back.\n"
+        f"biome must be one of: {', '.join(BIOME_NAMES)}.\n"
+        "List 6 to 20 objects that match the description. Use only these object types:\n"
+        "- table: w, d (metres), color\n"
+        "- chair: rot, color\n"
+        "- bookshelf: w, color\n"
+        "- blackboard: w, h (metres), a board on legs\n"
+        "- lamp, plant, bench, bin, box (w, d, h, color), ball (w, color), umbrella (color), book_stack\n"
+        "- person: pose (sit, stand, walk, point, raise_hand, phone), outfit "
+        "{skin: light|medium|tan|dark, hair: black|brown|gold|grey|red, hair_style: short|bun|long, "
+        "skirt: true|false, top: <color>, bottom: <color>, shoe: brown|white|black}\n"
+        "Use only objects that the description names. Do not add anything extra. "
+        "If the description says there are no people, use no person objects at all.\n"
+        "If the description has tables with people, the tables and seats are placed for you: "
+        "choose the other objects and the outfits only.\n"
+        f"Colors: {', '.join(COLORS)}.\n"
+        "Output format:\n"
+        '{"name": "short title", "biome": "indoor", "elements": ["4 to 8 short English phrases"], '
+        '"objects": [{"type": "table", "x": 0, "y": 0, "w": 1.5, "d": 0.8, "color": "wood"}, '
+        '{"type": "person", "x": -0.4, "y": -0.75, "pose": "sit", "outfit": {"skin": "medium", "hair": "black", '
+        '"hair_style": "bun", "top": "blue", "bottom": "navy", "shoe": "brown"}}]}'
+    )
+    if errors:
+        text += "\nYour previous answer had these problems. Fix them: " + "; ".join(errors[:6])
+    return text
+
+
+def _extract_json(text: str) -> dict | None:
+    """応答から JSON のオブジェクトを取り出す（```json のかこみも外す）。"""
+    m = re.search(r"\{.*\}", text, re.DOTALL)
+    if not m:
+        return None
+    try:
+        parsed = json.loads(m.group(0))
+    except Exception:
+        return None
+    return parsed if isinstance(parsed, dict) else None
+
+
+def _check_agent(text: str, base_spec: dict, prompt: str) -> tuple[dict | None, list[str]]:
+    """応答を検査する。使える物が無ければ (None, 問題の一覧) を返し、再依頼に使う。"""
+    parsed = _extract_json(text)
+    if parsed is None:
+        return None, ["the answer was not one JSON object"]
+    objects, errors = validate_objects(parsed.get("objects"))
+    if not objects:
+        return None, errors or ["the objects list is empty"]
+    objects = filter_by_prompt(objects, prompt)
+    if not objects:
+        return None, ["no object in the answer is named in the description"]
+    objects = arrange_groups(objects, prompt)
+    spec = dict(base_spec)
+    if parsed.get("biome") in BIOME_NAMES:
+        spec["biome"] = parsed["biome"]
+    name = parsed.get("name")
+    raw_elements = parsed.get("elements")
+    elements = [str(e) for e in raw_elements if str(e).strip()] if isinstance(raw_elements, list) else []
+    return {
+        "name": str(name) if name else None,
+        "spec": spec,
+        "elements": elements or None,
+        "objects": objects,
+    }, errors
+
+
+def _run_agent(prompt: str, base_spec: dict, ask, label: str) -> dict | None:
+    """AI に頼み、検査に通るまで最大 AGENT_TRIES 回まで直させる。
+    ask が None を返したとき（残高不足・サーバーが無いなど）は、やり直さずに諦める。"""
+    problems: list[str] | None = None
+    for attempt in range(1, AGENT_TRIES + 1):
+        text = ask(_build_agent_prompt(prompt, base_spec, problems))
+        if text is None:
+            return None
+        result, problems = _check_agent(text, base_spec, prompt)
+        if result:
+            print(f"[ai_generator] {label}: {len(result['objects'])} objects (attempt {attempt})", file=sys.stderr)
+            return result
+        print(f"[ai_generator] {label} attempt {attempt} invalid: {problems[:3]}", file=sys.stderr)
+    return None
+
+
+def objects_source(objects: list[dict]) -> str:
+    """生成スクリプトに入れる、物の一覧と組み立ての呼び出し。"""
+    return "OBJECTS = " + repr(objects) + "\n\n\ndef build_custom(root):\n    build_objects(root, OBJECTS)\n"
+
+
+def _ask_claude_api(text: str, api_key: str) -> str | None:
     model = os.environ.get("CLAUDE_MODEL", "claude-haiku-4-5")
-    body = {
-        "model": model,
-        "max_tokens": 1024,
-        "messages": [
-            {
-                "role": "user",
-                "content": (
-                    f"Analyze this 3D scene description spoken by the host: {prompt!r}\n"
-                    f"Update the following Scene Spec JSON with the appropriate biome "
-                    f"('park', 'beach', 'indoor', 'city', 'snow', 'autumn', 'desert'), "
-                    f"is_night (boolean), and integer object counts (0-6) matching the prompt.\n"
-                    f"Return ONLY valid JSON with the exact same keys:\n{json.dumps(base_spec)}"
-                ),
-            }
-        ],
-    }
+    body = {"model": model, "max_tokens": 2048, "messages": [{"role": "user", "content": text}]}
     req = urllib.request.Request(
         "https://api.anthropic.com/v1/messages",
         data=json.dumps(body).encode("utf-8"),
-        headers={
-            "Content-Type": "application/json",
-            "x-api-key": api_key,
-            "anthropic-version": "2023-06-01",
-        },
+        headers={"Content-Type": "application/json", "x-api-key": api_key, "anthropic-version": "2023-06-01"},
         method="POST",
     )
     try:
-        with urllib.request.urlopen(req, timeout=20) as resp:
-            data = json.loads(resp.read().decode("utf-8"))
-        text = data["content"][0]["text"]
-        m = re.search(r"\{.*\}", text, re.DOTALL)
-        if m:
-            parsed = json.loads(m.group(0))
-            if isinstance(parsed, dict) and "biome" in parsed:
-                return {**base_spec, **parsed}
+        with urllib.request.urlopen(req, timeout=25) as resp:
+            return json.loads(resp.read().decode("utf-8"))["content"][0]["text"]
+    except urllib.error.HTTPError as exc:
+        err_body = exc.read().decode("utf-8", errors="ignore") if hasattr(exc, "read") else ""
+        print(f"[ai_generator] Anthropic API HTTP {exc.code}: {err_body[:180]}", file=sys.stderr)
     except Exception as exc:
-        print(f"[ai_generator] Claude API fallback ({exc})", file=sys.stderr)
+        print(f"[ai_generator] Anthropic API error ({exc})", file=sys.stderr)
     return None
 
 
-def call_ollama_for_spec(prompt: str, base_spec: dict) -> dict | None:
-    """ローカルで Ollama が動いていれば、プロンプトから Scene Spec を補強する。"""
-    if os.environ.get("USE_OLLAMA") != "1":
-        return None
+def _ask_ollama(text: str) -> str | None:
+    model = os.environ.get("OLLAMA_MODEL", "qwen2.5-coder:7b")
+    # 形は JSON スキーマで縛り、同じ説明からは毎回同じ答えが出るように温度 0 と seed を固定する
+    body = {"model": model, "prompt": text, "format": agent_schema(), "stream": False,
+            "options": {"temperature": 0, "seed": 7, "num_predict": 3000}}
+    req = urllib.request.Request(
+        "http://127.0.0.1:11434/api/generate",
+        data=json.dumps(body).encode("utf-8"),
+        headers={"Content-Type": "application/json"},
+        method="POST",
+    )
     try:
-        req = urllib.request.Request("http://127.0.0.1:11434/api/tags", method="GET")
-        with urllib.request.urlopen(req, timeout=1.0) as resp:
-            tags = json.loads(resp.read().decode("utf-8")).get("models", [])
-        if not tags:
-            return None
-        model_name = tags[0]["name"]
-        body = {
-            "model": model_name,
-            "prompt": (
-                f"Extract scene counts from this prompt: {prompt!r}. "
-                f"Base JSON: {json.dumps(base_spec)}. Return updated JSON with same keys."
-            ),
-            "format": "json",
-            "stream": False,
-        }
-        req2 = urllib.request.Request(
-            "http://127.0.0.1:11434/api/generate",
-            data=json.dumps(body).encode("utf-8"),
-            headers={"Content-Type": "application/json"},
-            method="POST",
+        with urllib.request.urlopen(req, timeout=180) as resp:
+            return json.loads(resp.read().decode("utf-8"))["response"]
+    except Exception as exc:
+        print(f"[ai_generator] Ollama fallback ({exc})", file=sys.stderr)
+        return None
+
+
+def _ask_claude_cli(text: str, claude_bin: str) -> str | None:
+    # ANTHROPIC_API_KEY が残高不足のとき claude CLI がそちらを使って失敗するのを防ぐため環境変数から外す
+    env = {k: v for k, v in os.environ.items() if k != "ANTHROPIC_API_KEY"}
+    try:
+        proc = subprocess.run(
+            [claude_bin, "-p", text, "--model", os.environ.get("CLAUDE_CLI_MODEL", "haiku")],
+            env=env, cwd=str(REPO), stdin=subprocess.DEVNULL, capture_output=True, text=True, timeout=35, check=False,
         )
-        with urllib.request.urlopen(req2, timeout=8.0) as resp2:
-            out = json.loads(resp2.read().decode("utf-8"))
-            parsed = json.loads(out["response"])
-            if isinstance(parsed, dict) and "biome" in parsed:
-                return {**base_spec, **parsed}
-    except Exception:
-        pass
-    return None
+    except Exception as exc:
+        print(f"[ai_generator] Claude CLI fallback ({exc})", file=sys.stderr)
+        return None
+    if proc.returncode != 0 or not proc.stdout.strip():
+        print(f"[ai_generator] Claude CLI rc={proc.returncode}: {proc.stderr[:180]}", file=sys.stderr)
+        return None
+    return proc.stdout
+
+
+def call_claude_agent(prompt: str, base_spec: dict, api_key: str | None) -> dict | None:
+    if not api_key:
+        return None
+    return _run_agent(prompt, base_spec, lambda t: _ask_claude_api(t, api_key), "Claude API")
+
+
+def call_ollama_agent(prompt: str, base_spec: dict) -> dict | None:
+    """ローカルの Ollama（無料・オフライン）。DISABLE_OLLAMA=1 で止められる。"""
+    if os.environ.get("DISABLE_OLLAMA") == "1":
+        return None
+    return _run_agent(prompt, base_spec, _ask_ollama, "Ollama")
+
+
+def call_claude_cli(prompt: str, base_spec: dict) -> dict | None:
+    claude_bin = find_claude_cli()
+    if not claude_bin:
+        return None
+    return _run_agent(prompt, base_spec, lambda t: _ask_claude_cli(t, claude_bin), "Claude CLI")
 
 
 def build_procedural_scene(prompt: str, scene_id: str) -> dict:
-    """プロンプトから抽出した Scene Spec に基づき、毎回異なる 3D シーンの Blender スクリプトを生成する。"""
+    """プロンプトから抽出した Scene Spec＋Claude エージェントのカスタム 3D 部品で、高ディテールな Blender スクリプトを生成する。"""
     spec = parse_prompt_to_scene_spec(prompt)
+    custom_python = "def build_custom(root):\n    pass\n"
+    custom_name: str | None = None
+    custom_elements: list[str] | None = None
+
     api_key = load_anthropic_api_key()
-    if api_key:
-        claude_spec = call_claude_for_spec(prompt, spec, api_key)
-        if claude_spec:
-            spec = claude_spec
-    else:
-        ollama_spec = call_ollama_for_spec(prompt, spec)
-        if ollama_spec:
-            spec = ollama_spec
+    agent_result = (
+        call_claude_agent(prompt, spec, api_key)
+        or call_ollama_agent(prompt, spec)
+        or call_claude_cli(prompt, spec)
+    )
+    if agent_result:
+        spec = agent_result["spec"]
+        custom_python = objects_source(agent_result["objects"])
+        custom_name = agent_result["name"]
+        custom_elements = agent_result["elements"]
 
     seed_val = int(hashlib.sha1(prompt.strip().lower().encode("utf-8")).hexdigest()[:8], 16)
-    biome = spec["biome"]
+    biome = str(spec.get("biome", "park"))
 
-    elements: list[str] = [f"{biome} setting"]
-    for key, label in [
-        ("palm_trees", "palm trees"),
-        ("cherry_trees", "pink cherry blossom trees"),
-        ("pine_trees", "pine trees"),
-        ("trees", "trees"),
-        ("cacti", "green cacti"),
-        ("pond", "a blue pond"),
-        ("bench", "wooden bench"),
-        ("house", "buildings"),
-        ("car", "cars"),
-        ("bus", "a bus"),
-        ("vending", "a vending machine"),
-        ("desk", "desks and chairs"),
-        ("blackboard", "a blackboard on the wall"),
-        ("umbrella", "a beach umbrella"),
-        ("surfboard", "a surfboard"),
-        ("boat", "a boat on the water"),
-        ("snowman", "a snowman"),
-        ("dog", "dog"),
-        ("cat", "cat"),
-        ("ball", "a ball"),
-        ("people", "people in the scene"),
-    ]:
-        if spec.get(key, 0) > 0:
-            elements.append(f"{spec[key]} {label}" if spec[key] > 1 else label)
+    elements: list[str] = custom_elements or [f"{biome} setting"]
+    if not custom_elements:
+        for key, label in [
+            ("palm_trees", "palm trees"),
+            ("cherry_trees", "pink cherry blossom trees"),
+            ("pine_trees", "pine trees"),
+            ("trees", "trees"),
+            ("cacti", "green cacti"),
+            ("pond", "a blue pond with lily pads"),
+            ("bench", "wooden slatted bench"),
+            ("house", "buildings"),
+            ("car", "cars"),
+            ("bus", "a bus"),
+            ("vending", "a vending machine"),
+            ("desk", "desks and chairs"),
+            ("blackboard", "a blackboard on the wall"),
+            ("umbrella", "a beach umbrella"),
+            ("surfboard", "a surfboard"),
+            ("boat", "a boat on the water"),
+            ("snowman", "a snowman"),
+            ("dog", "a Shiba Inu dog"),
+            ("cat", "a cat"),
+            ("ball", "a ball"),
+            ("people", "people in the scene"),
+        ]:
+            if int(spec.get(key, 0) or 0) > 0:
+                cnt = int(spec[key])
+                elements.append(f"{cnt} {label}" if cnt > 1 else label)
 
     spec_json_repr = repr(spec)
 
@@ -339,142 +461,8 @@ import bmesh, bpy
 from mathutils import Euler, Matrix, Vector, noise
 
 sys.path.insert(0, str({str(SCENE_SCRIPTS_DIR)!r}))
-try:
-    from common import HALF, SIZE, Part, material, materials, person, run
-except ImportError:
-    SIZE = 8.0
-    HALF = SIZE / 2
-
-    def _srgb(hex_color: str):
-        def lin(c: float) -> float:
-            return c / 12.92 if c <= 0.04045 else ((c + 0.055) / 1.055) ** 2.4
-        h = hex_color.lstrip("#")
-        return tuple(lin(int(h[i:i + 2], 16) / 255) for i in (0, 2, 4))
-
-    def material(name: str, color: str, rough: float = 0.6, metal: float = 0.0,
-                 emit: float = 0.0, coat: float = 0.0, ior: float | None = None):
-        mat = bpy.data.materials.get(name)
-        if mat:
-            return mat
-        mat = bpy.data.materials.new(name)
-        mat.use_nodes = True
-        bsdf = mat.node_tree.nodes["Principled BSDF"]
-        rgb = _srgb(color)
-        bsdf.inputs["Base Color"].default_value = (*rgb, 1.0)
-        bsdf.inputs["Roughness"].default_value = rough
-        bsdf.inputs["Metallic"].default_value = metal
-        if emit:
-            bsdf.inputs["Emission Color"].default_value = (*rgb, 1.0)
-            bsdf.inputs["Emission Strength"].default_value = emit
-        mat.diffuse_color = (*rgb, 1.0)
-        return mat
-
-    def materials(spec_dict: dict) -> dict:
-        return {{n: material(n, c, r) for n, (c, r) in spec_dict.items()}}
-
-    class Part:
-        _tmp_mesh = None
-        def __init__(self, name: str):
-            self.name = name
-            self.bm = bmesh.new()
-            self.mats = []
-        def _merge(self, tb, mat, smooth: bool):
-            if mat not in self.mats:
-                self.mats.append(mat)
-            idx = self.mats.index(mat)
-            for f in tb.faces:
-                f.material_index = idx
-                f.smooth = smooth and len(f.verts) <= 4
-            if Part._tmp_mesh is None:
-                Part._tmp_mesh = bpy.data.meshes.new("_tmp")
-            tb.to_mesh(Part._tmp_mesh)
-            tb.free()
-            self.bm.from_mesh(Part._tmp_mesh)
-        def box(self, size, loc, mat, rot=(0, 0, 0), bevel=0.0, segments=3):
-            tb = bmesh.new()
-            bmesh.ops.create_cube(tb, size=1.0, matrix=Matrix.LocRotScale(Vector(loc), Euler(rot), Vector(size)))
-            if bevel:
-                bmesh.ops.bevel(tb, geom=list(tb.edges), offset=bevel, segments=segments, profile=0.5, affect="EDGES")
-            self._merge(tb, mat, False)
-        def cyl(self, r1, r2, depth, loc, mat, rot=(0, 0, 0), segs=16, smooth=True):
-            tb = bmesh.new()
-            bmesh.ops.create_cone(tb, cap_ends=True, segments=segs, radius1=r1, radius2=r2, depth=depth,
-                                  matrix=Matrix.LocRotScale(Vector(loc), Euler(rot), Vector((1, 1, 1))))
-            self._merge(tb, mat, smooth)
-        def sphere(self, r, loc, mat, scale=(1, 1, 1), rot=(0, 0, 0), segs=20, smooth=True):
-            tb = bmesh.new()
-            bmesh.ops.create_uvsphere(tb, u_segments=segs, v_segments=max(8, segs * 2 // 3), radius=1.0,
-                                      matrix=Matrix.LocRotScale(Vector(loc), Euler(rot), Vector(scale) * r))
-            self._merge(tb, mat, smooth)
-        def blob(self, r, loc, mat, scale=(1, 1, 1), bumpy=0.15, subdiv=2, seed=0.0, smooth=True):
-            tb = bmesh.new()
-            center = Vector(loc)
-            bmesh.ops.create_icosphere(tb, subdivisions=subdiv, radius=1.0,
-                                       matrix=Matrix.LocRotScale(center, Euler((0, 0, 0)), Vector(scale) * r))
-            offset = Vector((seed, seed * 1.7, seed * 0.3))
-            for v in tb.verts:
-                d = v.co - center
-                v.co += d.normalized() * r * bumpy * noise.noise(d / r * 1.8 + offset)
-            self._merge(tb, mat, smooth)
-        def slab(self, size, z_top, thickness, radius, mat, segments=8):
-            tb = bmesh.new()
-            bmesh.ops.create_cube(tb, size=1.0, matrix=Matrix.LocRotScale(
-                Vector((0, 0, z_top - thickness / 2)), Euler((0, 0, 0)), Vector((size, size, thickness))))
-            vertical = [e for e in tb.edges if abs(e.verts[0].co.z - e.verts[1].co.z) > 1e-4]
-            bmesh.ops.bevel(tb, geom=vertical, offset=radius, segments=segments, profile=0.5, affect="EDGES")
-            self._merge(tb, mat, False)
-        def limb(self, a, b, r1, r2, mat, segs=10):
-            a, b = Vector(a), Vector(b)
-            d = b - a
-            tb = bmesh.new()
-            bmesh.ops.create_cone(tb, cap_ends=True, segments=segs, radius1=r1, radius2=r2, depth=d.length,
-                                  matrix=Matrix.LocRotScale((a + b) / 2, d.to_track_quat("Z", "Y"), Vector((1, 1, 1))))
-            self._merge(tb, mat, True)
-        def finish(self, parent, loc=(0, 0, 0), rot_z=0.0, scale=1.0):
-            mesh = bpy.data.meshes.new(self.name)
-            self.bm.normal_update()
-            self.bm.to_mesh(mesh)
-            self.bm.free()
-            for m in self.mats:
-                mesh.materials.append(m)
-            obj = bpy.data.objects.new(self.name, mesh)
-            bpy.context.scene.collection.objects.link(obj)
-            obj.parent = parent
-            obj.location = (*loc, 0) if len(loc) == 2 else loc
-            obj.rotation_euler = (0, 0, rot_z)
-            obj.scale = (scale, scale, scale)
-            return obj
-
-    def person(root, name, loc, rot_z, outfit: dict, pose="stand", scale=1.0, point_side=1):
-        p = Part(name)
-        p.cyl(0.16, 0.18, 0.52, (0, 0, 1.05), outfit["top"], segs=12)
-        p.sphere(0.15, (0, 0, 1.48), outfit["skin"])
-        p.sphere(0.158, (0, 0.03, 1.52), outfit["hair"], scale=(1, 1, 0.82))
-        for sx in (-1, 1):
-            p.limb((sx * 0.09, 0, 0.8), (sx * 0.09, 0, 0.07), 0.07, 0.055, outfit["bottom"])
-            p.limb((sx * 0.2, 0, 1.26), (sx * 0.25, 0, 0.78), 0.055, 0.045, outfit["skin"])
-        return p.finish(root, loc=(*loc, 0), rot_z=rot_z, scale=scale)
-
-    def run(scene_id: str, build_fn, lens: float = 46):
-        argv = sys.argv[sys.argv.index("--") + 1:] if "--" in sys.argv else []
-        ap = argparse.ArgumentParser()
-        ap.add_argument("--out", type=Path, default=Path("."))
-        ap.add_argument("--no-render", action="store_true")
-        args, _ = ap.parse_known_args(argv)
-        out = args.out.resolve()
-        out.mkdir(parents=True, exist_ok=True)
-        bpy.ops.wm.read_factory_settings(use_empty=True)
-        build_fn()
-        usdz = out / f"{{scene_id}}.usdz"
-        bpy.ops.wm.usd_export(
-            filepath=str(usdz),
-            export_materials=True,
-            generate_preview_surface=True,
-            export_animation=False,
-            convert_orientation=True,
-            export_global_forward_selection="NEGATIVE_Z",
-            export_global_up_selection="Y",
-        )
+from common import HALF, SIZE, Part, material, materials, person, run
+from object_kit import build_objects
 
 SCENE_ID = {scene_id!r}
 SPEC = {spec_json_repr}
@@ -483,10 +471,10 @@ rng = random.Random({seed_val})
 
 def pick_spot(used: list[tuple[float, float, float]], r: float, x_range=(-3.1, 3.1), y_range=(-3.1, 3.1)) -> tuple[float, float]:
     """他のオブジェクトと重ならない座標を探す。"""
-    for _ in range(60):
+    for _ in range(80):
         x = rng.uniform(*x_range)
         y = rng.uniform(*y_range)
-        if all(math.hypot(x - ux, y - uy) >= (r + ur + 0.25) for ux, uy, ur in used):
+        if all(math.hypot(x - ux, y - uy) >= (r + ur + 0.22) for ux, uy, ur in used):
             used.append((x, y, r))
             return x, y
     x, y = rng.uniform(*x_range), rng.uniform(*y_range)
@@ -494,11 +482,14 @@ def pick_spot(used: list[tuple[float, float, float]], r: float, x_range=(-3.1, 3
     return x, y
 
 
+{custom_python}
+
+
 def build():
     root = bpy.data.objects.new(SCENE_ID, None)
     bpy.context.scene.collection.objects.link(root)
-    biome = SPEC["biome"]
-    is_night = SPEC["is_night"]
+    biome = str(SPEC.get("biome", "park"))
+    is_night = bool(SPEC.get("is_night", False))
 
     ground_colors = {{
         "park": "#355e3b" if is_night else "#6dbb45",
@@ -512,26 +503,34 @@ def build():
 
     M = materials({{
         "ground": (ground_colors.get(biome, "#6dbb45"), 0.88),
+        "grass_dark": ("#4a9530" if biome != "autumn" else "#b8732a", 0.9),
+        "grass_light": ("#93d35c" if biome != "autumn" else "#e8b04e", 0.9),
         "soil": ("#7a4a2a", 0.95),
         "soil_dark": ("#4f2f1a", 0.95),
         "sand": ("#f4dc9c", 0.85),
         "asphalt": ("#4a4c52", 0.9),
         "stripe": ("#f4f4f0", 0.7),
+        "stone_a": ("#cbbfa8", 0.75),
+        "stone_b": ("#b2a58f", 0.8),
         "wall": ("#f3ead8", 0.85),
         "board": ("#2f5e45", 0.85),
         "bark": ("#6b4428", 0.9),
         "leaf": ("#e06a2b" if biome == "autumn" else "#3f9a3a", 0.7),
         "leaf2": ("#f29b38" if biome == "autumn" else "#5cb848", 0.7),
+        "leaf3": ("#c44d1c" if biome == "autumn" else "#2f7d33", 0.7),
         "pine": ("#2d5a3c", 0.75),
         "snow": ("#f8fbff", 0.6),
         "blossom": ("#f7b6c8", 0.6),
         "blossom2": ("#f093b0", 0.6),
+        "lily": ("#4c9c3b", 0.5),
         "cactus": ("#3b8c47", 0.7),
         "wood": ("#a8683a", 0.55),
+        "fence": ("#c98e5a", 0.6),
         "desk": ("#d9a868", 0.45),
-        "iron": ("#2b2b30", 0.4),
         "rock": ("#8d8d94", 0.8),
+        "rock_dark": ("#6a6a72", 0.85),
         "dog": ("#e0893a", 0.7),
+        "dog_white": ("#f6efe4", 0.7),
         "cat": ("#f2994a", 0.7),
         "white": ("#ffffff", 0.6),
         "dark": ("#2a211c", 0.3),
@@ -539,6 +538,8 @@ def build():
         "blue": ("#3a7bd5", 0.45),
         "yellow": ("#ffc93a", 0.4),
         "pink": ("#ff8fb3", 0.55),
+        "purple": ("#b48cff", 0.6),
+        "stem": ("#4e9a33", 0.7),
         "building_a": ("#f4efe4", 0.8),
         "building_b": ("#d9c3b0", 0.8),
         "roof_red": ("#c94a3f", 0.6),
@@ -547,38 +548,73 @@ def build():
         "hair_a": ("#3a2618", 0.6),
         "hair_b": ("#2a1f1a", 0.6),
     }})
-    M["water"] = material("water", "#1f88d8", 0.2, ior=1.12)
+    M["iron"] = material("iron", "#2b2b30", 0.35, metal=0.8)
+    M["water"] = material("water", "#1f78c8", 0.25, ior=1.12)
     M["glass"] = material("glass", "#bfe3ff", 0.15, emit=0.5)
     M["lamp_glass"] = material("lamp_glass", "#ffe7a8", 0.2, emit=4.0)
 
     used: list[tuple[float, float, float]] = []
 
-    # ---------- 1. バイオーム別の地面・背景 ----------
-    base = Part("ground_base")
-    base.slab(SIZE, 0.0, 0.25, 0.7, M["ground"])
-    base.slab(SIZE - 0.1, -0.25, 0.75, 0.65, M["soil"])
-    base.slab(SIZE - 0.4, -1.0, 0.18, 0.55, M["soil_dark"])
-
-    if biome == "beach":
-        # 手前半分を青い海と白い波にする
-        base.box((SIZE - 0.3, 3.2, 0.08), (0, -2.2, 0.02), M["water"], bevel=0.03)
-        base.box((SIZE - 0.4, 0.22, 0.05), (0, -0.55, 0.03), M["white"], bevel=0.02)
-        used.append((0, -2.2, 1.5))
-    elif biome == "city":
-        # 手前にアスファルトの道路と横断歩道
-        base.box((SIZE - 0.4, 1.6, 0.03), (0, -2.2, 0.015), M["asphalt"])
-        for k in range(7):
-            base.box((0.3, 1.2, 0.015), (-1.5 + k * 0.5, -2.2, 0.032), M["stripe"])
-    elif biome == "indoor":
-        # 奥と左の壁＋窓
-        base.box((SIZE, 0.25, 3.0), (0, HALF - 0.125, 1.5), M["wall"])
-        base.box((0.25, SIZE - 0.25, 3.0), (-HALF + 0.125, -0.125, 1.5), M["wall"])
-        for wy in (-1.5, 0.8):
-            base.box((0.08, 1.4, 1.3), (-HALF + 0.26, wy, 1.7), M["glass"])
+    # ---------- 1. 島の土台（3 層スラブ＋崖側面の岩） ----------
+    base = Part("island")
+    base.slab(SIZE, 0.0, 0.25, 1.0, M["ground"])
+    base.slab(SIZE - 0.08, -0.25, 0.85, 0.96, M["soil"])
+    base.slab(SIZE - 0.4, -1.1, 0.18, 0.8, M["soil_dark"])
     base.finish(root)
 
-    # ---------- 2. 黒板（室内） ----------
-    if SPEC["blackboard"] > 0:
+    cliff_rocks = Part("island_rocks")
+    for _ in range(24):
+        side = rng.choice(["x+", "x-", "y+", "y-"])
+        a = rng.uniform(-HALF + 1.2, HALF - 1.2)
+        z = rng.uniform(-1.0, -0.45)
+        d = HALF - 0.02
+        loc = {{"x+": (d, a, z), "x-": (-d, a, z), "y+": (a, d, z), "y-": (a, -d, z)}}[side]
+        cliff_rocks.blob(rng.uniform(0.14, 0.3), loc, rng.choice([M["rock"], M["rock_dark"]]),
+                         scale=(1, 1, 0.75), bumpy=0.3, subdiv=2, seed=rng.random() * 10, smooth=False)
+    cliff_rocks.finish(root)
+
+    if biome == "beach":
+        sea = Part("sea")
+        sea.box((SIZE - 0.3, 3.2, 0.08), (0, -2.2, 0.02), M["water"], bevel=0.03)
+        sea.box((SIZE - 0.4, 0.22, 0.05), (0, -0.55, 0.03), M["white"], bevel=0.02)
+        sea.finish(root)
+        used.append((0, -2.2, 1.5))
+    elif biome == "city":
+        road = Part("road")
+        road.box((SIZE - 0.4, 1.6, 0.03), (0, -2.2, 0.015), M["asphalt"])
+        for k in range(7):
+            road.box((0.3, 1.2, 0.015), (-1.5 + k * 0.5, -2.2, 0.032), M["stripe"])
+        road.finish(root)
+    elif biome == "indoor":
+        walls = Part("walls")
+        walls.box((SIZE, 0.25, 3.0), (0, HALF - 0.125, 1.5), M["wall"])
+        walls.box((0.25, SIZE - 0.25, 3.0), (-HALF + 0.125, -0.125, 1.5), M["wall"])
+        for wy in (-1.5, 0.8):
+            walls.box((0.08, 1.4, 1.3), (-HALF + 0.26, wy, 1.7), M["glass"])
+        walls.finish(root)
+    elif biome in ("park", "autumn"):
+        # S 字の飛び石の小道
+        path = Part("stepping_stones")
+        for i in range(13):
+            t = i / 12
+            py = -HALF + 0.45 + (SIZE - 0.9) * t
+            px = 0.5 * math.sin(t * math.pi * 2.0) + (0.14 if i % 2 else -0.14)
+            r = rng.uniform(0.21, 0.27)
+            path.cyl(r, r * 0.92, 0.06, (px, py, 0.03), M["stone_a"] if i % 2 else M["stone_b"], segs=12)
+            used.append((px, py, 0.35))
+        path.finish(root)
+
+    # ---------- 2. AI エージェントが書いたカスタム 3D オブジェクト ----------
+    try:
+        build_custom(root)
+        for obj in list(root.children):
+            if obj.name not in ("island", "island_rocks", "sea", "road", "walls", "stepping_stones"):
+                used.append((obj.location.x, obj.location.y, 0.85))
+    except Exception as exc:
+        print(f"[ai_generator] custom_python warning: {{exc}}", file=sys.stderr)
+
+    # ---------- 3. 黒板（室内） ----------
+    if int(SPEC.get("blackboard", 0) or 0) > 0:
         bb = Part("blackboard")
         y = HALF - 0.26
         bb.box((4.0, 0.08, 1.5), (0.2, y, 1.65), M["wood"], bevel=0.02)
@@ -586,8 +622,8 @@ def build():
         bb.finish(root)
         used.append((0.2, y - 0.4, 1.2))
 
-    # ---------- 3. 建物・家 ----------
-    for i in range(SPEC["house"]):
+    # ---------- 4. 建物・家 ----------
+    for i in range(int(SPEC.get("house", 0) or 0)):
         hx, hy = pick_spot(used, 1.3, (-2.6, 2.6), (1.4, 2.7) if biome == "city" else (-2.2, 2.4))
         h = Part(f"house_{{i}}")
         w, d, z_h = rng.uniform(1.8, 2.4), rng.uniform(1.4, 1.8), rng.uniform(1.8, 2.6)
@@ -599,54 +635,77 @@ def build():
             h.box((0.42, 0.08, 0.45), (wx, -d / 2 - 0.02, z_h * 0.65), M["glass"])
         h.finish(root, loc=(hx, hy, 0))
 
-    # ---------- 4. 池 ----------
-    for i in range(SPEC["pond"]):
-        px, py = pick_spot(used, 1.35, (-2.2, 2.2), (-2.0, 2.0))
+    # ---------- 5. 池（岩の縁＋睡蓮の葉と花） ----------
+    for i in range(int(SPEC.get("pond", 0) or 0)):
+        px, py = pick_spot(used, 1.35, (-2.2, 2.2), (-2.0, 2.2))
         pond = Part(f"pond_{{i}}")
-        pr = rng.uniform(1.05, 1.35)
-        pond.cyl(pr, pr, 0.06, (0, 0, 0.02), M["water"], segs=32, smooth=False)
-        for k in range(14):
-            a = k / 14 * math.tau
-            pond.blob(0.16, (math.cos(a) * (pr + 0.06), math.sin(a) * (pr + 0.06), 0.05), M["rock"], scale=(1, 1, 0.6), seed=k)
+        pr = rng.uniform(1.0, 1.25)
+        pond.cyl(pr, pr, 0.05, (0, 0, 0.02), M["water"], segs=36, smooth=False)
+        for k in range(18):
+            a = k / 18 * math.tau + rng.uniform(-0.08, 0.08)
+            rr = pr + rng.uniform(0.04, 0.14)
+            pond.blob(rng.uniform(0.13, 0.2), (math.cos(a) * rr, math.sin(a) * rr, 0.05),
+                      rng.choice([M["rock"], M["rock_dark"]]), scale=(1, 1, 0.6), bumpy=0.25, subdiv=2, seed=k, smooth=False)
+        for dx, dy, s in [(-0.28, 0.18, 0.19), (0.24, -0.15, 0.15), (0.05, 0.32, 0.12)]:
+            pond.cyl(s, s, 0.015, (dx, dy, 0.055), M["lily"], segs=14, smooth=False)
+        pond.sphere(0.045, (-0.28, 0.18, 0.08), M["pink"], segs=10)
         pond.finish(root, loc=(px, py, 0))
 
-    # ---------- 5. 木（桜・針葉樹・ヤシの木・広葉樹・サボテン） ----------
-    for i in range(SPEC["cherry_trees"]):
-        tx, ty = pick_spot(used, 0.95, (-3.1, 3.1), (-2.8, 3.0))
-        t = Part(f"cherry_tree_{{i}}")
-        t.cyl(0.18, 0.11, 1.5, (0, 0, 0.75), M["bark"], segs=10)
-        for dx, dy, dz, r in [(0, 0, 1.7, 0.95), (-0.45, 0.2, 1.45, 0.68), (0.45, -0.2, 1.5, 0.65)]:
-            t.blob(r, (dx, dy, dz), M["blossom"] if (i + int(r * 10)) % 2 else M["blossom2"], scale=(1, 1, 0.82), seed=i * 5 + r)
-        t.finish(root, loc=(tx, ty, 0))
+    # ---------- 6. 木（枝付き広葉樹・花びら付き桜・雪付き針葉樹・ヤシ・サボテン） ----------
+    def make_detailed_tree(name: str, loc: tuple[float, float], blossom: bool):
+        t = Part(name)
+        height = rng.uniform(2.7, 3.4)
+        crown = rng.uniform(0.85, 1.05)
+        trunk_h = height * 0.5
+        t.cyl(0.2, 0.11, trunk_h, (0, 0, trunk_h / 2), M["bark"], segs=10)
+        t.cyl(0.07, 0.04, 0.8, (0.22, 0, trunk_h * 0.85), M["bark"], rot=(0, 0.8, 0), segs=8)
+        t.cyl(0.06, 0.035, 0.7, (-0.18, 0.05, trunk_h * 0.9), M["bark"], rot=(0.2, -0.7, 0), segs=8)
+        mats = [M["blossom"], M["blossom2"], M["blossom"]] if blossom else [M["leaf"], M["leaf2"], M["leaf3"]]
+        cz = trunk_h + 0.75 * crown
+        blobs = [
+            (0, 0, cz, 0.95), (0.6, 0.2, cz - 0.25, 0.7), (-0.55, -0.15, cz - 0.2, 0.72),
+            (0.1, -0.5, cz - 0.1, 0.65), (-0.1, 0.5, cz + 0.05, 0.68), (0.15, 0.05, cz + 0.6, 0.62),
+        ]
+        for idx, (bx, by, bz, br) in enumerate(blobs):
+            t.blob(br * crown, (bx * crown, by * crown, bz), mats[idx % 3], bumpy=0.18, subdiv=3, seed=idx * 3.1 + loc[0])
+        t.finish(root, loc=(*loc, 0))
+        if blossom:
+            petals = Part(name + "_petals")
+            for _ in range(24):
+                a, d = rng.random() * math.tau, rng.uniform(0.4, 1.35)
+                petals.cyl(0.045, 0.045, 0.01, (loc[0] + math.cos(a) * d, loc[1] + math.sin(a) * d, 0.01),
+                           rng.choice([M["blossom"], M["blossom2"]]), segs=6, smooth=False)
+            petals.finish(root)
 
-    for i in range(SPEC["pine_trees"]):
+    for i in range(int(SPEC.get("cherry_trees", 0) or 0)):
+        tx, ty = pick_spot(used, 0.95, (-3.1, 3.1), (-2.8, 3.0))
+        make_detailed_tree(f"cherry_tree_{{i}}", (tx, ty), blossom=True)
+
+    for i in range(int(SPEC.get("trees", 0) or 0)):
+        tx, ty = pick_spot(used, 0.95, (-3.1, 3.1), (-2.8, 3.0))
+        make_detailed_tree(f"tree_{{i}}", (tx, ty), blossom=False)
+
+    for i in range(int(SPEC.get("pine_trees", 0) or 0)):
         tx, ty = pick_spot(used, 0.85, (-3.1, 3.1), (-2.8, 3.0))
         t = Part(f"pine_tree_{{i}}")
         t.cyl(0.16, 0.1, 1.1, (0, 0, 0.55), M["bark"], segs=10)
-        for layer, (z_base, r_cone, d_cone) in enumerate([(1.2, 1.05, 1.1), (1.85, 0.82, 0.95), (2.4, 0.55, 0.8)]):
+        for z_base, r_cone, d_cone in [(1.2, 1.05, 1.1), (1.85, 0.82, 0.95), (2.4, 0.55, 0.8)]:
             t.cyl(r_cone, 0.05, d_cone, (0, 0, z_base), M["pine"], segs=12)
             if biome == "snow":
                 t.cyl(r_cone * 0.92, 0.04, d_cone * 0.35, (0, 0, z_base + d_cone * 0.3), M["snow"], segs=12)
         t.finish(root, loc=(tx, ty, 0))
 
-    for i in range(SPEC["palm_trees"]):
+    for i in range(int(SPEC.get("palm_trees", 0) or 0)):
         tx, ty = pick_spot(used, 0.85, (-3.0, 3.0), (0.0, 3.0) if biome == "beach" else (-2.8, 2.8))
         t = Part(f"palm_tree_{{i}}")
         t.limb((0, 0, 0), (0.25, -0.15, 2.4), 0.18, 0.1, M["bark"])
         for k in range(6):
             a = k / 6 * math.tau
-            t.box((0.95, 0.28, 0.06), (0.25 + math.cos(a) * 0.55, -0.15 + math.sin(a) * 0.55, 2.35), M["leaf"], rot=(0.25 * math.sin(a), -0.25 * math.cos(a), a), bevel=0.02)
+            t.box((0.95, 0.28, 0.06), (0.25 + math.cos(a) * 0.55, -0.15 + math.sin(a) * 0.55, 2.35),
+                  M["leaf"], rot=(0.25 * math.sin(a), -0.25 * math.cos(a), a), bevel=0.02)
         t.finish(root, loc=(tx, ty, 0))
 
-    for i in range(SPEC["trees"]):
-        tx, ty = pick_spot(used, 0.9, (-3.1, 3.1), (-2.8, 3.0))
-        t = Part(f"tree_{{i}}")
-        t.cyl(0.18, 0.11, 1.45, (0, 0, 0.72), M["bark"], segs=10)
-        for dx, dy, dz, r in [(0, 0, 1.65, 0.92), (-0.42, 0.22, 1.4, 0.65), (0.42, -0.2, 1.45, 0.65)]:
-            t.blob(r, (dx, dy, dz), M["leaf"] if (i + int(r * 10)) % 2 else M["leaf2"], scale=(1, 1, 0.82), seed=i * 9 + r)
-        t.finish(root, loc=(tx, ty, 0))
-
-    for i in range(SPEC["cacti"]):
+    for i in range(int(SPEC.get("cacti", 0) or 0)):
         cx, cy = pick_spot(used, 0.5, (-3.1, 3.1), (-2.8, 2.8))
         c = Part(f"cactus_{{i}}")
         c.cyl(0.16, 0.14, 1.5, (0, 0, 0.75), M["cactus"], segs=10)
@@ -657,8 +716,8 @@ def build():
         c.limb((-0.35, 0, 0.75), (-0.35, 0, 1.15), 0.09, 0.08, M["cactus"])
         c.finish(root, loc=(cx, cy, 0), rot_z=rng.uniform(0, math.tau))
 
-    # ---------- 6. 机・ベンチ・自販機・街灯 ----------
-    for i in range(SPEC["desk"]):
+    # ---------- 7. 机・ベンチ（park.py 仕様スラット構造）・自販機・六角街灯・柵 ----------
+    for i in range(int(SPEC.get("desk", 0) or 0)):
         dx, dy = pick_spot(used, 0.75, (-2.4, 2.4), (-2.2, 1.6))
         d = Part(f"desk_{{i}}")
         d.box((1.1, 0.7, 0.06), (0, 0, 0.72), M["desk"], bevel=0.01)
@@ -669,31 +728,53 @@ def build():
         d.box((0.5, 0.05, 0.42), (0, -0.76, 0.66), M["wood"], bevel=0.01)
         d.finish(root, loc=(dx, dy, 0))
 
-    for i in range(SPEC["bench"]):
-        bx, by = pick_spot(used, 0.8, (-2.6, 2.6), (-2.2, 2.2))
+    for i in range(int(SPEC.get("bench", 0) or 0)):
+        bx, by = pick_spot(used, 0.85, (-2.6, 2.6), (-2.2, 2.2))
         b = Part(f"bench_{{i}}")
-        for sx in (-0.65, 0.65):
-            b.box((0.08, 0.48, 0.42), (sx, 0, 0.21), M["iron"], bevel=0.01)
-        b.box((1.55, 0.46, 0.06), (0, 0, 0.44), M["wood"], bevel=0.01)
-        b.box((1.55, 0.06, 0.42), (0, 0.21, 0.68), M["wood"], bevel=0.01)
-        b.finish(root, loc=(bx, by, 0), rot_z=rng.uniform(-0.5, 0.5))
+        for k in range(4):
+            b.box((1.6, 0.085, 0.045), (0, -0.17 + k * 0.105, 0.46), M["wood"], bevel=0.012)
+        for k in range(3):
+            b.box((1.6, 0.045, 0.085), (0, 0.27, 0.62 + k * 0.12), M["wood"], rot=(-0.22, 0, 0), bevel=0.012)
+        for sx in (-0.68, 0.68):
+            b.box((0.05, 0.05, 0.45), (sx, -0.17, 0.225), M["iron"], bevel=0.01)
+            b.box((0.05, 0.05, 0.95), (sx, 0.24, 0.47), M["iron"], rot=(-0.22, 0, 0), bevel=0.01)
+            b.box((0.06, 0.5, 0.045), (sx, 0.02, 0.66), M["iron"], bevel=0.015)
+            b.box((0.05, 0.45, 0.04), (sx, 0.03, 0.43), M["iron"], bevel=0.01)
+        b.finish(root, loc=(bx, by, 0), rot_z=rng.uniform(-0.8, 0.8))
 
-    for i in range(SPEC["vending"]):
+    for i in range(int(SPEC.get("vending", 0) or 0)):
         vx, vy = pick_spot(used, 0.65, (-2.8, 2.8), (-1.5, 2.5))
         v = Part(f"vending_{{i}}")
         v.box((0.95, 0.65, 1.85), (0, 0, 0.925), M["red"] if i % 2 == 0 else M["blue"], bevel=0.03)
         v.box((0.76, 0.04, 0.95), (0, -0.32, 1.22), M["glass"])
         v.finish(root, loc=(vx, vy, 0))
 
-    for i in range(SPEC["lamp"]):
+    for i in range(int(SPEC.get("lamp", 0) or 0)):
         lx, ly = pick_spot(used, 0.4, (-2.9, 2.9), (-2.4, 2.4))
         lamp = Part(f"lamp_{{i}}")
-        lamp.cyl(0.06, 0.04, 2.5, (0, 0, 1.25), M["iron"], segs=10)
-        lamp.sphere(0.2, (0, 0, 2.6), M["lamp_glass"], segs=12)
+        lamp.cyl(0.16, 0.13, 0.16, (0, 0, 0.08), M["iron"], segs=16)
+        lamp.cyl(0.05, 0.04, 2.6, (0, 0, 1.45), M["iron"], segs=12)
+        lamp.cyl(0.08, 0.08, 0.06, (0, 0, 2.75), M["iron"], segs=12)
+        lamp.cyl(0.13, 0.17, 0.34, (0, 0, 2.95), M["lamp_glass"], segs=6, smooth=False)
+        lamp.cyl(0.25, 0.03, 0.22, (0, 0, 3.23), M["iron"], segs=6, smooth=False)
+        lamp.sphere(0.05, (0, 0, 3.37), M["iron"], segs=10)
         lamp.finish(root, loc=(lx, ly, 0))
 
-    # ---------- 7. 車・バス・ボート・ビーチ用品 ----------
-    for i in range(SPEC["car"]):
+    if int(SPEC.get("fence", 0) or 0) > 0:
+        f = Part("fence")
+        x0, x1, fy = 1.1, 3.4, 3.55
+        n = int((x1 - x0) / 0.5)
+        posts = [x0 + (x1 - x0) * k / n for k in range(n + 1)]
+        for x in posts:
+            f.box((0.08, 0.08, 0.62), (x, fy, 0.31), M["fence"], bevel=0.015)
+            f.cyl(0.06, 0.0, 0.08, (x, fy, 0.66), M["fence"], segs=4, smooth=False)
+            used.append((x, fy, 0.25))
+        for z in (0.22, 0.46):
+            f.box((x1 - x0 + 0.1, 0.05, 0.07), ((x0 + x1) / 2, fy - 0.06, z), M["fence"], bevel=0.012)
+        f.finish(root)
+
+    # ---------- 8. 車・バス・ボート・ビーチ用品 ----------
+    for i in range(int(SPEC.get("car", 0) or 0)):
         cx, cy = pick_spot(used, 1.15, (-2.6, 2.6), (-2.5, -1.6) if biome == "city" else (-2.4, 2.0))
         car = Part(f"car_{{i}}")
         c_mat = [M["yellow"], M["red"], M["blue"]][i % 3]
@@ -705,7 +786,7 @@ def build():
                 car.cyl(0.22, 0.22, 0.14, (sx, sy, 0.22), M["iron"], rot=(math.pi / 2, 0, 0), segs=12)
         car.finish(root, loc=(cx, cy, 0), rot_z=0.0 if biome == "city" else rng.uniform(-0.6, 0.6))
 
-    for i in range(SPEC["bus"]):
+    for i in range(int(SPEC.get("bus", 0) or 0)):
         bx, by = pick_spot(used, 1.5, (-2.2, 2.2), (-2.5, -1.5) if biome == "city" else (-2.2, 1.8))
         bus = Part(f"bus_{{i}}")
         bus.box((3.0, 1.2, 1.35), (0, 0, 0.85), M["blue"], bevel=0.06)
@@ -715,20 +796,20 @@ def build():
                 bus.cyl(0.26, 0.26, 0.16, (sx, sy, 0.26), M["iron"], rot=(math.pi / 2, 0, 0), segs=12)
         bus.finish(root, loc=(bx, by, 0))
 
-    for i in range(SPEC["umbrella"]):
+    for i in range(int(SPEC.get("umbrella", 0) or 0)):
         ux, uy = pick_spot(used, 0.85, (-2.5, 2.5), (0.0, 2.4) if biome == "beach" else (-2.2, 2.2))
         u = Part(f"umbrella_{{i}}")
         u.cyl(0.04, 0.04, 1.9, (0, 0, 0.95), M["white"], segs=10)
         u.cyl(1.15, 0.08, 0.55, (0, 0, 1.95), M["red"] if i % 2 == 0 else M["yellow"], segs=16)
         u.finish(root, loc=(ux, uy, 0), rot_z=rng.uniform(0, math.tau))
 
-    for i in range(SPEC["surfboard"]):
+    for i in range(int(SPEC.get("surfboard", 0) or 0)):
         sx, sy = pick_spot(used, 0.6, (-2.6, 2.6), (-0.4, 2.0))
         sb = Part(f"surfboard_{{i}}")
         sb.sphere(0.75, (0, 0, 0.08), M["red"] if i % 2 == 0 else M["yellow"], scale=(0.32, 1.0, 0.08))
         sb.finish(root, loc=(sx, sy, 0), rot_z=rng.uniform(-0.8, 0.8))
 
-    for i in range(SPEC["boat"]):
+    for i in range(int(SPEC.get("boat", 0) or 0)):
         bx, by = (rng.uniform(-2.2, 2.2), rng.uniform(-2.9, -1.5)) if biome == "beach" else pick_spot(used, 0.9, (-2.2, 2.2), (-2.2, 2.2))
         bt = Part(f"boat_{{i}}")
         bt.box((1.5, 0.75, 0.32), (0, 0, 0.2), M["wood"], bevel=0.08)
@@ -736,8 +817,8 @@ def build():
         bt.box((0.04, 0.65, 0.95), (0, 0.3, 0.95), M["white"])
         bt.finish(root, loc=(bx, by, 0.04), rot_z=rng.uniform(-0.4, 0.4))
 
-    # ---------- 8. 雪だるま・犬・猫・ボール・花・岩 ----------
-    for i in range(SPEC["snowman"]):
+    # ---------- 9. 雪だるま・柴犬（park.py 仕様）・猫・ボール・花壇・低木・岩 ----------
+    for i in range(int(SPEC.get("snowman", 0) or 0)):
         sx, sy = pick_spot(used, 0.55, (-2.6, 2.6), (-2.4, 2.4))
         sm = Part(f"snowman_{{i}}")
         sm.sphere(0.42, (0, 0, 0.38), M["snow"])
@@ -747,51 +828,69 @@ def build():
         sm.cyl(0.18, 0.18, 0.25, (0, 0, 1.66), M["iron"], segs=12)
         sm.finish(root, loc=(sx, sy, 0), rot_z=rng.uniform(-0.5, 0.5))
 
-    for i in range(SPEC["dog"]):
-        dx, dy = pick_spot(used, 0.45, (-2.6, 2.6), (-2.2, 2.2))
+    for i in range(int(SPEC.get("dog", 0) or 0)):
+        dx, dy = pick_spot(used, 0.5, (-2.6, 2.6), (-2.2, 2.2))
         dog = Part(f"dog_{{i}}")
-        dog.box((0.24, 0.52, 0.24), (0, 0, 0.28), M["dog"], bevel=0.08)
-        dog.sphere(0.16, (0, -0.3, 0.44), M["dog"])
-        dog.box((0.12, 0.16, 0.1), (0, -0.44, 0.4), M["white"], bevel=0.03)
-        for lx in (-0.08, 0.08):
-            for ly in (-0.18, 0.18):
-                dog.cyl(0.04, 0.035, 0.22, (lx, ly, 0.11), M["dog"], segs=8)
+        dog.sphere(0.2, (0, 0.02, 0.4), M["dog"], scale=(1, 1.75, 0.95))
+        dog.sphere(0.15, (0, -0.24, 0.38), M["dog_white"], scale=(1, 0.8, 1.05))
+        dog.sphere(0.17, (0, -0.42, 0.62), M["dog"])
+        dog.sphere(0.09, (0, -0.56, 0.57), M["dog_white"], scale=(1, 1.15, 0.8))
+        dog.sphere(0.03, (0, -0.665, 0.6), M["dark"], segs=10)
+        for sx in (-1, 1):
+            dog.sphere(0.024, (sx * 0.075, -0.55, 0.67), M["dark"], segs=10)
+            dog.cyl(0.065, 0.0, 0.13, (sx * 0.09, -0.4, 0.79), M["dog"], rot=(-0.15, sx * 0.3, 0), segs=4, smooth=False)
+            dog.cyl(0.05, 0.045, 0.28, (sx * 0.1, -0.24, 0.17), M["dog"], rot=(-0.45, 0, 0), segs=10)
+            dog.cyl(0.05, 0.045, 0.28, (sx * 0.1, 0.27, 0.17), M["dog"], rot=(0.45, 0, 0), segs=10)
+            dog.sphere(0.05, (sx * 0.1, -0.31, 0.04), M["dog_white"], segs=10)
+            dog.sphere(0.05, (sx * 0.1, 0.34, 0.04), M["dog_white"], segs=10)
+        for k in range(6):
+            a = k / 6 * math.pi * 1.3
+            dog.sphere(0.06 - k * 0.006, (0, 0.36 + math.sin(a) * 0.1, 0.55 + (1 - math.cos(a)) * 0.1 + k * 0.01),
+                       M["dog"] if k < 5 else M["dog_white"], segs=10)
         dog.finish(root, loc=(dx, dy, 0), rot_z=rng.uniform(0, math.tau))
 
-    for i in range(SPEC["cat"]):
+    for i in range(int(SPEC.get("cat", 0) or 0)):
         cx, cy = pick_spot(used, 0.38, (-2.6, 2.6), (-2.2, 2.2))
         cat = Part(f"cat_{{i}}")
         cat.sphere(0.16, (0, 0, 0.16), M["cat"], scale=(0.9, 1.3, 0.8))
         cat.sphere(0.13, (0, -0.18, 0.29), M["cat"])
-        for sx in (-0.07, 0.07):
+        for sx in (-1, 1):
             cat.cyl(0.04, 0.005, 0.09, (sx, -0.18, 0.41), M["cat"], segs=6)
         cat.finish(root, loc=(cx, cy, 0), rot_z=rng.uniform(0, math.tau))
 
-    for i in range(SPEC["ball"]):
+    for i in range(int(SPEC.get("ball", 0) or 0)):
         bx, by = pick_spot(used, 0.3, (-2.5, 2.5), (-2.2, 2.2))
         ball = Part(f"ball_{{i}}")
-        ball.sphere(0.2, (0, 0, 0.2), M["red"] if i % 2 == 0 else M["yellow"], segs=18)
+        ball.sphere(0.14, (0, 0, 0.14), M["red"] if i % 2 == 0 else M["yellow"], segs=22)
+        ball.cyl(0.141, 0.141, 0.025, (0, 0, 0.14), M["white"], rot=(0.5, 0.3, 0), segs=22)
         ball.finish(root, loc=(bx, by, 0))
 
-    for i in range(SPEC["rocks"]):
-        rx, ry = pick_spot(used, 0.4, (-3.0, 3.0), (-2.6, 2.6))
+    for i in range(int(SPEC.get("rocks", 0) or 0)):
+        rx, ry = pick_spot(used, 0.45, (-3.2, 3.2), (-2.8, 2.8))
         rk = Part(f"rock_{{i}}")
-        rk.blob(rng.uniform(0.25, 0.42), (0, 0, 0.18), M["rock"], scale=(1.2, 0.9, 0.7), seed=i * 3)
+        s = rng.uniform(0.24, 0.36)
+        rk.blob(s, (0, 0, s * 0.3), M["rock"], scale=(1.2, 1, 0.7), bumpy=0.3, subdiv=2, seed=i * 2.3, smooth=False)
+        rk.blob(s * 0.55, (s * 0.9, -s * 0.4, s * 0.2), M["rock_dark"], scale=(1.1, 1, 0.7), bumpy=0.3, subdiv=2, seed=i * 4.1, smooth=False)
         rk.finish(root, loc=(rx, ry, 0), rot_z=rng.uniform(0, math.tau))
 
-    for i in range(SPEC["flowers"]):
-        fx, fy = pick_spot(used, 0.35, (-2.9, 2.9), (-2.6, 2.6))
+    flower_colors = [M["pink"], M["yellow"], M["white"], M["purple"]]
+    for i in range(int(SPEC.get("flowers", 0) or 0)):
+        fx, fy = pick_spot(used, 0.45, (-3.1, 3.1), (-2.8, 2.8))
         fl = Part(f"flowers_{{i}}")
-        for k in range(5):
-            ox, oy = rng.uniform(-0.22, 0.22), rng.uniform(-0.22, 0.22)
-            fl.cyl(0.015, 0.015, 0.18, (ox, oy, 0.09), M["leaf"], segs=6)
-            fl.sphere(0.055, (ox, oy, 0.2), M["pink"] if k % 2 == 0 else M["yellow"], segs=10)
+        for _ in range(14):
+            a, d = rng.random() * math.tau, rng.random() * 0.48
+            ox, oy = math.cos(a) * d, math.sin(a) * d
+            h = rng.uniform(0.14, 0.25)
+            fl.cyl(0.012, 0.01, h, (ox, oy, h / 2), M["stem"], segs=6)
+            fl.blob(rng.uniform(0.045, 0.065), (ox, oy, h), rng.choice(flower_colors),
+                    scale=(1, 1, 0.7), bumpy=0.35, subdiv=1, seed=rng.random() * 9)
+            fl.sphere(0.02, (ox, oy, h + 0.03), M["yellow"], segs=8)
         fl.finish(root, loc=(fx, fy, 0))
 
-    # ---------- 9. 人物 ----------
+    # ---------- 10. 人物 ----------
     top_mats = [M["yellow"], M["red"], M["blue"], M["pink"]]
     poses = ["walk", "stand", "point", "raise_hand", "phone"]
-    for i in range(SPEC["people"]):
+    for i in range(int(SPEC.get("people", 0) or 0)):
         px, py = pick_spot(used, 0.45, (-2.4, 2.4), (-2.0, 2.0))
         person(root, f"person_{{i}}", (px, py), rng.uniform(-0.9, 0.9), {{
             "skin": M["skin"],
@@ -804,6 +903,26 @@ def build():
             "hair_style": ["short", "long", "bun"][i % 3],
         }}, pose=poses[i % len(poses)], scale=rng.uniform(0.9, 1.0))
 
+    # ---------- 11. 草むら（公園・秋バイオームの地面ディテール） ----------
+    if biome in ("park", "autumn"):
+        grass = Part("grass_tufts")
+        placed = 0
+        attempts = 0
+        while placed < 200 and attempts < 900:
+            attempts += 1
+            gx, gy = rng.uniform(-HALF + 0.3, HALF - 0.3), rng.uniform(-HALF + 0.3, HALF - 0.3)
+            corner = Vector((max(abs(gx) - (HALF - 1.0), 0), max(abs(gy) - (HALF - 1.0), 0))).length
+            if corner > 0.85 or any((gx - kx) ** 2 + (gy - ky) ** 2 < (kr + 0.15) ** 2 for kx, ky, kr in used):
+                continue
+            gmat = rng.choice([M["grass_dark"], M["grass_dark"], M["grass_light"]])
+            for _ in range(rng.randint(3, 5)):
+                gh = rng.uniform(0.08, 0.15)
+                lean = (rng.uniform(-0.35, 0.35), rng.uniform(-0.35, 0.35), 0)
+                grass.cyl(0.026, 0.0, gh, (gx + rng.uniform(-0.05, 0.05), gy + rng.uniform(-0.05, 0.05), gh / 2),
+                          gmat, rot=lean, segs=4, smooth=False)
+            placed += 1
+        grass.finish(root)
+
     return root
 
 
@@ -811,7 +930,7 @@ if __name__ == "__main__":
     run(SCENE_ID, build)
 '''
     return {
-        "name": f"AI 生成シーン ({biome})",
+        "name": custom_name or f"AI 生成シーン ({biome})",
         "description": prompt.strip(),
         "elements": elements,
         "python_code": code,
