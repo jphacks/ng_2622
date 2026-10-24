@@ -2,7 +2,8 @@
 """チーム向けの説明資料（動機とアプリの全体像）を 1 つの HTML に生成する。
 
   入力  docs/design/ui/images/*.png   確定版の仮の画面
-  出力  docs/design/overview/build/overview.html（gitignore。画像は埋め込み、外部の CDN は使わない）
+  出力  docs/design/overview/overview.html（commit する。画像は埋め込み、外部の CDN は使わない）
+        縮小した画像の作業用ファイルは docs/design/overview/build/（gitignore）に置く
 
 中身は docs/design/ の文書（usecase.md・screen-flow.md・scene-generation.md）から書き起こしたもの。
 正本が変わったら、ここの本文も合わせて直す。
@@ -20,7 +21,8 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
 IMAGES = ROOT / "docs/design/ui/images"
-OUT_DIR = ROOT / "docs/design/overview/build"
+OUT_DIR = ROOT / "docs/design/overview"
+THUMB_DIR = OUT_DIR / "build" / "thumbs"
 REPO = "https://github.com/jphacks/ng_2622/blob/main"
 
 # 色は 2 色だけ使い、役割を固定する。
@@ -99,7 +101,7 @@ def image_uri(name: str, height: int = 900) -> str:
         return ""
     data_path, mime = src, "image/png"
     if shutil.which("sips"):
-        out = OUT_DIR / "thumbs" / f"{src.stem}-{height}.jpg"
+        out = THUMB_DIR / f"{src.stem}-{height}.jpg"
         if not out.exists() or out.stat().st_mtime < src.stat().st_mtime:
             out.parent.mkdir(parents=True, exist_ok=True)
             subprocess.run(
@@ -272,7 +274,7 @@ def build() -> Path:
 
 <footer>
   色の使い方: <span class="core-text">青</span>は作品の核と MUST の候補、<span style="color:var(--open)">茶</span>はまだ決まっていないこと（MTG で決める）。<br>
-  この資料は scripts/overview/build.py で生成している。中身を直すときは docs/design/ の文書とあわせて直す。
+  この資料は scripts/overview/build.py で生成している。中身を直すときはスクリプトを直して生成し直し、docs/design/ の文書とあわせて commit する。
 </footer>
 </main>
 """
