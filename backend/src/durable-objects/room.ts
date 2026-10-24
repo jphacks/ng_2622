@@ -19,6 +19,7 @@ import {
   progressOf,
   recordGrade,
   roundResults,
+  skipAudio,
 } from "../domain/round";
 import { MAX_PLAYERS } from "../schemas/common";
 import { ClientMessage, type ServerMessage } from "../schemas/ws";
@@ -123,6 +124,12 @@ export class Room extends DurableObject<CloudflareBindings> {
         return this.apply(ws, state, closeRound(state, { playerId }));
       case "again":
         return this.apply(ws, state, playAgain(state, { playerId }));
+      case "skip":
+        return this.apply(
+          ws,
+          state,
+          skipAudio(state, { playerId, round: message.round }),
+        );
       case "leave":
         return this.leave(ws, state, playerId);
     }
