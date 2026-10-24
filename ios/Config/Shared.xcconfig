@@ -1,0 +1,8 @@
+// Mock と Live に共通の設定。署名と bundle ID は各自の Local.xcconfig から読む
+
+// 既定値（Local.xcconfig が無いと署名できない。Local.xcconfig.example を写して作る）
+PRODUCT_BUNDLE_IDENTIFIER = jp.jphacks.ng2622.app
+DEVELOPMENT_TEAM =
+
+// xcconfig では // がコメントになるので、URL は https:/$()/ と書く
+BACKEND_URL = https:/$()/ng-2622-backend.jphacks-ng2622.workers.dev

@@ -1,0 +1,7 @@
+// scheme「NG2622 Mock」のビルド構成。仮のデータで動き、通信しない
+#include "Shared.xcconfig"
+
+BACKEND_MODE = mock
+
+// 各自の設定で上書きする（無くてもよい）
+#include? "Local.xcconfig"
