@@ -1,6 +1,6 @@
 import SwiftUI
 
-/// 振り返り。自分の合計と順位、3 項目の内訳、講評と模範表現
+/// 振り返り。自分の合計と順位、3 項目の内訳、講評（できたこと・次はこれ・言い換え・話し方のコツ）
 struct ReviewView: View {
   let results: RoundResults
   /// このラウンドで録った自分の声。あれば「あなたの描写」から聞き直せる
@@ -50,28 +50,53 @@ struct ReviewView: View {
       .padding(20)
       .resultCard()
 
-      // 自分が話した英文。下の模範表現と見比べる
+      // 自分が話した英文。下の講評の引用と見比べる
       if !me.transcript.isEmpty {
         TranscriptCard(transcript: me.transcript, recording: recording)
       }
 
-      ReviewCard(title: "講評") {
-        Text(review.comment)
-          .font(Theme.font(16, .bold))
-          .lineSpacing(3)
-      }
-
-      ReviewCard(title: "模範表現") {
+      ReviewCard(title: "できたこと") {
         VStack(alignment: .leading, spacing: 8) {
-          Text(review.modelSentence)
-            .font(Theme.font(19, .heavy))
-            .foregroundStyle(Theme.accent)
-          Text(review.modelSentenceJa)
-            .font(Theme.font(14, .bold))
-            .foregroundStyle(Theme.muted)
+          if !review.strengthQuote.isEmpty {
+            Text("“\(review.strengthQuote)”")
+              .font(Theme.font(17, .heavy))
+              .foregroundStyle(Theme.accent)
+          }
+          bodyText(review.strength)
         }
       }
+
+      ReviewCard(title: "次はこれ", badge: review.nextStepGain.map { "+\($0) 点" }) {
+        bodyText(review.nextStep)
+      }
+
+      if let rewrite = review.rewrite {
+        ReviewCard(title: "こう言い換える") {
+          VStack(alignment: .leading, spacing: 8) {
+            Text(rewrite.before)
+              .font(Theme.font(15, .bold))
+              .strikethrough()
+              .foregroundStyle(Theme.muted)
+            Text(rewrite.after)
+              .font(Theme.font(19, .heavy))
+              .foregroundStyle(Theme.accent)
+            Text(rewrite.reason)
+              .font(Theme.font(14, .bold))
+              .foregroundStyle(Theme.muted)
+          }
+        }
+      }
+
+      ReviewCard(title: "話し方のコツ") {
+        bodyText(review.speechTip)
+      }
     }
+  }
+
+  private func bodyText(_ text: String) -> some View {
+    Text(text)
+      .font(Theme.font(16, .bold))
+      .lineSpacing(3)
   }
 }
 
@@ -162,13 +187,26 @@ private struct TranscriptCard: View {
 
 private struct ReviewCard<Content: View>: View {
   let title: String
+  /// 見出しの右に出す小さな札（例: +10 点）
+  var badge: String? = nil
   @ViewBuilder let content: Content
 
   var body: some View {
     VStack(alignment: .leading, spacing: 10) {
-      Text(title)
-        .font(Theme.font(13, .heavy))
-        .foregroundStyle(Theme.muted)
+      HStack {
+        Text(title)
+          .font(Theme.font(13, .heavy))
+          .foregroundStyle(Theme.muted)
+        Spacer()
+        if let badge {
+          Text(badge)
+            .font(Theme.font(13, .heavy))
+            .foregroundStyle(Theme.accent)
+            .padding(.horizontal, 10)
+            .padding(.vertical, 3)
+            .background(Theme.accentSoft, in: Capsule())
+        }
+      }
       content
         .fixedSize(horizontal: false, vertical: true)
     }

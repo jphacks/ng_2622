@@ -12,14 +12,25 @@ struct RoundResults: Sendable, Equatable {
   /// 自分の振り返り。自分が採点できなかったときは nil
   let myReview: Review?
 
-  /// 自分の講評と模範表現
+  /// 自分の講評（バックエンドの Feedback）。次に伸ばすのは一つだけ
   struct Review: Sendable, Equatable {
-    /// 講評（Claude が書く）
-    let comment: String
-    /// 模範表現（英文 1 つ）
-    let modelSentence: String
-    /// 模範表現の日本語訳
-    let modelSentenceJa: String
+    /// できたこと。quote は自分の発話からの引用（無ければ空）
+    let strengthQuote: String
+    let strength: String
+    /// 次に伸ばす一つ
+    let nextStep: String
+    /// 足すと合計点が何点伸びるか（内容の要素のときだけ）
+    let nextStepGain: Int?
+    /// 自分の一文の言い換え。直す所が無ければ nil
+    let rewrite: Rewrite?
+    /// 話し方のコツ
+    let speechTip: String
+
+    struct Rewrite: Sendable, Equatable {
+      let before: String
+      let after: String
+      let reason: String
+    }
   }
 }
 

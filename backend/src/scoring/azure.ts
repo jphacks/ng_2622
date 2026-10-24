@@ -13,8 +13,16 @@ const assessmentHeader = btoa(
   }),
 );
 
+type Word = {
+  Word?: string;
+  AccuracyScore?: number;
+  ErrorType?: string;
+  PronunciationAssessment?: { AccuracyScore?: number; ErrorType?: string };
+};
+
 type NBest = {
   Display?: string;
+  Words?: Word[];
   AccuracyScore?: number;
   FluencyScore?: number;
   ProsodyScore?: number;
@@ -76,5 +84,11 @@ export async function assessSpeech(
     fluency,
     prosody,
     score: (accuracy + fluency + prosody) / 3,
+    words: (best.Words ?? []).map((w) => ({
+      word: w.Word ?? "",
+      accuracy:
+        w.AccuracyScore ?? w.PronunciationAssessment?.AccuracyScore ?? 0,
+      errorType: w.ErrorType ?? w.PronunciationAssessment?.ErrorType ?? "None",
+    })),
   };
 }

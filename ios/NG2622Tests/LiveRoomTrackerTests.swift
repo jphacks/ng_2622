@@ -84,9 +84,9 @@ struct LiveRoomTrackerTests {
     _ = tracker.apply(try message(#"{"type":"round","round":1,"sceneId":"park","startAt":0}"#))
     let json =
       #"{"type":"results","round":1,"sceneId":"park","sceneName":"公園","players":["#
-      + #"{"id":"\#(other)","name":"けん","color":3124891,"rank":null,"score":null,"transcript":"","comment":"","modelAnswer":""},"#
-      + #"{"id":"\#(me)","name":"たろう","color":5987302,"rank":2,"score":{"content":60,"expression":50,"speech":70,"total":60},"transcript":"A dog.","comment":"短い","modelAnswer":"A dog is sleeping."},"#
-      + #"{"id":"\#(host)","name":"はなこ","color":15760040,"rank":1,"score":{"content":90,"expression":80,"speech":85,"total":86},"transcript":"A dog sleeps.","comment":"よい","modelAnswer":"A dog sleeps under a tree."}]}"#
+      + #"{"id":"\#(other)","name":"けん","color":3124891,"rank":null,"score":null,"transcript":"","comment":"","feedback":null},"#
+      + #"{"id":"\#(me)","name":"たろう","color":5987302,"rank":2,"score":{"content":60,"expression":50,"speech":70,"total":60},"transcript":"A dog.","comment":"短い","feedback":{"strength":{"quote":"A dog.","text":"短い"},"nextStep":{"kind":"content","gain":10,"text":"ボールのことも言ってみよう"},"rewrite":{"before":"A dog.","after":"A dog is sleeping.","reason":"動きを足すと伝わる"},"speechTip":{"aspect":"fluency","text":"止まらずに言ってみよう"}}},"#
+      + #"{"id":"\#(host)","name":"はなこ","color":15760040,"rank":1,"score":{"content":90,"expression":80,"speech":85,"total":86},"transcript":"A dog sleeps.","comment":"よい","feedback":{"strength":{"quote":"A dog sleeps.","text":"よい"},"nextStep":{"kind":"expression","gain":null,"text":"場所も足そう"},"rewrite":null,"speechTip":{"aspect":"prosody","text":"抑揚をつけよう"}}}]}"#
     let updates = tracker.apply(try message(json))
     guard case .event(.results(let results)) = updates.first, updates.count == 1 else {
       Issue.record("results でない: \(updates)")
@@ -98,7 +98,12 @@ struct LiveRoomTrackerTests {
     #expect(results.players[1].isSelf)
     #expect(results.players[1].score == PlayerResult.Score(content: 60, expression: 50, speaking: 70, total: 60))
     #expect(results.players[2].score == nil)
-    #expect(results.myReview == RoundResults.Review(comment: "短い", modelSentence: "A dog is sleeping.", modelSentenceJa: ""))
+    #expect(
+      results.myReview
+        == RoundResults.Review(
+          strengthQuote: "A dog.", strength: "短い", nextStep: "ボールのことも言ってみよう", nextStepGain: 10,
+          rewrite: .init(before: "A dog.", after: "A dog is sleeping.", reason: "動きを足すと伝わる"),
+          speechTip: "止まらずに言ってみよう"))
     // つなぎ直したときに送り直される同じ results は渡さない
     #expect(tracker.apply(try message(json)) == [])
   }
@@ -108,7 +113,7 @@ struct LiveRoomTrackerTests {
     var tracker = try joined()
     let updates = tracker.apply(
       try message(
-        #"{"type":"results","round":1,"sceneId":"park","sceneName":"","players":[{"id":"\#(me)","name":"たろう","color":5987302,"rank":1,"score":null,"transcript":"","comment":"","modelAnswer":""}]}"#
+        #"{"type":"results","round":1,"sceneId":"park","sceneName":"","players":[{"id":"\#(me)","name":"たろう","color":5987302,"rank":1,"score":null,"transcript":"","comment":"","feedback":null}]}"#
       ))
     guard case .event(.results(let results)) = updates.first else {
       Issue.record("results でない: \(updates)")
@@ -144,7 +149,8 @@ struct LiveRoomTrackerTests {
 }
 
 /// 手元のバックエンド（pnpm dev）で、参加者として入ってから「もう一度」で待合に戻るまでに実際に届いたメッセージ。
-/// 途中で 1 度切断し、welcome の ID と合言葉でつなぎ直している（2 つ目の welcome から）。合言葉は伏せた
+/// 途中で 1 度切断し、welcome の ID と合言葉でつなぎ直している（2 つ目の welcome から）。合言葉は伏せた。
+/// results の feedback は、講評を分けた後の形（#39）に合わせて手で書き換えた
 struct LiveRoomTrackerTranscriptTests {
   static let transcript = #"""
     {"type":"welcome","playerId":"2a17275a-de46-44f1-8ddb-a09a5cf691fc","token":"<redacted>","isHost":false}
@@ -158,10 +164,10 @@ struct LiveRoomTrackerTranscriptTests {
     {"type":"room","roomId":"4101","phase":"playing","hostId":"7c93bda4-cedd-4265-90cf-099bf79291c3","maxPlayers":5,"players":[{"id":"7c93bda4-cedd-4265-90cf-099bf79291c3","name":"はなこ","color":15760040,"isHost":true,"connected":true},{"id":"2a17275a-de46-44f1-8ddb-a09a5cf691fc","name":"たろう","color":5987302,"isHost":false,"connected":true}]}
     {"type":"progress","round":1,"players":[{"id":"7c93bda4-cedd-4265-90cf-099bf79291c3","status":"talking"},{"id":"2a17275a-de46-44f1-8ddb-a09a5cf691fc","status":"done"}]}
     {"type":"room","roomId":"4101","phase":"results","hostId":"7c93bda4-cedd-4265-90cf-099bf79291c3","maxPlayers":5,"players":[{"id":"7c93bda4-cedd-4265-90cf-099bf79291c3","name":"はなこ","color":15760040,"isHost":true,"connected":true},{"id":"2a17275a-de46-44f1-8ddb-a09a5cf691fc","name":"たろう","color":5987302,"isHost":false,"connected":true}]}
-    {"type":"results","round":1,"sceneId":"park","sceneName":"公園","players":[{"id":"2a17275a-de46-44f1-8ddb-a09a5cf691fc","name":"たろう","color":5987302,"score":{"content":60,"expression":60,"speech":60,"total":60},"transcript":"(固定の点数のモードのため、文字起こしはありません)","comment":"固定の点数を返しています。","modelAnswer":"A sunny park. A person is playing with a dog and a ball on the grass.","rank":1},{"id":"7c93bda4-cedd-4265-90cf-099bf79291c3","name":"はなこ","color":15760040,"score":null,"transcript":"","comment":"","modelAnswer":"","rank":null}]}
+    {"type":"results","round":1,"sceneId":"park","sceneName":"公園","players":[{"id":"2a17275a-de46-44f1-8ddb-a09a5cf691fc","name":"たろう","color":5987302,"score":{"content":60,"expression":60,"speech":60,"total":60},"transcript":"(固定の点数のモードのため、文字起こしはありません)","comment":"固定の点数を返しています。","feedback":{"strength":{"quote":"","text":"固定の点数を返しています。"},"nextStep":{"kind":"content","gain":null,"text":"もう少し長く話してみよう。"},"rewrite":null,"speechTip":{"aspect":"accuracy","text":"はっきり発音しよう"}},"rank":1},{"id":"7c93bda4-cedd-4265-90cf-099bf79291c3","name":"はなこ","color":15760040,"score":null,"transcript":"","comment":"","feedback":null,"rank":null}]}
     {"type":"welcome","playerId":"2a17275a-de46-44f1-8ddb-a09a5cf691fc","token":"<redacted>","isHost":false}
     {"type":"room","roomId":"4101","phase":"results","hostId":"7c93bda4-cedd-4265-90cf-099bf79291c3","maxPlayers":5,"players":[{"id":"7c93bda4-cedd-4265-90cf-099bf79291c3","name":"はなこ","color":15760040,"isHost":true,"connected":true},{"id":"2a17275a-de46-44f1-8ddb-a09a5cf691fc","name":"たろう","color":5987302,"isHost":false,"connected":true}]}
-    {"type":"results","round":1,"sceneId":"park","sceneName":"公園","players":[{"id":"2a17275a-de46-44f1-8ddb-a09a5cf691fc","name":"たろう","color":5987302,"score":{"content":60,"expression":60,"speech":60,"total":60},"transcript":"(固定の点数のモードのため、文字起こしはありません)","comment":"固定の点数を返しています。","modelAnswer":"A sunny park. A person is playing with a dog and a ball on the grass.","rank":1},{"id":"7c93bda4-cedd-4265-90cf-099bf79291c3","name":"はなこ","color":15760040,"score":null,"transcript":"","comment":"","modelAnswer":"","rank":null}]}
+    {"type":"results","round":1,"sceneId":"park","sceneName":"公園","players":[{"id":"2a17275a-de46-44f1-8ddb-a09a5cf691fc","name":"たろう","color":5987302,"score":{"content":60,"expression":60,"speech":60,"total":60},"transcript":"(固定の点数のモードのため、文字起こしはありません)","comment":"固定の点数を返しています。","feedback":{"strength":{"quote":"","text":"固定の点数を返しています。"},"nextStep":{"kind":"content","gain":null,"text":"もう少し長く話してみよう。"},"rewrite":null,"speechTip":{"aspect":"accuracy","text":"はっきり発音しよう"}},"rank":1},{"id":"7c93bda4-cedd-4265-90cf-099bf79291c3","name":"はなこ","color":15760040,"score":null,"transcript":"","comment":"","feedback":null,"rank":null}]}
     {"type":"room","roomId":"4101","phase":"lobby","hostId":"7c93bda4-cedd-4265-90cf-099bf79291c3","maxPlayers":5,"players":[{"id":"7c93bda4-cedd-4265-90cf-099bf79291c3","name":"はなこ","color":15760040,"isHost":true,"connected":true},{"id":"2a17275a-de46-44f1-8ddb-a09a5cf691fc","name":"たろう","color":5987302,"isHost":false,"connected":true}]}
     """#
 
@@ -180,7 +186,7 @@ struct LiveRoomTrackerTranscriptTests {
         case .event(.results(let results)):
           kinds.append("results:" + results.players.map { $0.score.map { "\($0.total)" } ?? "-" }.joined(separator: ","))
           #expect(results.players.first?.isSelf == true)
-          #expect(results.myReview?.modelSentence.hasPrefix("A sunny park.") == true)
+          #expect(results.myReview?.strength == "固定の点数を返しています。")
         case .event(.returnedToLobby): kinds.append("lobby")
         case .event(.hostChanged(let isSelf)): kinds.append("host:\(isSelf)")
         }

@@ -23,8 +23,7 @@ const toGrade = (result: ScoreResult): Grade =>
           total: result.total,
         },
         transcript: result.transcript,
-        comment: result.comment,
-        modelAnswer: result.modelAnswer,
+        feedback: result.feedback,
       }
     : { status: "failed" };
 

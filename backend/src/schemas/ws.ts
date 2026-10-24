@@ -167,6 +167,53 @@ export const PlayerScore = z
   })
   .meta({ ref: "PlayerScore", description: "点数（各 0〜100 の整数）" });
 
+const Rewrite = z
+  .object({
+    before: z
+      .string()
+      .meta({ description: "本人の発話（文字起こしから引用）" }),
+    after: z.string().meta({ description: "自然に直した英文" }),
+    reason: z.string().meta({ description: "直した理由（日本語）" }),
+  })
+  .meta({ ref: "Rewrite", description: "本人の一文の言い換え" });
+
+export const Feedback = z
+  .object({
+    strength: z
+      .object({
+        quote: z.string().meta({
+          description: "根拠にした本人の発話（文字起こしから引用）。無ければ空",
+        }),
+        text: z.string(),
+      })
+      .meta({ ref: "FeedbackStrength", description: "できたこと" }),
+    nextStep: z
+      .object({
+        kind: z.enum(["content", "expression", "speech"]),
+        gain: z.int().nullable().meta({
+          description: "足すと合計点が何点伸びるか。内容の要素のときだけ",
+        }),
+        text: z.string(),
+      })
+      .meta({
+        ref: "FeedbackNextStep",
+        description: "次に伸ばす一つ。言えなかった要素のうち配点が最も高いもの",
+      }),
+    rewrite: Rewrite.nullable().meta({
+      description: "直す所が無ければ null",
+    }),
+    speechTip: z
+      .object({
+        aspect: z.enum(["accuracy", "fluency", "prosody"]),
+        text: z.string(),
+      })
+      .meta({
+        ref: "FeedbackSpeechTip",
+        description: "話し方のコツ。発音・なめらかさ・抑揚のうち最も低いもの",
+      }),
+  })
+  .meta({ ref: "Feedback", description: "振り返りの講評" });
+
 export const PlayerResult = z
   .object({
     id: PlayerId,
@@ -183,12 +230,14 @@ export const PlayerResult = z
     transcript: z
       .string()
       .meta({ description: "文字起こし。採点できなかった人は空" }),
-    comment: z
-      .string()
-      .meta({ description: "講評の一言。採点できなかった人は空" }),
-    modelAnswer: z
-      .string()
-      .meta({ description: "模範表現（英文）。採点できなかった人は空" }),
+    comment: z.string().meta({
+      description:
+        "講評の一言（できたこと。feedback.strength.text と同じ）。採点できなかった人は空",
+    }),
+    feedback: Feedback.nullable().meta({
+      description:
+        "振り返りに出す講評。全員分が届くが、詳しく出すのは本人の画面だけにする。採点できなかった人は null",
+    }),
   })
   .meta({ ref: "PlayerResult" });
 
