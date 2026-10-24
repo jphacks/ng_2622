@@ -1,0 +1,411 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>振り返りの画面モック（あなたの描写の置き場所）</title>
+<!--
+  振り返り（review）に自分の英文「あなたの描写」を足すとき、どこに置くかを 3 案で見比べるモック。
+  自己完結（外部の読み込みなし）。仮のデータで動き、バックエンドとは通信しない。
+  見た目の基準: ios/NG2622/Result/ReviewView.swift と ios/NG2622/Design/Theme.swift。外枠は play.html にそろえる。
+  URL の # で状態を選べる（例: review.html#B、review.html#C-long）。
+-->
+<style>
+  :root {
+    --bg: #eceef5;
+    --screen: #f7f7fb;
+    --ink: #14163a;
+    --muted: #6b6f8a;
+    --accent: #5b5be6;
+    --accent-soft: #e3e3fb;
+    --gray: #9a9db3;
+    --line: #eef0f5;
+    --card: #ffffff;
+    --font: "Hiragino Maru Gothic ProN", "Hiragino Sans", "M PLUS Rounded 1c", "Yu Gothic UI", system-ui, sans-serif;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; }
+  body {
+    background: var(--bg);
+    color: var(--ink);
+    font-family: var(--font);
+    min-height: 100vh;
+  }
+  button { font: inherit; color: inherit; cursor: pointer; }
+
+  /* ---------- モックの外側（操作盤と説明） ---------- */
+  .toolbar {
+    position: sticky; top: 0; z-index: 10;
+    display: flex; flex-wrap: wrap; gap: 8px 14px; align-items: center; justify-content: center;
+    padding: 10px 16px;
+    background: rgba(236, 238, 245, .92);
+    backdrop-filter: blur(6px);
+    border-bottom: 1px solid #d9dbe8;
+  }
+  .toolbar .group { display: flex; gap: 4px; align-items: center; }
+  .toolbar .label { font-size: 12px; color: var(--muted); margin-right: 2px; }
+  .tb-btn {
+    border: 1px solid #c9cbe0; background: #fff; border-radius: 999px;
+    padding: 6px 12px; font-size: 13px; font-weight: 700;
+  }
+  .tb-btn[aria-pressed="true"] { background: var(--ink); border-color: var(--ink); color: #fff; }
+  .toolbar label.check { font-size: 13px; display: flex; gap: 4px; align-items: center; }
+
+  .layout {
+    display: flex; flex-wrap: wrap; gap: 24px; justify-content: center; align-items: flex-start;
+    padding: 20px 16px 40px;
+  }
+  .side { width: 340px; max-width: 100%; display: grid; gap: 12px; }
+  .panel {
+    background: #fff; border-radius: 14px; padding: 14px 16px;
+    box-shadow: 0 1px 3px rgba(20, 22, 58, .08);
+    font-size: 13px; line-height: 1.7;
+  }
+  .panel h2 { font-size: 15px; margin: 0 0 6px; }
+  .panel h3 { font-size: 13px; margin: 10px 0 2px; color: var(--muted); }
+  .panel p { margin: 0; }
+  .panel ul { margin: 0; padding-left: 1.2em; }
+
+  /* ---------- 端末の枠 ---------- */
+  .phone-fit { position: relative; }
+  .phone {
+    position: absolute; top: 0; left: 0;
+    width: 410px; height: 864px;
+    transform-origin: top left;
+    border-radius: 58px; padding: 10px;
+    background: #1b1c22;
+    box-shadow: 0 20px 50px rgba(20, 22, 58, .25);
+  }
+  .screen {
+    position: relative; overflow: hidden;
+    width: 390px; height: 844px; border-radius: 48px;
+    background: var(--screen);
+    display: flex; flex-direction: column;
+  }
+  .statusbar {
+    flex: none; height: 50px;
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 6px 30px 0 36px; font-weight: 700; font-size: 16px;
+    font-family: system-ui, sans-serif;
+  }
+  .statusbar .icons { display: flex; gap: 6px; align-items: center; }
+  .home-ind {
+    position: absolute; bottom: 8px; left: 50%; transform: translateX(-50%); z-index: 5;
+    width: 134px; height: 5px; border-radius: 3px; background: var(--ink);
+  }
+
+  /* ---------- 振り返り（ReviewView に合わせる） ---------- */
+  .col { width: 346px; margin: 0 auto; }
+  .subhead {
+    flex: none; position: relative; height: 52px; margin-top: 8px;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .subhead h1 { margin: 0; font-size: 20px; font-weight: 900; }
+  .back {
+    position: absolute; left: 0; top: 4px;
+    width: 44px; height: 44px; border-radius: 50%; border: none; background: #fff;
+    box-shadow: 0 3px 10px rgba(20, 22, 58, .1);
+    display: flex; align-items: center; justify-content: center;
+  }
+  .scroll { flex: 1; overflow-y: auto; scrollbar-width: none; }
+  .scroll::-webkit-scrollbar { display: none; }
+  .content { display: flex; flex-direction: column; gap: 16px; padding: 12px 0 40px; }
+
+  .total { display: flex; flex-direction: column; align-items: center; gap: 2px; padding-bottom: 4px; }
+  .pts { font-weight: 900; font-variant-numeric: tabular-nums; line-height: 1; }
+  .pts small { font-size: .42em; color: var(--muted); margin-left: 2px; }
+  .total .pts { font-size: 64px; color: var(--accent); }
+  .place { font-size: 17px; font-weight: 800; color: var(--muted); }
+
+  .card {
+    background: var(--card); border-radius: 22px; padding: 20px;
+    box-shadow: 0 6px 20px rgba(20, 22, 58, .07);
+  }
+  .card-title { font-size: 13px; font-weight: 800; color: var(--muted); margin: 0 0 10px; }
+  .card-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; min-height: 22px; }
+  .card-head .card-title { margin: 0; }
+
+  .bars { display: flex; flex-direction: column; gap: 16px; }
+  .bar-row .top { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 8px; }
+  .bar-row .name { font-size: 17px; font-weight: 800; }
+  .bar-row .pts { font-size: 20px; }
+  .track { height: 12px; border-radius: 6px; background: var(--accent-soft); overflow: hidden; }
+  .track i { display: block; height: 100%; border-radius: 6px; background: var(--accent); }
+
+  /* C 案: 下にまとめた小さい内訳。1 行に名前・バー・点数 */
+  .bars.compact { gap: 12px; }
+  .bars.compact .bar-row { display: grid; grid-template-columns: 52px 1fr 44px; align-items: center; gap: 10px; }
+  .bars.compact .name { font-size: 14px; }
+  .bars.compact .track { height: 8px; }
+  .bars.compact .pts { font-size: 16px; text-align: right; }
+
+  .comment { margin: 0; font-size: 16px; font-weight: 700; line-height: 1.6; }
+  .mine { margin: 0; font-size: 17px; font-weight: 700; line-height: 1.55; color: var(--ink); }
+  .model { margin: 0; font-size: 19px; font-weight: 900; line-height: 1.4; color: var(--accent); }
+  .model-ja { margin: 8px 0 0; font-size: 14px; font-weight: 700; color: var(--muted); line-height: 1.5; }
+
+  /* C 案: 描写を主役にするときの少し大きい本文 */
+  .mine.lead { font-size: 19px; line-height: 1.55; }
+
+  /* B 案: 自分 → 模範 の区切り */
+  .compare-sep { display: flex; align-items: center; gap: 10px; margin: 14px 0; }
+  .compare-sep::before, .compare-sep::after { content: ""; flex: 1; height: 1px; background: var(--line); }
+
+  /* 自分の録音を聞き直すスピーカーのボタン。見出しの右に置く */
+  .speak {
+    width: 32px; height: 32px; border-radius: 50%; border: none; padding: 0; flex: none;
+    background: var(--accent-soft);
+    display: flex; align-items: center; justify-content: center;
+  }
+  .speak .ic-stop { display: none; }
+  body:not(.audio) .speak { display: none; }
+  .card.playing { background: var(--accent-soft); }
+  .card.playing .speak { background: var(--card); }
+  .card.playing .speak .ic-wave { display: none; }
+  .card.playing .speak .ic-stop { display: block; }
+</style>
+</head>
+<body>
+
+<div class="toolbar" role="toolbar" aria-label="モックの操作">
+  <div class="group">
+    <span class="label">案</span>
+    <button type="button" class="tb-btn" data-opt="A" aria-pressed="true">A 点数の下にカード</button>
+    <button type="button" class="tb-btn" data-opt="B" aria-pressed="false">B 模範表現と並べて比べる</button>
+    <button type="button" class="tb-btn" data-opt="C" aria-pressed="false">C 描写を主役に</button>
+  </div>
+  <label class="check"><input type="checkbox" id="tb-long"> 描写が長い</label>
+  <label class="check"><input type="checkbox" id="tb-audio" checked> 音声の再生</label>
+</div>
+
+<div class="layout">
+  <div class="phone-fit" id="phone-fit">
+    <div class="phone" id="phone">
+      <div class="screen">
+        <div class="statusbar">
+          <span>9:41</span>
+          <span class="icons" aria-hidden="true">
+            <svg width="18" height="12" viewBox="0 0 18 12" aria-hidden="true"><rect x="0" y="8" width="3" height="4" rx="1" fill="#14163a"/><rect x="5" y="5" width="3" height="7" rx="1" fill="#14163a"/><rect x="10" y="2.5" width="3" height="9.5" rx="1" fill="#14163a"/><rect x="15" y="0" width="3" height="12" rx="1" fill="#14163a"/></svg>
+            <svg width="16" height="12" viewBox="0 0 16 12" aria-hidden="true"><path d="M8 11.5 5.6 9a3.4 3.4 0 0 1 4.8 0zM3.5 6.9a6.4 6.4 0 0 1 9 0l-1.4 1.4a4.4 4.4 0 0 0-6.2 0zM1.3 4.7a9.5 9.5 0 0 1 13.4 0l-1.4 1.4a7.5 7.5 0 0 0-10.6 0z" fill="#14163a"/></svg>
+            <svg width="27" height="13" viewBox="0 0 27 13" aria-hidden="true"><rect x=".5" y=".5" width="23" height="12" rx="3.5" fill="none" stroke="#14163a" opacity=".4"/><rect x="2" y="2" width="20" height="9" rx="2" fill="#14163a"/><rect x="24.5" y="4" width="2" height="5" rx="1" fill="#14163a" opacity=".4"/></svg>
+          </span>
+        </div>
+
+        <div class="subhead col">
+          <button type="button" class="back" aria-label="戻る">
+            <svg width="20" height="20" viewBox="0 0 20 20" aria-hidden="true"><path d="M12.5 4 6.5 10l6 6" fill="none" stroke="#5b5be6" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          </button>
+          <h1>振り返り</h1>
+        </div>
+        <div class="scroll" id="scroll">
+          <div class="content col" id="content"></div>
+        </div>
+
+        <div class="home-ind"></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="side">
+    <div class="panel" id="info"></div>
+    <div class="panel">
+      <h2>操作のメモ</h2>
+      <ul>
+        <li>「描写が長い」: 20 秒しっかり話した想定の長い英文（約 45 語）に差し替える。</li>
+        <li>「音声の再生」: 「あなたの描写」の見出しの右に、自分の録音を聞き直すスピーカーのボタンを出す（最初から ON）。モックではタップすると停止のマークに変わり、カードの地が薄い紫になって、約 3 秒で元に戻る。音は鳴らない。</li>
+        <li>再生そのものは後の PR で作る。この PR では置き場所と見た目だけを決める。</li>
+        <li>画面に収まらないときは、端末の中をスクロールできる。</li>
+        <li>URL の # で状態を選べる（例: <code>#B</code>、<code>#C-long</code>。<code>-noaudio</code> でスピーカーを隠し、<code>-playing</code> で再生中の見た目、<code>-end</code> を付けると一番下までスクロールして開く）。</li>
+      </ul>
+    </div>
+  </div>
+</div>
+
+<script>
+(() => {
+  "use strict";
+
+  // ---------- 仮のデータ ----------
+  const DATA = {
+    total: 78, place: 4, players: 5,
+    scores: [["内容", 76], ["表現", 70], ["話し方", 88]],
+    short: "There is a bench in the park. There is a tree. A dog is near the bench.",
+    long: "There is a park. In the park there is a big tree and a bench under the tree. A brown dog is near the bench, I think it is sitting. There is a red ball on the grass, and the sky is blue and sunny.",
+    comment: "ベンチ・木・犬は押さえています。犬がどこで何をしているかを文で言えると、内容の点が上がります。",
+    model: "A dog is resting on the bench under the big tree.",
+    modelJa: "大きな木の下のベンチで、犬が休んでいます。",
+  };
+
+  const INFO = {
+    A: {
+      title: "A 点数の下にカード",
+      role: "点数の内訳のすぐ下に「あなたの描写」のカードを足す。その下は今と同じ講評・模範表現。いまの SwiftUI の実装に一番近い。",
+      good: ["今の画面の流れ（点数 → 文章）を崩さない", "カードを 1 枚足すだけで、実装が小さい"],
+      concern: ["講評を挟むので、自分の英文と模範表現が離れる。見比べるには上下に目を動かす", "長い描写だと模範表現が画面の外に押し出される"],
+      check: ["スピーカーのマークで、タップして聞き直せると伝わるか", "自分の英文と模範表現が離れていても、見比べられるか", "「描写が長い」で、模範表現までスクロールが要るのが気にならないか"],
+    },
+    B: {
+      title: "B 模範表現と並べて比べる",
+      role: "「あなたの描写」と「模範表現」を 1 枚のカードにまとめ、区切りの ↓ をはさんで上下に並べる。講評はその上に置く。",
+      why: "講評を上にした理由: 講評が「何が足りないか」（犬がどこで何をしているか）を先に言い、そのすぐ下で自分の文と模範の文を並べて確かめる、という読む順になる。講評を下にすると、見比べた後にもう一度上の文へ戻って読み直すことになる。",
+      good: ["自分の文と模範の文が隣り合い、違いが一目で分かる", "講評 → 比べる、の順に読める"],
+      concern: ["カードが大きくなり、長い描写だと模範表現が下に下がる", "点数の内訳が上に残るので、文章の部分は 2 枚目以降から始まる"],
+      check: ["スピーカーのマークで、タップして聞き直せると伝わるか", "区切り（↓）だけで、上が自分・下が模範と伝わるか", "講評を比べるカードの上に置く順が読みやすいか"],
+    },
+    C: {
+      title: "C 描写を主役に",
+      role: "合計点のすぐ下に「あなたの描写」を大きめに置き、講評・模範表現と続け、点数の内訳は一番下に小さくまとめる。振り返りの主役を「点数」から「自分が話した文」に移す案。",
+      good: ["画面を開いてすぐ、自分の文 → 講評 → 模範の順に読める", "講評と模範表現が自分の文のすぐ下に来る"],
+      concern: ["内訳（内容・表現・話し方）が下に追いやられ、見ない人が増える", "バーの小さい版を新しく作る必要がある"],
+      check: ["スピーカーのマークで、タップして聞き直せると伝わるか", "内訳が下にあっても困らないか（点数の理由を知りたい人が見つけられるか）", "合計点の直後に英文が来る並びが自然か"],
+    },
+  };
+
+  const $ = (s) => document.querySelector(s);
+  const state = { opt: "A", long: false, audio: true, playing: false };
+  const PLAY_MS = 3000; // 再生中の見た目を保つ時間（仮の録音の長さ）
+  let playTimer = 0;
+
+  // ---------- 部品 ----------
+  const pts = (v) => `<span class="pts">${v}<small>点</small></span>`;
+
+  function bars(compact) {
+    const rows = DATA.scores
+      .map(([name, v]) => `<div class="bar-row"><div class="top"><span class="name">${name}</span>${pts(v)}</div><div class="track"><i style="width:${v}%"></i></div></div>`)
+      .join("");
+    if (!compact) return `<div class="card"><div class="bars">${rows}</div></div>`;
+    // 小さい版は 1 行に並べる
+    const compactRows = DATA.scores
+      .map(([name, v]) => `<div class="bar-row"><span class="name">${name}</span><div class="track"><i style="width:${v}%"></i></div>${pts(v)}</div>`)
+      .join("");
+    return `<div class="card"><p class="card-title">点数の内訳</p><div class="bars compact">${compactRows}</div></div>`;
+  }
+
+  // speaker.wave.2.fill に似せたスピーカーと、再生中に出す停止のマーク
+  const speakBtn = () =>
+    `<button type="button" class="speak" data-speak aria-label="${state.playing ? "停止" : "自分の録音を再生"}">` +
+    `<svg class="ic-wave" width="18" height="18" viewBox="0 0 20 20" aria-hidden="true"><path d="M3 7.2h2.6L9.4 4c.5-.4 1.1-.1 1.1.5v11c0 .6-.6.9-1.1.5l-3.8-3.2H3a1 1 0 0 1-1-1V8.2a1 1 0 0 1 1-1z" fill="#5b5be6"/><path d="M13 7.3a3.6 3.6 0 0 1 0 5.4M15.3 5a6.8 6.8 0 0 1 0 10" fill="none" stroke="#5b5be6" stroke-width="1.8" stroke-linecap="round"/></svg>` +
+    `<svg class="ic-stop" width="14" height="14" viewBox="0 0 14 14" aria-hidden="true"><rect x="2" y="2" width="10" height="10" rx="2.2" fill="#5b5be6"/></svg>` +
+    `</button>`;
+  const mineCls = () => (state.playing ? "card playing" : "card");
+
+  const transcript = () => (state.long ? DATA.long : DATA.short);
+
+  const total = `<div class="total">${pts(DATA.total)}<span class="place">${DATA.place} 位 / ${DATA.players} 人</span></div>`;
+  const commentCard = () => `<div class="card"><p class="card-title">講評</p><p class="comment">${DATA.comment}</p></div>`;
+  const modelCard = () => `<div class="card"><p class="card-title">模範表現</p><p class="model">${DATA.model}</p><p class="model-ja">${DATA.modelJa}</p></div>`;
+  const mineCard = (lead) =>
+    `<div class="${mineCls()}"><div class="card-head"><p class="card-title">あなたの描写</p>${speakBtn()}</div><p class="mine${lead ? " lead" : ""}">${transcript()}</p></div>`;
+
+  const compareCard = () =>
+    `<div class="${mineCls()}">
+      <div class="card-head"><p class="card-title">あなたの描写</p>${speakBtn()}</div>
+      <p class="mine">${transcript()}</p>
+      <div class="compare-sep"><svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true"><path d="M8 2v11M3.5 8.5 8 13l4.5-4.5" fill="none" stroke="#9a9db3" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+      <p class="card-title">模範表現</p>
+      <p class="model">${DATA.model}</p>
+      <p class="model-ja">${DATA.modelJa}</p>
+    </div>`;
+
+  const SCREENS = {
+    A: () => [total, bars(false), mineCard(false), commentCard(), modelCard()],
+    B: () => [total, bars(false), commentCard(), compareCard()],
+    C: () => [total, mineCard(true), commentCard(), modelCard(), bars(true)],
+  };
+
+  function renderInfo() {
+    const i = INFO[state.opt];
+    const list = (xs) => `<ul>${xs.map((x) => `<li>${x}</li>`).join("")}</ul>`;
+    $("#info").innerHTML =
+      `<h2>${i.title}</h2><p>${i.role}</p>` +
+      (i.why ? `<h3>講評の位置</h3><p>${i.why}</p>` : "") +
+      `<h3>よいところ</h3>${list(i.good)}` +
+      `<h3>気になるところ</h3>${list(i.concern)}` +
+      `<h3>レビューで見てほしいこと</h3>${list(i.check)}`;
+  }
+
+  function render() {
+    $("#content").innerHTML = SCREENS[state.opt]().join("");
+    document.body.classList.toggle("audio", state.audio);
+    for (const b of document.querySelectorAll("[data-opt]")) {
+      b.setAttribute("aria-pressed", String(b.dataset.opt === state.opt));
+    }
+    $("#tb-long").checked = state.long;
+    $("#tb-audio").checked = state.audio;
+    renderInfo();
+  }
+
+  function writeHash() {
+    const parts = [state.opt];
+    if (state.long) parts.push("long");
+    if (!state.audio) parts.push("noaudio");
+    history.replaceState(null, "", `#${parts.join("-")}`);
+  }
+
+  // review.html#B・#C-long のように、# で状態を選ぶ
+  function readHash() {
+    const parts = location.hash.slice(1).split(/[-+,&]/);
+    const opt = parts.find((p) => p in SCREENS);
+    if (opt) state.opt = opt;
+    state.long = parts.includes("long");
+    state.audio = !parts.includes("noaudio");
+    state.playing = parts.includes("playing");
+  }
+
+  for (const b of document.querySelectorAll("[data-opt]")) {
+    b.addEventListener("click", () => {
+      state.opt = b.dataset.opt;
+      $("#scroll").scrollTop = 0;
+      writeHash();
+      render();
+    });
+  }
+  $("#tb-long").addEventListener("change", (e) => {
+    state.long = e.target.checked;
+    writeHash();
+    render();
+  });
+  $("#tb-audio").addEventListener("change", (e) => {
+    state.audio = e.target.checked;
+    if (!state.audio) state.playing = false;
+    writeHash();
+    render();
+  });
+  // スピーカーをタップすると再生中の見た目になり、約 3 秒で元に戻る（音は鳴らない）
+  $("#content").addEventListener("click", (e) => {
+    if (!e.target.closest("[data-speak]")) return;
+    clearTimeout(playTimer);
+    state.playing = !state.playing;
+    if (state.playing) {
+      playTimer = setTimeout(() => {
+        state.playing = false;
+        render();
+      }, PLAY_MS);
+    }
+    render();
+  });
+  window.addEventListener("hashchange", () => {
+    readHash();
+    render();
+  });
+
+  // ---------- 端末の枠を画面に収める ----------
+  function fit() {
+    const availW = Math.min(window.innerWidth - 32, 410);
+    const availH = window.innerHeight - $(".toolbar").offsetHeight - 40;
+    const s = Math.min(1, availW / 410, Math.max(0.55, availH / 864));
+    $("#phone").style.transform = `scale(${s})`;
+    $("#phone-fit").style.width = `${410 * s}px`;
+    $("#phone-fit").style.height = `${864 * s}px`;
+  }
+  window.addEventListener("resize", fit);
+
+  readHash();
+  fit();
+  render();
+  // 確認用: #C-end のように end を付けると、端末の中を一番下までスクロールした状態で開く
+  if (location.hash.includes("end")) $("#scroll").scrollTop = $("#scroll").scrollHeight;
+})();
+</script>
+</body>
+</html>
