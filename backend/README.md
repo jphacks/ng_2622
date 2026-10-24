@@ -73,6 +73,55 @@ API の型は zod で書き、[hono-openapi](https://hono.dev/examples/hono-open
 - ルートや型を変えたら `pnpm openapi` で `openapi.json` を生成し直し、一緒に commit する。PR では backend-checks が `pnpm openapi:check` で生成し忘れを検査する。
 - `openapi.json` は生成物なので Biome の整形の対象から外している（`biome.json`）。
 
+### HTTP の API を足す手順
+
+1. `src/schemas/http.ts` に、リクエストとレスポンスの型を zod で書く。`.meta({ ref: "名前" })` を付ける。
+
+   ```ts
+   export const RoomSummary = z
+     .object({ roomId: RoomId, playerCount: z.int().min(0) })
+     .meta({ ref: "RoomSummary", description: "部屋に入る前の確認用" });
+   ```
+
+2. 処理の中身を `src/usecases/` に書く。部屋の Durable Object を使うときは `src/repositories/` を通す。
+3. `src/routes/` にルートを書く。`describeRoute` に説明とレスポンスを、`validator` に入力の検証を書く。
+
+   ```ts
+   .get(
+     "/rooms/:roomId",
+     describeRoute({
+       operationId: "getRoom", // iOS で生成される関数名になる
+       tags: ["rooms"],
+       summary: "部屋があるかを確かめる",
+       responses: {
+         200: { description: "ある", content: jsonContent(RoomSummary) },
+         404: { description: "部屋が無い", content: jsonContent(ErrorResponse) },
+       },
+     }),
+     roomIdParam, // validator("param", RoomIdParam, ...)
+     async (c) => { /* usecase を呼んで c.json(...) を返す */ },
+   )
+   ```
+
+4. 新しいファイルにルートを作ったときは、`src/app.ts` の `.route("/", ...)` でつなぐ。
+5. `pnpm openapi` で `openapi.json` を作り直し、`pnpm dev` の `/docs` で見え方を確かめる。
+6. `pnpm typecheck` を通し、`openapi.json` も一緒に commit する。
+
+### WebSocket のメッセージを足す手順
+
+1. `src/schemas/ws.ts` に、`type` を固定したメッセージの型を書く。
+
+   ```ts
+   export const LeaveMessage = z
+     .object({ type: z.literal("leave") })
+     .meta({ ref: "LeaveMessage", description: "待合から抜ける" });
+   ```
+
+2. iPhone → 部屋 なら `ClientMessage`、部屋 → iPhone なら `ServerMessage` の `discriminatedUnion` の配列に足す。
+3. **同じところの `discriminator.mapping` にも 1 行足す**（例: `leave: "#/components/schemas/LeaveMessage"`）。足し忘れても型チェックは通るが、iOS で作る型が壊れる。
+4. iPhone → 部屋 のメッセージなら、`src/durable-objects/room.ts` の `switch` に処理を足す。判定（してよいか、状態をどう変えるか）は `src/domain/` に書く。
+5. `pnpm openapi` で `openapi.json` を作り直して commit する。
+
 ## PR ごとのプレビュー
 
 `backend/` を変える PR を出すと、GitHub Actions（`.github/workflows/backend-preview.yml`）がその PR 専用のプレビュー `https://pr-<PR番号>-ng-2622-backend.<サブドメイン>.workers.dev` を作り、URL を PR にコメントする。push のたびに更新され、PR を閉じると消える。iPhone から merge 前の版を試すときはこの URL に向ける。
