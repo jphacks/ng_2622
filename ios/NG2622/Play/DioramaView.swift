@@ -10,16 +10,20 @@ struct DioramaView: View {
   var yaw: Double
   /// 見下ろす角度（度）
   var tilt: Double
+  /// 部品の動き（motion）の 0 秒。ラウンドでは round の startAt。nil なら出した時刻から数える
+  var startsAt: Date?
 
   /// 形が出たか。読み込み済みなら最初から出す。まだなら、読み込めたらふわっと出す
   @State private var isShown: Bool
   /// 場面を出せなかった（部品が 1 つも置けない・配置の JSON が取れない）
   @State private var failed = false
+  @State private var motion = SceneMotionDriver()
 
-  init(sceneID: String, yaw: Double, tilt: Double) {
+  init(sceneID: String, yaw: Double, tilt: Double, startsAt: Date? = nil) {
     self.sceneID = sceneID
     self.yaw = yaw
     self.tilt = tilt
+    self.startsAt = startsAt
     _isShown = State(initialValue: SceneLibrary.shared.isLoaded(sceneID))
   }
 
@@ -39,6 +43,7 @@ struct DioramaView: View {
 
       if let scene = await SceneLibrary.shared.instance(of: sceneID) {
         world.addChild(scene.root)
+        motion.start(scene.moving, from: startsAt ?? Date())
       } else {
         failed = true
       }
@@ -58,6 +63,7 @@ struct DioramaView: View {
         SceneUnavailable()
       }
     }
+    .onDisappear { motion.stop() }
   }
 
   /// 中身を縦の軸まわりに回し、カメラを見下ろす角度の位置に置く
@@ -86,5 +92,34 @@ private struct SceneUnavailable: View {
         .foregroundStyle(Theme.muted)
     }
     .accessibilityElement(children: .combine)
+  }
+}
+
+/// 部品の動き（motion）を、毎フレーム startAt からの時刻で動かす。全員の端末で同じ時に同じ動きになる
+final class SceneMotionDriver {
+  private var ticker: FrameTicker?
+
+  func start(_ moving: [SceneComposer.Moving], from start: Date) {
+    stop()
+    guard !moving.isEmpty else { return }
+    Self.apply(moving, at: Date().timeIntervalSince(start))
+    ticker = FrameTicker { [weak self] _ in
+      guard self != nil else { return false }
+      Self.apply(moving, at: Date().timeIntervalSince(start))
+      return true
+    }
+  }
+
+  func stop() {
+    ticker?.invalidate()
+    ticker = nil
+  }
+
+  private static func apply(_ moving: [SceneComposer.Moving], at elapsed: TimeInterval) {
+    for m in moving {
+      let pose = SceneMotion.pose(of: m.item, at: elapsed)
+      m.entity.position = pose.position
+      m.entity.orientation = SceneMotion.orientation(yaw: pose.yaw, sway: pose.sway)
+    }
   }
 }
