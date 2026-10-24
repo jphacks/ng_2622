@@ -186,6 +186,93 @@ struct SceneComposerTests {
   }
 }
 
+/// バックエンドとのやりとり。状態コードと error.code から、画面に出すエラーを決める
+@Suite struct HTTPSceneLayoutClientTests {
+  /// URL ごとに決めた返事を返す。test ごとに host を変えるので、並べて走らせてもぶつからない
+  nonisolated final class Stub: URLProtocol {
+    struct Reply: Sendable {
+      let status: Int
+      let body: String
+    }
+
+    private static let lock = NSLock()
+    nonisolated(unsafe) private static var replies: [String: Reply] = [:]
+
+    static func set(_ url: URL, _ reply: Reply) {
+      lock.withLock { replies[url.absoluteString] = reply }
+    }
+
+    override class func canInit(with request: URLRequest) -> Bool { true }
+    override class func canonicalRequest(for request: URLRequest) -> URLRequest { request }
+
+    override func startLoading() {
+      let key = request.url?.absoluteString ?? ""
+      let reply = Self.lock.withLock { Self.replies[key] } ?? Reply(status: 404, body: "")
+      let response = HTTPURLResponse(url: request.url!, statusCode: reply.status, httpVersion: nil, headerFields: nil)!
+      client?.urlProtocol(self, didReceive: response, cacheStoragePolicy: .notAllowed)
+      client?.urlProtocol(self, didLoad: Data(reply.body.utf8))
+      client?.urlProtocolDidFinishLoading(self)
+    }
+
+    override func stopLoading() {}
+  }
+
+  func client(host: String) -> (HTTPSceneLayoutClient, URL) {
+    let configuration = URLSessionConfiguration.ephemeral
+    configuration.protocolClasses = [Stub.self]
+    let base = URL(string: "https://\(host).test")!
+    return (HTTPSceneLayoutClient(baseURL: base, session: URLSession(configuration: configuration)), base)
+  }
+
+  func failure(_ code: String) -> String {
+    #"{"error":{"code":"\#(code)","message":"作れませんでした: サーバーの理由"}}"#
+  }
+
+  /// error.code があればそれで、無ければ状態コードで決める。生成の口が無い 404 は「いまは作れない」
+  @Test(arguments: [
+    (422, "generation_refused", SceneLayoutError.refused),
+    (422, "generation_failed", .failed),
+    (503, "generation_unavailable", .unavailable),
+    (400, "invalid_message", .invalidPrompt),
+    (404, "", .unavailable),
+    (503, "", .unavailable),
+    (504, "", .timedOut),
+    (422, "", .failed),
+    (500, "", .connectionFailed),
+  ])
+  func generateErrors(status: Int, code: String, expected: SceneLayoutError) async {
+    let (client, base) = client(host: "gen-\(status)-\(code.isEmpty ? "none" : code)")
+    let body = code.isEmpty ? "Not Found" : failure(code)
+    Stub.set(base.appending(path: "scenes/generate"), .init(status: status, body: body))
+    await #expect(throws: expected) { try await client.generate(prompt: "公園", difficulty: .easy) }
+  }
+
+  /// サーバーの message は画面に出さない
+  @Test func reasonDoesNotUseServerMessage() {
+    for error in [SceneLayoutError.refused, .failed, .unavailable, .invalidPrompt] {
+      #expect(!error.reason.contains("サーバーの理由"))
+    }
+  }
+
+  @Test func generateSucceeds() async throws {
+    let (client, base) = client(host: "gen-ok")
+    Stub.set(base.appending(path: "scenes/generate"), .init(status: 201, body: #"{"sceneId":"gen-7k2m9q4x3a"}"#))
+    #expect(try await client.generate(prompt: "公園", difficulty: .normal) == "gen-7k2m9q4x3a")
+  }
+
+  @Test func layoutStatus() async throws {
+    let (client, base) = client(host: "layout")
+    Stub.set(
+      base.appending(path: "scenes/gen-aaaaaaaaaa/layout"),
+      .init(status: 200, body: #"{"protocol":"scenenglish.scene/1","name":"公園","items":[]}"#))
+    #expect(try await client.layout(sceneID: "gen-aaaaaaaaaa").name == "公園")
+    Stub.set(base.appending(path: "scenes/gen-bbbbbbbbbb/layout"), .init(status: 404, body: failure("unknown_scene")))
+    await #expect(throws: SceneLayoutError.notFound) { try await client.layout(sceneID: "gen-bbbbbbbbbb") }
+    Stub.set(base.appending(path: "scenes/gen-cccccccccc/layout"), .init(status: 500, body: ""))
+    await #expect(throws: SceneLayoutError.connectionFailed) { try await client.layout(sceneID: "gen-cccccccccc") }
+  }
+}
+
 /// 「AI で作る」の状態の移り変わり
 struct SceneGeneratorTests {
   final class FakeClient: SceneLayoutClient {
@@ -221,12 +308,12 @@ struct SceneGeneratorTests {
   }
 
   @Test func failureShowsReason() async {
-    let client = FakeClient(.failure(.rejected(message: "作れませんでした（理由）")))
+    let client = FakeClient(.failure(.refused))
     let generator = SceneGenerator(client: client, store: SceneLayoutStore(client: client))
     generator.prompt = "x"
     generator.generate()
     await waitUntilDone(generator)
-    #expect(generator.state == .failed(reason: "作れませんでした（理由）"))
+    #expect(generator.state == .failed(.refused))
     #expect(generator.made == nil)
   }
 }

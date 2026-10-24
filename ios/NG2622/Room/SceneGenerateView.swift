@@ -7,8 +7,8 @@ final class SceneGenerator {
   enum State: Equatable {
     case idle
     case generating(startedAt: Date)
-    /// 作れなかった。reason は画面に出す理由
-    case failed(reason: String)
+    /// 作れなかった。画面には error.reason を出す
+    case failed(SceneLayoutError)
   }
 
   /// 作った場面
@@ -19,7 +19,7 @@ final class SceneGenerator {
   }
 
   /// 一言の長さの上限
-  static let maxPromptLength = 40
+  nonisolated static let maxPromptLength = 40
   /// 待つ時間の目安（進み具合のバーに使う）。バックエンドは長くて 20 秒で返す
   static let expectedWait: TimeInterval = 20
   /// これを過ぎたら待つのをやめ、「時間がかかりすぎた」にする
@@ -71,8 +71,7 @@ final class SceneGenerator {
       } catch {
         guard let self, !Task.isCancelled else { return }
         timer?.cancel()
-        let reason = (error as? SceneLayoutError ?? .connectionFailed).reason
-        state = .failed(reason: reason)
+        state = .failed(error as? SceneLayoutError ?? .connectionFailed)
       }
     }
     // 通信の待ち時間（URLRequest の timeoutInterval）は無通信の間しか数えないので、全体の時間もここで区切る
@@ -81,7 +80,7 @@ final class SceneGenerator {
       guard let self, !Task.isCancelled, isGenerating else { return }
       task?.cancel()
       task = nil
-      state = .failed(reason: SceneLayoutError.timedOut.reason)
+      state = .failed(.timedOut)
     }
   }
 
@@ -216,7 +215,7 @@ struct SceneGenerateSheet: View {
     case .generating(let startedAt):
       GeneratingCard(startedAt: startedAt)
         .transition(.opacity.combined(with: .move(edge: .bottom)))
-    case .failed(let reason):
+    case .failed(let error):
       HStack(alignment: .top, spacing: 12) {
         Image(systemName: "exclamationmark.triangle.fill")
           .font(.system(size: 20, weight: .bold))
@@ -224,7 +223,7 @@ struct SceneGenerateSheet: View {
         VStack(alignment: .leading, spacing: 4) {
           Text("作れませんでした")
             .font(Theme.font(16, .heavy))
-          Text(reason)
+          Text(error.reason)
             .font(Theme.font(14, .bold))
             .foregroundStyle(Theme.muted)
             .fixedSize(horizontal: false, vertical: true)

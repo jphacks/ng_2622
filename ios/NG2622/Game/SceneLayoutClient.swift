@@ -29,18 +29,27 @@ enum SceneDifficulty: String, CaseIterable, Identifiable, Sendable {
 enum SceneLayoutError: Error, Equatable {
   /// その場面が無い
   case notFound
-  /// 作れなかった。message はバックエンドが返した理由
-  case rejected(message: String)
+  /// 一言を断られた（generation_refused）。言い方を変えれば作れるかもしれない
+  case refused
+  /// 作る途中で失敗した（generation_failed など）。もう一度試せば作れるかもしれない
+  case failed
+  /// いまは作れない（generation_unavailable、または生成の口がまだ無い 404）
+  case unavailable
+  /// 一言の長さや形を受け付けなかった（invalid_message）
+  case invalidPrompt
   /// 20 秒を過ぎても返事が無い
   case timedOut
   /// バックエンドにつながらない・返事が読めない
   case connectionFailed
 
-  /// 画面に出す理由
+  /// 画面に出す理由。サーバーの message は出さず、ここで決めた文言だけを出す
   var reason: String {
     switch self {
     case .notFound: "作った場面が見つかりませんでした。"
-    case .rejected(let message): message.isEmpty ? "作れませんでした。" : message
+    case .refused: "この一言では作れませんでした。言い方を変えてください。"
+    case .failed: "うまく作れませんでした。もう一度作ってみてください。"
+    case .unavailable: "いまは作れません。用意された場面から選んでください。"
+    case .invalidPrompt: "お題を受け付けられませんでした。\(SceneGenerator.maxPromptLength) 文字までの一言で入れ直してください。"
     case .timedOut: "時間がかかりすぎたので止めました。もう一度作るか、用意されたシーンを選んでください。"
     case .connectionFailed: "サーバーにつながりませんでした。"
     }
@@ -102,14 +111,19 @@ final class SceneLayoutStore {
 /// 本物のバックエンドにつなぐ。API の型がまだ openapi.json に無いので、URLSession で直接呼ぶ
 final class HTTPSceneLayoutClient: SceneLayoutClient {
   private let baseURL: URL
+  private let session: URLSession
 
-  init(baseURL: URL) {
+  init(baseURL: URL, session: URLSession = .shared) {
     self.baseURL = baseURL
+    self.session = session
   }
 
   func layout(sceneID: String) async throws -> SceneLayout {
     let request = URLRequest(url: baseURL.appending(path: "scenes/\(sceneID)/layout"))
-    let data = try await send(request)
+    let (data, status) = try await send(request)
+    guard (200..<300).contains(status) else {
+      throw status == 404 ? SceneLayoutError.notFound : SceneLayoutError.connectionFailed
+    }
     do {
       return try SceneLayout.decode(data)
     } catch {
@@ -129,40 +143,67 @@ final class HTTPSceneLayoutClient: SceneLayoutClient {
     request.timeoutInterval = SceneLayouts.generateTimeout
     request.setValue("application/json", forHTTPHeaderField: "Content-Type")
     request.httpBody = try JSONEncoder().encode(Body(prompt: prompt, difficulty: difficulty.rawValue))
-    let data = try await send(request)
+    let (data, status) = try await send(request)
+    guard (200..<300).contains(status) else {
+      throw Self.generateError(status: status, code: Self.errorCode(in: data))
+    }
     guard let response = try? JSONDecoder().decode(Response.self, from: data),
       GeneratedScene.isGenerated(response.sceneId)
     else { throw SceneLayoutError.connectionFailed }
     return response.sceneId
   }
 
-  /// 2xx なら本文を返す。それ以外は、本文の error.message（あれば）を理由にする
-  private func send(_ request: URLRequest) async throws -> Data {
+  /// POST /scenes/generate が失敗したときの、状態コードと error.code から決めるエラー
+  static func generateError(status: Int, code: String?) -> SceneLayoutError {
+    switch code {
+    case "generation_refused": return .refused
+    case "generation_failed": return .failed
+    case "generation_unavailable": return .unavailable
+    case "invalid_message": return .invalidPrompt
+    default: break
+    }
+    switch status {
+    // 生成の口がまだ無いバックエンドは 404 を返す。作れないのと同じに扱う
+    case 404, 503: return .unavailable
+    case 504: return .timedOut
+    case 400..<500: return .failed
+    default: return .connectionFailed
+    }
+  }
+
+  /// 失敗の本文（{ "error": { "code", "message" } }）の code。message は画面に出さず、ログにだけ残す
+  private static func errorCode(in data: Data) -> String? {
+    struct Failure: Decodable {
+      struct Detail: Decodable {
+        let code: String?
+        let message: String?
+      }
+      let error: Detail
+    }
+    guard let failure = try? JSONDecoder().decode(Failure.self, from: data) else { return nil }
+    sceneLog.notice(
+      "場面を作れませんでした: \(failure.error.code ?? "-", privacy: .public) \(failure.error.message ?? "", privacy: .public)")
+    return failure.error.code
+  }
+
+  /// 本文と状態コード。つながらない・時間切れは throw する
+  private func send(_ request: URLRequest) async throws -> (Data, Int) {
     let data: Data
     let response: URLResponse
     do {
-      (data, response) = try await URLSession.shared.data(for: request)
+      (data, response) = try await session.data(for: request)
     } catch let error as URLError where error.code == .timedOut {
       throw SceneLayoutError.timedOut
+    } catch let error as URLError where error.code == .cancelled {
+      throw CancellationError()
     } catch {
       throw SceneLayoutError.connectionFailed
     }
     guard let http = response as? HTTPURLResponse else { throw SceneLayoutError.connectionFailed }
-    switch http.statusCode {
-    case 200..<300:
-      return data
-    case 404:
-      throw SceneLayoutError.notFound
-    default:
-      struct Failure: Decodable {
-        struct Detail: Decodable { let message: String }
-        let error: Detail
-      }
-      let message = (try? JSONDecoder().decode(Failure.self, from: data))?.error.message
+    if !(200..<300).contains(http.statusCode) {
       sceneLog.notice("\(request.url?.path() ?? "", privacy: .public) が \(http.statusCode) を返しました")
-      if let message { throw SceneLayoutError.rejected(message: message) }
-      throw http.statusCode == 504 ? SceneLayoutError.timedOut : SceneLayoutError.connectionFailed
     }
+    return (data, http.statusCode)
   }
 }
 
@@ -189,7 +230,7 @@ final class MockSceneLayoutClient: SceneLayoutClient {
   func generate(prompt: String, difficulty: SceneDifficulty) async throws -> String {
     try await Task.sleep(for: .seconds(.random(in: 1...2)))
     if prompt.contains(Self.failingWord) {
-      throw SceneLayoutError.rejected(message: "（見本）この一言では作れませんでした。言い方を変えてみてください。")
+      throw SceneLayoutError.refused
     }
     let lower = prompt.lowercased()
     return Self.roomWords.contains(where: lower.contains) ? "gen-sample-2" : "gen-sample-1"
