@@ -20,6 +20,7 @@ docs/design/      仕様の正本（使い方・画面の流れ・アーキテ�
 docs/design/ui/   画面設計書の元データ（screens/*.md、仮の画面の画像）
 assets/scenes/    3D シーン（USDZ）と採点用の場面の説明（JSON）。scripts/scene/ が Blender で生成する
 ios/              iOS アプリ（SwiftUI）。xcodegen で ios/project.yml から作り、.xcodeproj は commit しない
+ios/Packages/     iOS のローカルの Swift パッケージ。BackendAPI は backend/openapi.json から API の型をビルドのたびに作る
 scripts/          規約の検査スクリプト、GitHub 設定スクリプト、画面設計書の生成（ui-spec/）、3D シーンの生成（scene/）
 tests/            scripts/ の self-test
 lefthook.yml      git hook（pre-commit / commit-msg / pre-push）
@@ -85,6 +86,9 @@ blender --background --factory-startup --python scripts/scene/park.py  # 3D シ�
 (cd backend && pnpm openapi)                # API の型から backend/openapi.json を生成（iOS が読む。生成物も commit する）
 (cd ios && xcodegen)                        # ios/NG2622.xcodeproj を作る（clone 後と ios/project.yml を変えたあと）
 open ios/NG2622.xcodeproj                   # scheme「NG2622 Mock」（仮のデータ）か「NG2622 Live」（本物のバックエンド。まだ未実装）を選んでビルド。Mock の振る舞い（参加者の数・切断など）は ios/Config/Local.xcconfig の MOCK_* で変える（ios/Config/Local.xcconfig.example）
+# ↑ 初めてビルドすると「Validate plug-in “OpenAPIGenerator”」のエラーが出るので、Issue navigator で Trust & Enable を押す（Mac ごとに一度。generator の版を上げたらもう一度）
+# API の型（import BackendAPI）は backend/openapi.json からビルドのたびに作られ、commit しない。openapi.json が変わればビルドし直すだけでよい
+xcodebuild -project ios/NG2622.xcodeproj -scheme "NG2622 Mock" -destination 'generic/platform=iOS Simulator' -skipPackagePluginValidation build   # コマンドラインでビルドするときは -skipPackagePluginValidation を付ける
 ```
 
 ## AI エージェント向けの補足
