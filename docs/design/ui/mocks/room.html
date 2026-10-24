@@ -241,10 +241,7 @@
     letter-spacing: .01em;
     margin: -4px 0 2px;
   }
-  .tagline { text-align: center; color: var(--sub); font-size: 15px; font-weight: 700; margin: 0 0 10px; }
-  .steps { display: flex; justify-content: center; align-items: center; gap: 6px; margin-bottom: 18px; font-size: 13px; font-weight: 800; }
-  .steps span { padding: 5px 10px; border-radius: 999px; background: var(--indigo-soft); color: var(--indigo); }
-  .steps i { color: #b5b8d6; font-style: normal; }
+  .tagline { text-align: center; color: var(--sub); font-size: 15px; font-weight: 700; margin: 0 0 24px; }
   .player-card { padding: 14px 16px 12px; margin-bottom: 14px; }
   .field-label { display: block; font-weight: 800; font-size: 14px; color: var(--sub); margin-bottom: 6px; }
   .name-row { display: flex; gap: 10px; align-items: center; }
@@ -378,10 +375,8 @@
   .leave { font-size: 14px; font-weight: 700; color: var(--sub); }
   /* 部屋のコードは切り取り線つきのチケットにする（招待状のイメージ） */
   .ticket { display: flex; align-items: stretch; padding: 0; overflow: visible; position: relative; }
-  .ticket-main { flex: 1; padding: 14px 4px 14px 20px; }
-  .ticket-label { font-size: 13px; color: var(--sub); font-weight: 800; }
+  .ticket-main { flex: 1; display: flex; align-items: center; padding: 14px 4px 14px 20px; }
   .room-code { font-size: 52px; font-weight: 800; color: var(--indigo); line-height: 1.05; letter-spacing: .06em; }
-  .ticket-hint { font-size: 12px; color: var(--sub); font-weight: 700; }
   .ticket-qr { padding: 12px 14px; border-left: 2px dashed var(--line); position: relative; }
   .ticket-qr::before, .ticket-qr::after {
     content: "";
@@ -396,11 +391,41 @@
   .ticket-qr::after { bottom: -10px; }
   .qr-box { display: block; width: 92px; height: 92px; }
 
+  .join-bubble {
+    position: relative;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin-left: 6px;
+    padding: 4px 10px;
+    border-radius: 10px;
+    background: var(--ink);
+    color: #fff;
+    font-size: 12px;
+    font-weight: 700;
+    opacity: 0;
+    transform: translateX(-6px);
+    transition: opacity .25s, transform .25s;
+    pointer-events: none;
+  }
+  .join-bubble::before {
+    content: "";
+    position: absolute;
+    left: -5px;
+    top: 50%;
+    margin-top: -5px;
+    border: 5px solid transparent;
+    border-left: 0;
+    border-right-color: var(--ink);
+  }
+  .join-bubble.show { opacity: 1; transform: none; animation: nudge .45s cubic-bezier(.3, 1.6, .5, 1); }
+  @keyframes nudge { from { transform: translateX(-10px) scale(.9); } }
+  .join-bubble i { width: 8px; height: 8px; border-radius: 50%; }
   .seats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px 6px; }
   .seat { text-align: center; font-size: 13px; font-weight: 800; min-width: 0; }
   .seat.new { animation: pop .45s cubic-bezier(.3, 1.6, .5, 1); }
   .seat .avatar { width: 52px; height: 52px; margin: 0 auto 4px; font-size: 22px; position: relative; }
-  .seat .crown { position: absolute; top: -13px; left: 50%; transform: translateX(-50%) rotate(-10deg); font-size: 17px; }
+  .seat .crown { position: absolute; top: -15px; left: 50%; width: 26px; height: 20px; transform: translateX(-50%) rotate(-8deg); filter: drop-shadow(0 2px 2px rgba(22, 26, 58, .2)); }
   .seat .badge { position: absolute; right: -1px; bottom: -1px; width: 14px; height: 14px; border-radius: 50%; border: 2px solid #fff; background: var(--ok); }
   .seat.off .avatar { filter: grayscale(1); opacity: .5; }
   .seat.off .badge { background: var(--warn); }
@@ -418,9 +443,11 @@
     gap: 6px;
     padding: 7px 14px;
     border-radius: 999px;
-    background: var(--yellow-soft);
+    background: var(--indigo);
+    color: #fff;
     font-weight: 800;
     font-size: 14px;
+    box-shadow: 0 4px 10px rgba(79, 82, 230, .25);
   }
   .preview {
     height: 150px;
@@ -457,7 +484,6 @@
     font-weight: 800;
     font-size: 15px;
   }
-  .preview-note { position: absolute; right: 12px; bottom: 13px; font-size: 11px; color: var(--sub); font-weight: 700; }
   .scene-chips { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-top: 10px; }
   .chip {
     height: 42px;
@@ -558,7 +584,6 @@
     </div>
     <h1 class="logo">ScenEnglish</h1>
     <p class="tagline">同じ景色を、ちがう英語で。</p>
-    <div class="steps"><span>👀 見る</span><i>›</i><span>🎙 話す</span><i>›</i><span>🏆 比べる</span></div>
     <div class="card player-card">
       <label class="field-label" for="name">プレイヤー</label>
       <div class="name-row">
@@ -614,20 +639,18 @@
     </div>
     <div class="card ticket">
       <div class="ticket-main">
-        <div class="ticket-label">部屋のコード</div>
         <div class="room-code" id="room-code">4821</div>
-        <div class="ticket-hint">コードか QR を見せて、友だちを招待</div>
       </div>
       <div class="ticket-qr"><svg class="qr-box" id="qr" viewBox="0 0 29 29" role="img" aria-label="部屋の QR"></svg></div>
     </div>
     <div class="card">
-      <p class="card-title">参加者 <span class="muted" id="member-count">1/8</span></p>
+      <p class="card-title">参加者 <span class="muted" id="member-count">1/8</span><span class="join-bubble" id="join-bubble" aria-live="polite"></span></p>
       <div class="seats" id="seats"></div>
     </div>
     <div class="card">
       <div class="scene-head">
         <p class="card-title">シーン</p>
-        <button type="button" class="btn-random" id="random"><span>🎲</span>おまかせ</button>
+        <button type="button" class="btn-random" id="random">おまかせ</button>
       </div>
       <div class="preview" id="preview"></div>
       <div class="scene-chips" id="scene-chips"></div>
@@ -684,7 +707,7 @@
     <li><b>ホームの演出</b>: 仮の画面（名前とボタンだけ）から変えた提案。回る 3D ジオラマと、別々のプレイヤーの英文の吹き出しで「同じ景色を、ちがう英語で」を説明なしで見せる（発表の録画の最初の 10 秒で伝えるため）。自分の色を選び、待合のアイコンにも使う。アプリではプレイと同じ 3D シーンを回すだけなので、素材は増えない。</li>
     <li><b>部屋に入る</b>: キーパッドで 4 桁そろったら自動で確かめるので、「入る」ボタンは無くした（screens/join.md の「入る」から変えた）。上に、ホームで決めた自分の名前と色を出す。</li>
     <li><b>待合のシーン</b>: 選んだシーンが小さな 3D で回る。参加者の画面にも同じものが出て、「全員が同じ場面を見る」を待合のうちから伝える。仮の画面のサムネイル画像は、アプリでは 3D の表示に置き換わる。</li>
-    <li><b>参加者</b>: 一覧ではなく座席のように並べ、空き席を点線で出した。ホストは 👑。</li>
+    <li><b>参加者</b>: 一覧ではなく座席のように並べ、空き席を点線で出した。ホストはアイコンの上に王冠。人が入ると「参加者 2/8」の横に吹き出しで知らせる。</li>
     <li><b>呼び方</b>: 仮の画面は「ルームコード」、文書は「部屋のコード」。モックは文書に合わせた。</li>
     <li><b>準備完了</b>: 仮の画面にあるが未決定。モックでは押す操作を入れず、接続の状態（接続中・切断中）だけ出した。</li>
     <li><b>人数の上限</b>: 8 人（architecture.md の初期値）で「1/8」と出した。本番は 2 人。</li>
@@ -699,17 +722,17 @@
   const VALID_CODE = "4821";
   const SCENES = [
     {
-      id: "park", name: "公園", emoji: "🌳",
+      id: "park", name: "公園",
       top: "linear-gradient(135deg,#9fe07f,#6cc456)", side: "#4f9c3c", strip: "#ecdcb6",
       props: [["🌳", 0.2, 0.22, 1.4], ["🌳", 0.82, 0.28, 1.2], ["🚶", 0.5, 0.56, 0.95], ["🐕", 0.24, 0.72, 0.75], ["🪑", 0.78, 0.72, 0.7], ["🌷", 0.9, 0.92, 0.6]],
     },
     {
-      id: "classroom", name: "教室", emoji: "🏫",
+      id: "classroom", name: "教室",
       top: "linear-gradient(135deg,#f3dfb5,#e2c38b)", side: "#b98f55", strip: null,
       props: [["🧑‍🏫", 0.5, 0.2, 1], ["📚", 0.14, 0.2, 0.75], ["🪴", 0.88, 0.2, 0.9], ["🪑", 0.24, 0.58, 0.8], ["🪑", 0.5, 0.62, 0.8], ["🪑", 0.76, 0.58, 0.8]],
     },
     {
-      id: "station", name: "駅前", emoji: "🚉",
+      id: "station", name: "駅前",
       top: "linear-gradient(135deg,#e3e7f0,#c3cadb)", side: "#8f98ad", strip: "#f5f0e1",
       props: [["🚉", 0.5, 0.14, 1.2], ["🕐", 0.18, 0.3, 0.85], ["🚶", 0.42, 0.6, 0.9], ["🧳", 0.6, 0.64, 0.6], ["🚕", 0.82, 0.8, 0.9], ["🌳", 0.14, 0.82, 1.1]],
     },
@@ -948,7 +971,19 @@
     const name = GUEST_NAMES.find((n) => !used.has(n)) || `ゲスト${state.members.length}`;
     state.members.push({ name, host: false, off: false, fresh: true, color: pickColor(state.members.map((m) => m.color)) });
     renderLobby();
-    toast(`${name} さんが入りました`);
+    showJoinBubble(name, state.members[state.members.length - 1].color);
+  }
+
+  // 入ってきた人を「参加者 2/8」の横の吹き出しで知らせ、少したったら消す
+  let bubbleTimer;
+  function showJoinBubble(name, color) {
+    const el = $("join-bubble");
+    el.innerHTML = `<i style="background:${color}"></i>${escapeHtml(name)} さんが入りました`;
+    el.classList.remove("show");
+    void el.offsetWidth; // アニメーションをやり直す
+    el.classList.add("show");
+    clearTimeout(bubbleTimer);
+    bubbleTimer = setTimeout(() => el.classList.remove("show"), 2600);
   }
 
   function renderSeats() {
@@ -958,7 +993,7 @@
     let html = state.members.map((m) => `
       <div class="seat${m.off ? " off" : ""}${m.fresh ? " new" : ""}">
         <div class="avatar" style="background:${m.color}">
-          ${m.host ? '<span class="crown" aria-label="ホスト">👑</span>' : ""}${escapeHtml(m.name.slice(0, 1))}<span class="badge"></span>
+          ${m.host ? '<svg class="crown" viewBox="0 0 26 20" role="img" aria-label="ホスト"><path d="M2 6l5.5 5L13 2l5.5 9L24 6l-2 12H4z" fill="#ffd23f" stroke="#e0a800" stroke-width="1.5" stroke-linejoin="round"/><circle cx="13" cy="2.5" r="2" fill="#ffd23f"/></svg>' : ""}${escapeHtml(m.name.slice(0, 1))}<span class="badge"></span>
         </div>
         <div class="nm">${escapeHtml(m.name)}</div>
         <div class="sub${m.name === state.me ? " you" : ""}">${m.off ? "切断中" : m.name === state.me ? "あなた" : m.host ? "ホスト" : "接続中"}</div>
@@ -976,14 +1011,14 @@
     if (!s) {
       shownScene = null;
       $("preview").innerHTML = `<div class="preview-empty">${state.isHost
-        ? "<div style='font-size:26px'>🧊</div>下からシーンを選ぶと<br>ここに 3D が出ます"
-        : "<div style='font-size:26px'>🧊</div>ホストが選んだシーンが<br>ここに出ます"}</div>`;
+        ? "下からシーンを選ぶと<br>ここに 3D が出ます"
+        : "ホストが選んだシーンが<br>ここに出ます"}</div>`;
       return;
     }
     if (shownScene === s.id) return; // 同じシーンなら回転をやり直さない
     shownScene = s.id;
     $("preview").classList.remove("pop");
-    $("preview").innerHTML = `${diorama(s, 120)}<div class="preview-name">${s.emoji} ${s.name}</div><div class="preview-note">全員の画面に同じ場面</div>`;
+    $("preview").innerHTML = `${diorama(s, 120)}<div class="preview-name">${s.name}</div>`;
     void $("preview").offsetWidth;
     $("preview").classList.add("pop");
   }
@@ -998,7 +1033,7 @@
     $("start").hidden = !state.isHost;
     if (state.isHost) {
       $("scene-chips").innerHTML = SCENES.map((s) =>
-        `<button type="button" class="chip${state.scene === s.id ? " on" : ""}" data-scene="${s.id}">${s.emoji} ${s.name}</button>`).join("");
+        `<button type="button" class="chip${state.scene === s.id ? " on" : ""}" data-scene="${s.id}">${s.name}</button>`).join("");
       for (const b of $("scene-chips").querySelectorAll("[data-scene]")) {
         b.addEventListener("click", () => { state.scene = b.dataset.scene; renderLobby(); });
       }
