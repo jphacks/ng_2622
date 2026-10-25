@@ -8,9 +8,11 @@ Blender の中で動かす（Blender に入っている pxr で USDZ を読む�
   - anchors: 付けるはずの部品にあり、外接箱の内側にある。座る人の hip を座る家具の seat に合わせると、
     脚が家具の前に出て、足が床に深くめり込まず、背中が背もたれの後ろへ抜けない
 --sheet を付けると、全部品を並べた確かめの画像（assets/parts/contact_sheet.png）も作る。
+--sheet-only <id> と --sheet-out <png> で、一部の部品だけを並べた画像を別の場所に作れる（足した部品を見るとき）。
 
 使い方:
   blender --background --factory-startup --python scripts/scene/check_parts.py -- [--sheet] [--dir assets/parts]
+  blender --background --factory-startup --python scripts/scene/check_parts.py -- --sheet-only train --sheet-out /tmp/new.png
 """
 from __future__ import annotations
 
@@ -317,14 +319,15 @@ def render_tile(usdz: Path, png: Path, label: str, size_text: str) -> None:
     bpy.ops.render.render(write_still=True)
 
 
-def contact_sheet(root: Path, work: Path) -> None:
+def contact_sheet(root: Path, work: Path, ids: list[str] | None = None, out: Path | None = None) -> None:
+    """部品を並べた画像を作る。ids を渡せばその部品だけを並べ、out に書く（既定は <root>/contact_sheet.png）。"""
     import bpy
     import numpy as np
 
     index = {m["id"]: m for m in json.loads((root / "index.json").read_text(encoding="utf-8"))}
     work.mkdir(parents=True, exist_ok=True)
     tiles = []
-    for pid in EXPECTED:
+    for pid in ids or EXPECTED:
         m = index[pid]
         png = work / f"{pid}.png"
         render_tile(root / pid / "1.usdz", png, f"{pid}  {m['label']}", "{:g} x {:g} x {:g} m".format(*m["size"]))
@@ -340,12 +343,14 @@ def contact_sheet(root: Path, work: Path) -> None:
         y0 = (rows - 1 - r) * TILE
         sheet[y0:y0 + TILE, c * TILE:(c + 1) * TILE] = px
         bpy.data.images.remove(img)
-    out = bpy.data.images.new("contact_sheet", COLS * TILE, rows * TILE, alpha=False)
-    out.pixels = sheet.ravel()
+    image = bpy.data.images.new("contact_sheet", COLS * TILE, rows * TILE, alpha=False)
+    image.pixels = sheet.ravel()
     settings = bpy.context.scene.render.image_settings
     settings.file_format, settings.color_mode, settings.compression = "PNG", "RGB", 100
-    out.save_render(str(root / "contact_sheet.png"))
-    print(f"wrote {root / 'contact_sheet.png'}")
+    path = out or root / "contact_sheet.png"
+    path.parent.mkdir(parents=True, exist_ok=True)
+    image.save_render(str(path))
+    print(f"wrote {path}")
 
 
 def main() -> None:
@@ -354,11 +359,15 @@ def main() -> None:
     ap.add_argument("--dir", type=Path, default=REPO / "assets" / "parts")
     ap.add_argument("--sheet", action="store_true", help="確かめの画像 contact_sheet.png も作る")
     ap.add_argument("--work", type=Path, default=None, help="部品ごとの画像を置く場所（既定は一時ディレクトリ）")
+    ap.add_argument("--sheet-only", action="append", choices=EXPECTED, metavar="ID",
+                    help="画像にこの部品だけを並べる（くり返して指定できる。--sheet-out と使う）")
+    ap.add_argument("--sheet-out", type=Path, default=None, help="画像の書き出し先（既定は <dir>/contact_sheet.png）")
     args = ap.parse_args(argv)
     root = args.dir.resolve()
     ok = check(root)
-    if args.sheet:
-        contact_sheet(root, (args.work or Path(tempfile.mkdtemp(prefix="parts_tiles_"))).resolve())
+    if args.sheet or args.sheet_only:
+        contact_sheet(root, (args.work or Path(tempfile.mkdtemp(prefix="parts_tiles_"))).resolve(),
+                      args.sheet_only, args.sheet_out.resolve() if args.sheet_out else None)
     if not ok:
         sys.exit(1)
 
