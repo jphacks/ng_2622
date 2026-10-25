@@ -23,22 +23,32 @@ struct LobbyView: View {
       }
       .padding(.top, 8)
 
-      ticket
-        .padding(.top, 10)
-      seats
-        .padding(.top, 16)
-      if session.isHost {
-        switch pick {
-        case .difficulty:
-          DifficultyPicker(selected: $difficulty, example: example(difficulty))
+      // 退出とスタートは上下に固定し、収まらないときは間だけをスクロールする（退出がステータスバーに潜らないように）
+      ScrollView {
+        VStack(spacing: 0) {
+          ticket
+            .padding(.top, 10)
+          seats
             .padding(.top, 16)
-        case .list:
-          ScenePicker(selected: $sceneID)
-            .padding(.top, 16)
+          if session.isHost {
+            switch pick {
+            case .difficulty:
+              DifficultyPicker(selected: $difficulty, example: example(difficulty))
+                .padding(.top, 16)
+            case .list:
+              ScenePicker(selected: $sceneID)
+                .padding(.top, 16)
+            }
+          }
         }
+        // カードの影が切れないよう、スクロールの枠だけ左右に広げる
+        .padding(.horizontal, 16)
+        .padding(.bottom, 12)
       }
+      .padding(.horizontal, -16)
+      .scrollBounceBehavior(.basedOnSize)
+      .scrollIndicators(.hidden)
 
-      Spacer(minLength: 12)
       if session.isHost {
         Button("スタート", action: start)
           .buttonStyle(BigButtonStyle(kind: .primary))
@@ -83,24 +93,33 @@ struct LobbyView: View {
     .background(CardBackground())
   }
 
-  /// 参加者を席のように並べる。空いた席は点線
+  /// 参加者を席のように 1 列に並べる。空いた席は点線。収まらない分は横にスクロールする
   private var seats: some View {
     let members = session.participants
-    let columns = Array(repeating: GridItem(.flexible(), spacing: 6), count: 4)
-    return LazyVGrid(columns: columns, spacing: 16) {
-      ForEach(0..<RoomLimit.members, id: \.self) { i in
-        if i < members.count {
-          Seat(participant: members[i])
-            .id(members[i].id)
-            .transition(.scale(scale: 0.4).combined(with: .opacity))
-        } else {
-          EmptySeat()
+    return ScrollView(.horizontal) {
+      HStack(spacing: 6) {
+        ForEach(0..<RoomLimit.members, id: \.self) { i in
+          if i < members.count {
+            Seat(participant: members[i])
+              .id(members[i].id)
+              .transition(.scale(scale: 0.4).combined(with: .opacity))
+          } else {
+            EmptySeat()
+          }
         }
+        .frame(width: 64)
       }
+      .scrollTargetLayout()
+      // 王冠が上にはみ出すぶん
+      .padding(.top, 18)
+      .padding(.bottom, 16)
     }
+    .contentMargins(.horizontal, 12, for: .scrollContent)
+    .scrollIndicators(.hidden)
+    // 入ってきた人が見えるよう、いちばん新しい人まで送る
+    .scrollPosition(id: .constant(members.last?.id), anchor: .trailing)
     .animation(.spring(duration: 0.45, bounce: 0.45), value: members.map(\.id))
-    .padding(.horizontal, 12)
-    .padding(.vertical, 18)
+    .clipShape(RoundedRectangle(cornerRadius: 22))
     .background(CardBackground())
   }
 }
