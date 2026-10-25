@@ -15,11 +15,12 @@ enum SceneLayoutError: Error, Equatable {
 }
 
 enum SceneLayouts {
-  /// アプリ全体で使う口。Live で URL があればバックエンドに、それ以外は同梱の作り置きの場面につなぐ
+  /// アプリ全体で使う口。Live で URL があれば、同梱の作り置きの場面を先に見て、無いものだけバックエンドに取りに行く
+  /// （部屋は同梱と同じ backend/src/scenes/pool から選ぶので、たいていは通信しない）。それ以外は同梱だけ
   static let client: any SceneLayoutClient = {
     let config = AppConfig.current
     if config.mode == .live, let url = config.backendURL {
-      return HTTPSceneLayoutClient(baseURL: url)
+      return BundledFirstSceneLayoutClient(bundled: MockSceneLayoutClient(), remote: HTTPSceneLayoutClient(baseURL: url))
     }
     return MockSceneLayoutClient()
   }()
@@ -110,6 +111,22 @@ final class HTTPSceneLayoutClient: SceneLayoutClient {
       sceneLog.notice("\(request.url?.path() ?? "", privacy: .public) が \(http.statusCode) を返しました")
     }
     return (data, http.statusCode)
+  }
+}
+
+/// 同梱の配置を先に見て、無ければ remote に取りに行く。同梱が壊れていたときも remote に頼る
+final class BundledFirstSceneLayoutClient: SceneLayoutClient {
+  private let bundled: any SceneLayoutClient
+  private let remote: any SceneLayoutClient
+
+  init(bundled: any SceneLayoutClient, remote: any SceneLayoutClient) {
+    self.bundled = bundled
+    self.remote = remote
+  }
+
+  func layout(sceneID: String) async throws -> SceneLayout {
+    if let layout = try? await bundled.layout(sceneID: sceneID) { return layout }
+    return try await remote.layout(sceneID: sceneID)
   }
 }
 
