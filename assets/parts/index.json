@@ -1425,5 +1425,87 @@
     ],
     "size": [8.0, 2.6, 0.532],
     "label": "商品棚が並ぶ壁（店、幅 8 m）"
+  },
+  {
+    "id": "kitchen_counter",
+    "version": 1,
+    "file": "parts/kitchen_counter/1.usdz",
+    "category": "furniture",
+    "words": [
+      {
+        "word": "kitchen",
+        "pos": "noun"
+      },
+      {
+        "word": "sink",
+        "pos": "noun"
+      },
+      {
+        "word": "stove",
+        "pos": "noun"
+      },
+      {
+        "word": "counter",
+        "pos": "noun"
+      }
+    ],
+    "size": [2.42, 1.22, 0.68],
+    "label": "台所の流しとコンロ",
+    "anchors": {
+      "top": 0.9
+    }
+  },
+  {
+    "id": "train",
+    "version": 1,
+    "file": "parts/train/1.usdz",
+    "category": "vehicle",
+    "words": [
+      {
+        "word": "train",
+        "pos": "noun"
+      }
+    ],
+    "size": [7.996, 3.17, 2.632],
+    "label": "電車（1 両）"
+  },
+  {
+    "id": "station_sign",
+    "version": 1,
+    "file": "parts/station_sign/1.usdz",
+    "category": "thing",
+    "words": [
+      {
+        "word": "sign",
+        "pos": "noun"
+      },
+      {
+        "word": "station sign",
+        "pos": "noun"
+      }
+    ],
+    "size": [1.7, 2.2, 0.08],
+    "label": "駅名の看板"
+  },
+  {
+    "id": "bus_shelter",
+    "version": 1,
+    "file": "parts/bus_shelter/1.usdz",
+    "category": "building",
+    "words": [
+      {
+        "word": "bus stop",
+        "pos": "noun"
+      },
+      {
+        "word": "bus shelter",
+        "pos": "noun"
+      }
+    ],
+    "size": [3.29, 2.5, 1.5],
+    "label": "屋根つきのバス停",
+    "anchors": {
+      "seat": [-0.245, 0.46, -0.37]
+    }
   }
 ]

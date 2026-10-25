@@ -6,7 +6,7 @@ Blender の中で動かす（Blender に入っている pxr で USDZ を読む�
   - 大きさ: 外接箱の大きさが JSON の size と合う
   - 向き: 正面の目印（人の目、車のライトなど。parts.py の front）が +Z 側にある。背もたれは -Z 側にある
   - anchors: 付けるはずの部品にあり、外接箱の内側にある。座る人の hip を座る家具の seat に合わせると、
-    脚が家具の前に出て、足が床に深くめり込まず、背中が背もたれの後ろへ抜けない
+    脚が家具の前に出て、足が床に深くめり込まず、背中が背もたれの後ろへ抜けない（バス停は屋根でなくベンチの前後で見る）
 --sheet を付けると、全部品を並べた確かめの画像（assets/parts/contact_sheet.png）も作る。
 --sheet-only <id> と --sheet-out <png> で、一部の部品だけを並べた画像を別の場所に作れる（足した部品を見るとき）。
 
@@ -53,6 +53,8 @@ EXPECTED = [
     "platform_station", "sand_beach", "sidewalk_stone", "ground_dirt",
     # 背景の壁（奥に 1 枚置く）
     "wall_window", "wall_kitchen_tile", "wall_blackboard", "wall_store_shelves",
+    # 場面らしさを出す大物
+    "kitchen_counter", "train", "station_sign", "bus_shelter",
 ]
 
 # 向きの目印（parts.py の front と同じ）。(マテリアル名, 向き, 比べる相手)。向きが 1 なら相手より +Z 側、
@@ -65,13 +67,18 @@ FRONT = {"bench": ("bench_back", -1, None), "chair": ("chair_back", -1, None), "
          "shirt": ("shirt_collar", 1, None), "seat": ("seat_back", -1, None), "laptop": ("trackpad", 1, None),
          "cart": ("cart_handle", -1, None), "platform_station": ("platform_edge", -1, None),
          "wall_window": ("wall_window_sill", 1, None), "wall_kitchen_tile": ("kitchen_cabinet", 1, None),
-         "wall_blackboard": ("chalk_tray", 1, None), "wall_store_shelves": ("price_rail", 1, None)}
+         "wall_blackboard": ("chalk_tray", 1, None), "wall_store_shelves": ("price_rail", 1, None),
+         "kitchen_counter": ("kitchen_front", 1, None), "bus_shelter": ("shelter_back", -1, None)}
 FRONT.update({pid: ("eye", 1, "hair") for pid in EXPECTED if pid.startswith("person_")})
 
 # anchors を付けるはずの部品と、その種類（scene-protocol.md の「部品のメタデータ」）
 ANCHORS = {"table": {"top"}, "box": {"top"}, "chair": {"seat"}, "bench": {"seat"}, "sofa": {"seat"},
-           "checkout_counter": {"top"}, "shelf": {"top"}, "plate": {"top"}, "seat": {"seat"}, "bed": {"top", "seat"}}
+           "checkout_counter": {"top"}, "shelf": {"top"}, "plate": {"top"}, "seat": {"seat"}, "bed": {"top", "seat"},
+           "kitchen_counter": {"top"}, "bus_shelter": {"seat"}}
 ANCHORS.update({pid: {"hip"} for pid in EXPECTED if pid.startswith(("person_sit_", "person_write_"))})
+# 座る面が外接箱の前後の端に無い部品（屋根が前に張り出したバス停など）。座る確かめでは、外接箱の代わりに
+# このマテリアルの前後の端を家具の前と後ろにする
+SEAT_BOX = {"bus_shelter": "shelter_bench"}
 TOL_ANCHOR = 0.001   # anchors が外接箱からはみ出してよい量（m。丸めの分）
 LEG_AHEAD = 0.05     # 座らせたとき、人の前の端が家具の前の端より前に出ているはずの量（m）
 SINK = 0.03          # 座らせたとき、足が床（y = 0）にめり込んでよい深さ（m）
@@ -128,10 +135,11 @@ def check_anchors(pid: str, meta: dict) -> list[str]:
     return errs
 
 
-def check_sitting(index: dict[str, dict]) -> bool:
+def check_sitting(index: dict[str, dict], seat_box: dict[str, tuple[float, float]] | None = None) -> bool:
     """座る人（hip）を、座る家具（seat）に hip と seat が重なるように置いて、明らかにおかしくないかを見る。
 
-    外接箱だけで見る（人と家具は同じ向き、正面は +Z）。
+    外接箱だけで見る（人と家具は同じ向き、正面は +Z）。seat_box に (後ろの z, 前の z) がある家具は、
+    外接箱の前後の端の代わりにそれを使う（SEAT_BOX）。
       - 脚が前に出る: 人の前の端が、家具の前の端より LEG_AHEAD 以上前
       - 床にめり込まない: 人の最も低い点（足）が y = -SINK より上
       - 背もたれを突き抜けない: 人の後ろの端が、家具の後ろの端から BACK より後ろに出ない
@@ -143,17 +151,18 @@ def check_sitting(index: dict[str, dict]) -> bool:
         hip, ps = person["anchors"]["hip"], person["size"]
         for furn in seats:
             seat, fs = furn["anchors"]["seat"], furn["size"]
+            f_back, f_front = (seat_box or {}).get(furn["id"], (-fs[2] / 2, fs[2] / 2))
             d = [seat[i] - hip[i] for i in range(3)]   # 人を動かす量
             front, back, bottom = d[2] + ps[2] / 2, d[2] - ps[2] / 2, d[1]
             errs = []
-            if front < fs[2] / 2 + LEG_AHEAD:
-                errs.append(f"脚が前に出ない（人の前 z={front:+.2f}、家具の前 z={fs[2] / 2:+.2f}）")
+            if front < f_front + LEG_AHEAD:
+                errs.append(f"脚が前に出ない（人の前 z={front:+.2f}、家具の前 z={f_front:+.2f}）")
             if bottom < -SINK:
                 errs.append(f"足が床にめり込む（y={bottom:+.3f}）")
-            if back < -fs[2] / 2 - BACK:
-                errs.append(f"背中が背もたれの後ろへ抜ける（人の後ろ z={back:+.2f}、家具の後ろ z={-fs[2] / 2:+.2f}）")
-            print(f"{'OK' if not errs else 'NG'} 座る {person['id']} → {furn['id']:6s} 人の前 z={front:+.2f}（家具 {fs[2] / 2:+.2f}）"
-                  f" 足 y={bottom:+.3f} 人の後ろ z={back:+.2f}（家具 {-fs[2] / 2:+.2f}）")
+            if back < f_back - BACK:
+                errs.append(f"背中が背もたれの後ろへ抜ける（人の後ろ z={back:+.2f}、家具の後ろ z={f_back:+.2f}）")
+            print(f"{'OK' if not errs else 'NG'} 座る {person['id']} → {furn['id']:6s} 人の前 z={front:+.2f}（家具 {f_front:+.2f}）"
+                  f" 足 y={bottom:+.3f} 人の後ろ z={back:+.2f}（家具 {f_back:+.2f}）")
             for e in errs:
                 print(f"     - {e}")
             ok = ok and not errs
@@ -250,7 +259,15 @@ def check(root: Path) -> bool:
         for e in errs:
             print(f"     - {e}")
         ok = ok and not errs
-    ok = check_sitting({m["id"]: m for m in index}) and ok
+    seat_box = {}
+    for pid, name in SEAT_BOX.items():
+        zs = [pt[2] for pt in mesh_points_by_material(Usd.Stage.Open(str(root / pid / "1.usdz"))).get(name, [])]
+        if not zs:
+            print(f"NG {pid}: 座る面のマテリアル {name} が無い")
+            ok = False
+            continue
+        seat_box[pid] = (min(zs), max(zs))
+    ok = check_sitting({m["id"]: m for m in index}, seat_box) and ok
     total = sum(p.stat().st_size for p in root.rglob("*.usdz"))
     print(f"{'すべて OK' if ok else 'NG あり'}（{len(EXPECTED)} 部品、USDZ の合計 {total / 1e6:.2f} MB）")
     return ok

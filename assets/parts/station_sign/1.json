@@ -1,0 +1,18 @@
+{
+  "id": "station_sign",
+  "version": 1,
+  "file": "parts/station_sign/1.usdz",
+  "category": "thing",
+  "words": [
+    {
+      "word": "sign",
+      "pos": "noun"
+    },
+    {
+      "word": "station sign",
+      "pos": "noun"
+    }
+  ],
+  "size": [1.7, 2.2, 0.08],
+  "label": "駅名の看板"
+}
