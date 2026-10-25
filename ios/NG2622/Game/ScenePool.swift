@@ -84,31 +84,51 @@ struct ScenePool {
   /// アプリの中で作り置きの場面を置くフォルダ。ビルドのときに backend/src/scenes/pool から写す（project.yml の Copy scene pool）
   static let directory = "pool"
 
-  /// アプリに同梱した作り置きの場面（pool/<sceneId>.json）。Mock で使う
-  static let bundled = ScenePool(bundle: .main, examples: bundledExamples)
+  /// アプリに同梱した作り置きの場面（pool/index.json と pool/<sceneId>.json）。Mock で使う
+  static let bundled = ScenePool(bundle: .main)
 
-  /// 同梱の場面のうち、待合で例に見せるもの（リンゴが落ちる公園・スーパーのレジ・朝の駅のホーム）。
-  /// 配置の JSON は作った中身のまま変えないので、どれを例にするかはここで決める
-  static let bundledExamples: [SceneDifficulty: String] = [
-    .easy: "gen-is8k2455rz",
-    .normal: "gen-wj9zltvuug",
-    .hard: "gen-0cv84arpzw",
-  ]
+  /// 作り置きの場面の一覧（backend/src/scenes/pool/index.json）の、1 つの難易度の分。
+  /// example は待合で見せる例、scenes は出題の候補（例は入れない）。形は backend/src/scenes/pool/README.md
+  struct IndexEntry: Decodable, Sendable {
+    let example: String?
+    let scenes: [String]
+  }
 
-  /// bundle の pool/*.json を、配置の JSON の difficulty で分ける。読めないものと、difficulty の無いものは入れない
-  init(bundle: Bundle, examples: [SceneDifficulty: String] = [:]) {
-    let urls = bundle.urls(forResourcesWithExtension: "json", subdirectory: Self.directory) ?? []
+  /// index.json の中身から作る。知らない難易度は飛ばす。exists が false を返す ID（JSON の無い場面）は入れない
+  init(index data: Data, exists: (String) -> Bool = { _ in true }) throws {
+    let index = try JSONDecoder().decode([String: IndexEntry].self, from: data)
     var scenes: [SceneDifficulty: [String]] = [:]
-    for url in urls.sorted(by: { $0.lastPathComponent < $1.lastPathComponent }) where url.lastPathComponent != "index.json" {
-      guard let data = try? Data(contentsOf: url), let layout = try? SceneLayout.decode(data),
-        let difficulty = layout.difficulty.flatMap(SceneDifficulty.init(rawValue:))
-      else {
-        sceneLog.notice("作り置きの場面に入れませんでした: \(url.lastPathComponent, privacy: .public)")
+    var examples: [SceneDifficulty: String] = [:]
+    for (key, entry) in index {
+      guard let difficulty = SceneDifficulty(rawValue: key) else {
+        sceneLog.notice("作り置きの場面の一覧に、知らない難易度があります: \(key, privacy: .public)")
         continue
       }
-      // MockSceneLayoutClient はファイルの名前で探すので、ID もファイルの名前にする
-      scenes[difficulty, default: []].append(url.deletingPathExtension().lastPathComponent)
+      // ScenePool の scenes は例も入れて持つ（例が場面の中にあるときだけ example(of:) が返す）
+      let ids = ([entry.example].compactMap { $0 } + entry.scenes).filter { id in
+        if exists(id) { return true }
+        sceneLog.notice("作り置きの場面の JSON がありません: \(id, privacy: .public)")
+        return false
+      }
+      scenes[difficulty] = ids
+      if let example = entry.example { examples[difficulty] = example }
     }
     self.init(scenes: scenes, examples: examples)
+  }
+
+  /// bundle の pool/index.json から作る。読めなければ場面は空（難易度を選べない）
+  init(bundle: Bundle) {
+    let directory = Self.directory
+    guard let url = bundle.url(forResource: "index", withExtension: "json", subdirectory: directory),
+      let data = try? Data(contentsOf: url),
+      let pool = try? ScenePool(index: data, exists: {
+        bundle.url(forResource: $0, withExtension: "json", subdirectory: directory) != nil
+      })
+    else {
+      sceneLog.error("作り置きの場面の一覧（\(directory, privacy: .public)/index.json）を読めませんでした")
+      self.init(scenes: [:])
+      return
+    }
+    self = pool
   }
 }

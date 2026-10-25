@@ -95,7 +95,26 @@ struct ScenePoolTests {
     #expect(broken.example(of: .easy) == nil)
   }
 
-  /// 同梱の作り置きの場面は、難易度ごとに 2 つ（例 1 つと出題 1 つ）あり、配置の JSON の difficulty と合っている
+  /// index.json の例は scenes に無くても場面に入り、出題はしない。知らない難易度と、JSON の無い場面は入れない
+  @Test func readsIndex() throws {
+    let json = #"""
+      {
+        "easy": { "example": "gen-easy-a", "scenes": ["gen-easy-b", "gen-easy-c"] },
+        "hard": { "scenes": ["gen-hard-a", "gen-missing"] },
+        "extreme": { "example": "gen-x", "scenes": ["gen-y"] }
+      }
+      """#
+    let pool = try ScenePool(index: Data(json.utf8), exists: { $0 != "gen-missing" })
+    #expect(pool.scenes[.easy] == ["gen-easy-a", "gen-easy-b", "gen-easy-c"])
+    #expect(pool.example(of: .easy) == "gen-easy-a")
+    #expect(pool.candidates(of: .easy) == ["gen-easy-b", "gen-easy-c"])
+    #expect(pool.example(of: .hard) == nil)
+    #expect(pool.candidates(of: .hard) == ["gen-hard-a"])
+    #expect(pool.difficulties == [.easy, .hard])
+    #expect(throws: (any Error).self) { try ScenePool(index: Data("[]".utf8)) }
+  }
+
+  /// 同梱の作り置きの場面（pool/index.json）は、難易度ごとに 2 つ（例 1 つと出題 1 つ）あり、配置の JSON の difficulty と合っている
   @Test func bundledPool() async throws {
     let pool = ScenePool.bundled
     #expect(pool.difficulties == SceneDifficulty.allCases)
@@ -110,6 +129,10 @@ struct ScenePoolTests {
         #expect(try await client.layout(sceneID: id).difficulty == difficulty.rawValue)
       }
     }
+    // pool/ の JSON はどれも index.json に載っている（載っていない場面は使われない）
+    let files = (Bundle.main.urls(forResourcesWithExtension: "json", subdirectory: ScenePool.directory) ?? [])
+      .map { $0.deletingPathExtension().lastPathComponent }.filter { $0 != "index" }
+    #expect(Set(files) == Set(SceneDifficulty.allCases.flatMap { pool.scenes[$0] ?? [] }))
     // 例: かんたん＝リンゴが落ちる公園、ふつう＝スーパーのレジ、むずかしい＝朝の駅のホーム
     #expect(try await client.layout(sceneID: pool.example(of: .easy) ?? "").name == "リンゴが落ちる公園")
     #expect(try await client.layout(sceneID: pool.example(of: .normal) ?? "").name == "スーパーのレジ")
