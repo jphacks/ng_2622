@@ -1228,18 +1228,9 @@
                 },
                 "position": {
                   "type": "array",
-                  "prefixItems": [
-                    {
-                      "type": "number"
-                    },
-                    {
-                      "type": "number"
-                    },
-                    {
-                      "type": "number"
-                    }
-                  ],
-                  "items": false,
+                  "items": {
+                    "type": "number"
+                  },
                   "minItems": 3,
                   "maxItems": 3
                 },
@@ -1263,18 +1254,9 @@
                     },
                     "to": {
                       "type": "array",
-                      "prefixItems": [
-                        {
-                          "type": "number"
-                        },
-                        {
-                          "type": "number"
-                        },
-                        {
-                          "type": "number"
-                        }
-                      ],
-                      "items": false,
+                      "items": {
+                        "type": "number"
+                      },
                       "minItems": 3,
                       "maxItems": 3
                     }

@@ -57,6 +57,19 @@ const isObject = (v: unknown): v is JSONObject =>
 const isNullSchema = (v: unknown) =>
   isObject(v) && Object.keys(v).length === 1 && v.type === "null";
 
+// zod の z.tuple（[number, number, number] など）は prefixItems と items: false になるが、iOS が使う
+// swift-openapi-generator は prefixItems を読めない。全部同じ型の tuple なら `items` に書き換える
+// （長さの制約 minItems / maxItems はそのまま残す。検証（zod）は変えない）
+const normalizeTuple = (node: JSONObject): JSONObject => {
+  const { prefixItems, ...rest } = node;
+  if (!Array.isArray(prefixItems) || prefixItems.length === 0) return node;
+  const [first] = prefixItems;
+  const sameType = prefixItems.every(
+    (item) => JSON.stringify(item) === JSON.stringify(first),
+  );
+  return sameType ? { ...rest, items: first } : node;
+};
+
 export const normalizeNullable = <T>(spec: T): T => {
   const schemas =
     isObject(spec) && isObject(spec.components)
@@ -71,8 +84,9 @@ export const normalizeNullable = <T>(spec: T): T => {
   const visit = (node: unknown): unknown => {
     if (Array.isArray(node)) return node.map(visit);
     if (!isObject(node)) return node;
+    const tuple = normalizeTuple(node);
     const out: JSONObject = {};
-    for (const [key, value] of Object.entries(node)) out[key] = visit(value);
+    for (const [key, value] of Object.entries(tuple)) out[key] = visit(value);
 
     const { anyOf, ...siblings } = out;
     if (!Array.isArray(anyOf) || anyOf.length !== 2) return out;
