@@ -1,13 +1,19 @@
 import SwiftUI
 
-/// 待合。部屋のコードと QR、参加者を見せる。ホストだけがシーンを選び、「スタート」を押せる。
+/// 待合。部屋のコードと QR、参加者を見せる。ホストだけがシーン（または難易度）を選び、「スタート」を押せる。
 /// 選んだシーンは参加者には見せない（ラウンドが始まると全員の画面に出る）
 struct LobbyView: View {
   let session: RoomSession
   let onLeave: () -> Void
+  /// シーンの選び方（SCENE_PICK）。difficulty なら難易度だけを選ぶ
+  var pick: ScenePick = AppConfig.current.scenePick
+  /// 難易度ごとの例の場面（出題はしない）。難易度で選ぶのは今は Mock だけなので、同梱の作り置きから出す
+  var example: (SceneDifficulty) -> String? = { ScenePool.bundled.example(of: $0) }
 
   /// ホストが選んだシーンの ID。nil は「おまかせ」
   @State private var sceneID: String?
+  /// ホストが選んだ難易度（pick が difficulty のとき）
+  @State private var difficulty = SceneDifficulty.easy
 
   var body: some View {
     VStack(spacing: 0) {
@@ -22,13 +28,19 @@ struct LobbyView: View {
       seats
         .padding(.top, 16)
       if session.isHost {
-        ScenePicker(selected: $sceneID)
-          .padding(.top, 16)
+        switch pick {
+        case .difficulty:
+          DifficultyPicker(selected: $difficulty, example: example(difficulty))
+            .padding(.top, 16)
+        case .list:
+          ScenePicker(selected: $sceneID)
+            .padding(.top, 16)
+        }
       }
 
       Spacer(minLength: 12)
       if session.isHost {
-        Button("スタート") { session.start(sceneID: sceneID) }
+        Button("スタート", action: start)
           .buttonStyle(BigButtonStyle(kind: .primary))
           .padding(.bottom, 30)
       } else {
@@ -39,6 +51,13 @@ struct LobbyView: View {
     }
     .frame(width: 346)
     .frame(maxWidth: .infinity)
+  }
+
+  private func start() {
+    switch pick {
+    case .difficulty: session.start(difficulty: difficulty)
+    case .list: session.start(sceneID: sceneID)
+    }
   }
 
   /// 部屋のコードと QR
@@ -159,6 +178,83 @@ private struct ScenePicker: View {
     .buttonStyle(.plain)
     .accessibilityLabel(scene.name)
     .accessibilityAddTraits(on ? .isSelected : [])
+  }
+}
+
+/// 難易度の選択（ホストだけ、SCENE_PICK = difficulty）。出題の場面は名前もサムネイルもスタートまで見せない。
+/// 場面は、その部屋でまだ出ていない作り置きの場面からランダムに出る（docs/design/ui/screens/lobby.md）。
+/// 下には、選んでいる難易度の例の場面を、組み立てた 3D で絵だけ出す（例は出題しない）
+private struct DifficultyPicker: View {
+  @Binding var selected: SceneDifficulty
+  /// 選んでいる難易度の例の場面。無ければ絵を出さない
+  let example: String?
+
+  var body: some View {
+    VStack(alignment: .leading, spacing: 10) {
+      Text("難易度")
+        .font(Theme.font(16, .heavy))
+      HStack(spacing: 8) {
+        ForEach(Array(SceneDifficulty.allCases.enumerated()), id: \.element) { i, difficulty in
+          tile(difficulty, level: i + 1)
+        }
+      }
+      if let example {
+        ExampleScene(sceneID: example)
+      }
+    }
+    .padding(14)
+    .background(CardBackground())
+    .animation(.easeOut(duration: 0.2), value: selected)
+    .sensoryFeedback(.selection, trigger: selected)
+  }
+
+  /// 難しさを 1〜3 個の点で見せる
+  private func tile(_ difficulty: SceneDifficulty, level: Int) -> some View {
+    let on = selected == difficulty
+    return Button {
+      selected = difficulty
+    } label: {
+      VStack(spacing: 8) {
+        HStack(spacing: 4) {
+          ForEach(1...SceneDifficulty.allCases.count, id: \.self) { n in
+            Circle()
+              .fill(n <= level ? (on ? Color.white : Theme.accent) : (on ? Color.white.opacity(0.35) : Theme.line))
+              .frame(width: 9, height: 9)
+          }
+        }
+        Text(difficulty.label)
+          .font(Theme.font(15, .heavy))
+          .foregroundStyle(on ? .white : Theme.ink)
+      }
+      .frame(maxWidth: .infinity)
+      .frame(height: 72)
+      .background(on ? Theme.accent : Theme.background, in: RoundedRectangle(cornerRadius: 14))
+      .overlay {
+        RoundedRectangle(cornerRadius: 14)
+          .strokeBorder(on ? Theme.accent : Theme.line, lineWidth: on ? 3 : 1.5)
+      }
+      .contentShape(Rectangle())
+    }
+    .buttonStyle(.plain)
+    .accessibilityLabel(difficulty.label)
+    .accessibilityAddTraits(on ? .isSelected : [])
+  }
+}
+
+/// 例の場面の絵。斜め上から見た向きで止め、部品の動き（motion）だけを動かす。触れない
+private struct ExampleScene: View {
+  let sceneID: String
+
+  var body: some View {
+    // 枠が低いので、カメラを近づけて場面を枠いっぱいに出す。難易度を変えたら作り直す（読み込みの状態も新しくする）
+    DioramaView(sceneID: sceneID, yaw: -20, tilt: SceneOrbit.defaultTilt, distance: 4.6)
+      .id(sceneID)
+      .frame(maxWidth: .infinity)
+      .frame(height: 170)
+      .background(Theme.background)
+      .clipShape(RoundedRectangle(cornerRadius: 14))
+      .allowsHitTesting(false)
+      .accessibilityHidden(true)
   }
 }
 

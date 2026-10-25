@@ -12,6 +12,8 @@ struct DioramaView: View {
   var tilt: Double
   /// 部品の動き（motion）の 0 秒。ラウンドでは round の startAt。nil なら出した時刻から数える
   var startsAt: Date?
+  /// カメラから見る点までの距離（m）。小さく出すときは近づけて、場面を枠いっぱいに出す
+  var distance: Float = 7.8
 
   /// 形が出たか。読み込み済みなら最初から出す。まだなら、読み込めたらふわっと出す
   @State private var isShown: Bool
@@ -19,11 +21,12 @@ struct DioramaView: View {
   @State private var failed = false
   @State private var motion = SceneMotionDriver()
 
-  init(sceneID: String, yaw: Double, tilt: Double, startsAt: Date? = nil) {
+  init(sceneID: String, yaw: Double, tilt: Double, startsAt: Date? = nil, distance: Float = 7.8) {
     self.sceneID = sceneID
     self.yaw = yaw
     self.tilt = tilt
     self.startsAt = startsAt
+    self.distance = distance
     _isShown = State(initialValue: SceneLibrary.shared.isLoaded(sceneID))
   }
 
@@ -39,7 +42,7 @@ struct DioramaView: View {
       // モックの perspective（900px）と高さ（520px）に合わせた画角
       camera.components.set(PerspectiveCameraComponent(near: 0.1, far: 100, fieldOfViewInDegrees: 32))
       content.add(camera)
-      Self.apply(yaw: yaw, tilt: tilt, world: world, camera: camera)
+      Self.apply(yaw: yaw, tilt: tilt, distance: distance, world: world, camera: camera)
 
       if let scene = await SceneLibrary.shared.instance(of: sceneID) {
         world.addChild(scene.root)
@@ -52,7 +55,7 @@ struct DioramaView: View {
       guard let world = content.entities.first(where: { $0.name == "world" }),
         let camera = content.entities.first(where: { $0.name == "camera" })
       else { return }
-      Self.apply(yaw: yaw, tilt: tilt, world: world, camera: camera)
+      Self.apply(yaw: yaw, tilt: tilt, distance: distance, world: world, camera: camera)
     }
     .realityViewCameraControls(.none)
     .id(sceneID)
@@ -67,10 +70,9 @@ struct DioramaView: View {
   }
 
   /// 中身を縦の軸まわりに回し、カメラを見下ろす角度の位置に置く
-  private static func apply(yaw: Double, tilt: Double, world: Entity, camera: Entity) {
+  private static func apply(yaw: Double, tilt: Double, distance: Float, world: Entity, camera: Entity) {
     world.orientation = simd_quatf(angle: Float(yaw * .pi / 180), axis: [0, 1, 0])
     let t = Float(tilt * .pi / 180)
-    let distance: Float = 7.8
     let target: SIMD3<Float> = [0, 0.25, 0]
     camera.look(
       at: target,
