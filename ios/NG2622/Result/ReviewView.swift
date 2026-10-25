@@ -66,7 +66,7 @@ struct ReviewView: View {
         }
       }
 
-      ReviewCard(title: "次はこれ", badge: review.nextStepGain.map { "+\($0) 点" }) {
+      ReviewCard(title: "次はこれ", badge: review.nextStepBadge) {
         bodyText(review.nextStep)
       }
 

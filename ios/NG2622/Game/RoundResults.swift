@@ -21,6 +21,8 @@ struct RoundResults: Sendable, Equatable {
     let nextStep: String
     /// 足すと合計点が何点伸びるか（内容の要素のときだけ）
     let nextStepGain: Int?
+    /// 「次はこれ」に付ける「+N 点」。gain が無い（作り置きの場面の採点・内容でない要素）ときは出さない
+    var nextStepBadge: String? { nextStepGain.map { "+\($0) 点" } }
     /// 自分の一文の言い換え。直す所が無ければ nil
     let rewrite: Rewrite?
     /// 話し方のコツ

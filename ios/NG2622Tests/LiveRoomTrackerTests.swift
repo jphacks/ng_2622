@@ -104,6 +104,7 @@ struct LiveRoomTrackerTests {
           strengthQuote: "A dog.", strength: "短い", nextStep: "ボールのことも言ってみよう", nextStepGain: 10,
           rewrite: .init(before: "A dog.", after: "A dog is sleeping.", reason: "動きを足すと伝わる"),
           speechTip: "止まらずに言ってみよう"))
+    #expect(results.myReview?.nextStepBadge == "+10 点")
     // つなぎ直したときに送り直される同じ results は渡さない
     #expect(tracker.apply(try message(json)) == [])
   }
@@ -124,6 +125,24 @@ struct LiveRoomTrackerTests {
   }
 
   /// 結果発表のあとに待合の room が届いたら、待合に戻る
+  /// 作り置きの場面の採点: gain が null・引用が空・言い換えが無くても読め、「+N 点」は出さない
+  @Test func resultsWithoutGain() throws {
+    var tracker = try joined()
+    let updates = tracker.apply(
+      try message(
+        #"{"type":"results","round":1,"sceneId":"gen-abc","sceneName":"公園","players":[{"id":"\#(me)","name":"たろう","color":5987302,"rank":1,"score":{"content":40,"expression":50,"speech":60,"total":48},"transcript":"A man.","comment":"よい","feedback":{"strength":{"quote":"","text":"よい"},"nextStep":{"kind":"content","gain":null,"text":"犬のことも言ってみよう"},"rewrite":null,"speechTip":{"aspect":"fluency","text":"止まらずに"}}}]}"#
+      ))
+    guard case .event(.results(let results)) = updates.first else {
+      Issue.record("results でない: \(updates)")
+      return
+    }
+    let review = try #require(results.myReview)
+    #expect(review.nextStepGain == nil)
+    #expect(review.nextStepBadge == nil)
+    #expect(review.nextStep == "犬のことも言ってみよう")
+    #expect(review.rewrite == nil)
+  }
+
   @Test func returnedToLobby() throws {
     var tracker = try joined()
     _ = tracker.apply(try message(room("playing")))

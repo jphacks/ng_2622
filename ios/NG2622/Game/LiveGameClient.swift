@@ -129,11 +129,14 @@ final class LiveGameClient: GameClient {
     try await send(.start(.init(_type: .start, sceneId: sceneID)))
   }
 
-  /// 今の API の start には難易度が無く、作り置きの場面もまだバックエンドに無いので、「おまかせ」で始める。
-  /// バックエンドの部屋が難易度で選ぶようになったら、ここで start に難易度を入れて送る（docs/design/architecture.md）
+  /// 難易度だけを送り、場面は部屋が作り置きの中から選ぶ（round の sceneId で届く）。sceneId は一緒に送らない
   func startRound(difficulty: SceneDifficulty) async throws {
-    sceneLog.notice("Live の start は難易度を送れないので、おまかせで始めます（\(difficulty.rawValue, privacy: .public)）")
-    try await startRound(sceneID: nil)
+    try await send(Self.startMessage(difficulty: difficulty))
+  }
+
+  /// 難易度の start（{ type: "start", difficulty }）
+  static func startMessage(difficulty: SceneDifficulty) -> Components.Schemas.ClientMessage {
+    .start(.init(_type: .start, difficulty: Components.Schemas.Difficulty(rawValue: difficulty.rawValue)))
   }
 
   func finishSpeaking(audio: RecordedAudio?) async throws {

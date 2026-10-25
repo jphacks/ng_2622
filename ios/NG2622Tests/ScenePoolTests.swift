@@ -155,4 +155,25 @@ struct ScenePoolTests {
     #expect(ScenePool.bundled.candidates(of: .hard).contains(sceneID ?? ""))
     #expect(sceneID != ScenePool.bundled.example(of: .hard))
   }
+
+  /// Live の配置の口: 同梱の pool にある場面は通信せずに返し、無い場面だけ remote（GET /scenes/{sceneId}/layout）に取りに行く
+  @Test func bundledFirstLayout() async throws {
+    let remote = RecordingLayoutClient()
+    let client = BundledFirstSceneLayoutClient(bundled: MockSceneLayoutClient(), remote: remote)
+    let bundledID = try #require(ScenePool.bundled.candidates(of: .normal).first)
+    #expect(try await client.layout(sceneID: bundledID).difficulty == "normal")
+    #expect(remote.requested.isEmpty)
+    #expect(try await client.layout(sceneID: "gen-notbundled").name == "遠くの場面")
+    #expect(remote.requested == ["gen-notbundled"])
+  }
+}
+
+/// 呼ばれた sceneId を覚え、いつも同じ配置を返す
+private final class RecordingLayoutClient: SceneLayoutClient {
+  private(set) var requested: [String] = []
+
+  func layout(sceneID: String) async throws -> SceneLayout {
+    requested.append(sceneID)
+    return try SceneLayout.decode(Data(#"{"protocol":"scenenglish.scene/1","name":"遠くの場面","items":[]}"#.utf8))
+  }
 }
