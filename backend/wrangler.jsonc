@@ -7,10 +7,11 @@
     "enabled": true
   },
   // 採点の設定。SCORING_MODE は "live"（Azure と Claude を呼ぶ）か "fixed"（固定の点数）。
-  // 部屋とつなぐまではデプロイ先で外部 API を呼ばないよう fixed にしておき、手元の .dev.vars で live に上書きする
+  // 本番は live。PR のプレビューは料金を抑えるため fixed（下の previews）。AZURE_LOCATION は Azure のリソースのリージョン
   "vars": {
-    "SCORING_MODE": "fixed",
-    "SCORE_WEIGHTS": "50,25,25"
+    "SCORING_MODE": "live",
+    "SCORE_WEIGHTS": "50,25,25",
+    "AZURE_LOCATION": "japaneast"
   },
   // SCENE_REVIEWS はシーンの評価（全シーンで 1 つ）
   "durable_objects": {
