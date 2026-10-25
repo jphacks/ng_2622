@@ -186,7 +186,7 @@ struct SceneComposerTests {
   }
 }
 
-/// バックエンドとのやりとり。状態コードと error.code から、画面に出すエラーを決める
+/// バックエンドとのやりとり。状態コードから、配置の JSON が取れたか・無いか・つながらないかを決める
 @Suite struct HTTPSceneLayoutClientTests {
   /// URL ごとに決めた返事を返す。test ごとに host を変えるので、並べて走らせてもぶつからない
   nonisolated final class Stub: URLProtocol {
@@ -225,39 +225,7 @@ struct SceneComposerTests {
   }
 
   func failure(_ code: String) -> String {
-    #"{"error":{"code":"\#(code)","message":"作れませんでした: サーバーの理由"}}"#
-  }
-
-  /// error.code があればそれで、無ければ状態コードで決める。生成の口が無い 404 は「いまは作れない」
-  @Test(arguments: [
-    (422, "generation_refused", SceneLayoutError.refused),
-    (422, "generation_failed", .failed),
-    (503, "generation_unavailable", .unavailable),
-    (400, "invalid_message", .invalidPrompt),
-    (404, "", .unavailable),
-    (503, "", .unavailable),
-    (504, "", .timedOut),
-    (422, "", .failed),
-    (500, "", .connectionFailed),
-  ])
-  func generateErrors(status: Int, code: String, expected: SceneLayoutError) async {
-    let (client, base) = client(host: "gen-\(status)-\(code.isEmpty ? "none" : code)")
-    let body = code.isEmpty ? "Not Found" : failure(code)
-    Stub.set(base.appending(path: "scenes/generate"), .init(status: status, body: body))
-    await #expect(throws: expected) { try await client.generate(prompt: "公園", difficulty: .easy) }
-  }
-
-  /// サーバーの message は画面に出さない
-  @Test func reasonDoesNotUseServerMessage() {
-    for error in [SceneLayoutError.refused, .failed, .unavailable, .invalidPrompt] {
-      #expect(!error.reason.contains("サーバーの理由"))
-    }
-  }
-
-  @Test func generateSucceeds() async throws {
-    let (client, base) = client(host: "gen-ok")
-    Stub.set(base.appending(path: "scenes/generate"), .init(status: 201, body: #"{"sceneId":"gen-7k2m9q4x3a"}"#))
-    #expect(try await client.generate(prompt: "公園", difficulty: .normal) == "gen-7k2m9q4x3a")
+    #"{"error":{"code":"\#(code)","message":"サーバーの理由"}}"#
   }
 
   @Test func layoutStatus() async throws {
@@ -270,103 +238,5 @@ struct SceneComposerTests {
     await #expect(throws: SceneLayoutError.notFound) { try await client.layout(sceneID: "gen-bbbbbbbbbb") }
     Stub.set(base.appending(path: "scenes/gen-cccccccccc/layout"), .init(status: 500, body: ""))
     await #expect(throws: SceneLayoutError.connectionFailed) { try await client.layout(sceneID: "gen-cccccccccc") }
-  }
-}
-
-/// 「AI で作る」の状態の移り変わり
-struct SceneGeneratorTests {
-  final class FakeClient: SceneLayoutClient {
-    var result: Result<String, SceneLayoutError>
-    /// generate が返すまでの時間
-    var delay: Duration
-
-    init(_ result: Result<String, SceneLayoutError>, delay: Duration = .zero) {
-      self.result = result
-      self.delay = delay
-    }
-
-    func layout(sceneID: String) async throws -> SceneLayout {
-      SceneLayout(protocol: SceneLayout.protocolName, id: sceneID, name: "作った場面", difficulty: "normal", items: [])
-    }
-
-    func generate(prompt: String, difficulty: SceneDifficulty) async throws -> String {
-      if delay > .zero { try await Task.sleep(for: delay) }
-      return try result.get()
-    }
-  }
-
-  func makeGenerator(_ client: FakeClient, timeout: Duration = .seconds(5)) -> SceneGenerator {
-    SceneGenerator(client: client, store: SceneLayoutStore(client: client), timeout: timeout, preload: { _ in })
-  }
-
-  func waitUntilDone(_ generator: SceneGenerator) async {
-    for _ in 0..<200 where generator.isGenerating {
-      try? await Task.sleep(for: .milliseconds(10))
-    }
-  }
-
-  @Test func success() async {
-    let client = FakeClient(.success("gen-abcdefghij"))
-    let generator = makeGenerator(client)
-    #expect(!generator.canGenerate)
-    generator.prompt = "  リンゴが落ちる公園 "
-    generator.difficulty = .normal
-    generator.generate()
-    #expect(generator.isGenerating)
-    await waitUntilDone(generator)
-    #expect(generator.state == .idle)
-    #expect(generator.made?.id == "gen-abcdefghij")
-    #expect(generator.made?.name == "作った場面")
-    #expect(generator.made?.difficulty == .normal)
-  }
-
-  /// 作り直して同じ場面が返っても、Made は前と違う（待合の onChange が気づける）
-  @Test func remakeWithSameSceneIsNewMade() async throws {
-    let client = FakeClient(.success("gen-abcdefghij"))
-    let generator = makeGenerator(client)
-    generator.prompt = "公園"
-    generator.generate()
-    await waitUntilDone(generator)
-    let first = try #require(generator.made)
-    generator.generate()
-    await waitUntilDone(generator)
-    let second = try #require(generator.made)
-    #expect(first.id == second.id)
-    #expect(first != second)
-  }
-
-  @Test func failureShowsReason() async {
-    let client = FakeClient(.failure(.refused))
-    let generator = makeGenerator(client)
-    generator.prompt = "x"
-    generator.generate()
-    await waitUntilDone(generator)
-    #expect(generator.state == .failed(.refused))
-    #expect(generator.made == nil)
-  }
-
-  /// やめた（シートを閉じた・待合を離れた）あとに返事が来ても、作った場面にしない
-  @Test func cancelDropsResult() async {
-    let client = FakeClient(.success("gen-abcdefghij"), delay: .milliseconds(100))
-    let generator = makeGenerator(client)
-    generator.prompt = "公園"
-    generator.generate()
-    generator.cancel()
-    #expect(generator.state == .idle)
-    try? await Task.sleep(for: .milliseconds(300))
-    #expect(generator.made == nil)
-    #expect(generator.state == .idle)
-    #expect(generator.canGenerate)
-  }
-
-  /// 打ち切りの時間を過ぎたら待つのをやめ、「時間がかかりすぎた」にする
-  @Test func timesOut() async {
-    let client = FakeClient(.success("gen-abcdefghij"), delay: .seconds(10))
-    let generator = makeGenerator(client, timeout: .milliseconds(50))
-    generator.prompt = "公園"
-    generator.generate()
-    await waitUntilDone(generator)
-    #expect(generator.state == .failed(.timedOut))
-    #expect(generator.made == nil)
   }
 }

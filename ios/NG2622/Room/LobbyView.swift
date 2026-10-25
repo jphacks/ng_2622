@@ -8,9 +8,6 @@ struct LobbyView: View {
 
   /// ホストが選んだシーンの ID。nil は「おまかせ」
   @State private var sceneID: String?
-  /// 「AI で作る」の一言と、作った場面
-  @State private var generator = SceneGenerator()
-  @State private var showsGenerator = false
 
   var body: some View {
     VStack(spacing: 0) {
@@ -25,7 +22,7 @@ struct LobbyView: View {
       seats
         .padding(.top, 16)
       if session.isHost {
-        ScenePicker(selected: $sceneID, made: generator.made) { showsGenerator = true }
+        ScenePicker(selected: $sceneID)
           .padding(.top, 16)
       }
 
@@ -42,19 +39,6 @@ struct LobbyView: View {
     }
     .frame(width: 346)
     .frame(maxWidth: .infinity)
-    // シートを閉じたら、作っている途中でもやめる（閉じた＝その場面は要らない）
-    .sheet(isPresented: $showsGenerator, onDismiss: generator.cancel) {
-      SceneGenerateSheet(generator: generator)
-        .presentationDragIndicator(.visible)
-    }
-    // 作れたら、その場面を選んだ状態にして待合に戻る。作り直して同じ場面が返っても Made は変わる
-    .onChange(of: generator.made) { _, made in
-      guard let made else { return }
-      sceneID = made.id
-      showsGenerator = false
-    }
-    // 待合を離れたら、通信と時間切れのタイマーを止める
-    .onDisappear(perform: generator.cancel)
   }
 
   /// 部屋のコードと QR
@@ -102,14 +86,10 @@ struct LobbyView: View {
   }
 }
 
-/// シーンの一覧（ホストだけ）。既定は「おまかせ」。「AI で作る」で作った場面は一覧の下に出す
+/// シーンの一覧（ホストだけ）。既定は「おまかせ」
 private struct ScenePicker: View {
   /// nil は「おまかせ」
   @Binding var selected: String?
-  /// AI で作った場面（まだ無ければ nil）
-  let made: SceneGenerator.Made?
-  /// 「AI で作る」を開く
-  let onGenerate: () -> Void
   /// シーンごとの★の平均。読めなければ出さない
   @State private var ratings: [String: SceneRating] = [:]
 
@@ -119,7 +99,6 @@ private struct ScenePicker: View {
         Text("シーン")
           .font(Theme.font(16, .heavy))
         Spacer()
-        generateButton
         randomButton
       }
       HStack(spacing: 8) {
@@ -127,15 +106,10 @@ private struct ScenePicker: View {
           tile(scene)
         }
       }
-      if let made {
-        madeTile(made)
-          .transition(.scale(scale: 0.9).combined(with: .opacity))
-      }
     }
     .padding(14)
     .background(CardBackground())
     .animation(.easeOut(duration: 0.2), value: selected)
-    .animation(.easeOut(duration: 0.25), value: made)
     .task { ratings = (try? await SceneReviews.client.ratings()) ?? [:] }
   }
 
@@ -157,66 +131,6 @@ private struct ScenePicker: View {
       .background(on ? Theme.accent : Theme.accentSoft, in: Capsule())
     }
     .accessibilityAddTraits(on ? .isSelected : [])
-  }
-
-  /// 「AI で作る」。一言から場面を作るシートを開く
-  private var generateButton: some View {
-    Button(action: onGenerate) {
-      HStack(spacing: 5) {
-        Image(systemName: "sparkles")
-          .font(.system(size: 13, weight: .bold))
-        Text("AI で作る")
-          .font(Theme.font(14, .heavy))
-      }
-      .foregroundStyle(Theme.accent)
-      .padding(.horizontal, 14)
-      .frame(height: 32)
-      .background(Theme.accentSoft, in: Capsule())
-    }
-  }
-
-  /// AI で作った場面。押すと選ぶ。「作り直す」でシートを開く
-  private func madeTile(_ made: SceneGenerator.Made) -> some View {
-    let on = selected == made.id
-    return HStack(spacing: 12) {
-      Button {
-        selected = made.id
-      } label: {
-        HStack(spacing: 12) {
-          RoundedRectangle(cornerRadius: 10)
-            .fill(on ? Theme.accent : Theme.accentSoft)
-            .frame(width: 44, height: 44)
-            .overlay {
-              Image(systemName: "sparkles")
-                .font(.system(size: 20, weight: .bold))
-                .foregroundStyle(on ? .white : Theme.accent)
-            }
-          VStack(alignment: .leading, spacing: 2) {
-            Text(made.name)
-              .font(Theme.font(15, .heavy))
-              .foregroundStyle(on ? Theme.accent : Theme.ink)
-              .lineLimit(1)
-            Text("AI で作った場面・\(made.difficulty.label)")
-              .font(Theme.font(11, .heavy))
-              .foregroundStyle(Theme.muted)
-          }
-          Spacer(minLength: 0)
-        }
-        .contentShape(Rectangle())
-      }
-      .buttonStyle(.plain)
-      .accessibilityLabel("AI で作った場面 \(made.name)")
-      .accessibilityAddTraits(on ? .isSelected : [])
-      Button("作り直す", action: onGenerate)
-        .font(Theme.font(13, .heavy))
-        .foregroundStyle(Theme.accent)
-    }
-    .padding(8)
-    .background(Theme.background, in: RoundedRectangle(cornerRadius: 14))
-    .overlay {
-      RoundedRectangle(cornerRadius: 14)
-        .strokeBorder(on ? Theme.accent : Theme.line, lineWidth: on ? 3 : 1.5)
-    }
   }
 
   private func tile(_ scene: SceneInfo) -> some View {
