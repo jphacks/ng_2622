@@ -1,17 +1,20 @@
 import type { ScoringEnv, SpeechScore } from "./types";
 
-// 正解文なし（ReferenceText 空）の発音評価と抑揚の評価を、短い音声用の REST で呼ぶ
+// 発音評価と抑揚の評価を、短い音声用の REST で呼ぶ。正解文には端末で文字起こしした発話を使い、
+// 無ければ空（正解文なしの評価）にする。Microsoft は自由発話で「先に文字起こしし、それを正解文にする」形を勧めている
 // https://learn.microsoft.com/en-us/azure/ai-services/speech-service/rest-speech-to-text-short
-const assessmentHeader = btoa(
-  JSON.stringify({
-    ReferenceText: "",
+const assessmentHeader = (referenceText: string) => {
+  const json = JSON.stringify({
+    ReferenceText: referenceText,
     GradingSystem: "HundredMark",
     Granularity: "Word",
     Dimension: "Comprehensive",
     EnableMiscue: false,
     EnableProsodyAssessment: true,
-  }),
-);
+  });
+  // btoa は Latin-1 の外の文字（’ など）で失敗するので、UTF-8 のバイトにしてから符号化する
+  return btoa(String.fromCharCode(...new TextEncoder().encode(json)));
+};
 
 type Word = {
   Word?: string;
@@ -45,6 +48,7 @@ export class AzureError extends Error {}
 export async function assessSpeech(
   env: ScoringEnv,
   wav: ArrayBuffer,
+  referenceText = "",
 ): Promise<SpeechScore | null> {
   if (!env.AZURE_API_KEY || !env.AZURE_LOCATION) {
     throw new AzureError("AZURE_API_KEY と AZURE_LOCATION が要る");
@@ -55,7 +59,7 @@ export async function assessSpeech(
     headers: {
       "Ocp-Apim-Subscription-Key": env.AZURE_API_KEY,
       "Content-Type": "audio/wav; codecs=audio/pcm; samplerate=16000",
-      "Pronunciation-Assessment": assessmentHeader,
+      "Pronunciation-Assessment": assessmentHeader(referenceText),
       Accept: "application/json",
     },
     body: wav,

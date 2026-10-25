@@ -1747,7 +1747,7 @@
           "rounds"
         ],
         "summary": "自分の音声を送る",
-        "description": "話し終えたら、録音した WAV（16 kHz・16 bit・モノラル、1 MB まで）を本文にそのまま載せて送る。1 ラウンドに 1 回だけ。受け取ったらすぐ 202 を返し、採点は部屋の側で続ける。進み具合は WebSocket の progress、点数は全員の採点がそろったら results で届く。",
+        "description": "話し終えたら、録音した WAV（16 kHz・16 bit・モノラル、1 MB まで）を本文にそのまま載せて送る。端末で文字起こしした発話があれば X-Transcript に載せる。1 ラウンドに 1 回だけ。受け取ったらすぐ 202 を返し、採点は部屋の側で続ける。進み具合は WebSocket の progress、点数は全員の採点がそろったら results で届く。",
         "requestBody": {
           "required": true,
           "content": {
@@ -1860,6 +1860,15 @@
             },
             "required": true,
             "description": "Bearer と合言葉（welcome の token）"
+          },
+          {
+            "in": "header",
+            "name": "x-transcript",
+            "schema": {
+              "type": "string",
+              "maxLength": 8000
+            },
+            "description": "端末で文字起こしした発話を URL エンコードしたもの（元の文で 2000 文字まで）。あれば発音評価の正解文と内容・表現の採点に使い、無ければ Azure の文字起こしを使う"
           }
         ]
       }

@@ -137,6 +137,7 @@ ScenEnglish（シーングリッシュ）。Scene と English を合わせた造
   - まず、Azure の発音評価の呼び出しで返る文字起こしをそのまま使う。1 回の呼び出しで文字起こしと話し方の点数がそろい、作り始めを軽くできる。
   - Hack Day の前の録音テストで文字起こしの誤りが目立ったら、精度の高い文字起こし AI（ElevenLabs Scribe v2、MAI-Transcribe-2 など）で先に文字にし、その文を正解文として Azure で評価する構成に切り替える。正解文なしの評価は通常の音声認識と別のモデルを使うため。
   - 切り替えると呼び出しが 2 段になり、作り直しと待ち時間の増加が出る。切り替えやすいよう、文字起こしの取得は差し替えられる作りにしておく（推測）。
+  - 文字起こしの精度が悪いとの声があり、iPhone の端末の中での文字起こし（iOS 26 の SpeechAnalyzer）に切り替えた（2026-10-25）。録り終えた WAV を端末で文字にし、音声と一緒に送る（`X-Transcript` ヘッダー）。部屋はその文を Azure の正解文と Claude の採点に使う。費用は増えず、Azure の呼び出しも 1 回のまま。端末で文字にできなかった（非対応の端末・5 秒の時間切れ・失敗）ときは、これまでどおり Azure の文字起こしを使う。精度が下がったら戻す。
 - 内容・表現の採点と講評には Claude を使う（2026-10-21 に決定）。
   - まず Claude Haiku 5.5（`claude-haiku-5-5`、effort `high`）で作り、質が足りなければ Claude Sonnet 5.5（`claude-sonnet-5-5`、effort `medium`）に上げる。
   - 本番の採点は Claude Sonnet 5.5（`claude-sonnet-5-5`）の effort `low` にした（2026-10-25、PR #50）。モデルと effort は環境変数 `CLAUDE_MODEL`・`CLAUDE_EFFORT` で変えられる。

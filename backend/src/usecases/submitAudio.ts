@@ -41,6 +41,8 @@ export const submitAudio = async (
     playerId: string;
     token: string;
     audio: ArrayBuffer;
+    /** 端末で文字起こしした発話。無ければ Azure の文字起こしを使う */
+    transcript?: string;
   },
 ) => {
   if (input.audio.byteLength > MAX_AUDIO_BYTES || !isWav(input.audio)) {
@@ -51,9 +53,12 @@ export const submitAudio = async (
 
   const { roomId, round, playerId } = input;
   const grade = async () => {
-    const result = await score(env, input.audio, begun.value.sceneId).catch(
-      () => null,
-    );
+    const result = await score(
+      env,
+      input.audio,
+      begun.value.sceneId,
+      input.transcript,
+    ).catch(() => null);
     await repository.recordGrade(roomId, {
       round,
       playerId,

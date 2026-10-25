@@ -109,6 +109,8 @@ final class LiveGameClient: GameClient {
   private func enter(roomID: String, as player: PlayerProfile) async throws {
     self.roomID = roomID
     self.player = player
+    // 初回は文字起こしの音声モデルのダウンロードが要るので、話す前に始めておく
+    Task { await DeviceTranscriber.prepare() }
     do {
       try await connect()
     } catch {
@@ -142,8 +144,10 @@ final class LiveGameClient: GameClient {
       try await send(skip)
       return
     }
+    // 端末での文字起こしも一緒に送る。できなければ nil で、バックエンドが Azure の文字起こしを使う
+    let transcript = await DeviceTranscriber.transcribe(audio.url)
     do {
-      try await upload(data, round: round)
+      try await upload(data, transcript: transcript, round: round)
     } catch {
       // 送れなかった人がいるとラウンドが終わらないので、音声なしで終えておく
       liveLog.error("音声を送れませんでした: \(error, privacy: .public)")
@@ -159,13 +163,14 @@ final class LiveGameClient: GameClient {
     try await send(.again(.init(_type: .again)))
   }
 
-  /// POST /rooms/{roomId}/rounds/{round}/audio。X-Player-Id と Authorization: Bearer <合言葉> を付ける
-  private func upload(_ data: Data, round: Int) async throws {
+  /// POST /rooms/{roomId}/rounds/{round}/audio。X-Player-Id と Authorization: Bearer <合言葉> を付ける。
+  /// 文字起こしは X-Transcript に載せる（作った Client が URL エンコードする）
+  private func upload(_ data: Data, transcript: String?, round: Int) async throws {
     guard let roomID, let credentials else { throw GameError.connectionFailed }
     let client = APIClient.make(url: baseURL, middlewares: [BearerToken(credentials.token)])
     let output = try await client.submitAudio(
       path: .init(roomId: roomID, round: String(round)),
-      headers: .init(xPlayerId: credentials.playerID),
+      headers: .init(xPlayerId: credentials.playerID, xTranscript: transcript),
       body: .audioWav(HTTPBody(data)))
     switch output {
     case .accepted:

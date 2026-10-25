@@ -44,11 +44,13 @@ const isWav = (buf: ArrayBuffer) => {
 
 const round = (n: number) => Math.round(n * 10) / 10;
 
-// 1 人分の音声を採点する。例外は投げず、失敗は ok: false で返す
+// 1 人分の音声を採点する。例外は投げず、失敗は ok: false で返す。
+// deviceTranscript は端末で文字起こしした発話。あれば Azure の正解文と Claude の採点に使い、無ければ Azure の文字起こしを使う
 export async function score(
   env: ScoringEnv,
   wav: ArrayBuffer,
   sceneId: string,
+  deviceTranscript?: string,
 ): Promise<ScoreResult> {
   const started = Date.now();
   const poolScene = findPoolScene(sceneId);
@@ -111,9 +113,11 @@ export async function score(
 
   try {
     const azureStarted = Date.now();
-    const speech = await assessSpeech(env, wav);
+    const fromDevice = deviceTranscript?.trim() ?? "";
+    const speech = await assessSpeech(env, wav, fromDevice);
     const azureMs = Date.now() - azureStarted;
-    if (!speech || speech.transcript.trim() === "") {
+    const transcript = fromDevice || speech?.transcript.trim() || "";
+    if (!speech || transcript === "") {
       return {
         ok: false,
         sceneId,
@@ -121,18 +125,21 @@ export async function score(
         message: "英語の発話を聞き取れなかった",
       };
     }
-    const words = speech.transcript.split(/\s+/).filter(Boolean).length;
+    const words = transcript.split(/\s+/).filter(Boolean).length;
     const claudeStarted = Date.now();
     const language =
       words < MIN_WORDS
         ? { content: 0, expression: 0, elements: [], notes: SHORT_NOTES }
-        : await gradeLanguage(env, scene, speech.transcript);
+        : await gradeLanguage(env, scene, transcript);
     // 採点の所要時間の内訳（Cloudflare の Observability で見る）。claudeMs は Claude を呼ばなかったとき null
     console.log({
       event: "scoring_timing",
       sceneId,
       audioBytes: wav.byteLength,
       words,
+      // 文字起こしがどちらから来たか（端末の精度を Azure と見比べるため、Azure の分も残す）
+      transcriptSource: fromDevice ? "device" : "azure",
+      azureTranscript: speech.transcript,
       azureMs,
       claudeMs: words < MIN_WORDS ? null : Date.now() - claudeStarted,
       totalMs: Date.now() - started,
@@ -144,10 +151,10 @@ export async function score(
       content: language.content,
       expression: language.expression,
       speech: round(speech.score),
-      transcript: speech.transcript,
+      transcript,
       feedback: buildFeedback({
         scene,
-        transcript: speech.transcript,
+        transcript,
         elements: language.elements,
         expression: language.expression,
         speech,
