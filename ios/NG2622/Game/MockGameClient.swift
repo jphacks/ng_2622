@@ -10,6 +10,8 @@ final class MockGameClient: GameClient {
     var includesOffline = false
     /// 参加者として入ったとき、ホストがスタートするまで（秒）
     var hostStartDelay: TimeInterval = 6
+    /// 難易度でスタートしてから、場面を作り終えてラウンドが始まるまで（秒）。本物は部屋が AI で場面を作る
+    var generatingDuration: TimeInterval = 3
   }
 
   /// このコードだけ「部屋が見つかりません」になる
@@ -49,6 +51,10 @@ final class MockGameClient: GameClient {
   private var lastSent: [Participant] = []
   private var ticker: Task<Void, Never>?
   private var roundRunning = false
+  /// 難易度でスタートして、場面を作っている（作り終えるまでスタートを受け付けない）
+  private var generating = false
+  /// leaveRoom を呼んだ。以後はラウンドを始めない
+  private var left = false
 
   private static let names = ["たろう", "はなこ", "けん", "さくら", "ゆうと", "みお", "そうた", "あおい"]
   /// ほかの参加者の色。自分の色は除いて使う
@@ -100,6 +106,7 @@ final class MockGameClient: GameClient {
   }
 
   func leaveRoom() {
+    left = true
     joinTask?.cancel()
     hostTask?.cancel()
     ticker?.cancel()
@@ -160,10 +167,18 @@ final class MockGameClient: GameClient {
 
   // MARK: - ラウンド
 
-  /// 作り置きの場面から、この部屋でまだ出ていないものを選んで始める（本物はバックエンドの部屋が選ぶ予定）。
-  /// 作り置きが無ければ、手作りのシーンからランダムに選ぶ
+  /// 場面を作っているふりをしてから（generatingDuration 秒）、作り置きの場面からこの部屋でまだ出ていないものを選んで始める。
+  /// 本物は部屋が AI で場面を作る。作り置きが無ければ、手作りのシーンからランダムに選ぶ
   private func beginRound(difficulty: SceneDifficulty) async throws {
-    guard !roundRunning else { return }
+    guard !roundRunning, !generating, !left else { return }
+    generating = true
+    // 作っている間に入ってきた人は、このラウンドには入れない
+    joinTask?.cancel()
+    continuation.yield(.generating(roomState()))
+    // 参加者のときは hostTask の中から呼ばれる。退出で止まっても、下で left を見て始めない
+    try? await Task.sleep(for: .seconds(options.generatingDuration))
+    generating = false
+    guard !left else { return }
     try await beginRound(sceneID: pool?.draw(difficulty))
   }
 

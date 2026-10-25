@@ -65,7 +65,8 @@ private struct WaitingScene: View {
       // 1 秒に 12 度（30 秒で 1 周）
       let yaw = context.date.timeIntervalSince(enteredAt) * 12
       DioramaView(
-        sceneID: round.sceneID, yaw: yaw, tilt: SceneOrbit.defaultTilt, startsAt: round.startsAt, distance: 4.6)
+        sceneID: round.sceneID, yaw: yaw, tilt: SceneOrbit.defaultTilt, startsAt: round.startsAt, distance: 4.6,
+        room: round.room)
     }
     .frame(maxWidth: .infinity)
     .frame(height: 190)

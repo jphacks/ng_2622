@@ -11,6 +11,8 @@ struct RoundResults: Sendable, Equatable {
   let players: [PlayerResult]
   /// 自分の振り返り。自分が採点できなかったときは nil
   let myReview: Review?
+  /// 部屋のコード。部屋がその場で AI で作った場面の配置を取るときに付ける（みんなの描写で場面を出す）。Mock は nil
+  var room: String? = nil
 
   /// 自分の講評（バックエンドの Feedback）。次に伸ばすのは一つだけ
   struct Review: Sendable, Equatable {

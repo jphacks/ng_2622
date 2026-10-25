@@ -18,14 +18,14 @@ final class SceneLibrary {
     loaded.contains(id)
   }
 
-  /// 先に読み込んでおく（画面に出す前に呼ぶ）
-  func preload(_ ids: [String]) {
-    for id in ids { _ = load(id) }
+  /// 先に読み込んでおく（画面に出す前に呼ぶ）。room は部屋のコードで、部屋がその場で作った場面の配置を取るときに要る
+  func preload(_ ids: [String], room: String? = nil) {
+    for id in ids { _ = load(id, room: room) }
   }
 
   /// 読み込んだシーンの複製。読めなかったときは nil
-  func instance(of id: String) async -> SceneComposer.Composed? {
-    guard let template = await load(id).value else { return nil }
+  func instance(of id: String, room: String? = nil) async -> SceneComposer.Composed? {
+    guard let template = await load(id, room: room).value else { return nil }
     let root = template.root.clone(recursive: true)
     // 動かす部品は、複製の中から名前で探し直す
     let moving = template.moving.compactMap { m in
@@ -34,10 +34,10 @@ final class SceneLibrary {
     return SceneComposer.Composed(root: root, moving: moving)
   }
 
-  private func load(_ id: String) -> Task<SceneComposer.Composed?, Never> {
+  private func load(_ id: String, room: String?) -> Task<SceneComposer.Composed?, Never> {
     if let task = loads[id] { return task }
     let task = Task { () -> SceneComposer.Composed? in
-      let scene = GeneratedScene.isGenerated(id) ? await Self.compose(id) : await Self.baked(id)
+      let scene = GeneratedScene.isGenerated(id) ? await Self.compose(id, room: room) : await Self.baked(id)
       if scene != nil { loaded.insert(id) }
       return scene
     }
@@ -57,10 +57,10 @@ final class SceneLibrary {
   }
 
   /// 配置の JSON から部品を並べる。範囲は初めの位置と、move の行き先で測る
-  private static func compose(_ id: String) async -> SceneComposer.Composed? {
+  private static func compose(_ id: String, room: String?) async -> SceneComposer.Composed? {
     let layout: SceneLayout
     do {
-      layout = try await SceneLayouts.store.layout(of: id)
+      layout = try await SceneLayouts.store.layout(of: id, room: room)
     } catch {
       sceneLog.error("配置の JSON を取れませんでした（\(id, privacy: .public)）: \(error, privacy: .public)")
       return nil

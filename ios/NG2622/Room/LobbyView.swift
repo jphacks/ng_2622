@@ -1,7 +1,8 @@
 import SwiftUI
 
 /// 待合。部屋のコードと QR、参加者を見せる。ホストだけがシーン（または難易度）を選び、「スタート」を押せる。
-/// 選んだシーンは参加者には見せない（ラウンドが始まると全員の画面に出る）
+/// 選んだシーンは参加者には見せない（ラウンドが始まると全員の画面に出る）。
+/// スタートのあと部屋が場面を AI で作っている間は、全員の画面で選ぶ所が走る人に替わる。退出はそのまま押せる
 struct LobbyView: View {
   let session: RoomSession
   let onLeave: () -> Void
@@ -30,7 +31,11 @@ struct LobbyView: View {
             .padding(.top, 10)
           seats
             .padding(.top, 16)
-          if session.isHost {
+          if session.isGenerating {
+            SceneGenerating()
+              .padding(.top, 16)
+              .transition(.opacity)
+          } else if session.isHost {
             switch pick {
             case .difficulty:
               DifficultyPicker(selected: $difficulty, example: example(difficulty))
@@ -41,6 +46,7 @@ struct LobbyView: View {
             }
           }
         }
+        .animation(.easeInOut(duration: 0.3), value: session.isGenerating)
         // カードの影が切れないよう、スクロールの枠だけ左右に広げる
         .padding(.horizontal, 16)
         .padding(.bottom, 12)
@@ -50,8 +56,10 @@ struct LobbyView: View {
       .scrollIndicators(.hidden)
 
       if session.isHost {
+        // 場面を作っている間は押せない（2 度押さないように）
         Button("スタート", action: start)
           .buttonStyle(BigButtonStyle(kind: .primary))
+          .disabled(session.isGenerating)
           .padding(.bottom, 30)
       } else {
         HostWaiting()
@@ -284,6 +292,19 @@ private struct ExampleScene: View {
     .clipShape(RoundedRectangle(cornerRadius: 14))
     .allowsHitTesting(false)
     .accessibilityHidden(true)
+  }
+}
+
+/// 部屋が場面を AI で作っている間の表示（ホストも参加者も同じ）。文言は決まっていて、どんな場面かは匂わせない
+private struct SceneGenerating: View {
+  var body: some View {
+    VStack(spacing: 6) {
+      LoadingRunner(size: 230)
+        .accessibilityHidden(true)
+      ShimmerText(text: "AI が場面を生成中…")
+    }
+    .frame(maxWidth: .infinity)
+    .accessibilityElement(children: .combine)
   }
 }
 

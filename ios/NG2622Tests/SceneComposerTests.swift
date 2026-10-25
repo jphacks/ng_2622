@@ -261,5 +261,10 @@ struct SceneComposerTests {
     await #expect(throws: SceneLayoutError.notFound) { try await client.layout(sceneID: "gen-bbbbbbbbbb") }
     Stub.set(base.appending(path: "scenes/gen-cccccccccc/layout"), .init(status: 500, body: ""))
     await #expect(throws: SceneLayoutError.connectionFailed) { try await client.layout(sceneID: "gen-cccccccccc") }
+    // 部屋がその場で作った場面は ?room= を付けて取る
+    var withRoom = base.appending(path: "scenes/gen-dddddddddd/layout")
+    withRoom.append(queryItems: [URLQueryItem(name: "room", value: "0427")])
+    Stub.set(withRoom, .init(status: 200, body: #"{"protocol":"scenenglish.scene/1","name":"部屋の場面","items":[]}"#))
+    #expect(try await client.layout(sceneID: "gen-dddddddddd", room: "0427").name == "部屋の場面")
   }
 }

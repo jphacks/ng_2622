@@ -1,10 +1,17 @@
 import Foundation
 
 /// AI で作った場面（sceneId が gen- で始まる）の配置の JSON を取る口（GET /scenes/{sceneId}/layout）。
-/// docs/design/scene-protocol.md の「API」。場面は遊ぶ前に作り置くので、アプリは作る口（POST /scenes/generate）を呼ばない
+/// docs/design/scene-protocol.md の「API」。場面は部屋が作る（作り置きか、スタートのときに AI で作る）ので、
+/// アプリは作る口（POST /scenes/generate）を呼ばない
 protocol SceneLayoutClient: AnyObject {
-  /// 配置の JSON
-  func layout(sceneID: String) async throws -> SceneLayout
+  /// 配置の JSON。room は部屋のコードで、部屋がその場で作った場面（作り置きに無い）を取るときに要る
+  func layout(sceneID: String, room: String?) async throws -> SceneLayout
+}
+
+extension SceneLayoutClient {
+  func layout(sceneID: String) async throws -> SceneLayout {
+    try await layout(sceneID: sceneID, room: nil)
+  }
 }
 
 enum SceneLayoutError: Error, Equatable {
@@ -16,7 +23,8 @@ enum SceneLayoutError: Error, Equatable {
 
 enum SceneLayouts {
   /// アプリ全体で使う口。Live で URL があれば、同梱の作り置きの場面を先に見て、無いものだけバックエンドに取りに行く
-  /// （部屋は同梱と同じ backend/src/scenes/pool から選ぶので、たいていは通信しない）。それ以外は同梱だけ
+  /// （作り置きは同梱と同じ backend/src/scenes/pool から選ぶので通信しない。部屋がその場で AI で作った場面だけ取りに行く）。
+  /// それ以外は同梱だけ
   static let client: any SceneLayoutClient = {
     let config = AppConfig.current
     if config.mode == .live, let url = config.backendURL {
@@ -39,13 +47,14 @@ final class SceneLayoutStore {
     self.client = client
   }
 
-  func layout(of sceneID: String) async throws -> SceneLayout {
+  /// room は部屋のコード（部屋がその場で作った場面を取るときに要る）。ID は場面ごとに違うので、覚えるのは ID ごと
+  func layout(of sceneID: String, room: String? = nil) async throws -> SceneLayout {
     let task: Task<SceneLayout, any Error>
     if let existing = loads[sceneID] {
       task = existing
     } else {
       let client = client
-      task = Task { try await client.layout(sceneID: sceneID) }
+      task = Task { try await client.layout(sceneID: sceneID, room: room) }
       loads[sceneID] = task
     }
     do {
@@ -81,8 +90,11 @@ final class HTTPSceneLayoutClient: SceneLayoutClient {
     self.session = session
   }
 
-  func layout(sceneID: String) async throws -> SceneLayout {
-    let request = URLRequest(url: baseURL.appending(path: "scenes/\(sceneID)/layout"))
+  /// 部屋がその場で作った場面は、部屋のコードを ?room= に付けて取る。作り置きの場面は付けなくても取れる
+  func layout(sceneID: String, room: String?) async throws -> SceneLayout {
+    var url = baseURL.appending(path: "scenes/\(sceneID)/layout")
+    if let room { url.append(queryItems: [URLQueryItem(name: "room", value: room)]) }
+    let request = URLRequest(url: url)
     let (data, status) = try await send(request)
     guard (200..<300).contains(status) else {
       throw status == 404 ? SceneLayoutError.notFound : SceneLayoutError.connectionFailed
@@ -124,13 +136,13 @@ final class BundledFirstSceneLayoutClient: SceneLayoutClient {
     self.remote = remote
   }
 
-  func layout(sceneID: String) async throws -> SceneLayout {
-    if let layout = try? await bundled.layout(sceneID: sceneID) { return layout }
-    return try await remote.layout(sceneID: sceneID)
+  func layout(sceneID: String, room: String?) async throws -> SceneLayout {
+    if let layout = try? await bundled.layout(sceneID: sceneID, room: room) { return layout }
+    return try await remote.layout(sceneID: sceneID, room: room)
   }
 }
 
-/// 仮のデータ。通信せず、同梱の作り置きの場面（pool/<sceneId>.json。元は backend/src/scenes/pool）を返す
+/// 仮のデータ。通信せず、同梱の作り置きの場面（pool/<sceneId>.json。元は backend/src/scenes/pool）を返す。room は見ない
 final class MockSceneLayoutClient: SceneLayoutClient {
   private let bundle: Bundle
 
@@ -138,7 +150,7 @@ final class MockSceneLayoutClient: SceneLayoutClient {
     self.bundle = bundle
   }
 
-  func layout(sceneID: String) async throws -> SceneLayout {
+  func layout(sceneID: String, room: String?) async throws -> SceneLayout {
     guard let url = bundle.url(forResource: sceneID, withExtension: "json", subdirectory: ScenePool.directory) else {
       throw SceneLayoutError.notFound
     }
