@@ -32,3 +32,13 @@ struct RoomSocketDecodeTests {
     #expect(RoomSocket.decode(Data(#"{"type":"error","code":"not_host","message":"m"}"#.utf8)) != nil)
   }
 }
+
+/// 難易度の start は { type: "start", difficulty } だけを送る（sceneId は送らない）
+struct StartByDifficultyTests {
+  @Test(arguments: SceneDifficulty.allCases)
+  func encodes(difficulty: SceneDifficulty) throws {
+    let data = try JSONEncoder().encode(StartByDifficulty(difficulty: difficulty))
+    let object = try #require(try JSONSerialization.jsonObject(with: data) as? [String: String])
+    #expect(object == ["type": "start", "difficulty": difficulty.rawValue])
+  }
+}
