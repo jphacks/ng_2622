@@ -44,4 +44,4 @@
 | 2026-10-24 | [シーンは作り置いた部品を配置の JSON で並べて作る](./20261024-compose-scenes-from-stored-parts.md) | accepted（AI の場面を待合でその場で作る前提のみ 2026-10-25 に部分 supersede） |
 | 2026-10-25 | [AI の場面は遊ぶ前に作り置き、待合では難易度だけを選ぶ](./20261025-pre-generate-ai-scenes-and-pick-by-difficulty.md) | accepted |
 | 2026-10-25 | [内容と表現の点は、場面の配置の情報を渡し、採点基準の段階で付ける](./20261025-score-content-with-layout-and-rubric-bands.md) | accepted |
-| 2026-10-25 | [採点の基準は、配置の JSON と部品のメタデータから作る](./20261025-grade-from-layout-and-part-metadata.md) | accepted |
+| 2026-10-25 | [採点の基準は、配置の JSON と部品のメタデータから作る](./20261025-grade-from-layout-and-part-metadata.md) | superseded |

@@ -67,8 +67,7 @@ sequenceDiagram
 | `GET /scenes` | HTTP | シーンの一覧と、それぞれの★の平均・評価した人数（待合のシーン選びに出す） |
 | `GET /scenes/:id/reviews` | HTTP | シーンの評価（★とコメント）を新しい順に返す |
 | `PUT /scenes/:id/reviews` | HTTP | シーンを評価する（★ 1〜5、コメントは 200 文字までで任意）。端末ごとの ID を付け、同じ ID で送り直すと上書きする（結果発表の下で送る） |
-| `POST /score` | HTTP | 配置の JSON（`layout`）と文字起こしを送ると、内容と表現の点・要素ごとの判定・講評を返す。採点の基準は配置と部品のメタデータから作り、`sceneKey`（省くと配置の中身）ごとに 1 日覚えて全員に使う。話し方は扱わない（[ADR](../adr/20261025-grade-from-layout-and-part-metadata.md)） |
-| `POST /score/rubric` | HTTP | 採点の基準だけを先に作って覚えておく（場面を選んだときに呼ぶと、採点の待ち時間から基準づくりが外れる） |
+| `POST /score` | HTTP | 配置の JSON（`layout` の `items` と `description`）と文字起こしを送ると、内容と表現の点と講評を返す。部品のメタデータと座標・向き・動き、説明文を Claude に渡し、採点基準の段階（0〜100）で付ける。話し方の点は付けないが、Azure の 3 つの点（`speech`）を送ると次に伸ばす一つに話し方も選ばれる（[ADR](../adr/20261025-score-content-with-layout-and-rubric-bands.md)） |
 
 API の型の正本は `backend/src/schemas/`（zod）で、そこから生成した `backend/openapi.json` を iOS が読む（2026-10-24 に決定）。WebSocket のメッセージは OpenAPI の `components.schemas` の `ClientMessage`・`ServerMessage` に載せる。
 
