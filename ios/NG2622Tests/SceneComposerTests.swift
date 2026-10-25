@@ -54,7 +54,7 @@ struct SceneComposerTests {
     let apple = item(SceneLayout.Motion(type: .fall, duration: 1.2, delay: 0.5, loop: true), at: [0.4, 2.2, -1.2])
     #expect(close(SceneMotion.pose(of: apple, at: 0).position, [0.4, 2.2, -1.2]))
     let half = SceneMotion.pose(of: apple, at: 0.5 + 0.6).position
-    #expect(close(half, [0.4, 2.2 * 0.75, -1.2]))
+    #expect(close(half, [0.4, Float(2.2 * 0.75), -1.2]))
     #expect(SceneMotion.pose(of: apple, at: 0.5 + 1.19).position.y < 0.05)
     // loop なので、次の周は初めの高さから
     #expect(close(SceneMotion.pose(of: apple, at: 0.5 + 1.2).position, [0.4, 2.2, -1.2]))
