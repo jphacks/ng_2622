@@ -7,7 +7,7 @@ struct LobbyView: View {
   let onLeave: () -> Void
   /// シーンの選び方（SCENE_PICK）。difficulty なら難易度だけを選ぶ
   var pick: ScenePick = AppConfig.current.scenePick
-  /// 難易度ごとの例の場面（出題はしない）。難易度で選ぶのは今は Mock だけなので、同梱の作り置きから出す
+  /// 難易度ごとの例の場面（出題はしない）。Mock も Live も同梱の作り置きの一覧から出す（バックエンドは呼ばない）
   var example: (SceneDifficulty) -> String? = { ScenePool.bundled.example(of: $0) }
 
   /// ホストが選んだシーンの ID。nil は「おまかせ」

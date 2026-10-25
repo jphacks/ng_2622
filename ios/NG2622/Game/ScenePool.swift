@@ -17,7 +17,7 @@ enum SceneDifficulty: String, CaseIterable, Identifiable, Sendable {
   }
 }
 
-/// 待合でホストがシーンを選ぶ形。Config/*.xcconfig の SCENE_PICK（既定は Mock が difficulty、Live が list）
+/// 待合でホストがシーンを選ぶ形。Config/*.xcconfig の SCENE_PICK（Mock も Live も difficulty）
 enum ScenePick: String, Sendable {
   /// 難易度だけを選ぶ。場面は作り置きの中から選ばれ、名前もサムネイルもスタートまで見せない
   case difficulty
@@ -28,8 +28,8 @@ enum ScenePick: String, Sendable {
 /// 作り置きの場面から、難易度で 1 つ選ぶ。その部屋でまだ出ていないものからランダムに選び、全部出たら最初に戻る。
 /// 難易度ごとに 1 つを「例」にして、待合のホストに絵だけ見せる。例はホストだけが先に見た場面なので、出題しない。
 /// 1 部屋に 1 つ持つ（出た場面は部屋ごとに数える）。docs/design/scene-protocol.md の「待合での出し方」。
-/// 今は Mock がアプリの中で選び、sceneId でラウンドを始める。Live でバックエンドの部屋が選ぶようになったら、
-/// 選ぶのはバックエンドに任せ、start で難易度を送る形に差し替える（LiveGameClient.startRound(difficulty:)）
+/// Mock はアプリの中で選び、sceneId でラウンドを始める。Live は選ぶのをバックエンドの部屋に任せ、
+/// start で難易度だけを送る（LiveGameClient.startRound(difficulty:)）。例はどちらも同梱の一覧から出す
 struct ScenePool {
   /// 難易度ごとの sceneId（例も入る）
   let scenes: [SceneDifficulty: [String]]
@@ -84,7 +84,7 @@ struct ScenePool {
   /// アプリの中で作り置きの場面を置くフォルダ。ビルドのときに backend/src/scenes/pool から写す（project.yml の Copy scene pool）
   static let directory = "pool"
 
-  /// アプリに同梱した作り置きの場面（pool/index.json と pool/<sceneId>.json）。Mock で使う
+  /// アプリに同梱した作り置きの場面（pool/index.json と pool/<sceneId>.json）。Mock の出題と、待合の例に使う
   static let bundled = ScenePool(bundle: .main)
 
   /// 作り置きの場面の一覧（backend/src/scenes/pool/index.json）の、1 つの難易度の分。
