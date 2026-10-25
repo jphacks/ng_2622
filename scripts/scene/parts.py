@@ -104,7 +104,7 @@ def make_materials() -> None:
         # 屋外の床（駅のホーム・砂浜・石畳・土）
         "platform": ("#cfccc5", 0.85), "tactile": ("#f2c230", 0.6), "ballast": ("#8d857b", 0.95),
         "sleeper": ("#7a5a42", 0.8), "rail": ("#a3a9b1", 0.35),
-        "sand": ("#efdcab", 0.95), "sand_dark": ("#e2c98e", 0.95), "sand_light": ("#f7ead0", 0.95),
+        "sand": ("#e8d6b0", 0.95), "sand_dark": ("#dcc59a", 0.95), "sand_light": ("#efe1c4", 0.95),
         "shell": ("#f8d4c8", 0.5), "pebble": ("#b9b1a5", 0.8),
         "stone_joint": ("#8c877f", 0.9), "stone_a": ("#b8b3aa", 0.85), "stone_b": ("#a9a39a", 0.85), "stone_c": ("#c7c2b8", 0.85),
         "dirt": ("#c79c6c", 0.95), "dirt_dark": ("#b5875a", 0.95), "dirt_light": ("#d6b083", 0.95),
@@ -1079,9 +1079,21 @@ def mark(p, size, loc, mat, layer=1):
     p.box((size[0], size[1], MARK_THICK), (loc[0], loc[1], FLOOR_THICK + MARK_THICK * (layer - 0.5)), mat)
 
 
-def spot(p, r, loc, mat, layer=1):
-    """床の板の上の、平たい円のまだら。"""
-    p.cyl(r, r, MARK_THICK, (loc[0], loc[1], FLOOR_THICK + MARK_THICK * (layer - 0.5)), mat, segs=14, smooth=False)
+def spots(p, rng, count, r_range, mats, margin=0.1):
+    """床の板の上に、平たい円のまだらを重ならないように散らす。
+
+    同じ高さの面が重なると、描くときにちらつく（模様が渦のように乱れる）ので、重なる位置は選び直す。
+    """
+    placed = []
+    for _ in range(count * 20):
+        if len(placed) == count:
+            break
+        r = rng.uniform(*r_range)
+        lim = FLOOR / 2 - margin - r
+        x, y = rng.uniform(-lim, lim), rng.uniform(-lim, lim)
+        if all(math.hypot(x - px, y - py) > r + pr + 0.02 for px, py, pr in placed):
+            placed.append((x, y, r))
+            p.cyl(r, r, MARK_THICK, (x, y, FLOOR_THICK + MARK_THICK / 2), rng.choice(mats), segs=14, smooth=False)
 
 
 def planks(p, rng, mats, width, length, along_x, gap=0.012, half=FLOOR / 2):
@@ -1186,9 +1198,7 @@ def build_sand_beach(root):
     rng = random.Random(2624)
     p = Part("sand_beach")
     floor_plate(p, M["sand"], radius=0.3)
-    for _ in range(45):
-        r = rng.uniform(0.25, 0.7)
-        spot(p, r, (rng.uniform(-3.9 + r, 3.9 - r), rng.uniform(-3.9 + r, 3.9 - r)), rng.choice([M["sand_dark"], M["sand_light"]]))
+    spots(p, rng, 40, (0.25, 0.7), [M["sand_dark"], M["sand_light"]])
     for k in range(18):   # 貝がら（平たい玉）と小石
         x, y = rng.uniform(-3.6, 3.6), rng.uniform(-3.6, 3.6)
         r = rng.uniform(0.03, 0.05)
@@ -1220,9 +1230,7 @@ def build_ground_dirt(root):
     rng = random.Random(2626)
     p = Part("ground_dirt")
     floor_plate(p, M["dirt"], radius=0.3)
-    for _ in range(50):
-        r = rng.uniform(0.25, 0.65)
-        spot(p, r, (rng.uniform(-3.9 + r, 3.9 - r), rng.uniform(-3.9 + r, 3.9 - r)), rng.choice([M["dirt_dark"], M["dirt_light"]]))
+    spots(p, rng, 45, (0.25, 0.65), [M["dirt_dark"], M["dirt_light"]])
     mark(p, (FLOOR - 0.6, 0.1), (0, -1.5), M["stripe"], layer=2)
     for _ in range(16):
         r = rng.uniform(0.025, 0.045)
