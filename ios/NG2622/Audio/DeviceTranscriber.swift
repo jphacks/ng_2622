@@ -48,7 +48,15 @@ enum DeviceTranscriber {
   }
 
   private static func run(_ url: URL) async -> String? {
-    guard let transcriber = await prepare() else { return nil }
+    guard SpeechTranscriber.isAvailable,
+      let supported = await SpeechTranscriber.supportedLocale(equivalentTo: locale)
+    else { return nil }
+    let transcriber = SpeechTranscriber(locale: supported, preset: .transcription)
+    // ダウンロードは部屋に入ったときの prepare() に任せ、ここでは待たない
+    guard await AssetInventory.status(forModules: [transcriber]) == .installed else {
+      transcriptLog.notice("文字起こしの音声モデルがまだ入っていません")
+      return nil
+    }
     do {
       let file = try AVAudioFile(forReading: url)
       let analyzer = SpeechAnalyzer(modules: [transcriber])
