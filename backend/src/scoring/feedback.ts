@@ -1,4 +1,5 @@
 import type {
+  ContentFeedback,
   ElementJudgment,
   Feedback,
   LanguageNotes,
@@ -116,7 +117,11 @@ export const buildFeedback = (input: {
     nextStep = { kind: "speech", gain: null, text: tip.text };
   }
 
-  // 文字起こしに無い引用は、Claude の作り話なので出さない
+  return { ...checkedNotes(transcript, notes), nextStep, speechTip: tip };
+};
+
+// 文字起こしに無い引用は、Claude の作り話なので出さない
+const checkedNotes = (transcript: string, notes: LanguageNotes) => {
   const strength = quotedFrom(transcript, notes.strength.quote)
     ? notes.strength
     : { quote: "", text: notes.strength.text };
@@ -126,6 +131,32 @@ export const buildFeedback = (input: {
     normalize(notes.rewrite.before) !== normalize(notes.rewrite.after)
       ? notes.rewrite
       : null;
+  return { strength, rewrite };
+};
 
-  return { strength, nextStep, rewrite, speechTip: tip };
+// 話し方の点が無いとき（配置から採点する POST /score）の講評。次に伸ばす一つは内容か表現から選ぶ。
+// gain は内容の点（0〜100）で何点伸びるか
+export const buildContentFeedback = (input: {
+  scene: Scene;
+  transcript: string;
+  elements: ElementJudgment[];
+  notes: LanguageNotes;
+}): ContentFeedback => {
+  const { scene, transcript, notes } = input;
+  const missing = pickMissingElement(scene, input.elements);
+  const nextStep: ContentFeedback["nextStep"] = missing
+    ? {
+        kind: "content",
+        gain: missing.points,
+        text:
+          notes.hints.find((h) => h.id === missing.id)?.text ||
+          `次は「${missing.label}」を足してみよう。`,
+      }
+    : {
+        kind: "expression",
+        gain: null,
+        text:
+          notes.expressionTip || "文をつなげて、もう少し詳しく言ってみよう。",
+      };
+  return { ...checkedNotes(transcript, notes), nextStep };
 };

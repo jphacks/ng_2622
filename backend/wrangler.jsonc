@@ -16,17 +16,19 @@
     "CLAUDE_MODEL": "claude-sonnet-5-5",
     "CLAUDE_EFFORT": "low"
   },
-  // SCENE_REVIEWS はシーンの評価（全シーンで 1 つ）
+  // SCENE_REVIEWS はシーンの評価（全シーンで 1 つ）。SCENE_RUBRICS は配置から作った採点の基準（場面ごとに 1 つ）
   "durable_objects": {
     "bindings": [
       { "name": "ROOM", "class_name": "Room" },
-      { "name": "SCENE_REVIEWS", "class_name": "SceneReviews" }
+      { "name": "SCENE_REVIEWS", "class_name": "SceneReviews" },
+      { "name": "SCENE_RUBRICS", "class_name": "SceneRubrics" }
     ]
   },
   // 無料プランは SQLite 版のみ。出した tag は書き換えず、新しい tag で足す
   "migrations": [
     { "tag": "v1", "new_sqlite_classes": ["Room"] },
-    { "tag": "v2", "new_sqlite_classes": ["SceneReviews"] }
+    { "tag": "v2", "new_sqlite_classes": ["SceneReviews"] },
+    { "tag": "v3", "new_sqlite_classes": ["SceneRubrics"] }
   ],
   // PR ごとのプレビュー（wrangler preview）の設定。vars や DO の binding は上の階層から引き継がれないので、
   // プレビューでも使うものはここにも書く
@@ -38,7 +40,8 @@
     "durable_objects": {
       "bindings": [
         { "name": "ROOM", "class_name": "Room" },
-        { "name": "SCENE_REVIEWS", "class_name": "SceneReviews" }
+        { "name": "SCENE_REVIEWS", "class_name": "SceneReviews" },
+        { "name": "SCENE_RUBRICS", "class_name": "SceneRubrics" }
       ]
     }
   }

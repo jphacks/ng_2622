@@ -41,3 +41,4 @@
 | 2026-10-24 | [JavaScript の道具は repo 全体で pnpm で入れる](./20261024-use-pnpm-for-javascript-tools.md) | accepted |
 | 2026-10-24 | [iOS アプリは xcodegen で作り、仮のデータと本物の API は scheme ごとのビルド構成で切り替える](./20261024-build-ios-app-with-xcodegen-and-build-configs.md) | accepted |
 | 2026-10-24 | [シーンの評価は全体で 1 つの Durable Object（SQLite）に保存する](./20261024-store-scene-reviews-in-a-global-durable-object.md) | accepted |
+| 2026-10-25 | [採点の基準は、配置の JSON と部品のメタデータから作る](./20261025-grade-from-layout-and-part-metadata.md) | accepted |

@@ -64,6 +64,7 @@ export const ErrorCode = z
     "already_submitted",
     "invalid_audio",
     "not_in_results",
+    "scoring_failed",
   ])
   .meta({
     ref: "ErrorCode",
@@ -80,6 +81,7 @@ export const ErrorCode = z
       "already_submitted: このラウンドの音声はもう受け取った",
       "invalid_audio: 音声が 1 MB までの WAV でない",
       "not_in_results: 結果発表のときにしかできない操作",
+      "scoring_failed: 採点の途中で失敗した（Claude の呼び出しなど）",
     ].join("\n"),
   });
 

@@ -7,14 +7,14 @@ import type {
   ScoringEnv,
 } from "./types";
 
-const DEFAULT_MODEL = "claude-haiku-5-5";
+export const DEFAULT_MODEL = "claude-haiku-5-5";
 const DEFAULT_EFFORT = "high";
 
 type Effort = "low" | "medium" | "high" | "xhigh" | "max";
 const EFFORTS: readonly string[] = ["low", "medium", "high", "xhigh", "max"];
 
 // 知らない値は既定に戻す（設定の打ち間違いで採点を止めないため）
-const effortOf = (raw: string | undefined): Effort =>
+export const effortOf = (raw: string | undefined): Effort =>
   raw && EFFORTS.includes(raw) ? (raw as Effort) : DEFAULT_EFFORT;
 
 const SYSTEM = `You grade short spoken English descriptions by Japanese learners in a party game.
@@ -34,6 +34,15 @@ Then write feedback in Japanese for the player. Be specific and encouraging, and
 6. expressionTip: one short sentence on how to make the sentences richer, with a short English example.
 7. rewrite: pick one sentence or fragment of the player and make it natural, keeping the meaning and level. before: copy it exactly from the transcript. after: the corrected English. reason: one short sentence in Japanese.
    Words that look like recognition errors (odd or meaningless words, very short fragments) are not the player's mistakes; do not correct them. If nothing needs fixing, return null.`;
+
+// 配置から作った基準（Scene.fromLayout）のときに足す決まり。説明が場面のすべてなので、それに照らして判定する
+const FROM_LAYOUT = `
+
+The scene description lists everything in the scene, generated from the 3D scene data. Treat it as the ground truth:
+- Give extra points only for details that agree with the description. Things that are not in the scene, or that contradict it, get nothing.
+- The description gives colors only for some things. When the player mentions a color the description does not give, neither reward nor penalize it.
+- For an element about an action, a color, a count or a position, "full" needs that detail itself; only naming the person or thing is "partial" at most (or "none" if no partial wording is given). A wrong detail is not "full".
+- Positions are given without left/right or front/back, because players see the scene from any side. Accept left/right or front/back wording when the stated relation (next to, near, and so on) is right.`;
 
 const schemaFor = (scene: Scene) => ({
   type: "object",
@@ -146,7 +155,7 @@ export async function gradeLanguage(
       effort: effortOf(env.CLAUDE_EFFORT),
       format: { type: "json_schema", schema: schemaFor(scene) },
     },
-    system: SYSTEM,
+    system: scene.fromLayout ? SYSTEM + FROM_LAYOUT : SYSTEM,
     messages: [
       {
         role: "user",
