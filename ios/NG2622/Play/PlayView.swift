@@ -14,6 +14,9 @@ struct PlayView: View {
   @State private var hintUsed = false
   /// ドラッグの前回の位置
   @State private var lastDrag: CGSize?
+  /// 3D の枠の高さと、指示文とカウントダウンのまとまりの高さ。まとまりを置く位置の計算に使う
+  @State private var sceneHeight: CGFloat = 0
+  @State private var introHeight: CGFloat = 0
 
   private var introEnd: Date { round.startsAt + RoundTiming.intro }
   private var recordingEnd: Date { introEnd + RoundTiming.recording }
@@ -23,7 +26,10 @@ struct PlayView: View {
       header
         .frame(width: 346, height: 126)
         .padding(.top, 24)
+        // 下にずらした指示文が 3D の枠に重なっても隠れないように
+        .zIndex(1)
       scene
+        .onGeometryChange(for: CGFloat.self) { $0.size.height } action: { sceneHeight = $0 }
         .padding(.top, 0)
       footer
         .frame(width: 346, height: 70)
@@ -42,7 +48,9 @@ struct PlayView: View {
         prompt
         countdown
       }
-      .padding(.top, 10)
+      .onGeometryChange(for: CGFloat.self) { $0.size.height } action: { introHeight = $0 }
+      .offset(y: introOffset)
+      .allowsHitTesting(false)
       .opacity(isRecording ? 0 : 1)
       .offset(y: isRecording ? -14 : 0)
       recordingStatus
@@ -52,6 +60,17 @@ struct PlayView: View {
     }
     .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
     .animation(.easeOut(duration: 0.5), value: isRecording)
+  }
+
+  /// 3D の模型の高さの半分（枠の真ん中に描かれる。iPhone 17 Pro で測った値）
+  private static let dioramaHalfHeight: CGFloat = 113
+
+  /// 指示文とカウントダウンのまとまりの中心を、セーフエリアの上端と 3D の模型の上端のちょうど真ん中に置く。
+  /// 座標は header の上端が 0（セーフエリアの上端は -24、3D の枠の上端は 126）
+  private var introOffset: CGFloat {
+    let top: CGFloat = -24
+    let dioramaTop = 126 + sceneHeight / 2 - Self.dioramaHalfHeight
+    return max(10, (top + dioramaTop) / 2 - introHeight / 2)
   }
 
   private var countdown: some View {
