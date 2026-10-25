@@ -1,6 +1,6 @@
 # 3D の部品
 
-シーンを組み立てるための、作り置きの部品（プロトコル v1）。仕様は `docs/design/scene-protocol.md` の「部品」と「最初に作る部品（34 個）」（PR #42）。そのあと、場面の文の調べ（`docs/design/research/scene-sentence-coverage.md`）で「足すと効く」とされた物 14 個と人物 15 体を足して、いまは 63 個。
+シーンを組み立てるための、作り置きの部品（プロトコル v1）。仕様は `docs/design/scene-protocol.md` の「部品」と「最初に作る部品（34 個）」（PR #42）。そのあと、場面の文の調べ（`docs/design/research/scene-sentence-coverage.md`）で「足すと効く」とされた物 14 個と人物 15 体を足して 63 個。さらに、室内も駅も芝生か道路になってしまうので、床 8 個・背景の壁 4 個・場面らしさを出す大物 4 個を足して、いまは 79 個。
 
 ![部品の一覧](./contact_sheet.png)
 
@@ -20,12 +20,23 @@
 - Y が上、単位はメートルで、実物の大きさ。正面は +Z。
 - 原点は外接箱の底面の中心。y = 0 に置けば地面に立つ。
 - 色は部品に焼き込んである。人や車のライト、自動販売機の窓、スマートフォンの画面は自己発光（emissive）。
-- 地面の部品（`grass_patch`・`road_patch`）は薄い板で、上面はほぼ y = 0（芝の板は 2 mm、まだらの上面 2.5 mm。道路の板は 3 mm、白線の上面 3.5 mm）。上に置く物は y = 0 のままでよい（スマートフォンや本も 3 mm ほどしか埋まらない）。`grass_patch` の高さ 0.124 m は草むらの分。
+- 地面の部品（`grass_patch`・`road_patch`・下の「床と背景の壁」の床）は薄い板で、上面はほぼ y = 0（芝の板は 2 mm、まだらの上面 2.5 mm。道路の板は 3 mm、白線の上面 3.5 mm）。上に置く物は y = 0 のままでよい（スマートフォンや本も 3 mm ほどしか埋まらない）。`grass_patch` の高さ 0.124 m は草むらの分。
 - `road_patch` を `grass_patch` に重ねて置くときも y = 0 のままでよい。道路の上面が芝の板とまだらより上にあるので、ちらつかない。
 - 子ども（`boy`・`girl`）は大人の 0.75 倍。持たせた物（段ボール箱など）も同じ倍率。
 - 壁に付ける物（`window`・`clock`）も原点は底面の中心。壁に掛けるときは y を上げる（例: 窓は 0.9 m、時計は 1.8 m）。`window` は枠の厚さ 0.14 m で、`wall`（厚さ 0.1 m）と同じ位置に重ねると壁の両面に 2 cm ずつ出る。ガラスは壁に隠れないよう、壁の両面の外に 1 枚ずつある。
 - `door` の原点は枠の底面の中心（ちょうつがいの側ではない）。扉は開かない。
 - `bed` は長い向きを左右（X）に置き、頭の側は -X。長い辺が正面（+Z）で、その縁に座る。
+
+### 床と背景の壁
+
+- 床（`floor_wood`・`floor_tile`・`floor_carpet`・`floor_classroom`・`platform_station`・`sand_beach`・`sidewalk_stone`・`ground_dirt`）は、どれも 8 m 四方で `category` は `ground`。板は芝生と同じ 2 mm で、模様はその上に 0.5 mm ずつ重ねる（上面は高くて 3 mm）。`sand_beach` の貝がら・小石と `ground_dirt` の小石は少し上に出る（高さ 3〜4 cm）。上に置く物は y = 0 のままでよい。場面の真ん中（`[0, 0, 0]`）に 1 枚置く。
+- `platform_station` は、ホームの端を奥（-Z）にした。手前の 5.2 m（z = -1.2〜4）がホームで、端に白線、その 0.8 m 手前（z ≈ -0.25）に黄色い点字ブロックの帯がある。奥の 2.8 m（z = -4〜-1.2）は線路で、線路の中心は z = -2.6。カメラは手前から見るので、電車がホームの人を隠さないよう奥に線路を置いた。ホームと線路は同じ高さの板で、段差は作っていない。
+- 背景の壁（`wall_window`・`wall_kitchen_tile`・`wall_blackboard`・`wall_store_shelves`）は幅 8 m・高さ 2.6 m・板の厚さ 0.12 m で、`category` は `building`。表（+Z）に窓・タイル・黒板・棚が付き、裏は無地。原点は外接箱の底面の中心なので、表に出っ張る物が多いほど奥行き（`size` の z）が大きい。場面の奥の端に付けるときは z = -4 + 奥行き / 2 に置く（例: `wall_window` は -3.86、`wall_kitchen_tile` は -3.7575）。
+- `wall_kitchen_tile` のタイルは高さ 0.85〜1.85 m、吊り戸棚は真ん中の幅 3.2 m・高さ 1.95〜2.55 m。`kitchen_counter`（奥行き 0.68 m）を x = 0、壁の表の面（z = -3.88）の手前に置く（z = -3.54）と、タイルが流しの上に見える。
+- `kitchen_counter` は幅 2.4 m・天板 0.9 m（`anchors.top`）。流しは -X 側（中心 x = -0.6）、2 口のコンロは +X 側（中心 x = 0.65）なので、物は真ん中（x = -0.15〜0.3）か +X の端に置く。フライパンはコンロの上（y ≈ 0.926）。
+- `train` は実物（約 20 m）を 8 m に縮めた 1 両で、長い向きは X、幅 2.6 m・高さ 3.2 m。表と裏・前と後ろは同じ形。車輪の間隔は線路の幅（1.067 m）に合わせてあり、`platform_station` と組むときは `[0, 0, -2.6]` に置く。
+- `station_sign` は表と裏が同じ形（文字は入れず、駅名の濃い灰色の帯と、隣の駅の青い帯）。
+- `bus_shelter` は後ろ（-Z）と -X 側に板があり、+X 側の外にバス停の丸い標識が立つ（そのぶん外接箱の中心が右にずれ、ベンチの中心は x = -0.245）。ベンチは後ろの板の前にあり、背もたれは無い。
 
 ### 座るポーズと椅子
 
@@ -53,8 +64,10 @@
 | `bed` | `top`: 0.49、`seat`: [0.2, 0.49, 0.296] | 掛け布団の上面と、正面の縁から 0.2 m の座る点 |
 | `person_sit_girl_a`・`person_write_girl_a` | `hip`: [0, 0.36, -0.131] | 腰の点（子ども） |
 | `person_sit_boy_a`・`person_write_boy_a` | `hip`: [0, 0.36, -0.15] | 腰の点（子ども） |
+| `kitchen_counter` | `top`: 0.9 | 天板の上面（流しとコンロの無いところに物を置く） |
+| `bus_shelter` | `seat`: [-0.245, 0.46, -0.37] | ベンチの座面の真ん中 |
 
-`hip` の高さ 0.48 m はベンチの座面に合わせてあるので、`chair`・`sofa`・`seat`（0.46 m）に座らせると足が 2 cm 床に入る。子どもの `hip` は 0.36 m なので、どの家具に座らせても足は床から 10 cm ほど浮く。`person_write_*` の `hip` は書く人の座る点（`x` が 1 mm ずれているのは、手の位置が左右で違って外接箱の中心がずれるため）。
+`hip` の高さ 0.48 m はベンチの座面に合わせてあるので、`chair`・`sofa`・`seat`（0.46 m）に座らせると足が 2 cm 床に入る。子どもの `hip` は 0.36 m なので、どの家具に座らせても足は床から 10 cm ほど浮く。`bus_shelter` の `seat` も 0.46 m。`person_write_*` の `hip` は書く人の座る点（`x` が 1 mm ずれているのは、手の位置が左右で違って外接箱の中心がずれるため）。
 
 ### 持たせた物
 
@@ -133,10 +146,26 @@
 | `person_carry_girl_a` | 女の子（箱を運ぶ） | person | carry | girl, carry, box | 0.428 × 1.305 × 0.614 | 見た目違い |
 | `person_sit_girl_a` | 女の子（座る） | person | sit | girl, sit | 0.423 × 1.065 × 0.623 | 見た目違い |
 | `person_sit_boy_a` | 男の子（座る） | person | sit | boy, sit | 0.423 × 1.031 × 0.585 | 見た目違い |
+| `floor_wood` | 木の床（8 m 四方） | ground |  | floor, wooden floor | 8 × 0.002 × 8 | 新規 |
+| `floor_classroom` | 教室の床（8 m 四方） | ground |  | floor, classroom floor | 8 × 0.002 × 8 | 新規 |
+| `floor_tile` | 白いタイルの床（8 m 四方） | ground |  | floor, tile, tile floor | 8 × 0.002 × 8 | 新規 |
+| `floor_carpet` | じゅうたん（8 m 四方） | ground |  | carpet, rug, floor | 8 × 0.002 × 8 | 新規 |
+| `platform_station` | 駅のホーム（奥に線路、8 m 四方） | ground |  | platform, station, train station | 8 × 0.003 × 8 | 新規 |
+| `sand_beach` | 砂浜（8 m 四方） | ground |  | beach, sand | 8 × 0.034 × 8 | 新規 |
+| `sidewalk_stone` | 石畳の歩道（8 m 四方） | ground |  | sidewalk, pavement, stone path | 8 × 0.002 × 8 | 新規 |
+| `ground_dirt` | 土のグラウンド（8 m 四方） | ground |  | ground, dirt, field | 8 × 0.04 × 8 | 新規 |
+| `wall_window` | 窓つきの壁（幅 8 m） | building |  | wall, window | 8 × 2.6 × 0.28 | 新規 |
+| `wall_kitchen_tile` | キッチンの壁（幅 8 m） | building |  | wall, kitchen, tile | 8 × 2.6 × 0.485 | 新規 |
+| `wall_blackboard` | 黒板つきの壁（教室、幅 8 m） | building |  | blackboard, chalkboard, wall | 8 × 2.6 × 0.24 | 新規 |
+| `wall_store_shelves` | 商品棚が並ぶ壁（店、幅 8 m） | building |  | shelf, store, shop, wall | 8 × 2.6 × 0.532 | 新規 |
+| `kitchen_counter` | 台所の流しとコンロ | furniture |  | kitchen, sink, stove, counter | 2.42 × 1.22 × 0.68 | 新規 |
+| `train` | 電車（1 両） | vehicle |  | train | 7.996 × 3.17 × 2.632 | 新規 |
+| `station_sign` | 駅名の看板 | thing |  | sign, station sign | 1.7 × 2.2 × 0.08 | 新規 |
+| `bus_shelter` | 屋根つきのバス停 | building |  | bus stop, bus shelter | 3.29 × 2.5 × 1.5 | 新規 |
 
 ## 作り直す・確かめる
 
-形や色を変えるときは `scripts/scene/parts.py` を編集して、Blender で実行する（63 個で 10 秒ほど）。
+形や色を変えるときは `scripts/scene/parts.py` を編集して、Blender で実行する（79 個で 10 秒ほど）。
 作り直すと USDZ のバイト列は毎回少し変わる（形は同じ）。同じ版（`1`）の中身は変えない約束なので、配ったあとに形を変えるときは `VERSION` を上げる。
 
 ```sh
@@ -145,21 +174,22 @@ blender --background --factory-startup --python scripts/scene/parts.py -- --only
 blender --background --factory-startup --python scripts/scene/parts.py -- --meta-only            # USDZ は書かず、JSON だけ作り直す
 blender --background --factory-startup --python scripts/scene/check_parts.py                      # プロトコルに合っているかを確かめる
 blender --background --factory-startup --python scripts/scene/check_parts.py -- --sheet           # 確かめて、contact_sheet.png も作る
+blender --background --factory-startup --python scripts/scene/check_parts.py -- --sheet-only train --sheet-only bus_shelter --sheet-out /tmp/new.png  # 一部の部品だけを並べた画像
 python3 scripts/scene/preview_parts.py                                                            # 部品を 3D で回して見る HTML（下記）
 blender --background --factory-startup --python scripts/scene/render_layout.py -- <layout.json> ... --out <dir>  # 配置の JSON をこの部品で組んで PNG に描く（例は scripts/scene/samples/）
 ```
 
 `check_parts.py` は USDZ を読み直し、次を確かめる（1 つでも合わなければ終了コード 1）。
 
-- メタデータの形（`id` の文字、`version`・`file`・`category`・`words`・`pose`・`label`）、`index.json` と各部品の JSON が同じこと、`EXPECTED` の 63 個がそろっていること
+- メタデータの形（`id` の文字、`version`・`file`・`category`・`words`・`pose`・`label`）、`index.json` と各部品の JSON が同じこと、`EXPECTED` の 79 個がそろっていること
 - 2 MB 以下、Y が上でメートル
 - 外接箱の最小 y が 0、x と z の中心が 0（2 mm まで）。外接箱の大きさが JSON の `size` と合う（2 mm まで）
-- 正面の目印が +Z 側にある（人は目が髪より前、犬は鼻と目、車はヘッドライト、自転車は前かご、自動販売機は商品の窓、窓は窓台、レジは客の側の緑の帯、シャツはえり、ノートパソコンはタッチパッド）。ベンチ・椅子・ソファ・座席は背もたれ、棚は背板、カートは取っ手が -Z 側。左右対称の物は確かめない
-- `anchors` が付けるはずの部品にあり、外接箱の内側にある。座る人の `hip` を椅子・ベンチ・ソファの `seat` に合わせて置くと、脚が家具の前に出て、足が床に 3 cm より深く入らず、背中が背もたれの後ろへ抜けない（外接箱で見る）
+- 正面の目印が +Z 側にある（人は目が髪より前、犬は鼻と目、車はヘッドライト、自転車は前かご、自動販売機は商品の窓、窓は窓台、レジは客の側の緑の帯、シャツはえり、ノートパソコンはタッチパッド、背景の壁は窓台・吊り戸棚の扉・粉受け・値札の帯、流しとコンロは扉）。ベンチ・椅子・ソファ・座席は背もたれ、棚は背板、カートは取っ手、バス停は後ろの板、駅のホームは端の白線が -Z 側。左右対称の物は確かめない
+- `anchors` が付けるはずの部品にあり、外接箱の内側にある。座る人の `hip` を椅子・ベンチ・ソファの `seat` に合わせて置くと、脚が家具の前に出て、足が床に 3 cm より深く入らず、背中が背もたれの後ろへ抜けない（外接箱で見る。屋根が前に張り出した `bus_shelter` は、外接箱の代わりにベンチの板の前後の端で見る）
 
 ### プレビュー（`preview_parts.py`）
 
-`python3 scripts/scene/preview_parts.py` で、63 部品を 1 個ずつ 3D で回して見られる `assets/parts/build/preview.html`（約 14 MB、commit しない）を作る。three.js（版を固定）・各部品の GLB（Blender で USDZ から書き出す）・USDZ・一覧の画像を HTML に埋め込むので、ネットにつながなくても開ける。three.js と esbuild は初回に npm で `assets/parts/build/vendor/` に取る（`--cache` で場所を変えられる）。
+`python3 scripts/scene/preview_parts.py` で、79 部品を 1 個ずつ 3D で回して見られる `assets/parts/build/preview.html`（約 14 MB、commit しない）を作る。three.js（版を固定）・各部品の GLB（Blender で USDZ から書き出す）・USDZ・一覧の画像を HTML に埋め込むので、ネットにつながなくても開ける。three.js と esbuild は初回に npm で `assets/parts/build/vendor/` に取る（`--cache` で場所を変えられる）。
 
 - 3D の表示の中: ドラッグで回す、ピンチ（ホイール）で拡大。橙は `top`、緑は `seat`、桃色は `hip` の点。床のマスは 1 m か 10 cm
 - 切り替え: 情報の枠かいちばん上の帯を左右にスワイプ、‹ › のボタン、キーボードの ← →。「一覧」から選んで飛べる

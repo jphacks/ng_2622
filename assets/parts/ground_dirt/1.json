@@ -1,0 +1,22 @@
+{
+  "id": "ground_dirt",
+  "version": 1,
+  "file": "parts/ground_dirt/1.usdz",
+  "category": "ground",
+  "words": [
+    {
+      "word": "ground",
+      "pos": "noun"
+    },
+    {
+      "word": "dirt",
+      "pos": "noun"
+    },
+    {
+      "word": "field",
+      "pos": "noun"
+    }
+  ],
+  "size": [8.0, 0.04, 8.0],
+  "label": "土のグラウンド（8 m 四方）"
+}

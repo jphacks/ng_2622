@@ -1,0 +1,18 @@
+{
+  "id": "wall_window",
+  "version": 1,
+  "file": "parts/wall_window/1.usdz",
+  "category": "building",
+  "words": [
+    {
+      "word": "wall",
+      "pos": "noun"
+    },
+    {
+      "word": "window",
+      "pos": "noun"
+    }
+  ],
+  "size": [8.0, 2.6, 0.28],
+  "label": "窓つきの壁（幅 8 m）"
+}

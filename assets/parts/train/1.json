@@ -1,0 +1,14 @@
+{
+  "id": "train",
+  "version": 1,
+  "file": "parts/train/1.usdz",
+  "category": "vehicle",
+  "words": [
+    {
+      "word": "train",
+      "pos": "noun"
+    }
+  ],
+  "size": [7.996, 3.17, 2.632],
+  "label": "電車（1 両）"
+}

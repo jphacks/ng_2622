@@ -73,7 +73,7 @@ API の型の正本は `backend/src/schemas/`（zod）で、そこから生成�
 
 WebSocket のメッセージ（ThatsFight の `src/shared/protocol.ts` に倣う）:
 
-- 端末から: `join`、`start`（ホスト、シーン ID）、`close`（ホスト、締め切り）、`again`（ホスト、同じ顔ぶれでもう一度）、`skip`（音声なしで終える。マイクが使えないときなど）、`leave`（退出。ホストが抜けたら次に入った人がホストになる）
+- 端末から: `join`、`start`（ホスト、シーン ID。作り置きの場面に入れ替えたあとは難易度を送る案。[`scene-protocol.md`](./scene-protocol.md)）、`close`（ホスト、締め切り）、`again`（ホスト、同じ顔ぶれでもう一度）、`skip`（音声なしで終える。マイクが使えないときなど）、`leave`（退出。ホストが抜けたら次に入った人がホストになる）
 - 部屋から: `welcome`（本人にだけ。参加者 ID と合言葉）、`room`（参加者と状態）、`round`（シーン ID と開始時刻）、`progress`（各自の状態）、`results`（順位・全員の描写と内訳。自分の分は参加者 ID で選ぶ）、`error`
 
 ## データ

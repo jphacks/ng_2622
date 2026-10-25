@@ -1,0 +1,18 @@
+{
+  "id": "floor_classroom",
+  "version": 1,
+  "file": "parts/floor_classroom/1.usdz",
+  "category": "ground",
+  "words": [
+    {
+      "word": "floor",
+      "pos": "noun"
+    },
+    {
+      "word": "classroom floor",
+      "pos": "noun"
+    }
+  ],
+  "size": [8.0, 0.002, 8.0],
+  "label": "教室の床（8 m 四方）"
+}

@@ -1,0 +1,22 @@
+{
+  "id": "platform_station",
+  "version": 1,
+  "file": "parts/platform_station/1.usdz",
+  "category": "ground",
+  "words": [
+    {
+      "word": "platform",
+      "pos": "noun"
+    },
+    {
+      "word": "station",
+      "pos": "noun"
+    },
+    {
+      "word": "train station",
+      "pos": "noun"
+    }
+  ],
+  "size": [8.0, 0.003, 8.0],
+  "label": "駅のホーム（奥に線路、8 m 四方）"
+}

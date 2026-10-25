@@ -1,0 +1,22 @@
+{
+  "id": "floor_carpet",
+  "version": 1,
+  "file": "parts/floor_carpet/1.usdz",
+  "category": "ground",
+  "words": [
+    {
+      "word": "carpet",
+      "pos": "noun"
+    },
+    {
+      "word": "rug",
+      "pos": "noun"
+    },
+    {
+      "word": "floor",
+      "pos": "noun"
+    }
+  ],
+  "size": [8.0, 0.002, 8.0],
+  "label": "じゅうたん（8 m 四方）"
+}
