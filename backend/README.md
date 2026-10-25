@@ -19,13 +19,18 @@ pnpm openapi          # openapi.json を生成し直す
 
 ## 採点（`src/scoring/`）
 
-1 人分の音声（WAV）とシーン ID から、内容・表現・話し方の点数と講評を返す。部屋からは `score(env, wav, sceneId)` と `ScoreResult`（`src/scoring/types.ts`）だけを使う。
+1 人分の音声（WAV）とシーン ID と、端末（SpeechAnalyzer）で文字起こしした発話から、内容・表現・話し方の点数と講評を返す。部屋からは `score(env, wav, sceneId, deviceTranscript?)` と `ScoreResult`（`src/scoring/types.ts`）だけを使う。
 
-- 話し方: Azure の発音評価（REST、正解文なし）。Accuracy・Fluency・Prosody の平均。
-- 内容・表現・講評・模範表現: Claude（既定は `claude-haiku-5-5`）に文字起こしとシーンの説明を渡す。
+- 文字起こし: 端末の文字起こしを使う。無いか空のときは Azure の文字起こしを使う。
+- 話し方: Azure の発音評価（REST）。端末の文字起こしがあれば正解文として渡す。Accuracy・Fluency・Prosody の平均。
+- 内容・表現・講評: Claude（既定は `claude-haiku-5-5`）で付ける。付け方は場面で分かれる。
+  - 作り置きの場面（`gen-…`）: 配置の情報（部品の名前・`words`・大きさ・座標・向き・動き。`layout.ts`）と説明文、文字起こし、Azure の 3 つの点を渡し、採点基準の段階（0〜100）で付ける（`bands.ts`）。「次に伸ばす一つ」も Claude が選ぶ。要素ごとの判定は無いので `elements` は空、`nextStep.gain` は null（[ADR](../docs/adr/20261025-score-content-with-layout-and-rubric-bands.md)）。
+  - 手作りの場面（`park` など）: `src/scoring/scenes.json` の要素ごとに言えたかを判定し（`claude.ts`）、点の合計と「次に伸ばす一つ」は `feedback.ts` が計算する。
+- 3 語より短い発話は Claude を呼ばず、内容・表現を 0 点にする。
 - 合計は `SCORE_WEIGHTS`（内容,表現,話し方。既定 `50,25,25`）で重み付けする。
 - `SCORING_MODE=fixed` で外部 API を呼ばず固定の点数を返す。`wrangler.jsonc` で本番は live、PR のプレビューは fixed にしてある。本番の `AZURE_API_KEY` と `CLAUDE_API_KEY` は `wrangler secret put` で Worker に登録する。採点に使う Claude は `CLAUDE_MODEL` と `CLAUDE_EFFORT`（`low`・`medium`・`high`・`xhigh`・`max`）で変えられ、本番は `wrangler.jsonc` で Sonnet 5.5 の low にしてある。書かなければ Haiku 5.5 の high。
-- シーンは仮で `src/scoring/scenes.json` に置いている。`id` は 3D シーン（`assets/scenes/<id>`）と同じにする。
+- 手作りの場面は `src/scoring/scenes.json` に置いている。`id` は 3D シーン（`assets/scenes/<id>`）と同じにする。
+- `POST /score` は部屋を通さない採点の口。配置の JSON と文字起こしを受け、内容と表現の点と講評を返す（話し方は付けない）。
 
 ## 作り置きの場面（`src/scenes/pool/`）
 
@@ -47,6 +52,8 @@ CLAUDE_API_KEY=...
 # 16 kHz・16 bit・モノラルの WAV を作って送る（1 回で Azure と Claude を 1 回ずつ呼ぶ）
 say -o test.wav --data-format=LEI16@16000 "A boy is running in the park and a dog is running to a red ball."
 curl -F audio=@test.wav -F sceneId=park http://localhost:8787/dev/score
+# 作り置きの場面で、端末の文字起こしの代わりに transcript も付けるとき
+curl -F audio=@test.wav -F sceneId=gen-098scv1adb -F "transcript=A boy is running in the park." http://localhost:8787/dev/score
 ```
 
 `/dev/score` は `ENABLE_DEV_ROUTES=true` のときだけ開く（`pnpm dev` が自動で付ける）。デプロイ先には入れない。
@@ -58,6 +65,7 @@ curl -F audio=@test.wav -F sceneId=park http://localhost:8787/dev/score
 | API | 中身 |
 | --- | --- |
 | `GET /parts` | 部品のメタデータの一覧 `{ parts }`。Worker に同梱した `src/scenes/parts.json` を返す |
+| `GET /scenes/{sceneId}/layout` | 作り置きの場面の配置の JSON。Live のアプリはこれを読んで部品を並べる |
 | `POST /scenes/generate` | 作り置き用。`{ difficulty, theme? }` から場面を作り、配置の JSON（`id` は `gen-` ＋ 10 文字）を `200` でそのまま返す。保存はしない。`theme` を省けば指示の中のテーマの一覧から Claude が選ぶ。`Authorization: Bearer <SCENE_WRITE_TOKEN>` が要る（違えば 401 `unauthorized`）。失敗は 422 `generation_refused`（Claude が断った）・422 `generation_failed`（途中で止まった・形が違う）・503 `generation_unavailable`（タイムアウト・API の失敗・止めてある） |
 
 - `parts.json` は `assets/parts/index.json` の写し。部品を足したら写し直す（`test/parts.test.ts` が突き合わせる）。
@@ -99,7 +107,9 @@ main に `backend/` の変更が入ると、GitHub Actions（`.github/workflows/
 - WebSocket は Hibernation API で受ける。メッセージが無い間は DO が休止してメモリが消えるので、状態は変えるたびに DO の保存領域（SQLite）に書く。
 - 誰もつないでいない部屋は 2 時間で消える（DO の alarm）。
 - 音声（`POST /rooms/{roomId}/rounds/{round}/audio`）は Worker が受け取り、部屋に「採点中」と記録してから 202 を返す。採点（`score()`）は `waitUntil` で応答の後に続け、終わったら部屋に書き込む。全員の採点がそろうか、ホストが `close` すると、部屋が `results` を配る。
-- 選べるシーンは、採点と同じ `src/scoring/scenes.json` から読む（`src/domain/scenes.ts`）。
+- シーンの選び方（`src/domain/scenes.ts`）:
+  - 難易度（`start` の `difficulty`）を受けたら、`src/scenes/pool/index.json` のその難易度の場面から、その部屋でまだ出ていないものをランダムに選ぶ。全部出たら最初に戻る。
+  - シーン ID を受けたら、そのシーンにする。手作りの場面は採点と同じ `src/scoring/scenes.json` から読む。どちらも無ければ手作りの場面からおまかせで選ぶ。
 
 ## API のスキーマ（OpenAPI）
 

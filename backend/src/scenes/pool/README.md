@@ -4,7 +4,7 @@ AI で作り置いた場面（配置の JSON）の置き場。1 場面 1 ファ�
 
 - Worker に同梱する（R2 には置かない）。iOS の Mock も、ビルドのときにここの `*.json` をアプリの `pool/` に写して使う（`ios/project.yml` の `Copy scene pool`）。写しは repo に置かない。
 - 人が画像（`scripts/scene/render_layout.py` で描いた PNG）で確かめたものだけを置く。
-- 作るスクリプト `scripts/scene/make_pool.py` は別のブランチで入る。
+- 作るスクリプトは `scripts/scene/make_pool.py`。手順は [`backend/README.md`](../../../README.md) の「手元で作り置く」。
 
 ## `index.json`
 
