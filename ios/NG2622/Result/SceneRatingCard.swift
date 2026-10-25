@@ -85,23 +85,3 @@ struct StarPicker: View {
     .sensoryFeedback(.selection, trigger: rating)
   }
 }
-
-/// 「★4.2（3）」の小さな表示。評価が無ければ何も出さない
-struct RatingBadge: View {
-  let rating: SceneRating?
-
-  var body: some View {
-    if let rating, let average = rating.average {
-      HStack(spacing: 2) {
-        Image(systemName: "star.fill")
-          .foregroundStyle(Color(hex: 0xF5B800))
-        Text("\(average, specifier: "%.1f")")
-        Text("(\(rating.count))")
-          .foregroundStyle(Theme.muted)
-      }
-      .font(Theme.font(11, .heavy))
-      .monospacedDigit()
-      .accessibilityElement(children: .combine)
-    }
-  }
-}
