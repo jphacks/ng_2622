@@ -47,6 +47,37 @@ curl -F audio=@test.wav -F sceneId=park http://localhost:8787/dev/score
 
 `/dev/score` は `ENABLE_DEV_ROUTES=true` のときだけ開く（`pnpm dev` が自動で付ける）。デプロイ先には入れない。
 
+## 作り置きの場面を作る（`src/scenes/`）
+
+形と流れの正本は [`docs/design/scene-protocol.md`](../docs/design/scene-protocol.md) の「AI で場面を作り置く」。場面は遊ぶ前に手元でまとめて作り、PNG を目で見て良いものだけを repo に入れる。本番では作らない。
+
+| API | 中身 |
+| --- | --- |
+| `GET /parts` | 部品のメタデータの一覧 `{ parts }`。Worker に同梱した `src/scenes/parts.json` を返す |
+| `POST /scenes/generate` | 作り置き用。`{ difficulty, theme? }` から場面を作り、配置の JSON（`id` は `gen-` ＋ 10 文字）を `200` でそのまま返す。保存はしない。`theme` を省けば指示の中のテーマの一覧から Claude が選ぶ。`Authorization: Bearer <SCENE_WRITE_TOKEN>` が要る（違えば 401 `unauthorized`）。失敗は 422 `generation_refused`（Claude が断った）・422 `generation_failed`（途中で止まった・形が違う）・503 `generation_unavailable`（タイムアウト・API の失敗・止めてある） |
+
+- `parts.json` は `assets/parts/index.json` の写し。部品を足したら写し直す（`test/parts.test.ts` が突き合わせる）。
+- 生成（`generate.ts`）: Claude に座標を書かせず、部品どうしの関係（`on`・`next_to`・`sit_on` など）を JSON Schema の形で書かせる。`description`（言わせたい文）と `elements` を `items` より先に書かせる。部品の ID は schema の `enum`。モデルと effort は `CLAUDE_SCENE_MODEL`・`CLAUDE_SCENE_EFFORT`（既定 `claude-sonnet-5-5` の `low`）、`max_tokens` 8000、SDK の再送は使わない。各回の timeout は 60 秒で、形が違う・途中で止まった・5xx・接続の失敗のときだけ 1 回やり直す。
+- 座標の計算（`compose.ts`、純粋な関数。テストは `test/compose.test.ts`）: 9 区画（一辺 8/3 m）、地面に置く物は区画の中で size が重ならない点を探す、幅いっぱいの背景の壁は奥の端に付ける、`on` は相手の `anchors.top`、`sit_on` は相手の `seat` に人の `hip` を合わせる、横・前・後ろは相手の size ＋ 10 cm の隙間、`above` は相手の高さ＋ 0.3 m。配点は合計 90 に直し、`extraMax` は 10。
+- 生成は `SCENE_GENERATION=on` のときだけ動く。`wrangler.jsonc` では本番もプレビューも `off`。
+
+### 手元で作り置く
+
+`backend/.dev.vars` に `CLAUDE_API_KEY` を書いておく。生成のスイッチと合言葉は、別の env ファイル（`.dev.vars*` は git に入らない）に書いて渡す。`--var` で渡すと合言葉が ps に出るので使わない。
+
+```sh
+cd backend
+printf 'SCENE_GENERATION=on\nSCENE_WRITE_TOKEN=%s\n' "$(openssl rand -hex 24)" > .dev.vars.scene
+pnpm exec wrangler dev --env-file .dev.vars --env-file .dev.vars.scene --port 8799   # effort を変えるときは .dev.vars.scene に CLAUDE_SCENE_EFFORT=high など
+
+# 別の端末で。make_pool.py は合言葉を環境変数から読む
+cd <repo>
+set -a; . backend/.dev.vars.scene; set +a
+python3 scripts/scene/make_pool.py --url http://localhost:8799 --out <出力先> --difficulty easy normal hard --count 14
+```
+
+`<出力先>/<difficulty>/<id>.json`・`.png`（`render_layout.py` で描く。要 Blender）、難易度ごとの `contact_sheet.png`（要 ffmpeg）、所要時間の表 `times.md` ができる。テーマは難易度ごとにずらして一覧を回す（`--theme` で固定、`--no-theme` で Claude に選ばせる）。終わったら wrangler dev を止め、`.dev.vars.scene` を消す。
+
 ## デプロイ
 
 main に `backend/` の変更が入ると、GitHub Actions（`.github/workflows/deploy-backend.yml`）が自動でデプロイする。手で出すときは `pnpm run deploy`（要 `pnpm exec wrangler login`）。
