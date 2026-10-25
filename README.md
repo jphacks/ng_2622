@@ -44,7 +44,13 @@ https://github.com/user-attachments/assets/b51df3fd-1d8b-4c19-bede-7b744261bc7c
 4. 結果発表：AI の採点で順位を出し、全員の描写を並べて見比べます。
 5. 振り返り：「できたこと」「次はこれ」「こう言い換える」「話し方のコツ」が出て、自分の声も聞き直せます。場面を ★ で評価することもできます。
 
-<!-- TODO: アプリの実際の画面（スクリーンショット）を並べる。例: | ホーム | 待合 | プレイ | 結果発表 | 振り返り | -->
+| 1. ホーム | 2. 待合で難易度を選ぶ | 3. AI が場面を作る | 4. 見て話す |
+| :---: | :---: | :---: | :---: |
+| <img src="docs/images/screens/1-home.png" width="180" alt="ホーム: 名前と色を決めて、部屋を作るか部屋に入る"> | <img src="docs/images/screens/2-lobby.png" width="180" alt="待合: 部屋のコードと QR、参加者、難易度の選択"> | <img src="docs/images/screens/3-generating.png" width="180" alt="待合: AI が場面を生成中、3D の人が走る"> | <img src="docs/images/screens/4-recording.png" width="180" alt="録音中: 3D の場面を見ながら英語で描写する"> |
+| **5. 待つ間に正答例** | **6. 結果発表** | **7. 振り返り** | |
+| <img src="docs/images/screens/5-waiting.png" width="180" alt="待機: 場面と正答例、ほかの人の採点の進み具合"> | <img src="docs/images/screens/6-ranking.png" width="180" alt="結果発表: 順位と点数"> | <img src="docs/images/screens/7-review.png" width="180" alt="振り返り: 内容・表現・話し方の点と、自分の描写、できたこと"> | |
+
+画面はシミュレータで仮のデータ（Mock）を使って撮りました。
 
 ### 特長
 
