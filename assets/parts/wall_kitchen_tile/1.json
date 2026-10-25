@@ -1,0 +1,22 @@
+{
+  "id": "wall_kitchen_tile",
+  "version": 1,
+  "file": "parts/wall_kitchen_tile/1.usdz",
+  "category": "building",
+  "words": [
+    {
+      "word": "wall",
+      "pos": "noun"
+    },
+    {
+      "word": "kitchen",
+      "pos": "noun"
+    },
+    {
+      "word": "tile",
+      "pos": "noun"
+    }
+  ],
+  "size": [8.0, 2.6, 0.485],
+  "label": "キッチンの壁（幅 8 m）"
+}

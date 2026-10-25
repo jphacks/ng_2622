@@ -94,6 +94,34 @@ def make_materials() -> None:
         "bed_frame": ("#a8683a", 0.55), "mattress": ("#f4f1ea", 0.8), "blanket": ("#7fb5d9", 0.85), "pillow": ("#ffffff", 0.85),
         # 乗り物の座席
         "seat_fabric": ("#3d6f9e", 0.85),
+        # 室内の床（木の床・教室の床・タイル・じゅうたん）
+        "floor_gap": ("#7a4e2c", 0.7), "floor_wood_a": ("#b9804e", 0.55), "floor_wood_b": ("#a8703f", 0.55),
+        "floor_wood_c": ("#c48c58", 0.55),
+        "class_gap": ("#b89262", 0.7), "class_wood_a": ("#e2c08e", 0.5), "class_wood_b": ("#d6b07c", 0.5),
+        "class_wood_c": ("#ead0a2", 0.5),
+        "grout": ("#a9a69f", 0.8), "tile_white": ("#f6f5f1", 0.25), "tile_gray": ("#cfd4d8", 0.25),
+        "carpet": ("#7d93b8", 0.95), "carpet_border": ("#5d729b", 0.95), "carpet_line": ("#efe3c8", 0.95),
+        # 屋外の床（駅のホーム・砂浜・石畳・土）
+        "platform": ("#cfccc5", 0.85), "tactile": ("#f2c230", 0.6), "ballast": ("#8d857b", 0.95),
+        "sleeper": ("#7a5a42", 0.8), "rail": ("#a3a9b1", 0.35),
+        "sand": ("#e8d6b0", 0.95), "sand_dark": ("#dcc59a", 0.95), "sand_light": ("#efe1c4", 0.95),
+        "shell": ("#f8d4c8", 0.5), "pebble": ("#b9b1a5", 0.8),
+        "stone_joint": ("#8c877f", 0.9), "stone_a": ("#b8b3aa", 0.85), "stone_b": ("#a9a39a", 0.85), "stone_c": ("#c7c2b8", 0.85),
+        "dirt": ("#c79c6c", 0.95), "dirt_dark": ("#b5875a", 0.95), "dirt_light": ("#d6b083", 0.95),
+        # 背景の壁（窓・キッチンのタイル・黒板・商品棚）
+        "wall_back": ("#ddd5c8", 0.9), "curtain": ("#f3d9a8", 0.9), "wall_kitchen": ("#f2dfb8", 0.9),
+        "kitchen_tile": ("#ffffff", 0.3), "kitchen_tile2": ("#a9d8c4", 0.3), "cabinet": ("#b98352", 0.5),
+        "blackboard": ("#2f5a46", 0.8), "board_frame": ("#a8743f", 0.55), "wainscot": ("#c9a272", 0.6),
+        "chalk": ("#ffffff", 0.9), "chalk_pink": ("#ffb3c1", 0.9), "chalk_yellow": ("#ffe68a", 0.9),
+        "store_wall": ("#f4f1ea", 0.9), "store_shelf": ("#e3e6ea", 0.4), "store_sign": ("#f08a4b", 0.6),
+        "goods_a": ("#ef7a6a", 0.6), "goods_b": ("#f5c76a", 0.6), "goods_c": ("#7cc48a", 0.6),
+        "goods_d": ("#78a8e0", 0.6), "goods_e": ("#f2a3c4", 0.6), "goods_f": ("#ffffff", 0.6),
+        # 場面らしさを出す大物（台所の流しとコンロ・電車・駅名の看板・バス停）
+        "steel": ("#c9cdd3", 0.3), "sink": ("#8d949c", 0.3), "stove": ("#2b2b30", 0.2), "burner": ("#6a6d74", 0.5),
+        "train_body": ("#eef0f2", 0.4), "train_band": ("#4fae78", 0.5), "train_door": ("#d9dde2", 0.4),
+        "train_roof": ("#a9afb7", 0.6),
+        "sign_board": ("#fbfbf7", 0.5), "sign_band": ("#3f8fd0", 0.5), "sign_text": ("#3a3f4a", 0.5),
+        "shelter_frame": ("#6f7c8a", 0.4), "shelter_roof": ("#5f8fb5", 0.5), "busstop_sign": ("#e3685a", 0.5),
     }))
     M["iron"] = material("iron", "#2b2b30", 0.35, metal=0.8)
     M["ball"] = material("ball", "#e8352b", 0.3, coat=0.6)
@@ -119,6 +147,14 @@ def make_materials() -> None:
     M["laptop_screen"] = material("laptop_screen", "#3f78c8", 0.2, emit=0.6)   # screen（スマートフォン）より暗くして、白く飛ばないようにする
     # 窓のガラスの向こうは明るい空（classroom.py の sky と同じ）
     M["window_glass"] = material("window_glass", "#9fd0ff", 0.2, emit=0.5)
+    M["platform_edge"] = material("platform_edge", "#f6f5f1", 0.7)   # ホームの端の白線（向きの目印）
+    M["wall_window_sill"] = material("wall_window_sill", "#d8dde3", 0.4)   # 窓つきの壁の窓台（向きの目印）
+    M["kitchen_cabinet"] = material("kitchen_cabinet", "#c8935e", 0.5)   # キッチンの壁の吊り戸棚の扉（向きの目印）
+    M["chalk_tray"] = material("chalk_tray", "#a8743f", 0.55)            # 黒板の粉受け（向きの目印）
+    M["price_rail"] = material("price_rail", "#ffe27a", 0.5)             # 商品棚の値札の帯（向きの目印）
+    M["kitchen_front"] = material("kitchen_front", "#d8b07c", 0.5)       # 流しとコンロの扉（向きの目印）
+    M["shelter_back"] = material("shelter_back", "#cfe3f0", 0.2)         # バス停の後ろの板（向きの目印）
+    M["shelter_bench"] = material("shelter_bench", "#a8683a", 0.55)      # バス停のベンチの板（check_parts.py が座る確かめに使う）
 
 
 CHILD_SCALE = 0.75   # 子どもの大きさ（大人に対する倍率）
@@ -129,6 +165,7 @@ SEAT_Z = 0.46        # 座るポーズに合う座面の高さ。chair・sofa �
 GRASS_THICK = 0.002  # 芝の板（上面 2 mm）。濃淡のまだらはその上に 0.5 mm
 ROAD_THICK = 0.003   # 道路の板（上面 3 mm）。白線はその上に 0.5 mm
 MARK_THICK = 0.0005  # 芝のまだら・道路の白線の厚さ
+FLOOR_THICK = 0.002  # 床の部品（floor_*・platform_station など）の板。芝の板と同じ 2 mm で、模様はその上に MARK_THICK ずつ重ねる
 
 
 # ---------- 部品の一覧 ----------
@@ -1022,6 +1059,440 @@ def person_builder(pose: str, look: str):
 for _pose, _look in PEOPLE:
     part(f"person_{_pose}_{_look}", "person", f"{LOOKS[_look]['label']}（{POSES[_pose]['label']}）",
          [(LOOKS[_look]["noun"], "noun"), *POSES[_pose]["words"]], pose=_pose, front=("eye", 1))(person_builder(_pose, _look))
+
+
+# ---------- 床（8 m 四方の地面の部品） ----------
+#
+# どれも grass_patch と同じく 8 m × 8 m の薄い板（上面 2 mm）。模様は板の上に 0.5 mm ずつ重ねるので、
+# 上面はいちばん高いところで 3 mm ほど。上に置く物は y = 0 のままでよい。
+
+FLOOR = 8.0   # 床の一辺（m）
+
+
+def floor_plate(p, mat, size=(FLOOR, FLOOR), center=(0, 0), radius=0.05):
+    """床の板。上面は FLOOR_THICK。"""
+    p.slab(size, FLOOR_THICK, FLOOR_THICK, radius, mat, segments=2 if radius < 0.1 else 6, center=center)
+
+
+def mark(p, size, loc, mat, layer=1):
+    """床の板の上の模様（厚さ MARK_THICK の板）。layer は重ねる段（2 なら 1 段目の模様の上）。"""
+    p.box((size[0], size[1], MARK_THICK), (loc[0], loc[1], FLOOR_THICK + MARK_THICK * (layer - 0.5)), mat)
+
+
+def spots(p, rng, count, r_range, mats, margin=0.1):
+    """床の板の上に、平たい円のまだらを重ならないように散らす。
+
+    同じ高さの面が重なると、描くときにちらつく（模様が渦のように乱れる）ので、重なる位置は選び直す。
+    """
+    placed = []
+    for _ in range(count * 20):
+        if len(placed) == count:
+            break
+        r = rng.uniform(*r_range)
+        lim = FLOOR / 2 - margin - r
+        x, y = rng.uniform(-lim, lim), rng.uniform(-lim, lim)
+        if all(math.hypot(x - px, y - py) > r + pr + 0.02 for px, py, pr in placed):
+            placed.append((x, y, r))
+            p.cyl(r, r, MARK_THICK, (x, y, FLOOR_THICK + MARK_THICK / 2), rng.choice(mats), segs=14, smooth=False)
+
+
+def planks(p, rng, mats, width, length, along_x, gap=0.012, half=FLOOR / 2):
+    """フローリングの板を、継ぎ目をずらして並べる。板のすき間から下の板（目地の色）が見える。
+
+    along_x なら板の長い向きは X（左右）、そうでなければ Y（Blender の前後）。
+    """
+    rows = round(2 * half / width)
+    for r in range(rows):
+        b = -half + width * (r + 0.5)
+        a = -half - rng.uniform(0, length)
+        while a < half:
+            a0, a1 = max(a, -half), min(a + length, half)
+            if a1 - a0 > 0.1:
+                la, lb = a1 - a0 - gap, width - gap
+                ca = (a0 + a1) / 2
+                size, loc = ((la, lb), (ca, b)) if along_x else ((lb, la), (b, ca))
+                mark(p, size, loc, rng.choice(mats))
+            a += length
+
+
+@part("floor_wood", "ground", "木の床（8 m 四方）", [("floor", "noun"), ("wooden floor", "noun")])
+def build_floor_wood(root):
+    """部屋の木の床（フローリング）。幅 0.4 m・長さ 1.6 m の濃い茶色の板を左右（X）に長く並べる。"""
+    rng = random.Random(2622)
+    p = Part("floor_wood")
+    floor_plate(p, M["floor_gap"])
+    planks(p, rng, [M["floor_wood_a"], M["floor_wood_b"], M["floor_wood_c"]], 0.4, 1.6, along_x=True)
+    p.finish(root)
+
+
+@part("floor_classroom", "ground", "教室の床（8 m 四方）", [("floor", "noun"), ("classroom floor", "noun")])
+def build_floor_classroom(root):
+    """学校の教室の床。木の床（floor_wood）より明るい色の細い板（幅 0.2 m）を、前後（Z）に長く並べる。"""
+    rng = random.Random(2623)
+    p = Part("floor_classroom")
+    floor_plate(p, M["class_gap"])
+    planks(p, rng, [M["class_wood_a"], M["class_wood_b"], M["class_wood_c"]], 0.2, 1.8, along_x=False, gap=0.008)
+    p.finish(root)
+
+
+@part("floor_tile", "ground", "白いタイルの床（8 m 四方）", [("floor", "noun"), ("tile", "noun"), ("tile floor", "noun")])
+def build_floor_tile(root):
+    """台所や店の白いタイルの床。0.5 m 角のタイルを、灰色の目地（下の板）を 3 cm あけ、白と薄い灰色を市松に並べる。"""
+    p = Part("floor_tile")
+    floor_plate(p, M["grout"])
+    n, cell, gap = 16, FLOOR / 16, 0.03
+    for i in range(n):
+        for j in range(n):
+            mat = M["tile_white"] if (i + j) % 2 == 0 else M["tile_gray"]
+            mark(p, (cell - gap, cell - gap), (-FLOOR / 2 + cell * (i + 0.5), -FLOOR / 2 + cell * (j + 0.5)), mat)
+    p.finish(root)
+
+
+@part("floor_carpet", "ground", "じゅうたん（8 m 四方）", [("carpet", "noun"), ("rug", "noun"), ("floor", "noun")])
+def build_floor_carpet(root):
+    """部屋いっぱいのじゅうたん。青い地に、縁の近くを濃い青の帯とクリーム色の細い線で囲む。"""
+    p = Part("floor_carpet")
+    floor_plate(p, M["carpet"])
+    for inset, band, mat in ((0.25, 0.4, M["carpet_border"]), (0.8, 0.06, M["carpet_line"])):
+        span = FLOOR - 2 * inset          # 帯の外側の一辺
+        c = FLOOR / 2 - inset - band / 2  # 帯の中心までの距離
+        for s in (-1, 1):
+            mark(p, (span, band), (0, s * c), mat)
+            mark(p, (band, span - 2 * band), (s * c, 0), mat)
+    p.finish(root)
+
+
+# 駅のホーム: ホームの端は奥（-Z）。奥の 2.8 m は線路で、線路の中心は z = -2.6（Blender の y = 2.6）
+PLATFORM_TRACK = 2.8                          # 線路の部分の奥行き（m）
+PLATFORM_TRACK_Z = FLOOR / 2 - PLATFORM_TRACK / 2   # 線路の中心（プロトコルの z = -2.6）
+RAIL_GAUGE = 1.067                            # 線路の幅（日本の在来線）
+
+
+@part("platform_station", "ground", "駅のホーム（奥に線路、8 m 四方）",
+      [("platform", "noun"), ("station", "noun"), ("train station", "noun")], front=("platform_edge", -1))
+def build_platform_station(root):
+    """駅のホームと線路。手前の 5.2 m がホームで、奥（-Z）の端に白線、その 0.8 m 手前に黄色い点字ブロックの帯がある。
+
+    奥の 2.8 m は線路（砕石・枕木・2 本のレール）で、線路の中心は z = -2.6。train をここに置く。
+    ホームも線路も同じ高さの薄い板（ホームの段差は作らない）。
+    """
+    p = Part("platform_station")
+    plat_d = FLOOR - PLATFORM_TRACK
+    edge_y = FLOOR / 2 - PLATFORM_TRACK   # Blender の y。ホームの端（奥）
+    floor_plate(p, M["platform"], size=(FLOOR, plat_d), center=(0, edge_y - plat_d / 2))
+    floor_plate(p, M["ballast"], size=(FLOOR, PLATFORM_TRACK), center=(0, PLATFORM_TRACK_Z))
+    mark(p, (FLOOR, 0.12), (0, edge_y - 0.1), M["platform_edge"])   # 端の白線
+    mark(p, (FLOOR, 0.3), (0, edge_y - 0.95), M["tactile"])           # 点字ブロックの帯
+    for k in range(40):   # 点字ブロックの点（少し明るい黄色の代わりに、帯の上に小さな四角を重ねる）
+        mark(p, (0.12, 0.12), (-FLOOR / 2 + 0.1 + k * 0.2, edge_y - 0.95), M["flower_yellow"], layer=2)
+    for k in range(13):   # 枕木
+        mark(p, (0.2, 2.0), (-FLOOR / 2 + 0.3 + k * 0.62, PLATFORM_TRACK_Z), M["sleeper"])
+    for s in (-1, 1):     # レール（枕木の上）
+        mark(p, (FLOOR, 0.07), (0, PLATFORM_TRACK_Z + s * RAIL_GAUGE / 2), M["rail"], layer=2)
+    p.finish(root)
+
+
+@part("sand_beach", "ground", "砂浜（8 m 四方）", [("beach", "noun"), ("sand", "noun")])
+def build_sand_beach(root):
+    """海辺の砂浜。砂の色の板に濃淡のまだらと、小さな貝がらと小石を散らす。"""
+    rng = random.Random(2624)
+    p = Part("sand_beach")
+    floor_plate(p, M["sand"], radius=0.3)
+    spots(p, rng, 40, (0.25, 0.7), [M["sand_dark"], M["sand_light"]])
+    for k in range(18):   # 貝がら（平たい玉）と小石
+        x, y = rng.uniform(-3.6, 3.6), rng.uniform(-3.6, 3.6)
+        r = rng.uniform(0.03, 0.05)
+        p.sphere(r, (x, y, r * 0.35), M["shell"] if k % 2 else M["pebble"], scale=(1, 0.8, 0.35), segs=8)   # 底は y = 0
+    p.finish(root)
+
+
+@part("sidewalk_stone", "ground", "石畳の歩道（8 m 四方）", [("sidewalk", "noun"), ("pavement", "noun"), ("stone path", "noun")])
+def build_sidewalk_stone(root):
+    """石畳の歩道。幅 0.4 m・長さ 0.6 m の灰色の石を、1 列ごとに半分ずらして並べる。目地は濃い灰色。"""
+    rng = random.Random(2625)
+    p = Part("sidewalk_stone")
+    floor_plate(p, M["stone_joint"])
+    width, length, gap, half = 0.4, 0.6, 0.025, FLOOR / 2
+    for r in range(round(FLOOR / width)):
+        y = -half + width * (r + 0.5)
+        x = -half - (length / 2 if r % 2 else 0)
+        while x < half:
+            x0, x1 = max(x, -half), min(x + length, half)
+            if x1 - x0 > 0.1:
+                mark(p, (x1 - x0 - gap, width - gap), ((x0 + x1) / 2, y), rng.choice([M["stone_a"], M["stone_b"], M["stone_c"]]))
+            x += length
+    p.finish(root)
+
+
+@part("ground_dirt", "ground", "土のグラウンド（8 m 四方）", [("ground", "noun"), ("dirt", "noun"), ("field", "noun")])
+def build_ground_dirt(root):
+    """学校の校庭のような土のグラウンド。濃淡のまだらと小石に、石灰の白線を 1 本（手前寄りを左右に）引く。"""
+    rng = random.Random(2626)
+    p = Part("ground_dirt")
+    floor_plate(p, M["dirt"], radius=0.3)
+    spots(p, rng, 45, (0.25, 0.65), [M["dirt_dark"], M["dirt_light"]])
+    mark(p, (FLOOR - 0.6, 0.1), (0, -1.5), M["stripe"], layer=2)
+    for _ in range(16):
+        r = rng.uniform(0.025, 0.045)
+        p.sphere(r, (rng.uniform(-3.7, 3.7), rng.uniform(-3.7, 3.7), r * 0.45), M["pebble"], scale=(1, 0.85, 0.45), segs=8)
+    p.finish(root)
+
+
+# ---------- 背景の壁 ----------
+#
+# 場面の奥に 1 枚置く壁。幅 8 m（床と同じ）・高さ 2.6 m・板の厚さ 0.12 m。表（+Z）に窓や黒板などが付く。
+# 原点は外接箱の底面の中心なので、表に出っ張る物（棚など）がある壁ほど奥行き（size の z）が大きい。
+# 奥の端に付けるときは z = -4 + 奥行き / 2 に置く。裏は無地。
+
+WALL_W, WALL_H, WALL_T = 8.0, 2.6, 0.12
+WALL_FRONT = -WALL_T / 2   # 壁の表の面（Blender の y。正面は -Y）
+
+
+def wall_board(p, mat, base_mat=None):
+    """壁の板。表は mat、裏は無地。base_mat があれば表の下に幅木（高さ 8 cm）を付ける。"""
+    p.box((WALL_W, WALL_T - 0.01, WALL_H), (0, 0.005, WALL_H / 2), M["wall_back"])
+    p.box((WALL_W, 0.01, WALL_H), (0, WALL_FRONT + 0.005, WALL_H / 2), mat)
+    if base_mat:
+        p.box((WALL_W, 0.015, 0.08), (0, WALL_FRONT - 0.0075, 0.04), base_mat)
+
+
+@part("wall_window", "building", "窓つきの壁（幅 8 m）", [("wall", "noun"), ("window", "noun")], front=("wall_window_sill", 1))
+def build_wall_window(root):
+    """部屋やカフェの奥の壁。幅 1.6 m・高さ 1.2 m の窓が 3 つ（ガラスの向こうは明るい空）と、両脇のカーテン。"""
+    p = Part("wall_window")
+    wall_board(p, M["wall"], M["baseboard"])
+    w, h, z0, fw = 1.6, 1.2, 0.9, 0.06
+    for cx in (-2.6, 0.0, 2.6):
+        y = WALL_FRONT
+        p.box((w - 2 * fw, 0.01, h - 2 * fw), (cx, y - 0.005, z0 + h / 2), M["window_glass"])
+        for sx in (-1, 1):
+            p.box((fw, 0.05, h), (cx + sx * (w / 2 - fw / 2), y - 0.025, z0 + h / 2), M["window_frame"], bevel=0.006)
+        for z in (z0 + fw / 2, z0 + h - fw / 2):
+            p.box((w - 2 * fw, 0.05, fw), (cx, y - 0.025, z), M["window_frame"], bevel=0.006)
+        p.box((0.04, 0.03, h - 2 * fw), (cx, y - 0.015, z0 + h / 2), M["window_frame"])   # 2 枚の戸の合わせ目
+        p.box((w + 0.12, 0.16, 0.04), (cx, y - 0.08, z0 - 0.02), M["wall_window_sill"], bevel=0.006)   # 窓台
+        for sx in (-1, 1):   # カーテン（ひだを 3 本の丸い棒で表す）
+            for k in range(3):
+                p.cyl(0.05, 0.06, h + 0.3, (cx + sx * (w / 2 + 0.07 + k * 0.08), y - 0.07, z0 + h / 2 + 0.05), M["curtain"], segs=8)
+        p.limb((cx - w / 2 - 0.4, y - 0.07, z0 + h + 0.22), (cx + w / 2 + 0.4, y - 0.07, z0 + h + 0.22), 0.015, 0.015, M["metal"], segs=8)
+    p.finish(root)
+
+
+@part("wall_kitchen_tile", "building", "キッチンの壁（幅 8 m）",
+      [("wall", "noun"), ("kitchen", "noun"), ("tile", "noun")], front=("kitchen_cabinet", 1))
+def build_wall_kitchen_tile(root):
+    """台所の奥の壁。高さ 0.85〜1.85 m に 0.2 m 角の白と緑のタイルを貼り、真ん中の 3.2 m の上に木の吊り戸棚がある。壁はクリーム色。
+
+    kitchen_counter（高さ 0.9 m）を手前に置くと、タイルが流しの上に見える。
+    """
+    p = Part("wall_kitchen_tile")
+    wall_board(p, M["wall_kitchen"], M["baseboard"])
+    cell, gap, z0, rows = 0.2, 0.012, 0.85, 5
+    for i in range(round(WALL_W / cell)):
+        for j in range(rows):
+            mat = M["kitchen_tile2"] if (i + j) % 3 == 0 else M["kitchen_tile"]
+            p.box((cell - gap, 0.006, cell - gap), (-WALL_W / 2 + cell * (i + 0.5), WALL_FRONT - 0.003, z0 + cell * (j + 0.5)), mat)
+    # 吊り戸棚（扉 4 枚と取っ手）
+    cw, ch, cd, cz = 3.2, 0.6, 0.35, 1.95
+    p.box((cw, cd - 0.02, ch), (0, WALL_FRONT - (cd - 0.02) / 2, cz + ch / 2), M["cabinet"], bevel=0.01)
+    for k in range(4):
+        x = -cw / 2 + cw / 8 * (2 * k + 1)
+        p.box((cw / 4 - 0.02, 0.02, ch - 0.04), (x, WALL_FRONT - cd + 0.01, cz + ch / 2), M["kitchen_cabinet"], bevel=0.006)
+        p.box((0.015, 0.02, 0.12), (x + (0.3 if k % 2 == 0 else -0.3), WALL_FRONT - cd - 0.005, cz + 0.12), M["metal"], bevel=0.004)
+    p.finish(root)
+
+
+@part("wall_blackboard", "building", "黒板つきの壁（教室、幅 8 m）",
+      [("blackboard", "noun"), ("chalkboard", "noun"), ("wall", "noun")], front=("chalk_tray", 1))
+def build_wall_blackboard(root):
+    """教室の前の壁。真ん中に幅 4 m・高さ 1.2 m の緑の黒板（木の枠と粉受け、チョーク）、下に木の腰板。"""
+    p = Part("wall_blackboard")
+    wall_board(p, M["wall"])
+    p.box((WALL_W, 0.015, 0.9), (0, WALL_FRONT - 0.0075, 0.45), M["wainscot"])   # 腰板
+    p.box((WALL_W, 0.03, 0.04), (0, WALL_FRONT - 0.015, 0.9), M["board_frame"])
+    bw, bh, bz = 4.0, 1.2, 0.85
+    p.box((bw + 0.12, 0.04, bh + 0.12), (0, WALL_FRONT - 0.02, bz + bh / 2), M["board_frame"], bevel=0.01)
+    p.box((bw, 0.01, bh), (0, WALL_FRONT - 0.045, bz + bh / 2), M["blackboard"])
+    p.box((bw + 0.12, 0.12, 0.04), (0, WALL_FRONT - 0.06, bz - 0.02), M["chalk_tray"], bevel=0.008)   # 粉受け
+    for k, mat in enumerate((M["chalk"], M["chalk"], M["chalk_pink"], M["chalk_yellow"])):
+        p.limb((1.2 + k * 0.12, WALL_FRONT - 0.08, bz + 0.012), (1.28 + k * 0.12, WALL_FRONT - 0.09, bz + 0.012), 0.008, 0.008, mat, segs=6)
+    p.finish(root)
+
+
+@part("wall_store_shelves", "building", "商品棚が並ぶ壁（店、幅 8 m）",
+      [("shelf", "noun"), ("store", "noun"), ("shop", "noun"), ("wall", "noun")], front=("price_rail", 1))
+def build_wall_store_shelves(root):
+    """店の奥の壁。高さ 1.8 m・奥行き 0.4 m の商品棚が 4 台並び、色とりどりの商品の箱が載っている。上に橙の帯。"""
+    rng = random.Random(2627)
+    p = Part("wall_store_shelves")
+    wall_board(p, M["store_wall"])
+    p.box((WALL_W, 0.02, 0.3), (0, WALL_FRONT - 0.01, 2.2), M["store_sign"])   # 上の帯
+    goods = [M[f"goods_{c}"] for c in "abcdef"]
+    uw, sh, sd, t = 1.9, 1.8, 0.4, 0.03
+    front = WALL_FRONT - sd
+    for u in range(4):
+        cx = -WALL_W / 2 + 0.1 + uw * (u + 0.5)
+        for sx in (-1, 1):
+            p.box((t, sd, sh), (cx + sx * (uw / 2 - t / 2), WALL_FRONT - sd / 2, sh / 2), M["store_shelf"])
+        p.box((uw - 2 * t, 0.1, 0.12), (cx, front + 0.05, 0.06), M["store_shelf"])   # 下の幕板
+        boards = [0.12 + k * 0.42 for k in range(4)] + [sh - t / 2]
+        for z in boards:
+            p.box((uw - 2 * t, sd, t), (cx, WALL_FRONT - sd / 2, z), M["store_shelf"])
+            if z < sh - t:
+                p.box((uw - 2 * t, 0.012, 0.04), (cx, front - 0.006, z), M["price_rail"])   # 値札の帯
+        for z in boards[:-1]:   # 商品の箱を左から詰める
+            x = cx - uw / 2 + t + 0.03
+            mat_k = rng.randrange(6)
+            while True:
+                bw, bh = rng.uniform(0.12, 0.22), rng.uniform(0.14, min(0.3, 0.42 - t - 0.05))
+                if x + bw > cx + uw / 2 - t - 0.03:
+                    break
+                if rng.random() < 0.35:
+                    mat_k = rng.randrange(6)   # 同じ色の箱が何個か続く
+                p.box((bw - 0.01, 0.26, bh), (x + bw / 2, front + 0.16, z + t / 2 + bh / 2), goods[mat_k])   # 角は丸めない（軽くする）
+                x += bw
+    p.finish(root)
+
+
+# ---------- 場面らしさを出す大物 ----------
+
+@part("kitchen_counter", "furniture", "台所の流しとコンロ",
+      [("kitchen", "noun"), ("sink", "noun"), ("stove", "noun"), ("counter", "noun")], front=("kitchen_front", 1))
+def build_kitchen_counter(root):
+    """台所の流し台とコンロ。幅 2.4 m・奥行き 0.65 m・天板の高さ 0.9 m。扉のある側が正面（+Z）。
+
+    流しは -X 側（中心 x = -0.6）、2 口のコンロは +X 側（中心 x = 0.65）。物は真ん中（x = -0.15〜0.3）か
+    +X の端に置く。蛇口は流しの奥にある。
+    """
+    w, d, h = 2.4, 0.65, 0.9
+    p = Part("kitchen_counter")
+    p.box((w - 0.04, d - 0.1, 0.1), (0, 0.04, 0.05), M["dark"])                                   # 台輪
+    body_d = d - 0.03
+    p.box((w, body_d, h - 0.14), (0, 0.015, 0.1 + (h - 0.14) / 2), M["counter"])                # 胴
+    p.box((w + 0.02, d + 0.02, 0.04), (0, 0, h - 0.02), M["steel"], bevel=0.006)                 # 天板
+    front = 0.015 - body_d / 2
+    for k in range(4):   # 下の扉 4 枚と、上の引き出し 4 つ
+        x = -w / 2 + w / 8 * (2 * k + 1)
+        p.box((w / 4 - 0.03, 0.02, 0.54), (x, front - 0.01, 0.4), M["kitchen_front"], bevel=0.008)
+        p.box((w / 4 - 0.03, 0.02, 0.12), (x, front - 0.01, 0.76), M["kitchen_front"], bevel=0.008)
+        p.box((0.12, 0.02, 0.015), (x, front - 0.03, 0.62), M["metal"], bevel=0.004)
+    # 流し（くぼみの代わりに、天板の上に縁と濃い底を重ねる）と蛇口
+    sx = -0.6
+    p.box((0.8, 0.46, 0.006), (sx, -0.02, h + 0.003), M["steel"])
+    p.box((0.7, 0.36, 0.004), (sx, -0.02, h + 0.008), M["sink"])
+    p.cyl(0.025, 0.025, 0.3, (sx, 0.24, h + 0.15), M["metal"], segs=10)
+    p.limb((sx, 0.24, h + 0.3), (sx, 0.08, h + 0.3), 0.02, 0.02, M["metal"], segs=10)
+    p.limb((sx, 0.08, h + 0.3), (sx, 0.08, h + 0.24), 0.018, 0.018, M["metal"], segs=10)
+    p.box((0.04, 0.08, 0.03), (sx + 0.06, 0.24, h + 0.3), M["metal"], bevel=0.006)               # レバー
+    # 2 口のコンロ（黒い天板・五徳の輪）と、前のつまみ
+    cx = 0.65
+    p.box((0.62, 0.5, 0.012), (cx, -0.01, h + 0.006), M["stove"], bevel=0.004)
+    for bx in (-0.15, 0.15):
+        p.cyl(0.1, 0.1, 0.012, (cx + bx, -0.03, h + 0.018), M["burner"], segs=16, smooth=False)
+        p.cyl(0.05, 0.05, 0.016, (cx + bx, -0.03, h + 0.02), M["stove"], segs=12, smooth=False)
+        p.cyl(0.025, 0.025, 0.03, (cx + bx, front - 0.035, 0.76), M["dark"], rot=(math.pi / 2, 0, 0), segs=10, smooth=False)
+    p.finish(root)
+    return {"top": h}   # 天板の上面（流しとコンロの無いところに物を置く）
+
+
+TRAIN_LEN, TRAIN_W = 8.0, 2.6   # 電車の長さ（X）と幅。実物（約 20 m）を縮め、8 m 四方に収める
+
+
+@part("train", "vehicle", "電車（1 両）", [("train", "noun")])
+def build_train(root):
+    """駅に停まる電車 1 両。長い向きを左右（X）に置く。長さ 8 m・幅 2.6 m・高さ 3.2 m（実物の約 20 m を縮めた）。
+
+    両側に扉が 2 つずつあり、前後（±X）は同じ形の運転台。表と裏も同じ形なので向きは確かめない。
+    車輪の間隔は線路の幅（1.067 m）に合わせてあり、platform_station の線路（z = -2.6）に置ける。
+    """
+    L, W = TRAIN_LEN - 0.04, TRAIN_W   # 車体の長さ。前後の窓とライトが 2 cm ずつ出て、全体で 8 m になる
+    p = Part("train")
+    z0, z1 = 0.45, 2.85    # 車体の下と上
+    p.box((L, W, z1 - z0), (0, 0, (z0 + z1) / 2), M["train_body"], bevel=0.15, segments=3)
+    p.box((L - 0.5, W - 0.5, 0.14), (0, 0, z1 + 0.05), M["train_roof"], bevel=0.05)              # 屋根
+    p.box((1.6, 1.2, 0.2), (0, 0, z1 + 0.22), M["train_roof"], bevel=0.04)                       # 冷房の箱
+    p.box((L + 0.01, W + 0.01, 0.24), (0, 0, 1.05), M["train_band"])                              # 帯
+    p.box((L + 0.01, W + 0.01, 0.07), (0, 0, 2.62), M["train_band"])
+    doors, door_w = (-2.2, 2.2), 1.3
+    for sy in (-1, 1):
+        y = sy * (W / 2 + 0.008)
+        for dx in doors:   # 両開きの扉（窓つき）
+            p.box((door_w, 0.012, 1.95), (dx, y, 0.5 + 0.975), M["train_door"])
+            p.box((0.02, 0.016, 1.95), (dx, y, 0.5 + 0.975), M["dark"])
+            for lx in (-1, 1):
+                p.box((0.38, 0.016, 0.75), (dx + lx * door_w / 4, y, 1.85), M["car_glass"])
+        spans = [(-L / 2 + 0.35, doors[0] - door_w / 2 - 0.15), (doors[0] + door_w / 2 + 0.15, -0.08),
+                 (0.08, doors[1] - door_w / 2 - 0.15), (doors[1] + door_w / 2 + 0.15, L / 2 - 0.35)]
+        for a, b in spans:   # 窓
+            p.box((b - a, 0.016, 0.85), ((a + b) / 2, y, 1.85), M["car_glass"])
+    for sx in (-1, 1):   # 前後の運転台（窓・ライト・行き先の表示）
+        x = sx * (L / 2 + 0.008)
+        p.box((0.016, W - 0.5, 0.9), (x, 0, 1.9), M["car_glass"])
+        p.box((0.016, 1.0, 0.2), (x, 0, 2.55), M["dark"])
+        for ly in (-1, 1):
+            p.box((0.02, 0.24, 0.12), (x, ly * (W / 2 - 0.4), 1.05), M["headlight"])
+    # 床下（機器の箱・台車・車輪）
+    p.box((L - 1.6, W - 0.5, 0.3), (0, 0, 0.42), M["frame"])
+    for bx in (-2.7, 2.7):
+        p.box((2.0, RAIL_GAUGE + 0.3, 0.25), (bx, 0, 0.42), M["dark"], bevel=0.03)
+        for wx in (-0.6, 0.6):
+            for sy in (-1, 1):
+                p.cyl(0.25, 0.25, 0.08, (bx + wx, sy * RAIL_GAUGE / 2, 0.25), M["tire"], rot=(math.pi / 2, 0, 0), segs=16, smooth=False)
+    p.finish(root)
+
+
+@part("station_sign", "thing", "駅名の看板", [("sign", "noun"), ("station sign", "noun")])
+def build_station_sign(root):
+    """ホームに立つ駅名の看板。幅 1.7 m の白い板（高さ 1.65〜2.2 m）を 2 本の柱で支える。
+
+    文字の代わりに、駅名の濃い灰色の帯と、隣の駅を示す青い帯がある。表と裏は同じ形なので向きは確かめない。
+    """
+    w, z0, z1, t = 1.7, 1.65, 2.2, 0.06
+    p = Part("station_sign")
+    for sx in (-1, 1):
+        p.cyl(0.04, 0.04, z1 - 0.05, (sx * 0.65, 0, (z1 - 0.05) / 2), M["frame"], segs=10)
+    p.box((w, t, z1 - z0), (0, 0, (z0 + z1) / 2), M["sign_board"], bevel=0.012)
+    for sy in (-1, 1):
+        y = sy * (t / 2 + 0.003)
+        p.box((0.8, 0.006, 0.15), (0, y, z0 + 0.36), M["sign_text"])     # 駅名（文字の代わり）
+        p.box((w - 0.08, 0.006, 0.12), (0, y, z0 + 0.14), M["sign_band"])  # 隣の駅の帯
+        for sx in (-1, 1):
+            p.box((0.28, 0.008, 0.05), (sx * 0.55, y, z0 + 0.14), M["sign_board"])
+    p.finish(root)
+
+
+@part("bus_shelter", "building", "屋根つきのバス停", [("bus stop", "noun"), ("bus shelter", "noun")], front=("shelter_back", -1))
+def build_bus_shelter(root):
+    """屋根つきのバス停。幅 2.6 m・奥行き 1.3 m・高さ 2.5 m。後ろ（-Z）と -X 側に板があり、中の後ろにベンチがある。
+
+    +X 側の外にバス停の丸い標識が立つ。ベンチの座面は 0.46 m で、後ろの板にくっつけてある（背もたれは無い）。
+    """
+    w, d, h = 2.6, 1.3, 2.5
+    p = Part("bus_shelter")
+    for sx in (-1, 1):
+        for sy in (-1, 1):
+            p.box((0.07, 0.07, h - 0.08), (sx * (w / 2 - 0.05), sy * (d / 2 - 0.05), (h - 0.08) / 2), M["shelter_frame"], bevel=0.01)
+    p.box((w + 0.2, d + 0.2, 0.08), (0, 0, h - 0.04), M["shelter_roof"], bevel=0.02)                     # 屋根
+    p.box((w - 0.1, 0.03, 1.9), (0, d / 2 - 0.05, 0.2 + 0.95), M["shelter_back"])                        # 後ろの板
+    p.box((0.03, d - 0.2, 1.9), (-(w / 2 - 0.05), 0.0, 0.2 + 0.95), M["shelter_back"])                  # 横の板
+    p.box((w - 0.1, 0.05, 0.05), (0, d / 2 - 0.05, 2.1), M["shelter_frame"])
+    # ベンチ（後ろの板の前）
+    bench_w, bench_d, slat_t = 1.8, 0.4, 0.04
+    seat_y = d / 2 - 0.08 - bench_d / 2
+    for k in range(3):
+        p.box((bench_w, bench_d / 3 - 0.02, slat_t), (0, seat_y - bench_d / 3 + k * bench_d / 3, SEAT_Z - slat_t / 2),
+              M["shelter_bench"], bevel=0.008)
+    for sx in (-1, 1):
+        p.box((0.05, bench_d - 0.05, SEAT_Z - slat_t), (sx * (bench_w / 2 - 0.15), seat_y, (SEAT_Z - slat_t) / 2), M["shelter_frame"])
+    # バス停の標識（丸い板と時刻表）
+    px = w / 2 + 0.35
+    p.cyl(0.035, 0.035, 2.2, (px, -d / 2 + 0.2, 1.1), M["shelter_frame"], segs=10)
+    p.box((0.18, 0.18, 0.06), (px, -d / 2 + 0.2, 0.03), M["dark"])
+    p.cyl(0.24, 0.24, 0.03, (px, -d / 2 + 0.2, 2.0), M["busstop_sign"], rot=(math.pi / 2, 0, 0), segs=20, smooth=False)
+    p.cyl(0.16, 0.16, 0.036, (px, -d / 2 + 0.2, 2.0), M["sign_board"], rot=(math.pi / 2, 0, 0), segs=20, smooth=False)
+    p.box((0.32, 0.04, 0.42), (px, -d / 2 + 0.2, 1.35), M["sign_board"], bevel=0.008)
+    p.finish(root)
+    return {"seat": (0, seat_y, SEAT_Z)}   # ベンチの座面の真ん中
 
 
 # ---------- 書き出し ----------

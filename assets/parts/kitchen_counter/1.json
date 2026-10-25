@@ -1,0 +1,29 @@
+{
+  "id": "kitchen_counter",
+  "version": 1,
+  "file": "parts/kitchen_counter/1.usdz",
+  "category": "furniture",
+  "words": [
+    {
+      "word": "kitchen",
+      "pos": "noun"
+    },
+    {
+      "word": "sink",
+      "pos": "noun"
+    },
+    {
+      "word": "stove",
+      "pos": "noun"
+    },
+    {
+      "word": "counter",
+      "pos": "noun"
+    }
+  ],
+  "size": [2.42, 1.22, 0.68],
+  "label": "台所の流しとコンロ",
+  "anchors": {
+    "top": 0.9
+  }
+}

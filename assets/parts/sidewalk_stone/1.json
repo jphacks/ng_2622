@@ -1,0 +1,22 @@
+{
+  "id": "sidewalk_stone",
+  "version": 1,
+  "file": "parts/sidewalk_stone/1.usdz",
+  "category": "ground",
+  "words": [
+    {
+      "word": "sidewalk",
+      "pos": "noun"
+    },
+    {
+      "word": "pavement",
+      "pos": "noun"
+    },
+    {
+      "word": "stone path",
+      "pos": "noun"
+    }
+  ],
+  "size": [8.0, 0.002, 8.0],
+  "label": "石畳の歩道（8 m 四方）"
+}

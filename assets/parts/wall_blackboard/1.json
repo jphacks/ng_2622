@@ -1,0 +1,22 @@
+{
+  "id": "wall_blackboard",
+  "version": 1,
+  "file": "parts/wall_blackboard/1.usdz",
+  "category": "building",
+  "words": [
+    {
+      "word": "blackboard",
+      "pos": "noun"
+    },
+    {
+      "word": "chalkboard",
+      "pos": "noun"
+    },
+    {
+      "word": "wall",
+      "pos": "noun"
+    }
+  ],
+  "size": [8.0, 2.6, 0.24],
+  "label": "黒板つきの壁（教室、幅 8 m）"
+}

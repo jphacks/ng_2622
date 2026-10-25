@@ -1,0 +1,18 @@
+{
+  "id": "floor_wood",
+  "version": 1,
+  "file": "parts/floor_wood/1.usdz",
+  "category": "ground",
+  "words": [
+    {
+      "word": "floor",
+      "pos": "noun"
+    },
+    {
+      "word": "wooden floor",
+      "pos": "noun"
+    }
+  ],
+  "size": [8.0, 0.002, 8.0],
+  "label": "木の床（8 m 四方）"
+}

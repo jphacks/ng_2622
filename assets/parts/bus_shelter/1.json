@@ -1,0 +1,21 @@
+{
+  "id": "bus_shelter",
+  "version": 1,
+  "file": "parts/bus_shelter/1.usdz",
+  "category": "building",
+  "words": [
+    {
+      "word": "bus stop",
+      "pos": "noun"
+    },
+    {
+      "word": "bus shelter",
+      "pos": "noun"
+    }
+  ],
+  "size": [3.29, 2.5, 1.5],
+  "label": "屋根つきのバス停",
+  "anchors": {
+    "seat": [-0.245, 0.46, -0.37]
+  }
+}
