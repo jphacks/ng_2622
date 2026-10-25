@@ -29,10 +29,11 @@
   - 理由: ビルドに値が入るので、ホーム画面から開いても効く。
   - 見送った案: scheme の環境変数（Xcode から起動したときしか効かず、ホーム画面から開くと消える）。アプリ内のデバッグメニュー（開発用の UI がプロダクトに残る）。
 - Mock の振る舞い（ほかの参加者の数、途中で切断する人を入れるか、参加者として入ったときにホストがスタートするまでの秒数）も、同じ道筋で xcconfig の `MOCK_*` から入れる。既定値は `Mock.xcconfig`、各自の変更は `Local.xcconfig` に書く（2026-10-24、issue #22）。アプリはホームから始まり、開発用の入り口の画面は置かない。
+  - 追記（2026-10-25）: 待合でのシーンの選び方も、同じ道筋で xcconfig の `SCENE_PICK`（`difficulty` / `list`）から入れる。既定は `Mock.xcconfig` が `difficulty`（難易度だけを選び、`ios/SampleLayouts` の作り置きの場面から出す）、`Live.xcconfig` が `list`（手作りのシーンの一覧）。今の API の `start` は `sceneId` だけなので、難易度で選ぶ処理は Mock の側（`ScenePool`）に置き、バックエンドが難易度で選ぶようになったら Live も切り替える（[20261025-pre-generate-ai-scenes-and-pick-by-difficulty](./20261025-pre-generate-ai-scenes-and-pick-by-difficulty.md)）。
 - 対応する iOS は 26 以上にする。手元の iPhone に合わせた。
 - 3D は RealityKit の `RealityView` で描く。USDZ のモデルができるまでは箱を組んで作り、できたら読み込みに差し替える。
   - 追記（2026-10-24）: `assets/scenes/*.usdz` の読み込みに差し替え、箱の公園は消した。
-  - 追記（2026-10-25）: AI で作った場面（sceneId が `gen-`）は、配置の JSON（[`scene-protocol.md`](../design/scene-protocol.md)）から部品を並べて出す（`SceneComposer`）。部品は、`project.yml` の Run Script（`Copy scene parts`）が `assets/parts` からアプリの読む `index.json` と `<id>/<version>.usdz` だけを rsync で写して同梱する（アプリの中では `parts/<id>/<version>.usdz`）。どの部品も `1.usdz` なので、`assets/scenes` のように平らに並べると名前がぶつかるため。フォルダの参照にしないのは、中身を選べず README・確かめの画像・メタデータの JSON・ignore した `build/` まで全部入ってしまうから。Mock で出す配置の見本は `ios/SampleLayouts/` に置く。
+  - 追記（2026-10-25）: AI で作った場面（sceneId が `gen-`）は、配置の JSON（[`scene-protocol.md`](../design/scene-protocol.md)）から部品を並べて出す（`SceneComposer`）。部品は、`project.yml` の Run Script（`Copy scene parts`）が `assets/parts` からアプリの読む `index.json` と `<id>/<version>.usdz` だけを rsync で写して同梱する（アプリの中では `parts/<id>/<version>.usdz`）。どの部品も `1.usdz` なので、`assets/scenes` のように平らに並べると名前がぶつかるため。フォルダの参照にしないのは、中身を選べず README・確かめの画像・メタデータの JSON・ignore した `build/` まで全部入ってしまうから。Mock で出す作り置きの場面（配置の JSON）は `ios/SampleLayouts/` に置く。
 - API の型とクライアントは、`backend/openapi.json` から swift-openapi-generator のビルドプラグインで、ビルドのたびに作る。ローカルの Swift パッケージ `ios/Packages/BackendAPI` に、`backend/openapi.json` への symlink と設定を置き、アプリは `import BackendAPI` で使う（2026-10-24）。
   - 理由: 手で写した型が openapi.json とずれない。パッケージに分けると、アプリの `SWIFT_DEFAULT_ACTOR_ISOLATION=MainActor` が作られたコードにかからない。
   - 見送った案: 作ったコードを commit する（作り直し忘れでずれる）。
