@@ -24,7 +24,7 @@ pnpm openapi          # openapi.json を生成し直す
 - 話し方: Azure の発音評価（REST、正解文なし）。Accuracy・Fluency・Prosody の平均。
 - 内容・表現・講評・模範表現: Claude（既定は `claude-haiku-5-5`）に文字起こしとシーンの説明を渡す。
 - 合計は `SCORE_WEIGHTS`（内容,表現,話し方。既定 `50,25,25`）で重み付けする。
-- `SCORING_MODE=fixed` で外部 API を呼ばず固定の点数を返す。デプロイ先は `wrangler.jsonc` で fixed にしてある。
+- `SCORING_MODE=fixed` で外部 API を呼ばず固定の点数を返す。`wrangler.jsonc` で本番は live、PR のプレビューは fixed にしてある。本番の `AZURE_API_KEY` と `CLAUDE_API_KEY` は `wrangler secret put` で Worker に登録する。
 - シーンは仮で `src/scoring/scenes.json` に置いている。`id` は 3D シーン（`assets/scenes/<id>`）と同じにする。
 
 ### 手元で採点を試す
