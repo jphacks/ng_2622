@@ -181,7 +181,7 @@ v1 の基本は止まった場面で、動作は人物のポーズで表す。�
 | `PUT /parts/{id}/{version}` | 亀井さんのエージェント | 部品を保存する。本文は multipart（`meta` にメタデータの JSON、`file` に USDZ）。合言葉が要る |
 | `POST /scenes` | 亀井さんのエージェント・人 | 配置の JSON を保存し、`{ "sceneId": "gen-…" }` を返す。合言葉が要る。R2 と合わせて、亀井さんのエージェントが使うときに入れる |
 | `POST /scenes/generate` | 作り置きのスクリプト（手元） | 本文は `{ "difficulty": "easy", "theme": "公園" }`（`theme` は任意）。Claude が部品の一覧を見て配置の JSON を書き、保存せずにそのまま返す。合言葉が要る。アプリは呼ばない |
-| `GET /scenes/{sceneId}/layout` | アプリ | 配置の JSON（作り置きの場面は同梱の JSON から、`POST /scenes` で保存したものは R2 から返す） |
+| `GET /scenes/{sceneId}/layout` | アプリ | 配置の JSON（作り置きの場面は同梱の JSON から、`POST /scenes` で保存したものは R2 から返す）。部屋が作った場面は `?room=<部屋の番号>` を付けると、その部屋に置いたものを返す（2026-10-26） |
 
 - 合言葉: Worker の secret `SCENE_WRITE_TOKEN` に置き（手元の `wrangler dev` では `.dev.vars`）、`Authorization: Bearer <合言葉>` で送る。合言葉は亀井さんに直接渡し、ファイルには書かない。
 - R2 の置き場所: `parts/<id>/<version>.usdz`、`parts/<id>/<version>.json`（メタデータ）、`scenes/<sceneId>.json`（配置）。
@@ -316,6 +316,27 @@ Claude の API（Messages API）に渡すもの:
 | SDK の設定 | 各回の `timeout` は 60 秒（案）。SDK の再送は使わない（`maxRetries` 0）。やり直しは上の「失敗したとき」の決まりで口の側が行う |
 
 `stop_reason` が `end_turn` でなければ失敗とする。断られたとき（`refusal`）は失敗を返す。
+
+## 部屋がスタートで場面を作る（2026-10-26 に決定）
+
+> 2026-10-25 には「待合でその場では作らない」と決めていたが、2026-10-26 に、作り置きを控えにして部屋がその場で作る形を足した（[ADR](../adr/20261026-generate-scenes-in-room-on-start.md)）。遊べる場面の幅を広げるため。
+
+```
+ホスト ──start { difficulty }──▶ 部屋（Room DO）──▶ Claude（10 秒まで、やり直さない）
+                                   │ room { phase: "generating" } を全員へ
+                                   │ 作れた: 配置の JSON を ctx.storage に置く
+                                   │ だめ: 同じ難易度の作り置きから選ぶ
+                                   ▼
+                          round { sceneId } を全員へ ──▶ 各アプリが GET /scenes/{sceneId}/layout?room=<部屋の番号>
+```
+
+- 作るのは、`SCENE_GENERATION` が `on` で、その部屋の生成が 20 回に満たないとき。それ以外は今までどおり作り置きから選ぶ。
+- 部屋の状態は `lobby` → `generating` → `playing`。`generating` のあいだ、ホストはもう一度 `start` を送れない。
+- 10 秒で間に合わない・通信の失敗・断られた・形が違うときは、黙って作り置きに切り替える。
+- 生成中にホストが `leave` したら、生成を止めて作り置きでラウンドを始める。切断しただけなら止めない。
+- 作った場面の ID は今までどおり `gen-` ＋ 10 文字。配置の JSON は部屋の `ctx.storage` に置き、部屋が消えるときに一緒に消える。R2 には置かない。採点も部屋に置いたものを使う。
+- `GET /scenes/{sceneId}/layout` は、作り置きにない ID のとき、`room` で渡された部屋に置いた配置の JSON を返す。
+- 待つあいだのアプリの画面は [`ui/screens/lobby.md`](./ui/screens/lobby.md)。
 
 ## アプリの組み立て
 
