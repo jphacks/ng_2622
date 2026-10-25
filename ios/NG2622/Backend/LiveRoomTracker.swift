@@ -31,6 +31,8 @@ struct LiveRoomTracker {
   private var resultsRound: Int?
   /// ホストの参加者の ID（最後に届いた room の hostId）
   private var hostID: String?
+  /// いまの時刻（テストで差し替える）
+  var now: () -> Date = Date.init
 
   mutating func apply(_ message: Schemas.ServerMessage) -> [Update] {
     switch message {
@@ -60,7 +62,8 @@ struct LiveRoomTracker {
       // つなぎ直したときに届く、同じラウンドの round は渡さない（録音の画面からやり直しにならないよう）
       guard message.round != round else { return [] }
       round = message.round
-      let info = RoundInfo(sceneID: message.sceneId, startsAt: Self.date(fromMilliseconds: message.startAt))
+      let info = RoundInfo(
+        sceneID: message.sceneId, startsAt: Self.startDate(fromMilliseconds: message.startAt, receivedAt: now()))
       return [.event(.roundStarted(info))]
 
     case .progress(let progress):
@@ -113,6 +116,20 @@ struct LiveRoomTracker {
   /// UNIX 時刻のミリ秒
   static func date(fromMilliseconds ms: Int64) -> Date {
     Date(timeIntervalSince1970: TimeInterval(ms) / 1000)
+  }
+
+  /// 部屋は start を受けた 1.5 秒後を startAt にして round を送る（backend/src/domain/room.ts の START_DELAY_MS）
+  static let startDelay: TimeInterval = 1.5
+  /// startAt が「受け取った時刻 + startDelay」からこれ以上ずれていたら、端末の時計がずれているとみなす
+  static let maxClockSkew: TimeInterval = 5
+
+  /// ラウンドを始める時刻。startAt はサーバーの時計なので、端末の時計が大きくずれていると
+  /// 始まった瞬間に録音の終わりを過ぎてしまう（時計が進んだ端末）。そのときは端末の時計で
+  /// 「受け取ってから startDelay 後」に始める。時計が合っている端末は startAt のままで、全員そろう
+  static func startDate(fromMilliseconds ms: Int64, receivedAt: Date) -> Date {
+    let server = date(fromMilliseconds: ms)
+    let expected = receivedAt.addingTimeInterval(startDelay)
+    return abs(server.timeIntervalSince(expected)) > maxClockSkew ? expected : server
   }
 }
 
