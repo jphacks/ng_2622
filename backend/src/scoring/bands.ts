@@ -11,11 +11,14 @@ import type {
 // （ADR 20261025-score-content-with-layout-and-rubric-bands）。
 // 段階の説明の文は下書き。野沢さんが確かめたものに差し替える。IELTS・英検の公式の文は丸写ししない
 
-const CONTENT_BANDS = `Content: how much of the scene the player described, and whether what they said is true of the scene.
-- 100: Describes the main people or animals, what they are doing, and several relations or details (where things are, counts, motion). Everything said agrees with the scene.
-- 80: Describes the main things and most of what they are doing, with some relations or details. At most one small mistake.
-- 60: Names the main things and at least one action or relation. Or says more, but with a few mistakes.
-- 40: Names a few things in the scene, with little about actions or relations. Or many of the statements are wrong.
+// 量より質を重く見る。段階はまず質（場面の中心を、正しく具体的に言えたか）で決め、同じ質なら量（正しい細かいことの数）で上げる
+const CONTENT_BANDS = `Content: how well the player conveyed the scene. Judge quality first, then quantity.
+- Quality: whether they caught the core of the scene and said it accurately and specifically. The core is the people and animals, what they are doing (pose and motion), and how the main things relate; the scene description usually states it. A precise statement ("An apple is falling from the tree.") is worth more than a vague one ("There is an apple.").
+- Quantity: correct supporting details (other things, where they are, counts). Among descriptions of similar quality, more correct details score higher. Listing many minor things does not make up for missing or getting the core wrong.
+- 100: Conveys the core accurately and specifically (the main actions and how the main things relate), plus several correct supporting details. Everything said agrees with the scene.
+- 80: Conveys the core accurately and specifically, with few supporting details. Or conveys it well with one small mistake.
+- 60: Gets part of the core (the main action or a main relation), but vaguely or incompletely. Or gives many correct details but misses the core.
+- 40: Names things in the scene without saying what they are doing or how they relate. Or gets the core wrong.
 - 20: Only one or two correct words about the scene, or mostly things that are not in the scene.
 - 0: Nothing about the scene: silence, unrelated talk, or only wrong statements.`;
 
