@@ -1,0 +1,145 @@
+{
+  "protocol": "scenenglish.scene/1",
+  "id": "gen-837svis7fz",
+  "name": "家族が夕ごはんを作るキッチン",
+  "difficulty": "hard",
+  "description": "A family kitchen at dinner time. A woman is putting a frying pan on the counter, and a shopping basket is on the counter too. A girl and a boy are sitting at a table, and a man is carrying a box past the counter. Plates and a bottle are on the table.",
+  "elements": [
+    {
+      "id": "place",
+      "label": "キッチンで",
+      "points": 10,
+      "accept": "kitchen, cooking room"
+    },
+    {
+      "id": "woman_put",
+      "label": "女の人がフライパンを置いている",
+      "points": 15,
+      "accept": "a woman is putting a frying pan on the counter",
+      "partial": "mentions a woman in the kitchen, without the pan"
+    },
+    {
+      "id": "pan_on_counter",
+      "label": "カウンターの上のフライパン",
+      "points": 10,
+      "accept": "a frying pan is on the counter",
+      "partial": "a pan or a frying pan"
+    },
+    {
+      "id": "girl_sit",
+      "label": "女の子が机で座っている",
+      "points": 15,
+      "accept": "a girl is sitting on a chair at the table",
+      "partial": "mentions a girl sitting, without the table"
+    },
+    {
+      "id": "boy_sit",
+      "label": "男の子が座っている",
+      "points": 10,
+      "accept": "a boy is sitting next to the table",
+      "partial": "mentions a boy"
+    },
+    {
+      "id": "man_carry",
+      "label": "男の人が箱を運んでいる",
+      "points": 15,
+      "accept": "a man is carrying a box",
+      "partial": "mentions a man"
+    },
+    {
+      "id": "table_items",
+      "label": "テーブルの皿とペットボトル",
+      "points": 10,
+      "accept": "plates and a bottle are on the table",
+      "partial": "a plate or a bottle"
+    },
+    {
+      "id": "basket",
+      "label": "買い物かご",
+      "points": 5,
+      "accept": "a shopping basket is on the counter",
+      "partial": "a basket"
+    }
+  ],
+  "extraMax": 10,
+  "items": [
+    {
+      "key": "floor",
+      "part": "grass_patch",
+      "position": [0, 0, 0]
+    },
+    {
+      "key": "wall",
+      "part": "wall",
+      "position": [0, 0, -2.75]
+    },
+    {
+      "key": "counter",
+      "part": "checkout_counter",
+      "position": [0, 0, -2.25]
+    },
+    {
+      "key": "pan",
+      "part": "pan",
+      "position": [0, 0.9, -2.25]
+    },
+    {
+      "key": "basket",
+      "part": "basket",
+      "position": [0, 0.9, -2.25]
+    },
+    {
+      "key": "woman",
+      "part": "person_put_woman_a",
+      "position": [0, 0, -1.471]
+    },
+    {
+      "key": "table",
+      "part": "table",
+      "position": [0, 0, 2.75]
+    },
+    {
+      "key": "chair_girl",
+      "part": "chair",
+      "position": [0, 0, 2.065]
+    },
+    {
+      "key": "girl",
+      "part": "person_sit_girl_a",
+      "position": [0, 0.1, 2.196]
+    },
+    {
+      "key": "chair_boy",
+      "part": "chair",
+      "position": [0.91, 0, 2.75],
+      "yaw": -90
+    },
+    {
+      "key": "boy",
+      "part": "person_sit_boy_a",
+      "position": [0.76, 0.1, 2.75],
+      "yaw": -90
+    },
+    {
+      "key": "plate",
+      "part": "plate",
+      "position": [0, 0.72, 2.75]
+    },
+    {
+      "key": "bottle",
+      "part": "bottle",
+      "position": [-0.25, 0.72, 2.75]
+    },
+    {
+      "key": "man",
+      "part": "person_carry_adult_a",
+      "position": [1.136, 0, -1.331],
+      "yaw": 49,
+      "motion": {
+        "type": "move",
+        "to": [2.667, 0, 0],
+        "duration": 6
+      }
+    }
+  ]
+}

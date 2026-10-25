@@ -40,7 +40,7 @@ targets:
           - "*.usdz"
           - "*.png"
           - "*.json"
-      # Mock で出す、AI で作った場面の見本（配置の JSON）。アプリの中では SampleLayouts/<sceneId>.json になる
+      # Mock で出す、AI で作り置いた場面（配置の JSON）。アプリの中では SampleLayouts/<sceneId>.json になる
       - path: SampleLayouts
         type: folder
         buildPhase: resources

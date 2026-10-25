@@ -15,7 +15,7 @@ enum SceneLayoutError: Error, Equatable {
 }
 
 enum SceneLayouts {
-  /// アプリ全体で使う口。Live で URL があればバックエンドに、それ以外は同梱の見本につなぐ
+  /// アプリ全体で使う口。Live で URL があればバックエンドに、それ以外は同梱の作り置きの場面につなぐ
   static let client: any SceneLayoutClient = {
     let config = AppConfig.current
     if config.mode == .live, let url = config.backendURL {
@@ -106,7 +106,7 @@ final class HTTPSceneLayoutClient: SceneLayoutClient {
   }
 }
 
-/// 仮のデータ。通信せず、同梱の見本（SampleLayouts/<sceneId>.json）を返す
+/// 仮のデータ。通信せず、同梱の作り置きの場面（SampleLayouts/<sceneId>.json）を返す
 final class MockSceneLayoutClient: SceneLayoutClient {
   private let bundle: Bundle
 
