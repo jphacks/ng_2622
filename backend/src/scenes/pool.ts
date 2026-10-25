@@ -1,5 +1,3 @@
-import type { LayoutItem } from "../scoring/layout";
-import type { Scene } from "../scoring/types";
 import gen_1oi548k4rk from "./pool/gen-1oi548k4rk.json";
 import gen_3brfrhl0g2 from "./pool/gen-3brfrhl0g2.json";
 import gen_3q2mp65pln from "./pool/gen-3q2mp65pln.json";
@@ -31,20 +29,15 @@ import gen_xef36toaa0 from "./pool/gen-xef36toaa0.json";
 import gen_yy111spsnv from "./pool/gen-yy111spsnv.json";
 import gen_zd2giq5tll from "./pool/gen-zd2giq5tll.json";
 import index from "./pool/index.json";
+import { DIFFICULTIES, type Difficulty, type SceneLayout } from "./types";
 
 // 作り置きの場面（pool/）を Worker に同梱する。Worker は glob できないので 1 つずつ import する。
 // 場面を足すときは、pool/ に JSON を置き、index.json とここの両方に足す（test/pool.test.ts が食い違いを見つける）
 
-export type Difficulty = "easy" | "normal" | "hard";
+export type { Difficulty };
 
-export const DIFFICULTIES: readonly Difficulty[] = ["easy", "normal", "hard"];
-
-/** 配置の JSON（scenenglish.scene/1）。採点の Scene と同じ項目も持つ */
-export type PoolScene = Scene & {
-  protocol: string;
-  difficulty: Difficulty;
-  items: LayoutItem[];
-};
+/** 配置の JSON（scenenglish.scene/1、types.ts の SceneLayout） */
+export type PoolScene = SceneLayout;
 
 const ALL = [
   gen_098scv1adb,

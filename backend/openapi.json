@@ -86,6 +86,15 @@
         "additionalProperties": false,
         "description": "接続したら最初に送る。ホストは POST /rooms で受け取った playerId と token を、切断から戻る人は welcome で受け取ったものを付ける。初めて入る人は name だけ"
       },
+      "Difficulty": {
+        "description": "作り置きの場面をこの難易度から部屋に選ばせる。その部屋でまだ出ていないものからランダムに 1 つ選び、全部出たら最初に戻る。選んだ sceneId は round で届く。sceneId と一緒に送ると invalid_message",
+        "type": "string",
+        "enum": [
+          "easy",
+          "normal",
+          "hard"
+        ]
+      },
       "StartMessage": {
         "type": "object",
         "properties": {
@@ -95,6 +104,9 @@
           },
           "sceneId": {
             "$ref": "#/components/schemas/SceneId"
+          },
+          "difficulty": {
+            "$ref": "#/components/schemas/Difficulty"
           }
         },
         "required": [
@@ -1949,6 +1961,48 @@
             }
           }
         }
+      }
+    },
+    "/scenes/{sceneId}/layout": {
+      "get": {
+        "operationId": "getSceneLayout",
+        "tags": [
+          "scenes"
+        ],
+        "summary": "作り置きの場面の配置の JSON",
+        "description": "作り置きの場面（gen-…）の配置の JSON をそのまま返す。round で届いた sceneId の場面を組み立てるのに使う。手作りの場面には無い（404）",
+        "responses": {
+          "200": {
+            "description": "配置の JSON",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SceneLayout"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "作り置きの場面が無い（unknown_scene）",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "schema": {
+              "type": "string"
+            },
+            "in": "path",
+            "name": "sceneId",
+            "required": true
+          }
+        ]
       }
     },
     "/scenes/{sceneId}/reviews": {
