@@ -250,13 +250,13 @@ render_layout.py で PNG に描く ──▶ 人が目で確かめる ──▶ 
 
 ### 実測（2026-10-25）
 
-Haiku 5.5、手元の `wrangler dev`、旧形式の口（一言を渡す形）で 1 場面を作るのにかかった時間。
+手元の `wrangler dev`、旧形式の口（一言を渡す形）、同じ 6 つのお題（各難易度 2 つ）で 1 場面を作るのにかかった時間。出来は、描いた画像で見て同じくらいだったので、Sonnet 5.5 の low にした。
 
-| 難易度 | 時間 |
-| --- | --- |
-| かんたん | 3〜5 秒 |
-| ふつう | 3〜8 秒 |
-| むずかしい | 12〜14 秒 |
+| 難易度 | Haiku 5.5・medium | Sonnet 5.5・low（採用） |
+| --- | --- | --- |
+| かんたん | 3〜5 秒 | 3.7 秒 |
+| ふつう | 3〜8 秒 | 4.8〜5.2 秒 |
+| むずかしい | 12〜14 秒 | 5.9〜6.5 秒 |
 
 ### やめたこと（2026-10-25）
 
@@ -273,7 +273,7 @@ Haiku 5.5、手元の `wrangler dev`、旧形式の口（一言を渡す形）�
 - Claude は 1 回の呼び出しで、場面の説明文（`description`、言わせたい文）を先に書き、その文を描ける部品と関係を後に書く。言わせたい文から場面を組み立てるため。説明文は採点でも補足として使う。
 - 座らせる・上に置く: 部品のメタデータの `anchors`（`top`・`seat`・`hip`）から座標を計算する。
 - 呼び方: 採点（`backend/src/scoring/claude.ts`）と同じ SDK（`@anthropic-ai/sdk`）の `messages.create` を 1 回呼ぶ。
-- モデル: まず `claude-haiku-5-5` で作り、作った場面を人が目で確かめてから、`claude-sonnet-5-5` などに変えるかを決める。モデルは環境変数で変えられるようにする。
+- モデル: `claude-sonnet-5-5` の effort `low`（2026-10-25。上の実測で Haiku 5.5 の medium より速く、出来は同じくらいだったため）。モデルと effort は環境変数（`CLAUDE_SCENE_MODEL`・`CLAUDE_SCENE_EFFORT`）で変えられる。
 
 ### Claude に書かせる形と呼び方
 
@@ -302,16 +302,16 @@ Claude の API（Messages API）に渡すもの:
 
 | パラメーター | 値 |
 | --- | --- |
-| `model` | 環境変数（既定は `claude-haiku-5-5`） |
+| `model` | 環境変数 `CLAUDE_SCENE_MODEL`（既定は `claude-sonnet-5-5`） |
 | `max_tokens` | 8000 |
-| `output_config` | `{ effort: "medium", format: { type: "json_schema", schema } }` |
+| `output_config` | `{ effort: "low", format: { type: "json_schema", schema } }`。effort は環境変数 `CLAUDE_SCENE_EFFORT` で変えられる |
 | `system` | 規則・関係の意味・難易度ごとの目安・テーマの一覧・部品の一覧（`index.json` から id・label・category・words・pose・size・anchors）・例 1〜2 個。`cache_control` でキャッシュする |
 | `messages` | `[{ role: "user", content: "難しさ: easy\nテーマ: 公園" }]`。テーマを省いたときは「テーマ: 一覧から選ぶ」 |
-| `thinking` | 指定しない（Haiku 5.5 は既定で考える） |
+| `thinking` | 指定しない |
 | `temperature` | 送らない（2026-10-21 から 400 になる） |
 | SDK の設定 | 各回の `timeout` は 60 秒（案）。SDK の再送は使わない（`maxRetries` 0）。やり直しは上の「失敗したとき」の決まりで口の側が行う |
 
-`stop_reason` が `end_turn` でなければ失敗とする。Haiku 5.5 には断ったとき（`refusal`）にサーバー側で別のモデルへ回す仕組みが無いので、断られたら失敗を返す。
+`stop_reason` が `end_turn` でなければ失敗とする。断られたとき（`refusal`）は失敗を返す。
 
 ## アプリの組み立て
 
