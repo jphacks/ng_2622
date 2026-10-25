@@ -23,22 +23,32 @@ struct LobbyView: View {
       }
       .padding(.top, 8)
 
-      ticket
-        .padding(.top, 10)
-      seats
-        .padding(.top, 16)
-      if session.isHost {
-        switch pick {
-        case .difficulty:
-          DifficultyPicker(selected: $difficulty, example: example(difficulty))
+      // 退出とスタートは上下に固定し、収まらないときは間だけをスクロールする（退出がステータスバーに潜らないように）
+      ScrollView {
+        VStack(spacing: 0) {
+          ticket
+            .padding(.top, 10)
+          seats
             .padding(.top, 16)
-        case .list:
-          ScenePicker(selected: $sceneID)
-            .padding(.top, 16)
+          if session.isHost {
+            switch pick {
+            case .difficulty:
+              DifficultyPicker(selected: $difficulty, example: example(difficulty))
+                .padding(.top, 16)
+            case .list:
+              ScenePicker(selected: $sceneID)
+                .padding(.top, 16)
+            }
+          }
         }
+        // カードの影が切れないよう、スクロールの枠だけ左右に広げる
+        .padding(.horizontal, 16)
+        .padding(.bottom, 12)
       }
+      .padding(.horizontal, -16)
+      .scrollBounceBehavior(.basedOnSize)
+      .scrollIndicators(.hidden)
 
-      Spacer(minLength: 12)
       if session.isHost {
         Button("スタート", action: start)
           .buttonStyle(BigButtonStyle(kind: .primary))
@@ -83,24 +93,33 @@ struct LobbyView: View {
     .background(CardBackground())
   }
 
-  /// 参加者を席のように並べる。空いた席は点線
+  /// 参加者を席のように 1 列に並べる。空いた席は点線。収まらない分は横にスクロールする
   private var seats: some View {
     let members = session.participants
-    let columns = Array(repeating: GridItem(.flexible(), spacing: 6), count: 4)
-    return LazyVGrid(columns: columns, spacing: 16) {
-      ForEach(0..<RoomLimit.members, id: \.self) { i in
-        if i < members.count {
-          Seat(participant: members[i])
-            .id(members[i].id)
-            .transition(.scale(scale: 0.4).combined(with: .opacity))
-        } else {
-          EmptySeat()
+    return ScrollView(.horizontal) {
+      HStack(spacing: 6) {
+        ForEach(0..<RoomLimit.members, id: \.self) { i in
+          if i < members.count {
+            Seat(participant: members[i])
+              .id(members[i].id)
+              .transition(.scale(scale: 0.4).combined(with: .opacity))
+          } else {
+            EmptySeat()
+          }
         }
+        .frame(width: 64)
       }
+      .scrollTargetLayout()
+      // 王冠が上にはみ出すぶん
+      .padding(.top, 18)
+      .padding(.bottom, 16)
     }
+    .contentMargins(.horizontal, 12, for: .scrollContent)
+    .scrollIndicators(.hidden)
+    // 入ってきた人が見えるよう、いちばん新しい人まで送る
+    .scrollPosition(id: .constant(members.last?.id), anchor: .trailing)
     .animation(.spring(duration: 0.45, bounce: 0.45), value: members.map(\.id))
-    .padding(.horizontal, 12)
-    .padding(.vertical, 18)
+    .clipShape(RoundedRectangle(cornerRadius: 22))
     .background(CardBackground())
   }
 }
@@ -183,7 +202,7 @@ private struct ScenePicker: View {
 
 /// 難易度の選択（ホストだけ、SCENE_PICK = difficulty）。出題の場面は名前もサムネイルもスタートまで見せない。
 /// 場面は、その部屋でまだ出ていない作り置きの場面からランダムに出る（docs/design/ui/screens/lobby.md）。
-/// 下には、選んでいる難易度の例の場面を、組み立てた 3D で絵だけ出す（例は出題しない）
+/// 下には、選んでいる難易度の例の場面を絵だけ出す（例は出題しない）
 private struct DifficultyPicker: View {
   @Binding var selected: SceneDifficulty
   /// 選んでいる難易度の例の場面。無ければ絵を出さない
@@ -241,20 +260,30 @@ private struct DifficultyPicker: View {
   }
 }
 
-/// 例の場面の絵。斜め上から見た向きで止め、部品の動き（motion）だけを動かす。触れない
+/// 例の場面の絵。待合では動かさないので、3D を組み立てずに止めた絵（Room/Examples/<id>.png）を出す。触れない。
+/// png は、下の 3D と同じ向き・同じ枠（318×170pt を 3 倍）でアプリの画面から切り出したもの。
+/// index.json の例を変えて png が無いときは、これまでどおり 3D で出す
 private struct ExampleScene: View {
   let sceneID: String
 
   var body: some View {
-    // 枠が低いので、カメラを近づけて場面を枠いっぱいに出す。難易度を変えたら作り直す（読み込みの状態も新しくする）
-    DioramaView(sceneID: sceneID, yaw: -20, tilt: SceneOrbit.defaultTilt, distance: 4.6)
-      .id(sceneID)
-      .frame(maxWidth: .infinity)
-      .frame(height: 170)
-      .background(Theme.background)
-      .clipShape(RoundedRectangle(cornerRadius: 14))
-      .allowsHitTesting(false)
-      .accessibilityHidden(true)
+    Group {
+      if let image = UIImage(named: sceneID) {
+        Image(uiImage: image)
+          .resizable()
+          .scaledToFill()
+      } else {
+        // 枠が低いので、カメラを近づけて場面を枠いっぱいに出す。難易度を変えたら作り直す（読み込みの状態も新しくする）
+        DioramaView(sceneID: sceneID, yaw: -20, tilt: SceneOrbit.defaultTilt, distance: 4.6)
+          .id(sceneID)
+      }
+    }
+    .frame(maxWidth: .infinity)
+    .frame(height: 170)
+    .background(Theme.background)
+    .clipShape(RoundedRectangle(cornerRadius: 14))
+    .allowsHitTesting(false)
+    .accessibilityHidden(true)
   }
 }
 
