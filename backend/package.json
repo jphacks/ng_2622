@@ -8,7 +8,8 @@
     "openapi": "tsx scripts/generate-openapi.ts",
     "openapi:check": "tsx scripts/generate-openapi.ts --check",
     "cf-typegen": "wrangler types --env-interface CloudflareBindings",
-    "cf-typegen:check": "wrangler types --env-interface CloudflareBindings --check"
+    "cf-typegen:check": "wrangler types --env-interface CloudflareBindings --check",
+    "test": "tsx --test test/*.test.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^1.3.0",

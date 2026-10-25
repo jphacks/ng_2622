@@ -86,8 +86,10 @@ python3 scripts/scene/preview_parts.py      # 3D の部品を 1 個ずつ回し�
 blender --background --factory-startup --python scripts/scene/park.py  # 3D シーン assets/scenes/park.usdz と画像を生成（classroom.py・station.py・rainy_street.py・beach.py・cafe.py も同じ。要 Blender 4.5 LTS）
 blender --background --factory-startup --python scripts/scene/parts.py  # 部品 assets/parts/<id>/1.usdz・1.json と index.json を生成（-- --only <id> で 1 個だけ。確かめは check_parts.py、-- --sheet で一覧の画像も作る）
 blender --background --factory-startup --python scripts/scene/render_layout.py -- scripts/scene/samples/*.json --out <dir>  # 配置の JSON（scenenglish.scene/1）を部品で組んで <dir>/<名前>.png に描く（AI が作った場面の目での確かめ用）
+python3 scripts/scene/make_pool.py --url http://localhost:8799 --out <dir> --count 14  # 作り置きの場面の候補を手元の wrangler dev でまとめて作り、PNG と一覧の画像を作る（手順は backend/README.md の「作り置きの場面を作る」）
 (cd backend && pnpm install && pnpm dev)    # バックエンドを手元で起動（http://localhost:8787/health）
 (cd backend && pnpm typecheck)              # バックエンドの型チェック
+(cd backend && pnpm test)                   # バックエンドの単体テスト（関係 → 座標の計算・場面の生成の口など）
 (cd backend && pnpm openapi)                # API の型から backend/openapi.json を生成（iOS が読む。生成物も commit する）
 (cd ios && xcodegen)                        # ios/NG2622.xcodeproj を作る（clone 後と ios/project.yml を変えたあと）
 open ios/NG2622.xcodeproj                   # scheme「NG2622 Mock」（仮のデータ）か「NG2622 Live」（BACKEND_URL の本物のバックエンド）を選んでビルド。Mock の振る舞い（参加者の数・切断など）は ios/Config/Local.xcconfig の MOCK_* で、待合のシーンの選び方（難易度か一覧か）は SCENE_PICK で変える（ios/Config/Local.xcconfig.example）

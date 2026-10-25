@@ -66,6 +66,8 @@ sequenceDiagram
 | `POST /rooms/:id/rounds/:n/audio` | HTTP | 自分の音声（WAV、最長 20 秒、約 0.6 MB）を本文にそのまま載せて送る。参加者 ID と合言葉をヘッダーに付ける。すぐ 202 を返し、採点は裏で続ける |
 | `GET /scenes` | HTTP | シーンの一覧と、それぞれの★の平均・評価した人数（待合のシーン選びに出す） |
 | `GET /scenes/:id/reviews` | HTTP | シーンの評価（★とコメント）を新しい順に返す |
+| `GET /parts` | HTTP | 部品のメタデータの一覧（Worker に同梱した一覧） |
+| `POST /scenes/generate` | HTTP | 作り置きのスクリプト（手元）が使う。難易度（とテーマ）から Claude が関係を書き、バックエンドが座標に直した配置の JSON を返す（保存しない）。合言葉が要る。形は [`scene-protocol.md`](./scene-protocol.md) |
 | `PUT /scenes/:id/reviews` | HTTP | シーンを評価する（★ 1〜5、コメントは 200 文字までで任意）。端末ごとの ID を付け、同じ ID で送り直すと上書きする（結果発表の下で送る） |
 | `POST /score` | HTTP | 配置の JSON（`layout` の `items` と `description`）と文字起こしを送ると、内容と表現の点と講評を返す。部品のメタデータと座標・向き・動き、説明文を Claude に渡し、採点基準の段階（0〜100）で付ける。話し方の点は付けないが、Azure の 3 つの点（`speech`）を送ると次に伸ばす一つに話し方も選ばれる（[ADR](../adr/20261025-score-content-with-layout-and-rubric-bands.md)） |
 

@@ -251,3 +251,125 @@ export const ScoreResponse = z
     ref: "ScoreResponse",
     description: "配置と文字起こしから採点した、内容と表現の点と講評",
   });
+
+// 部品と配置の JSON（docs/design/scene-protocol.md）
+
+const Vec3 = z
+  .array(z.number())
+  .length(3)
+  .meta({ description: "[x, y, z]（m）" });
+
+export const PartMeta = z
+  .object({
+    id: z
+      .string()
+      .regex(/^[a-z0-9_]{1,48}$/)
+      .meta({ example: "apple_red" }),
+    version: z.int().min(1),
+    file: z.string().meta({
+      description:
+        "部品の USDZ のパス（parts/<id>/<version>.usdz。repo では assets/ の下）",
+      example: "parts/apple_red/1.usdz",
+    }),
+    category: z.string().meta({
+      description:
+        "person・animal・plant・food・furniture・vehicle・building・ground・thing のどれか",
+    }),
+    words: z.array(
+      z.object({ word: z.string(), pos: z.enum(["noun", "verb"]) }),
+    ),
+    pose: z.string().optional().meta({ description: "人物と動物のポーズ" }),
+    size: Vec3.meta({ description: "外接する箱の [幅, 高さ, 奥行き]（m）" }),
+    label: z.string().meta({ example: "リンゴ" }),
+    anchors: z
+      .object({
+        top: z
+          .number()
+          .optional()
+          .meta({ description: "上に物を置ける面の高さ（m）" }),
+        seat: Vec3.optional().meta({ description: "座る点" }),
+        hip: Vec3.optional().meta({
+          description: "座るポーズの人の腰の点",
+        }),
+      })
+      .optional()
+      .meta({ description: "置き方の手がかりの点" }),
+  })
+  .meta({ ref: "PartMeta", description: "部品のメタデータ" });
+
+export const ListPartsResponse = z
+  .object({ parts: z.array(PartMeta) })
+  .meta({ ref: "ListPartsResponse" });
+
+export const SceneLayoutElement = z
+  .object({
+    id: z.string(),
+    label: z.string(),
+    points: z.int(),
+    accept: z.string(),
+    partial: z.string().optional(),
+  })
+  .meta({ ref: "SceneLayoutElement", description: "描写してほしい要素" });
+
+export const SceneMotion = z
+  .object({
+    type: z.enum(["fall", "move", "rotate", "sway"]),
+    to: Vec3.optional().meta({ description: "move の行き先" }),
+    angle: z
+      .number()
+      .optional()
+      .meta({ description: "sway の角度（度、既定 10）" }),
+    duration: z.number().meta({ description: "秒" }),
+    delay: z.number().optional().meta({ description: "秒（既定 0）" }),
+    loop: z.boolean().optional().meta({ description: "既定 true" }),
+  })
+  .meta({
+    ref: "SceneMotion",
+    description: "簡単な動き。時刻は round の startAt から数える",
+  });
+
+export const SceneLayoutItem = z
+  .object({
+    key: z.string(),
+    part: z.string().meta({
+      description: "部品の ID。版を固定するときは apple_red@1",
+      example: "apple_red",
+    }),
+    position: Vec3.meta({ description: "部品の原点（底面の中心）の位置（m）" }),
+    yaw: z
+      .number()
+      .optional()
+      .meta({ description: "Y 軸まわりの回転（度、既定 0）" }),
+    scale: z.number().optional().meta({ description: "既定 1" }),
+    motion: SceneMotion.optional(),
+  })
+  .meta({ ref: "SceneLayoutItem", description: "置く部品" });
+
+export const SceneLayout = z
+  .object({
+    protocol: z.literal("scenenglish.scene/1"),
+    id: z.string().meta({ example: "gen-7k2m9q4x3a" }),
+    name: z.string().meta({ example: "リンゴが落ちる公園" }),
+    difficulty: z.enum(["easy", "normal", "hard"]),
+    description: z.string(),
+    elements: z.array(SceneLayoutElement),
+    extraMax: z.int(),
+    items: z.array(SceneLayoutItem),
+  })
+  .meta({
+    ref: "SceneLayout",
+    description: "配置の JSON（scenenglish.scene/1）",
+  });
+
+export const GenerateSceneRequest = z
+  .object({
+    difficulty: z
+      .enum(["easy", "normal", "hard"])
+      .meta({ description: "難しさ" }),
+    theme: z.string().trim().min(1).max(50).optional().meta({
+      description:
+        "場面のテーマ（1〜50 文字、任意）。省けば、指示の中のテーマの一覧（公園・カフェ・店・駅・部屋など）から Claude が選ぶ",
+      example: "公園",
+    }),
+  })
+  .meta({ ref: "GenerateSceneRequest" });
