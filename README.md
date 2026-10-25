@@ -46,11 +46,11 @@ https://github.com/user-attachments/assets/b51df3fd-1d8b-4c19-bede-7b744261bc7c
 
    <img src="docs/images/screens/generating.gif" width="200" alt="待合: AI が場面を生成中、3D の人が走る"> <img src="docs/images/screens/countdown.gif" width="200" alt="カウントダウン: 3・2・1 の間に 3D の場面が回る">
 
-3. 同時に話す：見たものを英語で描写します（最長 20 秒）。話している間は、声の大きさに合わせて下の波が動きます。話し終えたら、ほかの人を待つ間に場面の正答例が出ます。
+3. 同時に話す：見たものを英語で描写します（最長 20 秒）。話している間は、声の大きさに合わせて下の波が動きます。話し終えたら、ほかの人を待つ間に場面の正答例（正確には場面生成時のプロンプトのようなもの）が出ます。
 
    <img src="docs/images/screens/recording.gif" width="200" alt="録音中: 話す声に合わせて波が動く"> <img src="docs/images/screens/waiting.gif" width="200" alt="待機: 正答例が少しずつ出て、ほかの人の採点の進み具合が分かる">
 
-4. 結果発表：AI の採点で、下の順位から 1 人ずつ発表します。全員の描写と講評を並べて見比べられます。
+4. 結果発表：AI の採点で、順位を発表します。全員の描写と講評を並べて見比べられます。
 
    <img src="docs/images/screens/ranking.gif" width="200" alt="結果発表: 4 位から順に点数が出て、最後に優勝が出る"> <img src="docs/images/screens/everyone.png" width="200" alt="みんなの描写: 場面と、全員の描写・点数・講評">
 
@@ -58,7 +58,7 @@ https://github.com/user-attachments/assets/b51df3fd-1d8b-4c19-bede-7b744261bc7c
 
    <img src="docs/images/screens/review.png" width="200" alt="振り返り: 合計点と内容・表現・話し方の内訳、自分の描写、できたこと"> <img src="docs/images/screens/review-2.png" width="200" alt="振り返り: 次はこれ、話し方のコツ">
 
-ホームと待合の画面は、シミュレータで仮のデータ（Mock）を使って撮りました。それ以外は本番のバックエンドで 4 人で遊んで撮ったもので、点数と講評は本物の AI の採点です（ほかの 3 人と、4 人の声は合成音声の仮のものです）。
+ホームと待合の画面は、シミュレータで限りなく本番に近い仮のデータ（Mock）を使って撮りました。それ以外は本番のバックエンドで 4 人で遊んで撮ったもので、点数と講評は本物の AI の採点です（ほかの 3 人と、4 人の声は合成音声の仮のものです）。
 
 ### 特長
 
