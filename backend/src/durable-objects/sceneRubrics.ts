@@ -14,11 +14,13 @@ export class SceneRubrics extends DurableObject<CloudflareBindings> {
 
   /** まだ無ければ保存する。もうあれば（ほかの人が先に作っていれば）そちらを返す */
   async keep(rubric: Scene): Promise<{ rubric: Scene; created: boolean }> {
-    const existing = await this.ctx.storage.get<Scene>(KEY);
-    if (existing) return { rubric: existing, created: false };
-    await this.ctx.storage.put(KEY, rubric);
-    await this.ctx.storage.setAlarm(Date.now() + TTL_MS);
-    return { rubric, created: true };
+    return this.ctx.blockConcurrencyWhile(async () => {
+      const existing = await this.ctx.storage.get<Scene>(KEY);
+      if (existing) return { rubric: existing, created: false };
+      await this.ctx.storage.put(KEY, rubric);
+      await this.ctx.storage.setAlarm(Date.now() + TTL_MS);
+      return { rubric, created: true };
+    });
   }
 
   async alarm() {
