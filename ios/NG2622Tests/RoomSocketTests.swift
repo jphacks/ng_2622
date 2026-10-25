@@ -37,7 +37,7 @@ struct RoomSocketDecodeTests {
 struct StartByDifficultyTests {
   @Test(arguments: SceneDifficulty.allCases)
   func encodes(difficulty: SceneDifficulty) throws {
-    let data = try JSONEncoder().encode(StartByDifficulty(difficulty: difficulty))
+    let data = try JSONEncoder().encode(LiveGameClient.startMessage(difficulty: difficulty))
     let object = try #require(try JSONSerialization.jsonObject(with: data) as? [String: String])
     #expect(object == ["type": "start", "difficulty": difficulty.rawValue])
   }

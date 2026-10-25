@@ -129,8 +129,12 @@ final class LiveGameClient: GameClient {
 
   /// 難易度だけを送り、場面は部屋が作り置きの中から選ぶ（round の sceneId で届く）。sceneId は一緒に送らない
   func startRound(difficulty: SceneDifficulty) async throws {
-    guard let socket else { throw GameError.connectionFailed }
-    try await socket.send(StartByDifficulty(difficulty: difficulty))
+    try await send(Self.startMessage(difficulty: difficulty))
+  }
+
+  /// 難易度の start（{ type: "start", difficulty }）
+  static func startMessage(difficulty: SceneDifficulty) -> Components.Schemas.ClientMessage {
+    .start(.init(_type: .start, difficulty: Components.Schemas.Difficulty(rawValue: difficulty.rawValue)))
   }
 
   func finishSpeaking(audio: RecordedAudio?) async throws {

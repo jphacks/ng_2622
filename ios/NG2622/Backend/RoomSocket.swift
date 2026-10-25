@@ -31,15 +31,6 @@ final class RoomSocket {
   }
 
   func send(_ message: Components.Schemas.ClientMessage) async throws {
-    try await sendJSON(message)
-  }
-
-  /// 作った型にまだ無いメッセージ（難易度の start）を送る
-  func send(_ message: StartByDifficulty) async throws {
-    try await sendJSON(message)
-  }
-
-  private func sendJSON(_ message: some Encodable) async throws {
     let data = try JSONEncoder().encode(message)
     try await task.send(.string(String(decoding: data, as: UTF8.self)))
   }
@@ -73,23 +64,6 @@ final class RoomSocket {
 
   func close() {
     task.cancel(with: .normalClosure, reason: nil)
-  }
-}
-
-/// 難易度でラウンドを始める start（{ type: "start", difficulty }）。部屋が作り置きの場面からその難易度で選び、
-/// round の sceneId で全員に配る。backend/openapi.json の StartMessage にまだ difficulty が無いので手で書く。
-/// openapi.json に入ったら、作った型（ClientMessage.start）に置き換える
-struct StartByDifficulty: Encodable, Equatable {
-  let type = "start"
-  let difficulty: String
-
-  init(difficulty: SceneDifficulty) {
-    self.difficulty = difficulty.rawValue
-  }
-
-  private enum CodingKeys: String, CodingKey {
-    case type
-    case difficulty
   }
 }
 
