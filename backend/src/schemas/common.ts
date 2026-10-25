@@ -49,11 +49,11 @@ export const Difficulty = z.enum(["easy", "normal", "hard"]).meta({
 });
 
 export const RoomPhase = z
-  .enum(["lobby", "playing", "waiting", "results"])
+  .enum(["lobby", "generating", "playing", "waiting", "results"])
   .meta({
     ref: "RoomPhase",
     description:
-      "部屋の進み具合。lobby: 待合、playing: 回転と録音、waiting: 採点待ち、results: 結果発表",
+      "部屋の進み具合。lobby: 待合、generating: 部屋が AI で場面を作っている、playing: 回転と録音、waiting: 採点待ち、results: 結果発表",
   });
 
 export const ErrorCode = z

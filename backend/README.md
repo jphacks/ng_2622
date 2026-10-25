@@ -65,6 +65,16 @@ curl -F audio=@test.wav -F sceneId=park http://localhost:8787/dev/score
 - 座標の計算（`compose.ts`、純粋な関数。テストは `test/compose.test.ts`）: 9 区画（一辺 8/3 m）、地面に置く物は区画の中で size が重ならない点を探す、幅いっぱいの背景の壁は奥の端に付ける、`on` は相手の `anchors.top`、`sit_on` は相手の `seat` に人の `hip` を合わせる、横・前・後ろは相手の size ＋ 10 cm の隙間、`above` は相手の高さ＋ 0.3 m。配点は合計 90 に直し、`extraMax` は 10。
 - 生成は `SCENE_GENERATION=on` のときだけ動く。`wrangler.jsonc` では本番もプレビューも `off`。
 
+### 部屋で AI に作らせる
+
+ホストが `start` を `difficulty` で送ると、`SCENE_GENERATION=on` で、その部屋で試した回数が 20 回未満なら、部屋（`Room` の DO）が場面を作る。
+
+- 部屋は phase `generating` の `room` を配ってから Claude を呼ぶ（10 秒まで、やり直さない）。できたら今までどおり `room`（`playing`）・`round`（`sceneId` だけ）・`progress` を配る。
+- タイムアウト・断られた・形が違う・API の失敗のときは、黙って同じ難易度の作り置きの場面にする。スイッチが off か 20 回を超えたら、今までどおり `generating` を出さずに作り置きから選ぶ。試した回数は失敗も数える（`RoomState.generationCount`）。
+- 作っている間にホストが `leave` すると生成を止め、残った人で作り置きの場面のラウンドを始める（切断しただけでは止めない）。
+- 作った配置は DO の保存領域（キー `layout:<sceneId>`）に置き、部屋が消えるときに一緒に消える。アプリは `GET /scenes/{sceneId}/layout?room=<部屋のコード>` で取る。採点も `beginGrading` が返す配置を使う。
+- 手元で試すときは、`backend/.dev.vars` に `CLAUDE_API_KEY` と `SCENE_GENERATION=on` を書いて `pnpm dev` する。本番では `CLAUDE_API_KEY`（採点と同じ secret）が要る。
+
 ### 手元で作り置く
 
 `backend/.dev.vars` に `CLAUDE_API_KEY` を書いておく。生成のスイッチと合言葉は、別の env ファイル（`.dev.vars*` は git に入らない）に書いて渡す。`--var` で渡すと合言葉が ps に出るので使わない。

@@ -43,13 +43,13 @@ export const StartMessage = z
     }),
     difficulty: Difficulty.optional().meta({
       description:
-        "作り置きの場面をこの難易度から部屋に選ばせる。その部屋でまだ出ていないものからランダムに 1 つ選び、全部出たら最初に戻る。選んだ sceneId は round で届く。sceneId と一緒に送ると invalid_message",
+        "この難易度の場面を部屋に用意させる。部屋が AI で作れるとき（生成が on で、その部屋で作らせた回数が 20 回未満）は、まず phase が generating の room が全員に届き、部屋が AI で場面を作る（10 秒まで）。作れなかったとき・作れないときは、作り置きの場面のうちその部屋でまだ出ていないものからランダムに 1 つ選ぶ（全部出たら最初に戻る）。どちらの場合も sceneId は round で届く。AI で作った場面の配置は GET /scenes/{sceneId}/layout?room=<部屋のコード> で取る。sceneId と一緒に送ると invalid_message",
     }),
   })
   .meta({
     ref: "StartMessage",
     description:
-      "ホストだけが送れる。待合のときだけ有効。このときつながっている人がラウンドの参加者になる（切断中の人は入らない）",
+      "ホストだけが送れる。待合のときだけ有効（generating の間に送ると not_in_lobby）。ラウンドが始まったときにつながっている人がラウンドの参加者になる（切断中の人は入らない）。generating の間にホストが leave すると、生成をやめて作り置きの場面でラウンドを始める",
   });
 
 export const CloseMessage = z.object({ type: z.literal("close") }).meta({

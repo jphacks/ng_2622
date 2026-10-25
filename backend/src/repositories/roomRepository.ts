@@ -13,6 +13,9 @@ export const createRoomRepository = (rooms: CloudflareBindings["ROOM"]) => ({
     roomId: string,
     input: { playerId: string; round: number; grade: Grade },
   ) => rooms.getByName(roomId).recordGrade(input),
+  /** その部屋で AI が作った場面の配置。無ければ null */
+  findSceneLayout: (roomId: string, sceneId: string) =>
+    rooms.getByName(roomId).sceneLayout(sceneId),
 });
 
 export type RoomRepository = ReturnType<typeof createRoomRepository>;

@@ -87,7 +87,7 @@
         "description": "接続したら最初に送る。ホストは POST /rooms で受け取った playerId と token を、切断から戻る人は welcome で受け取ったものを付ける。初めて入る人は name だけ"
       },
       "Difficulty": {
-        "description": "作り置きの場面をこの難易度から部屋に選ばせる。その部屋でまだ出ていないものからランダムに 1 つ選び、全部出たら最初に戻る。選んだ sceneId は round で届く。sceneId と一緒に送ると invalid_message",
+        "description": "この難易度の場面を部屋に用意させる。部屋が AI で作れるとき（生成が on で、その部屋で作らせた回数が 20 回未満）は、まず phase が generating の room が全員に届き、部屋が AI で場面を作る（10 秒まで）。作れなかったとき・作れないときは、作り置きの場面のうちその部屋でまだ出ていないものからランダムに 1 つ選ぶ（全部出たら最初に戻る）。どちらの場合も sceneId は round で届く。AI で作った場面の配置は GET /scenes/{sceneId}/layout?room=<部屋のコード> で取る。sceneId と一緒に送ると invalid_message",
         "type": "string",
         "enum": [
           "easy",
@@ -113,7 +113,7 @@
           "type"
         ],
         "additionalProperties": false,
-        "description": "ホストだけが送れる。待合のときだけ有効。このときつながっている人がラウンドの参加者になる（切断中の人は入らない）"
+        "description": "ホストだけが送れる。待合のときだけ有効（generating の間に送ると not_in_lobby）。ラウンドが始まったときにつながっている人がラウンドの参加者になる（切断中の人は入らない）。generating の間にホストが leave すると、生成をやめて作り置きの場面でラウンドを始める"
       },
       "CloseMessage": {
         "type": "object",
@@ -241,11 +241,12 @@
         "type": "string",
         "enum": [
           "lobby",
+          "generating",
           "playing",
           "waiting",
           "results"
         ],
-        "description": "部屋の進み具合。lobby: 待合、playing: 回転と録音、waiting: 採点待ち、results: 結果発表"
+        "description": "部屋の進み具合。lobby: 待合、generating: 部屋が AI で場面を作っている、playing: 回転と録音、waiting: 採点待ち、results: 結果発表"
       },
       "Player": {
         "type": "object",
@@ -1978,8 +1979,8 @@
         "tags": [
           "scenes"
         ],
-        "summary": "作り置きの場面の配置の JSON",
-        "description": "作り置きの場面（gen-…）の配置の JSON をそのまま返す。round で届いた sceneId の場面を組み立てるのに使う。手作りの場面には無い（404）",
+        "summary": "場面の配置の JSON",
+        "description": "作り置きの場面（gen-…）か、部屋が AI で作った場面の配置の JSON をそのまま返す。round で届いた sceneId の場面を組み立てるのに使う。作り置きに無い場面は room（部屋のコード）を付けると、その部屋が作って置いた配置を返す（部屋が消えると無くなる）。手作りの場面には無い（404）",
         "responses": {
           "200": {
             "description": "配置の JSON",
@@ -1991,8 +1992,18 @@
               }
             }
           },
+          "400": {
+            "description": "room の形が違う（invalid_message）",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
           "404": {
-            "description": "作り置きの場面が無い（unknown_scene）",
+            "description": "作り置きの場面にも、room の部屋にも無い（unknown_scene）",
             "content": {
               "application/json": {
                 "schema": {
@@ -2003,6 +2014,16 @@
           }
         },
         "parameters": [
+          {
+            "in": "query",
+            "name": "room",
+            "schema": {
+              "example": "0427",
+              "type": "string",
+              "pattern": "^\\d{4}$"
+            },
+            "description": "部屋のコード（数字 4 桁）。部屋が AI で作った場面（作り置きに無い sceneId）は、その部屋に置いてあるので付けて取る。作り置きの場面には要らない"
+          },
           {
             "schema": {
               "type": "string"
