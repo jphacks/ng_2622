@@ -147,6 +147,46 @@ test("タイムアウトはやり直さない（unavailable）", async () => {
   assert.equal(f.calls.length, 1);
 });
 
+test("options で timeout と回数を変えられる（部屋は 10 秒・1 回だけ）", async () => {
+  const f = fake([() => message("end_turn", "{}"), () => message("end_turn")]);
+  await failsWith(
+    generatePlan(
+      { CLAUDE_API_KEY: "test" },
+      PARTS,
+      { difficulty: "easy" },
+      { create: f.create },
+      { timeoutMs: 10_000, maxAttempts: 1 },
+    ),
+    "invalid",
+  );
+  assert.equal(f.calls.length, 1, "形が違ってもやり直さない");
+  assert.equal(f.calls[0].timeout, 10_000);
+});
+
+test("止められたら（APIUserAbortError）やり直さない", async () => {
+  const controller = new AbortController();
+  const seen: (AbortSignal | undefined)[] = [];
+  const create = async (
+    _params: unknown,
+    options: { timeout: number; signal?: AbortSignal },
+  ) => {
+    seen.push(options.signal);
+    controller.abort();
+    throw new Anthropic.APIUserAbortError();
+  };
+  await failsWith(
+    generatePlan(
+      { CLAUDE_API_KEY: "test" },
+      PARTS,
+      { difficulty: "easy" },
+      { create: create as never },
+      { signal: controller.signal },
+    ),
+    "unavailable",
+  );
+  assert.deepEqual(seen, [controller.signal]);
+});
+
 test("書かせる形は description と elements を items より先に置く", () => {
   const schema = planSchema(PARTS);
   const keys = Object.keys(schema.properties);

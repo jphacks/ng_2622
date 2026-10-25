@@ -442,12 +442,13 @@ export const classify = (
 
 type CreateMessage = (
   params: Anthropic.MessageCreateParamsNonStreaming,
-  options: { timeout: number },
+  options: { timeout: number; signal?: AbortSignal },
 ) => Promise<Anthropic.Message>;
 
 const callOnce = async (
   create: CreateMessage,
   timeout: number,
+  signal: AbortSignal | undefined,
   model: string,
   effort: Effort,
   system: string,
@@ -467,7 +468,7 @@ const callOnce = async (
       ],
       messages: [{ role: "user", content: userMessage(input) }],
     },
-    { timeout },
+    { timeout, signal },
   );
   if (response.stop_reason === "refusal") {
     throw new SceneGenerationError("refused", "Claude が断った");
@@ -499,15 +500,28 @@ const callOnce = async (
 export const ATTEMPT_TIMEOUT_MS = 60_000;
 
 /**
+ * 呼び方の上書き。部屋の中で作るときは待たせないよう短い timeout で 1 回だけにする（既定は作り置き向け）。
+ * signal で途中で止められる（ホストが抜けたとき）
+ */
+export type GenerateOptions = {
+  /** 各回の timeout（ms）。既定は ATTEMPT_TIMEOUT_MS */
+  timeoutMs?: number;
+  /** 何回まで呼ぶか。既定は 2（1 回やり直す） */
+  maxAttempts?: number;
+  signal?: AbortSignal;
+};
+
+/**
  * 難易度（とテーマ）から場面の関係を書かせる。各回の timeout は 60 秒。
  * 形が違う・途中で止まった・5xx・接続の失敗のときだけ 1 回やり直す。だめなら SceneGenerationError を投げる。
- * deps はテストで Claude を差し替えるためのもの
+ * options で timeout・回数・止める signal を変えられる。deps はテストで Claude を差し替えるためのもの
  */
 export async function generatePlan(
   env: GenerateEnv,
   parts: Part[],
   input: GenerateInput,
   deps: { create?: CreateMessage } = {},
+  options: GenerateOptions = {},
 ): Promise<GenerateResult> {
   if (!env.CLAUDE_API_KEY) {
     throw new SceneGenerationError("unavailable", "CLAUDE_API_KEY が要る");
@@ -524,17 +538,20 @@ export async function generatePlan(
       });
       return (
         params: Anthropic.MessageCreateParamsNonStreaming,
-        options: { timeout: number },
-      ) => client.messages.create(params, options);
+        callOptions: { timeout: number; signal?: AbortSignal },
+      ) => client.messages.create(params, callOptions);
     })();
   const system = buildSystem(parts);
   const schema = planSchema(parts);
+  const timeout = options.timeoutMs ?? ATTEMPT_TIMEOUT_MS;
+  const maxAttempts = options.maxAttempts ?? 2;
   let last: SceneGenerationError | undefined;
-  for (let attempt = 1; attempt <= 2; attempt++) {
+  for (let attempt = 1; attempt <= maxAttempts; attempt++) {
     try {
       const result = await callOnce(
         create,
-        ATTEMPT_TIMEOUT_MS,
+        timeout,
+        options.signal,
         model,
         effort,
         system,
@@ -551,7 +568,8 @@ export async function generatePlan(
       const { error, retry } = classify(e);
       last = error;
       console.error(`場面の生成に失敗（${attempt} 回目）`, error.message);
-      if (!retry) break;
+      // 止められたら（APIUserAbortError は status が無く、やり直す側に分かれる）やり直さない
+      if (!retry || options.signal?.aborted) break;
     }
   }
   throw last as SceneGenerationError;
