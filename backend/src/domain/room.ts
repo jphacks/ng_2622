@@ -1,4 +1,5 @@
 import type { z } from "zod";
+import type { Difficulty } from "../scenes/pool";
 import {
   MAX_PLAYERS,
   type Player as PlayerView,
@@ -14,7 +15,7 @@ import {
 } from "./player";
 import { fail, ok, type Result } from "./result";
 import { type Round, settleRound } from "./round";
-import { isSceneId, pickRandomSceneId } from "./scenes";
+import { isSceneId, pickPoolSceneId, pickRandomSceneId } from "./scenes";
 
 // ---------- 型 ----------
 
@@ -25,6 +26,8 @@ export type RoomState = {
   players: Player[];
   /** 進行中か、最後に遊んだラウンド */
   current: Round | null;
+  /** この部屋で難易度から選んで出した作り置きの場面。重ねて出さないために覚える（前の版で保存した部屋には無い） */
+  playedSceneIds?: string[];
 };
 
 // ---------- ドメインルール ----------
@@ -112,11 +115,17 @@ export const joinRoom = (
 
 /**
  * ラウンドを始める。ホストだけが待合のときにできる。シーンを省くとおまかせ。
+ * 難易度を送ると、その難易度の作り置きの場面のうち、この部屋でまだ出ていないものから選ぶ（シーンとの両方は送れない）。
  * このとき部屋に入っている人（join 済み）がラウンドの参加者になる
  */
 export const startRound = (
   state: RoomState,
-  input: { playerId: string; sceneId?: string; now: number },
+  input: {
+    playerId: string;
+    sceneId?: string;
+    difficulty?: Difficulty;
+    now: number;
+  },
 ): Result<{ state: RoomState; round: Round }> => {
   if (input.playerId !== state.hostId) {
     return fail("not_host", "スタートできるのはホストだけ");
@@ -124,18 +133,35 @@ export const startRound = (
   if (state.phase !== "lobby") {
     return fail("not_in_lobby", "待合でしかスタートできない");
   }
+  if (input.sceneId !== undefined && input.difficulty !== undefined) {
+    return fail(
+      "invalid_message",
+      "sceneId と difficulty はどちらか一方だけ送る",
+    );
+  }
   if (input.sceneId !== undefined && !isSceneId(input.sceneId)) {
     return fail("unknown_scene", `シーン ${input.sceneId} は無い`);
   }
 
+  let sceneId = input.sceneId ?? pickRandomSceneId();
+  let playedSceneIds = state.playedSceneIds;
+  if (input.difficulty !== undefined) {
+    const picked = pickPoolSceneId(input.difficulty, playedSceneIds ?? []);
+    sceneId = picked.sceneId;
+    playedSceneIds = picked.played;
+  }
+
   const round: Round = {
     round: (state.current?.round ?? 0) + 1,
-    sceneId: input.sceneId ?? pickRandomSceneId(),
+    sceneId,
     startAt: input.now + START_DELAY_MS,
     playerIds: state.players.filter((p) => p.name !== null).map((p) => p.id),
     grades: {},
   };
-  return ok({ state: { ...state, phase: "playing", current: round }, round });
+  return ok({
+    state: { ...state, phase: "playing", current: round, playedSceneIds },
+    round,
+  });
 };
 
 /** ホストが結果発表から同じ顔ぶれで待合に戻す */

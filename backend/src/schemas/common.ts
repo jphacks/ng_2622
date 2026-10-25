@@ -42,6 +42,12 @@ export const SceneId = z.string().min(1).meta({
   example: "park",
 });
 
+export const Difficulty = z.enum(["easy", "normal", "hard"]).meta({
+  ref: "Difficulty",
+  description:
+    "作り置きの場面の難易度（easy: かんたん・normal: ふつう・hard: むずかしい）",
+});
+
 export const RoomPhase = z
   .enum(["lobby", "playing", "waiting", "results"])
   .meta({

@@ -1,5 +1,6 @@
 import { z } from "zod";
 import {
+  Difficulty,
   ErrorCode,
   MAX_PLAYERS,
   Player,
@@ -37,7 +38,12 @@ export const StartMessage = z
   .object({
     type: z.literal("start"),
     sceneId: SceneId.optional().meta({
-      description: "省くと「おまかせ」（部屋の側でランダムに選ぶ）",
+      description:
+        "省くと「おまかせ」（部屋の側で手作りの場面からランダムに選ぶ）。difficulty と一緒には送れない",
+    }),
+    difficulty: Difficulty.optional().meta({
+      description:
+        "作り置きの場面をこの難易度から部屋に選ばせる。その部屋でまだ出ていないものからランダムに 1 つ選び、全部出たら最初に戻る。選んだ sceneId は round で届く。sceneId と一緒に送ると invalid_message",
     }),
   })
   .meta({
