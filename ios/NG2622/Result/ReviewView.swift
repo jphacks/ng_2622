@@ -71,20 +71,7 @@ struct ReviewView: View {
       }
 
       if let rewrite = review.rewrite {
-        ReviewCard(title: "こう言い換える") {
-          VStack(alignment: .leading, spacing: 8) {
-            Text(rewrite.before)
-              .font(Theme.font(15, .bold))
-              .strikethrough()
-              .foregroundStyle(Theme.muted)
-            Text(rewrite.after)
-              .font(Theme.font(19, .heavy))
-              .foregroundStyle(Theme.accent)
-            Text(rewrite.reason)
-              .font(Theme.font(14, .bold))
-              .foregroundStyle(Theme.muted)
-          }
-        }
+        RewriteCard(rewrite: rewrite)
       }
 
       ReviewCard(title: "話し方のコツ") {
@@ -182,6 +169,60 @@ private struct TranscriptCard: View {
         .contentTransition(.symbolEffect(.replace))
     }
     .accessibilityLabel(player.isPlaying ? "停止" : "自分の録音を再生")
+  }
+}
+
+/// こう言い換える。見出しの右のボタンでお手本の英文を読み上げられる（再生中はカードの地を薄い紫にする）
+private struct RewriteCard: View {
+  let rewrite: RoundResults.Review.Rewrite
+  @State private var speaker = SpeechPlayer()
+
+  var body: some View {
+    VStack(alignment: .leading, spacing: 10) {
+      HStack {
+        Text("こう言い換える")
+          .font(Theme.font(13, .heavy))
+          .foregroundStyle(Theme.muted)
+        Spacer()
+        if !rewrite.after.isEmpty {
+          speakerButton
+        }
+      }
+      .frame(minHeight: 22)
+      VStack(alignment: .leading, spacing: 8) {
+        Text(rewrite.before)
+          .font(Theme.font(15, .bold))
+          .strikethrough()
+          .foregroundStyle(Theme.muted)
+        Text(rewrite.after)
+          .font(Theme.font(19, .heavy))
+          .foregroundStyle(Theme.accent)
+        Text(rewrite.reason)
+          .font(Theme.font(14, .bold))
+          .foregroundStyle(Theme.muted)
+      }
+      .fixedSize(horizontal: false, vertical: true)
+    }
+    .padding(20)
+    .frame(maxWidth: .infinity, alignment: .leading)
+    .background(speaker.isSpeaking ? Theme.accentSoft : Theme.card, in: RoundedRectangle(cornerRadius: 22))
+    .shadow(color: Theme.ink.opacity(0.07), radius: 10, y: 6)
+    .animation(.easeInOut(duration: 0.2), value: speaker.isSpeaking)
+    .onDisappear { speaker.stop() }
+  }
+
+  private var speakerButton: some View {
+    Button {
+      speaker.toggle(rewrite.after)
+    } label: {
+      Image(systemName: speaker.isSpeaking ? "stop.fill" : "speaker.wave.2.fill")
+        .font(.system(size: speaker.isSpeaking ? 13 : 15, weight: .bold))
+        .foregroundStyle(Theme.accent)
+        .frame(width: 32, height: 32)
+        .background(speaker.isSpeaking ? Theme.card : Theme.accentSoft, in: Circle())
+        .contentTransition(.symbolEffect(.replace))
+    }
+    .accessibilityLabel(speaker.isSpeaking ? "停止" : "お手本の英文を再生")
   }
 }
 

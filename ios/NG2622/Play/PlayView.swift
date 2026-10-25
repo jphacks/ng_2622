@@ -32,6 +32,7 @@ struct PlayView: View {
     }
     .frame(maxWidth: .infinity)
     .task(id: round) { await runTimeline() }
+    .sensoryFeedback(.start, trigger: isRecording) { _, new in new }
   }
 
   // MARK: - 上（カウントダウン → 録音中と残り時間）
@@ -55,18 +56,20 @@ struct PlayView: View {
     TimelineView(.periodic(from: round.startsAt, by: 0.05)) { context in
       let elapsed = context.date.timeIntervalSince(round.startsAt)
       let n = 3 - Int(floor(elapsed))
+      let shown = (elapsed >= 0 && (1...3).contains(n) && !isRecording) ? n : nil
       ZStack {
-        if elapsed >= 0 && (1...3).contains(n) && !isRecording {
-          Text("\(n)")
+        if let shown {
+          Text("\(shown)")
             .font(Theme.font(72, .black))
             .monospacedDigit()
             .foregroundStyle(Theme.accent)
-            .id(n)
+            .id(shown)
             .transition(.asymmetric(insertion: .scale(scale: 0.5).combined(with: .opacity), removal: .identity))
         }
       }
       .frame(height: 76)
       .animation(.spring(duration: 0.35, bounce: 0.45), value: n)
+      .sensoryFeedback(.impact(weight: .medium), trigger: shown) { _, new in new != nil }
       .accessibilityLabel(n >= 1 ? "\(n)" : "")
     }
   }
@@ -74,6 +77,8 @@ struct PlayView: View {
   private var recordingStatus: some View {
     TimelineView(.animation(paused: !isRecording)) { context in
       let left = max(0, recordingEnd.timeIntervalSince(context.date))
+      let secondsLeft = Int(ceil(left))
+      let warningSecond = (isRecording && (1...5).contains(secondsLeft)) ? secondsLeft : nil
       VStack(spacing: 10) {
         HStack(alignment: .firstTextBaseline) {
           HStack(spacing: 8) {
@@ -83,10 +88,12 @@ struct PlayView: View {
           Spacer()
           HStack(alignment: .firstTextBaseline, spacing: 2) {
             Text("残り")
-            Text("\(Int(ceil(left)))")
+            Text("\(secondsLeft)")
               .font(Theme.font(30, .heavy))
               .monospacedDigit()
-              .foregroundStyle(Theme.ink)
+              .foregroundStyle(warningSecond != nil ? Theme.red : Theme.ink)
+              .contentTransition(.numericText(countsDown: true))
+              .animation(.spring(duration: 0.25, bounce: 0.4), value: secondsLeft)
             Text("秒")
           }
           .font(Theme.font(18, .heavy))
@@ -97,12 +104,13 @@ struct PlayView: View {
             .fill(Theme.accentSoft)
             .overlay(alignment: .leading) {
               Capsule()
-                .fill(Theme.accent)
+                .fill(warningSecond != nil ? Theme.red : Theme.accent)
                 .frame(width: geo.size.width * min(1, left / RoundTiming.recording))
             }
         }
         .frame(height: 14)
       }
+      .sensoryFeedback(.impact(weight: .light), trigger: warningSecond) { _, new in new != nil }
     }
   }
 
