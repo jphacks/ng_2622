@@ -22,3 +22,6 @@ PRODUCT_BUNDLE_IDENTIFIER = jp.jphacks.ng2622.yourname
 // MOCK_INCLUDES_OFFLINE = YES   // ほかの参加者の 1 人がラウンドの途中で切断する
 // MOCK_HOST_START_DELAY = 6     // 部屋に入ったあと、ホストがスタートするまでの秒数
 // 部屋に入る画面では、コード 0000 だけが「部屋が見つかりません」になり、ほかの 4 桁は入れる
+
+// 任意: 待合でのシーンの選び方を変える（既定は Mock が difficulty、Live が list）。ここに書くと Mock と Live の両方に効く
+// SCENE_PICK = list             // difficulty（難易度だけを選ぶ）か list（手作りのシーンの一覧）

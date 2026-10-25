@@ -72,6 +72,12 @@ final class RoomSession {
     Task { try? await client.startRound(sceneID: sceneID) }
   }
 
+  /// ホストが難易度だけを選んでラウンドを始める。どの場面かはホストにも前もって伝えず、round で届く
+  func start(difficulty: SceneDifficulty) {
+    guard isHost, phase == .lobby else { return }
+    Task { try? await client.startRound(difficulty: difficulty) }
+  }
+
   /// 「話し終えた」か、20 秒たった
   func finishSpeaking() {
     guard case .playing = phase else { return }

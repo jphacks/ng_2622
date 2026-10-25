@@ -18,6 +18,9 @@ final class MockGameClient: GameClient {
   let events: AsyncStream<GameEvent>
   private let continuation: AsyncStream<GameEvent>.Continuation
   private let options: Options
+  /// 難易度で選ぶときの作り置きの場面（SCENE_PICK = difficulty）。nil なら手作りのシーンから選ぶ。
+  /// 部屋ごとに作るので、出た場面もこの部屋の分だけを数える
+  private var pool: ScenePool?
 
   private var code = ""
   private var isHost = false
@@ -51,8 +54,9 @@ final class MockGameClient: GameClient {
   /// ほかの参加者の色。自分の色は除いて使う
   private static let colors: [UInt32] = PlayerProfile.colors + [0x5FAE3C, 0xE5484D]
 
-  init(options: Options) {
+  init(options: Options, pool: ScenePool? = nil) {
     self.options = options
+    self.pool = pool
     (events, continuation) = AsyncStream.makeStream()
   }
 
@@ -82,12 +86,16 @@ final class MockGameClient: GameClient {
     // ホストは先にいる。ほかの人は後から入ってくる
     let others = makeOthers(for: player, count: max(1, options.otherPlayers), hostFirst: true)
     enter(as: player, present: Array(others.prefix(1)), joining: Array(others.dropFirst()))
-    // ホストは「おまかせ」でスタートする（シーンはスタートのときに決まる）
+    // ホストは「おまかせ」でスタートする（シーンはスタートのときに決まる）。難易度で選ぶときは、難易度もランダム
     let delay = options.hostStartDelay
     hostTask = Task { [weak self] in
       try? await Task.sleep(for: .seconds(delay))
-      if Task.isCancelled { return }
-      try? await self?.beginRound(sceneID: nil)
+      guard let self, !Task.isCancelled else { return }
+      if let difficulty = pool?.difficulties.randomElement() {
+        try? await beginRound(difficulty: difficulty)
+      } else {
+        try? await beginRound(sceneID: nil)
+      }
     }
   }
 
@@ -102,6 +110,11 @@ final class MockGameClient: GameClient {
   func startRound(sceneID: String?) async throws {
     guard isHost else { return }
     try await beginRound(sceneID: sceneID)
+  }
+
+  func startRound(difficulty: SceneDifficulty) async throws {
+    guard isHost else { return }
+    try await beginRound(difficulty: difficulty)
   }
 
   func playAgain() async throws {
@@ -146,6 +159,13 @@ final class MockGameClient: GameClient {
   }
 
   // MARK: - ラウンド
+
+  /// 作り置きの場面から、この部屋でまだ出ていないものを選んで始める（本物はバックエンドの部屋が選ぶ予定）。
+  /// 作り置きが無ければ、手作りのシーンからランダムに選ぶ
+  private func beginRound(difficulty: SceneDifficulty) async throws {
+    guard !roundRunning else { return }
+    try await beginRound(sceneID: pool?.draw(difficulty))
+  }
 
   /// sceneID が nil なら「おまかせ」で、ここでランダムに選ぶ（本物は部屋の側が選ぶ）
   private func beginRound(sceneID: String?) async throws {

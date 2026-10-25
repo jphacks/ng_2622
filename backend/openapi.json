@@ -663,9 +663,10 @@
           "not_playing",
           "already_submitted",
           "invalid_audio",
-          "not_in_results"
+          "not_in_results",
+          "scoring_failed"
         ],
-        "description": "room_not_found: 部屋が無い\nroom_full: 満員\ninvalid_message: メッセージの形が違う\nunauthorized: 参加者の ID と合言葉が合わない\nnot_host: ホストだけができる操作\nnot_in_lobby: 待合でしかできない操作\nunknown_scene: シーンの ID が無い\nserver_busy: 空いている部屋のコードが無い\nnot_playing: ラウンド中でない、ラウンドの番号が違う、またはそのラウンドに参加していない\nalready_submitted: このラウンドの音声はもう受け取った\ninvalid_audio: 音声が 1 MB までの WAV でない\nnot_in_results: 結果発表のときにしかできない操作"
+        "description": "room_not_found: 部屋が無い\nroom_full: 満員\ninvalid_message: メッセージの形が違う\nunauthorized: 参加者の ID と合言葉が合わない\nnot_host: ホストだけができる操作\nnot_in_lobby: 待合でしかできない操作\nunknown_scene: シーンの ID が無い\nserver_busy: 空いている部屋のコードが無い\nnot_playing: ラウンド中でない、ラウンドの番号が違う、またはそのラウンドに参加していない\nalready_submitted: このラウンドの音声はもう受け取った\ninvalid_audio: 音声が 1 MB までの WAV でない\nnot_in_results: 結果発表のときにしかできない操作\nscoring_failed: 採点の途中で失敗した（Claude の呼び出しなど）"
       },
       "ErrorMessage": {
         "type": "object",
@@ -1005,6 +1006,389 @@
           "reviewerId",
           "name",
           "rating"
+        ]
+      },
+      "ScoredScene": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "description": "場面の名前（日本語）"
+          },
+          "description": {
+            "type": "string",
+            "description": "配置から作った場面の説明（英語）"
+          }
+        },
+        "required": [
+          "name",
+          "description"
+        ],
+        "additionalProperties": false
+      },
+      "ScoredElement": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "label": {
+            "type": "string",
+            "description": "要素の名前（日本語）"
+          },
+          "points": {
+            "type": "integer",
+            "minimum": -9007199254740991,
+            "maximum": 9007199254740991,
+            "description": "配点"
+          },
+          "level": {
+            "type": "string",
+            "enum": [
+              "full",
+              "partial",
+              "none"
+            ]
+          },
+          "evidence": {
+            "type": "string",
+            "description": "判定の根拠にした発言。none なら空"
+          }
+        },
+        "required": [
+          "id",
+          "label",
+          "points",
+          "level",
+          "evidence"
+        ],
+        "additionalProperties": false
+      },
+      "ContentFeedback": {
+        "type": "object",
+        "properties": {
+          "strength": {
+            "type": "object",
+            "properties": {
+              "quote": {
+                "type": "string",
+                "description": "根拠にした本人の発話（文字起こしから引用）。無ければ空"
+              },
+              "text": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "quote",
+              "text"
+            ],
+            "additionalProperties": false
+          },
+          "nextStep": {
+            "type": "object",
+            "properties": {
+              "kind": {
+                "type": "string",
+                "enum": [
+                  "content",
+                  "expression"
+                ]
+              },
+              "gain": {
+                "type": [
+                  "integer",
+                  "null"
+                ],
+                "minimum": -9007199254740991,
+                "maximum": 9007199254740991,
+                "description": "足すと内容の点が何点伸びるか。内容の要素のときだけ"
+              },
+              "text": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "kind",
+              "gain",
+              "text"
+            ],
+            "additionalProperties": false
+          },
+          "rewrite": {
+            "type": [
+              "object",
+              "null"
+            ],
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/Rewrite"
+              }
+            ],
+            "description": "直す所が無ければ null"
+          }
+        },
+        "required": [
+          "strength",
+          "nextStep",
+          "rewrite"
+        ],
+        "additionalProperties": false,
+        "description": "講評（話し方を除く）"
+      },
+      "ScoreResponse": {
+        "type": "object",
+        "properties": {
+          "sceneKey": {
+            "type": "string",
+            "description": "採点の基準を覚えたキー。sceneKey を送ったら key:<sceneKey>、省いたら layout:<配置のハッシュ>"
+          },
+          "content": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 100,
+            "description": "内容（0〜100）。部分点で 0.5 刻みになることがある"
+          },
+          "expression": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 100,
+            "description": "表現（0〜100）"
+          },
+          "scene": {
+            "$ref": "#/components/schemas/ScoredScene"
+          },
+          "elements": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ScoredElement"
+            },
+            "description": "配置から作った要素ごとの判定。配点の合計は 90 で、残りの 10 は一覧にない正しい描写に出す。発話が短すぎるときは判定せず、全部 none"
+          },
+          "transcript": {
+            "type": "string"
+          },
+          "feedback": {
+            "$ref": "#/components/schemas/ContentFeedback"
+          },
+          "mode": {
+            "type": "string",
+            "enum": [
+              "live",
+              "fixed"
+            ],
+            "description": "fixed は外部 API を呼ばない固定の点数（SCORING_MODE）"
+          },
+          "elapsedMs": {
+            "type": "integer",
+            "minimum": -9007199254740991,
+            "maximum": 9007199254740991
+          }
+        },
+        "required": [
+          "sceneKey",
+          "content",
+          "expression",
+          "scene",
+          "elements",
+          "transcript",
+          "feedback",
+          "mode",
+          "elapsedMs"
+        ],
+        "additionalProperties": false,
+        "description": "配置と文字起こしから採点した、内容と表現の点と講評"
+      },
+      "ScoringLayout": {
+        "type": "object",
+        "properties": {
+          "difficulty": {
+            "description": "難しさ。要素の数が変わる（省くと easy）",
+            "type": "string",
+            "enum": [
+              "easy",
+              "normal",
+              "hard"
+            ]
+          },
+          "items": {
+            "minItems": 1,
+            "maxItems": 40,
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "key": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "part": {
+                  "type": "string",
+                  "minLength": 1,
+                  "description": "部品の ID（assets/parts/index.json）。版を書くときは apple@1"
+                },
+                "position": {
+                  "type": "array",
+                  "prefixItems": [
+                    {
+                      "type": "number"
+                    },
+                    {
+                      "type": "number"
+                    },
+                    {
+                      "type": "number"
+                    }
+                  ],
+                  "items": false,
+                  "minItems": 3,
+                  "maxItems": 3
+                },
+                "yaw": {
+                  "type": "number"
+                },
+                "scale": {
+                  "type": "number"
+                },
+                "motion": {
+                  "type": "object",
+                  "properties": {
+                    "type": {
+                      "type": "string",
+                      "enum": [
+                        "fall",
+                        "move",
+                        "rotate",
+                        "sway"
+                      ]
+                    },
+                    "to": {
+                      "type": "array",
+                      "prefixItems": [
+                        {
+                          "type": "number"
+                        },
+                        {
+                          "type": "number"
+                        },
+                        {
+                          "type": "number"
+                        }
+                      ],
+                      "items": false,
+                      "minItems": 3,
+                      "maxItems": 3
+                    }
+                  },
+                  "required": [
+                    "type"
+                  ]
+                }
+              },
+              "required": [
+                "key",
+                "part",
+                "position"
+              ]
+            }
+          }
+        },
+        "required": [
+          "items"
+        ],
+        "description": "配置の JSON（scenenglish.scene/1）のうち、採点に使う項目。ほかの項目（name・description・elements など）は送っても無視する。座標や動きの細かい項目（duration など）も読まない"
+      },
+      "ScoreRequest": {
+        "type": "object",
+        "properties": {
+          "layout": {
+            "$ref": "#/components/schemas/ScoringLayout"
+          },
+          "transcript": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 2000,
+            "description": "発話の文字起こし（英語）"
+          },
+          "sceneKey": {
+            "description": "同じ場面をまとめるキー（例: 部屋のコードとラウンドの番号）。同じキーの人は、最初に作った同じ基準で採点される。省くと配置の中身から決める",
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128
+          }
+        },
+        "required": [
+          "layout",
+          "transcript"
+        ]
+      },
+      "RubricElement": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "label": {
+            "type": "string",
+            "description": "要素の名前（日本語）"
+          },
+          "points": {
+            "type": "integer",
+            "minimum": -9007199254740991,
+            "maximum": 9007199254740991,
+            "description": "配点"
+          }
+        },
+        "required": [
+          "id",
+          "label",
+          "points"
+        ],
+        "additionalProperties": false
+      },
+      "PrepareRubricResponse": {
+        "type": "object",
+        "properties": {
+          "sceneKey": {
+            "type": "string"
+          },
+          "created": {
+            "type": "boolean",
+            "description": "この呼び出しで作ったか。false は覚えていたもの"
+          },
+          "scene": {
+            "$ref": "#/components/schemas/ScoredScene"
+          },
+          "elements": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/RubricElement"
+            }
+          }
+        },
+        "required": [
+          "sceneKey",
+          "created",
+          "scene",
+          "elements"
+        ],
+        "additionalProperties": false,
+        "description": "用意した採点の基準"
+      },
+      "PrepareRubricRequest": {
+        "type": "object",
+        "properties": {
+          "layout": {
+            "$ref": "#/components/schemas/ScoringLayout"
+          },
+          "sceneKey": {
+            "description": "同じ場面をまとめるキー（例: 部屋のコードとラウンドの番号）。同じキーの人は、最初に作った同じ基準で採点される。省くと配置の中身から決める",
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128
+          }
+        },
+        "required": [
+          "layout"
         ]
       }
     }
@@ -1437,6 +1821,110 @@
             "application/json": {
               "schema": {
                 "$ref": "#/components/schemas/SubmitReviewRequest"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/score": {
+      "post": {
+        "operationId": "scoreLayout",
+        "tags": [
+          "scoring"
+        ],
+        "summary": "配置と文字起こしから採点する",
+        "description": "場面の配置の JSON（items）と発話の文字起こしを送る。配置と部品のメタデータ（名前・ポーズ・大きさ・あれば色）から採点の基準（場面の説明・要素・配点）を作り、内容と表現の点と講評を返す。画像は使わず、話し方（発音）も採点しない。同じ sceneKey（省いたら同じ配置）の基準は 1 日覚えて使い回すので、同じ場面の全員が同じ基準で採点される。",
+        "responses": {
+          "200": {
+            "description": "採点した",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ScoreResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "本文の形が違う・部品が 1 つも見つからない（invalid_message）",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "502": {
+            "description": "採点の途中で失敗した（scoring_failed）",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ScoreRequest"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/score/rubric": {
+      "post": {
+        "operationId": "prepareRubric",
+        "tags": [
+          "scoring"
+        ],
+        "summary": "採点の基準を先に作っておく",
+        "description": "場面を選んだとき（ラウンドの前）に呼ぶと、採点の基準を作って覚えておく。あとの POST /score は基準を作る時間を待たずに済む。もう覚えていれば、それを返す。SCORING_MODE が fixed のときも基準は作る。",
+        "responses": {
+          "200": {
+            "description": "基準を用意した",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PrepareRubricResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "本文の形が違う・部品が 1 つも見つからない（invalid_message）",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "502": {
+            "description": "基準を作る途中で失敗した（scoring_failed）",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PrepareRubricRequest"
               }
             }
           }

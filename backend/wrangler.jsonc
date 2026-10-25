@@ -8,22 +8,27 @@
   },
   // 採点の設定。SCORING_MODE は "live"（Azure と Claude を呼ぶ）か "fixed"（固定の点数）。
   // 本番は live。PR のプレビューは料金を抑えるため fixed（下の previews）。AZURE_LOCATION は Azure のリソースのリージョン
+  // CLAUDE_MODEL・CLAUDE_EFFORT は採点に使う Claude。Haiku 5.5 の high は 1 回 7〜8 秒かかったので、Sonnet 5.5 の low（3〜4 秒）にしている
   "vars": {
     "SCORING_MODE": "live",
     "SCORE_WEIGHTS": "50,25,25",
-    "AZURE_LOCATION": "japaneast"
+    "AZURE_LOCATION": "japaneast",
+    "CLAUDE_MODEL": "claude-sonnet-5-5",
+    "CLAUDE_EFFORT": "low"
   },
-  // SCENE_REVIEWS はシーンの評価（全シーンで 1 つ）
+  // SCENE_REVIEWS はシーンの評価（全シーンで 1 つ）。SCENE_RUBRICS は配置から作った採点の基準（場面ごとに 1 つ）
   "durable_objects": {
     "bindings": [
       { "name": "ROOM", "class_name": "Room" },
-      { "name": "SCENE_REVIEWS", "class_name": "SceneReviews" }
+      { "name": "SCENE_REVIEWS", "class_name": "SceneReviews" },
+      { "name": "SCENE_RUBRICS", "class_name": "SceneRubrics" }
     ]
   },
   // 無料プランは SQLite 版のみ。出した tag は書き換えず、新しい tag で足す
   "migrations": [
     { "tag": "v1", "new_sqlite_classes": ["Room"] },
-    { "tag": "v2", "new_sqlite_classes": ["SceneReviews"] }
+    { "tag": "v2", "new_sqlite_classes": ["SceneReviews"] },
+    { "tag": "v3", "new_sqlite_classes": ["SceneRubrics"] }
   ],
   // PR ごとのプレビュー（wrangler preview）の設定。vars や DO の binding は上の階層から引き継がれないので、
   // プレビューでも使うものはここにも書く
@@ -35,7 +40,8 @@
     "durable_objects": {
       "bindings": [
         { "name": "ROOM", "class_name": "Room" },
-        { "name": "SCENE_REVIEWS", "class_name": "SceneReviews" }
+        { "name": "SCENE_REVIEWS", "class_name": "SceneReviews" },
+        { "name": "SCENE_RUBRICS", "class_name": "SceneRubrics" }
       ]
     }
   }
