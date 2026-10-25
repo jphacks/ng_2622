@@ -8,7 +8,7 @@
 配置を書く側 ──(GET /parts で部品の一覧を読む)──▶ 配置の JSON を書く ──▶ POST /scenes ──▶ sceneId
                                                                                       │
 部屋（round で sceneId を配る）──▶ 各端末: GET /scenes/{sceneId}/layout ──▶ 部品を取ってきて並べる
-                                    バックエンド: 同じ JSON の description と elements で採点する
+                                    バックエンド: 同じ JSON の部品の情報と description で採点する
 ```
 
 ## 座標
@@ -132,7 +132,7 @@ RealityKit に合わせる。
 
 要素は、置いた部品の `words` と、部品どうしの関係（「犬がボールに向かって走っている」など）から作る。関係のほうに高い配点を付けると、名詞を並べるだけでなく文で描写したくなる。
 
-2026-10-25 に、採点を「配置の情報と採点基準の段階」で付ける形に改めた（[`usecase.md`](./usecase.md) の採点、[ADR](../adr/20261025-score-content-with-layout-and-rubric-bands.md)）。新しい採点では、要素は「主な見どころ」（参考）として Claude に渡し、言えたかを返させて「次に伸ばす一つ」に使う。正解の一覧としては扱わず、`points`・`partial`・`extraMax` は点に使わない。形は `scenenglish.scene/1` のまま残す。
+2026-10-25 に、採点を「配置の情報と採点基準の段階」で付ける形に改めた（[`usecase.md`](./usecase.md) の採点、[ADR](../adr/20261025-score-content-with-layout-and-rubric-bands.md)）。新しい採点では、要素は Claude に渡さない。配置の部品の情報と `description`（補足）を渡す。`elements`・`extraMax` は点に使わないが、形は `scenenglish.scene/1` のまま残す。
 
 ### 置く部品（`items[]`）
 
@@ -205,7 +205,7 @@ render_layout.py で PNG に描く ──▶ 人が目で確かめる ──▶ 
 
 - 場面は遊ぶ前にスクリプトでまとめて作る。待合でその場では作らない。
 - 数: まず難易度ごとに 10 場面（計 30）。
-- 確かめ方: `scripts/scene/render_layout.py` で PNG に描き、人が目で見る。崩れていないか、要素の文がその絵から言えるかを見る。だめなものは捨てて作り直す。
+- 確かめ方: `scripts/scene/render_layout.py` で PNG に描き、人が目で見る。崩れていないか、`description` の文がその絵と合っているかを見る（`description` は採点で補足として Claude に渡すため）。だめなものは捨てて作り直す。
 - 置き場所（案）: `backend/src/scenes/pool/` に 1 場面 1 ファイルの JSON で置き、Worker に同梱する（採点の `backend/src/scoring/scenes.json` と同じ扱い）。R2 には置かない。
 - ID（案）: 今までどおり `gen-` ＋ 英小文字と数字 10 文字。生成の口が付けて返す。
 - 作り置きのスクリプトも `POST /scenes/generate` を呼ぶ。Claude への指示と座標の計算を 1 箇所にまとめるため。
@@ -226,14 +226,14 @@ render_layout.py で PNG に描く ──▶ 人が目で確かめる ──▶ 
 
 [`research/scene-levels-emotions.md`](./research/scene-levels-emotions.md) の A・B・C の段階に合わせる案。
 
-| 難易度 | 段階 | 動詞 | 要素の数 | 部品の数の目安 |
+| 難易度 | 段階 | 動詞 | 説明文の文の数 | 部品の数の目安 |
 | --- | --- | --- | --- | --- |
 | かんたん（`easy`） | A（初級） | stand・walk・run・sit・eat・read など | 4 | 4〜6 |
 | ふつう（`normal`） | B（中級） | lean・reach・pick up・check watch など | 6 | 6〜10 |
 | むずかしい（`hard`） | C（上級） | glance・stroll・crouch など | 8 | 10〜15 |
 
 - 部品の数の目安は、2026-10-24 に決めた値のまま。
-- 言える動詞は、部品のポーズで決まる。今の部品には中級・上級の動詞のポーズが少ないので、足りない分は関係の複雑さ（`between`・`across` など）と要素の数で難しくする（推測）。
+- 言える動詞は、部品のポーズで決まる。今の部品には中級・上級の動詞のポーズが少ないので、足りない分は関係の複雑さ（`between`・`across` など）と説明文の文の数で難しくする（推測）。
 
 ### 待合での出し方
 
@@ -270,18 +270,18 @@ Haiku 5.5、手元の `wrangler dev`、旧形式の口（一言を渡す形）�
 ### 書かせ方
 
 - Claude には座標を書かせず、部品どうしの関係（`on`・`under`・`next_to`・`in_front_of`・`behind` など）と大まかな場所だけを書かせる。バックエンドが部品の `size` から座標を計算し、上の「配置の JSON」にする。プロトコルの形は変えない。
-- Claude は 1 回の呼び出しで、正解の文（要素）を先に書き、その文を描ける部品と関係を後に書く。言わせたい文から場面を組み立てるため。
+- Claude は 1 回の呼び出しで、場面の説明文（`description`、言わせたい文）を先に書き、その文を描ける部品と関係を後に書く。言わせたい文から場面を組み立てるため。説明文は採点でも補足として使う。
 - 座らせる・上に置く: 部品のメタデータの `anchors`（`top`・`seat`・`hip`）から座標を計算する。
 - 呼び方: 採点（`backend/src/scoring/claude.ts`）と同じ SDK（`@anthropic-ai/sdk`）の `messages.create` を 1 回呼ぶ。
 - モデル: まず `claude-haiku-5-5` で作り、作った場面を人が目で確かめてから、`claude-sonnet-5-5` などに変えるかを決める。モデルは環境変数で変えられるようにする。
 
 ### Claude に書かせる形と呼び方
 
-Claude には次の形（JSON Schema）で書かせる。`elements` を `items` より前に置き、要素を先に書かせる。部品の ID は `enum` にし、一覧に無い部品は返らないようにする。
+Claude には次の形（JSON Schema）で書かせる。`description` を `items` より前に置き、説明文を先に書かせる。`elements` は採点に使わないが、プロトコルの形を変えないため書かせる。部品の ID は `enum` にし、一覧に無い部品は返らないようにする。
 
 ```
 { name, description,
-  elements: [{ id, label, points, accept, partial? }],
+  elements: [{ id, label, points, accept, partial? }],   ← 採点には使わない
   items: [{ key, part,
             place: { relation: ground | on | in | under | above | next_to | in_front_of | behind | near | between | sit_on,
                      target?, target2?（between のとき）, zone?（手前・真ん中・奥 × 左・中・右の 9 区画） },
