@@ -59,6 +59,7 @@ test("difficulty を送ると、その難易度の候補から部屋で重なら
       playerId: hostId,
       difficulty: "normal",
       now: 0,
+      connectedIds: new Set([hostId]),
     });
     assert.ok(r.ok);
     assert.ok(candidates.includes(r.value.round.sceneId));
@@ -71,6 +72,7 @@ test("difficulty を送ると、その難易度の候補から部屋で重なら
     playerId: hostId,
     difficulty: "normal",
     now: 0,
+    connectedIds: new Set([hostId]),
   });
   assert.ok(again.ok);
   assert.ok(candidates.includes(again.value.round.sceneId));
@@ -85,6 +87,7 @@ test("難易度ごとに履歴を分けて覚える", () => {
     playerId: hostId,
     difficulty: "easy",
     now: 0,
+    connectedIds: new Set([hostId]),
   });
   assert.ok(easy.ok);
   state = backToLobby(easy.value.state);
@@ -92,6 +95,7 @@ test("難易度ごとに履歴を分けて覚える", () => {
     playerId: hostId,
     difficulty: "hard",
     now: 0,
+    connectedIds: new Set([hostId]),
   });
   assert.ok(hard.ok);
   assert.ok(index.hard.scenes.includes(hard.value.round.sceneId));
@@ -108,6 +112,7 @@ test("sceneId と difficulty の両方を送ると invalid_message", () => {
     sceneId: "park",
     difficulty: "easy",
     now: 0,
+    connectedIds: new Set([hostId]),
   });
   assert.ok(!r.ok);
   assert.equal(r.error.code, "invalid_message");
@@ -115,13 +120,18 @@ test("sceneId と difficulty の両方を送ると invalid_message", () => {
 
 test("どちらも送らなければ手作りの場面のおまかせ、sceneId だけならその場面", () => {
   const { state, hostId } = lobbyWithHost();
-  const random = startRound(state, { playerId: hostId, now: 0 });
+  const random = startRound(state, {
+    playerId: hostId,
+    now: 0,
+    connectedIds: new Set([hostId]),
+  });
   assert.ok(random.ok);
   assert.ok(!random.value.round.sceneId.startsWith("gen-"));
   const chosen = startRound(state, {
     playerId: hostId,
     sceneId: "park",
     now: 0,
+    connectedIds: new Set([hostId]),
   });
   assert.ok(chosen.ok);
   assert.equal(chosen.value.round.sceneId, "park");
