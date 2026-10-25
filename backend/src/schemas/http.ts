@@ -57,6 +57,10 @@ export const AudioHeaders = z.object({
     .string()
     .regex(/^Bearer \S+$/)
     .meta({ description: "Bearer と合言葉（welcome の token）" }),
+  "x-transcript": z.string().max(8000).optional().meta({
+    description:
+      "端末で文字起こしした発話を URL エンコードしたもの（元の文で 2000 文字まで）。あれば発音評価の正解文と内容・表現の採点に使い、無ければ Azure の文字起こしを使う",
+  }),
 });
 
 export const Rating = z.int().min(1).max(5).meta({

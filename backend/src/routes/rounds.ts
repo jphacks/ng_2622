@@ -23,6 +23,17 @@ const errorResponse = (description: string) => ({
   content: jsonContent(ErrorResponse),
 });
 
+// X-Transcript を元の文に戻す。壊れている・長すぎるときは無かったことにし、Azure の文字起こしを使う
+const decodeTranscript = (raw: string | undefined) => {
+  if (!raw) return undefined;
+  try {
+    const text = decodeURIComponent(raw);
+    return text.length <= 2000 ? text : undefined;
+  } catch {
+    return undefined;
+  }
+};
+
 export const roundRoutes = new Hono<AppEnv>().post(
   "/rooms/:roomId/rounds/:round/audio",
   describeRoute({
@@ -30,7 +41,7 @@ export const roundRoutes = new Hono<AppEnv>().post(
     tags: ["rounds"],
     summary: "自分の音声を送る",
     description:
-      "話し終えたら、録音した WAV（16 kHz・16 bit・モノラル、1 MB まで）を本文にそのまま載せて送る。1 ラウンドに 1 回だけ。受け取ったらすぐ 202 を返し、採点は部屋の側で続ける。進み具合は WebSocket の progress、点数は全員の採点がそろったら results で届く。",
+      "話し終えたら、録音した WAV（16 kHz・16 bit・モノラル、1 MB まで）を本文にそのまま載せて送る。端末で文字起こしした発話があれば X-Transcript に載せる。1 ラウンドに 1 回だけ。受け取ったらすぐ 202 を返し、採点は部屋の側で続ける。進み具合は WebSocket の progress、点数は全員の採点がそろったら results で届く。",
     requestBody: {
       required: true,
       content: {
@@ -91,6 +102,7 @@ export const roundRoutes = new Hono<AppEnv>().post(
         playerId: headers["x-player-id"],
         token: headers.authorization.slice("Bearer ".length),
         audio: await c.req.arrayBuffer(),
+        transcript: decodeTranscript(headers["x-transcript"]),
       },
     );
     if (!result.ok) {
