@@ -108,6 +108,14 @@ def make_materials() -> None:
         "shell": ("#f8d4c8", 0.5), "pebble": ("#b9b1a5", 0.8),
         "stone_joint": ("#8c877f", 0.9), "stone_a": ("#b8b3aa", 0.85), "stone_b": ("#a9a39a", 0.85), "stone_c": ("#c7c2b8", 0.85),
         "dirt": ("#c79c6c", 0.95), "dirt_dark": ("#b5875a", 0.95), "dirt_light": ("#d6b083", 0.95),
+        # 背景の壁（窓・キッチンのタイル・黒板・商品棚）
+        "wall_back": ("#ddd5c8", 0.9), "curtain": ("#f3d9a8", 0.9), "wall_kitchen": ("#f2dfb8", 0.9),
+        "kitchen_tile": ("#ffffff", 0.3), "kitchen_tile2": ("#a9d8c4", 0.3), "cabinet": ("#b98352", 0.5),
+        "blackboard": ("#2f5a46", 0.8), "board_frame": ("#a8743f", 0.55), "wainscot": ("#c9a272", 0.6),
+        "chalk": ("#ffffff", 0.9), "chalk_pink": ("#ffb3c1", 0.9), "chalk_yellow": ("#ffe68a", 0.9),
+        "store_wall": ("#f4f1ea", 0.9), "store_shelf": ("#e3e6ea", 0.4), "store_sign": ("#f08a4b", 0.6),
+        "goods_a": ("#ef7a6a", 0.6), "goods_b": ("#f5c76a", 0.6), "goods_c": ("#7cc48a", 0.6),
+        "goods_d": ("#78a8e0", 0.6), "goods_e": ("#f2a3c4", 0.6), "goods_f": ("#ffffff", 0.6),
     }))
     M["iron"] = material("iron", "#2b2b30", 0.35, metal=0.8)
     M["ball"] = material("ball", "#e8352b", 0.3, coat=0.6)
@@ -134,6 +142,10 @@ def make_materials() -> None:
     # 窓のガラスの向こうは明るい空（classroom.py の sky と同じ）
     M["window_glass"] = material("window_glass", "#9fd0ff", 0.2, emit=0.5)
     M["platform_edge"] = material("platform_edge", "#f6f5f1", 0.7)   # ホームの端の白線（向きの目印）
+    M["wall_window_sill"] = material("wall_window_sill", "#d8dde3", 0.4)   # 窓つきの壁の窓台（向きの目印）
+    M["kitchen_cabinet"] = material("kitchen_cabinet", "#c8935e", 0.5)   # キッチンの壁の吊り戸棚の扉（向きの目印）
+    M["chalk_tray"] = material("chalk_tray", "#a8743f", 0.55)            # 黒板の粉受け（向きの目印）
+    M["price_rail"] = material("price_rail", "#ffe27a", 0.5)             # 商品棚の値札の帯（向きの目印）
 
 
 CHILD_SCALE = 0.75   # 子どもの大きさ（大人に対する倍率）
@@ -1206,6 +1218,122 @@ def build_ground_dirt(root):
     for _ in range(16):
         r = rng.uniform(0.025, 0.045)
         p.sphere(r, (rng.uniform(-3.7, 3.7), rng.uniform(-3.7, 3.7), r * 0.45), M["pebble"], scale=(1, 0.85, 0.45), segs=8)
+    p.finish(root)
+
+
+# ---------- 背景の壁 ----------
+#
+# 場面の奥に 1 枚置く壁。幅 8 m（床と同じ）・高さ 2.6 m・板の厚さ 0.12 m。表（+Z）に窓や黒板などが付く。
+# 原点は外接箱の底面の中心なので、表に出っ張る物（棚など）がある壁ほど奥行き（size の z）が大きい。
+# 奥の端に付けるときは z = -4 + 奥行き / 2 に置く。裏は無地。
+
+WALL_W, WALL_H, WALL_T = 8.0, 2.6, 0.12
+WALL_FRONT = -WALL_T / 2   # 壁の表の面（Blender の y。正面は -Y）
+
+
+def wall_board(p, mat, base_mat=None):
+    """壁の板。表は mat、裏は無地。base_mat があれば表の下に幅木（高さ 8 cm）を付ける。"""
+    p.box((WALL_W, WALL_T - 0.01, WALL_H), (0, 0.005, WALL_H / 2), M["wall_back"])
+    p.box((WALL_W, 0.01, WALL_H), (0, WALL_FRONT + 0.005, WALL_H / 2), mat)
+    if base_mat:
+        p.box((WALL_W, 0.015, 0.08), (0, WALL_FRONT - 0.0075, 0.04), base_mat)
+
+
+@part("wall_window", "building", "窓つきの壁（幅 8 m）", [("wall", "noun"), ("window", "noun")], front=("wall_window_sill", 1))
+def build_wall_window(root):
+    """部屋やカフェの奥の壁。幅 1.6 m・高さ 1.2 m の窓が 3 つ（ガラスの向こうは明るい空）と、両脇のカーテン。"""
+    p = Part("wall_window")
+    wall_board(p, M["wall"], M["baseboard"])
+    w, h, z0, fw = 1.6, 1.2, 0.9, 0.06
+    for cx in (-2.6, 0.0, 2.6):
+        y = WALL_FRONT
+        p.box((w - 2 * fw, 0.01, h - 2 * fw), (cx, y - 0.005, z0 + h / 2), M["window_glass"])
+        for sx in (-1, 1):
+            p.box((fw, 0.05, h), (cx + sx * (w / 2 - fw / 2), y - 0.025, z0 + h / 2), M["window_frame"], bevel=0.006)
+        for z in (z0 + fw / 2, z0 + h - fw / 2):
+            p.box((w - 2 * fw, 0.05, fw), (cx, y - 0.025, z), M["window_frame"], bevel=0.006)
+        p.box((0.04, 0.03, h - 2 * fw), (cx, y - 0.015, z0 + h / 2), M["window_frame"])   # 2 枚の戸の合わせ目
+        p.box((w + 0.12, 0.16, 0.04), (cx, y - 0.08, z0 - 0.02), M["wall_window_sill"], bevel=0.006)   # 窓台
+        for sx in (-1, 1):   # カーテン（ひだを 3 本の丸い棒で表す）
+            for k in range(3):
+                p.cyl(0.05, 0.06, h + 0.3, (cx + sx * (w / 2 + 0.07 + k * 0.08), y - 0.07, z0 + h / 2 + 0.05), M["curtain"], segs=8)
+        p.limb((cx - w / 2 - 0.4, y - 0.07, z0 + h + 0.22), (cx + w / 2 + 0.4, y - 0.07, z0 + h + 0.22), 0.015, 0.015, M["metal"], segs=8)
+    p.finish(root)
+
+
+@part("wall_kitchen_tile", "building", "キッチンの壁（幅 8 m）",
+      [("wall", "noun"), ("kitchen", "noun"), ("tile", "noun")], front=("kitchen_cabinet", 1))
+def build_wall_kitchen_tile(root):
+    """台所の奥の壁。高さ 0.85〜1.85 m に 0.2 m 角の白と緑のタイルを貼り、真ん中の 3.2 m の上に木の吊り戸棚がある。壁はクリーム色。
+
+    kitchen_counter（高さ 0.9 m）を手前に置くと、タイルが流しの上に見える。
+    """
+    p = Part("wall_kitchen_tile")
+    wall_board(p, M["wall_kitchen"], M["baseboard"])
+    cell, gap, z0, rows = 0.2, 0.012, 0.85, 5
+    for i in range(round(WALL_W / cell)):
+        for j in range(rows):
+            mat = M["kitchen_tile2"] if (i + j) % 3 == 0 else M["kitchen_tile"]
+            p.box((cell - gap, 0.006, cell - gap), (-WALL_W / 2 + cell * (i + 0.5), WALL_FRONT - 0.003, z0 + cell * (j + 0.5)), mat)
+    # 吊り戸棚（扉 4 枚と取っ手）
+    cw, ch, cd, cz = 3.2, 0.6, 0.35, 1.95
+    p.box((cw, cd - 0.02, ch), (0, WALL_FRONT - (cd - 0.02) / 2, cz + ch / 2), M["cabinet"], bevel=0.01)
+    for k in range(4):
+        x = -cw / 2 + cw / 8 * (2 * k + 1)
+        p.box((cw / 4 - 0.02, 0.02, ch - 0.04), (x, WALL_FRONT - cd + 0.01, cz + ch / 2), M["kitchen_cabinet"], bevel=0.006)
+        p.box((0.015, 0.02, 0.12), (x + (0.3 if k % 2 == 0 else -0.3), WALL_FRONT - cd - 0.005, cz + 0.12), M["metal"], bevel=0.004)
+    p.finish(root)
+
+
+@part("wall_blackboard", "building", "黒板つきの壁（教室、幅 8 m）",
+      [("blackboard", "noun"), ("chalkboard", "noun"), ("wall", "noun")], front=("chalk_tray", 1))
+def build_wall_blackboard(root):
+    """教室の前の壁。真ん中に幅 4 m・高さ 1.2 m の緑の黒板（木の枠と粉受け、チョーク）、下に木の腰板。"""
+    p = Part("wall_blackboard")
+    wall_board(p, M["wall"])
+    p.box((WALL_W, 0.015, 0.9), (0, WALL_FRONT - 0.0075, 0.45), M["wainscot"])   # 腰板
+    p.box((WALL_W, 0.03, 0.04), (0, WALL_FRONT - 0.015, 0.9), M["board_frame"])
+    bw, bh, bz = 4.0, 1.2, 0.85
+    p.box((bw + 0.12, 0.04, bh + 0.12), (0, WALL_FRONT - 0.02, bz + bh / 2), M["board_frame"], bevel=0.01)
+    p.box((bw, 0.01, bh), (0, WALL_FRONT - 0.045, bz + bh / 2), M["blackboard"])
+    p.box((bw + 0.12, 0.12, 0.04), (0, WALL_FRONT - 0.06, bz - 0.02), M["chalk_tray"], bevel=0.008)   # 粉受け
+    for k, mat in enumerate((M["chalk"], M["chalk"], M["chalk_pink"], M["chalk_yellow"])):
+        p.limb((1.2 + k * 0.12, WALL_FRONT - 0.08, bz + 0.012), (1.28 + k * 0.12, WALL_FRONT - 0.09, bz + 0.012), 0.008, 0.008, mat, segs=6)
+    p.finish(root)
+
+
+@part("wall_store_shelves", "building", "商品棚が並ぶ壁（店、幅 8 m）",
+      [("shelf", "noun"), ("store", "noun"), ("shop", "noun"), ("wall", "noun")], front=("price_rail", 1))
+def build_wall_store_shelves(root):
+    """店の奥の壁。高さ 1.8 m・奥行き 0.4 m の商品棚が 4 台並び、色とりどりの商品の箱が載っている。上に橙の帯。"""
+    rng = random.Random(2627)
+    p = Part("wall_store_shelves")
+    wall_board(p, M["store_wall"])
+    p.box((WALL_W, 0.02, 0.3), (0, WALL_FRONT - 0.01, 2.2), M["store_sign"])   # 上の帯
+    goods = [M[f"goods_{c}"] for c in "abcdef"]
+    uw, sh, sd, t = 1.9, 1.8, 0.4, 0.03
+    front = WALL_FRONT - sd
+    for u in range(4):
+        cx = -WALL_W / 2 + 0.1 + uw * (u + 0.5)
+        for sx in (-1, 1):
+            p.box((t, sd, sh), (cx + sx * (uw / 2 - t / 2), WALL_FRONT - sd / 2, sh / 2), M["store_shelf"])
+        p.box((uw - 2 * t, 0.1, 0.12), (cx, front + 0.05, 0.06), M["store_shelf"])   # 下の幕板
+        boards = [0.12 + k * 0.42 for k in range(4)] + [sh - t / 2]
+        for z in boards:
+            p.box((uw - 2 * t, sd, t), (cx, WALL_FRONT - sd / 2, z), M["store_shelf"])
+            if z < sh - t:
+                p.box((uw - 2 * t, 0.012, 0.04), (cx, front - 0.006, z), M["price_rail"])   # 値札の帯
+        for z in boards[:-1]:   # 商品の箱を左から詰める
+            x = cx - uw / 2 + t + 0.03
+            mat_k = rng.randrange(6)
+            while True:
+                bw, bh = rng.uniform(0.12, 0.22), rng.uniform(0.14, min(0.3, 0.42 - t - 0.05))
+                if x + bw > cx + uw / 2 - t - 0.03:
+                    break
+                if rng.random() < 0.35:
+                    mat_k = rng.randrange(6)   # 同じ色の箱が何個か続く
+                p.box((bw - 0.01, 0.26, bh), (x + bw / 2, front + 0.16, z + t / 2 + bh / 2), goods[mat_k])   # 角は丸めない（軽くする）
+                x += bw
     p.finish(root)
 
 
