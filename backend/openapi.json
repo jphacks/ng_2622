@@ -1142,21 +1142,12 @@
                   "description": "部品の ID（assets/parts/index.json）。版を書くときは apple@1"
                 },
                 "position": {
-                  "type": "array",
-                  "prefixItems": [
-                    {
-                      "type": "number"
-                    },
-                    {
-                      "type": "number"
-                    },
-                    {
-                      "type": "number"
-                    }
-                  ],
-                  "items": false,
                   "minItems": 3,
-                  "maxItems": 3
+                  "maxItems": 3,
+                  "type": "array",
+                  "items": {
+                    "type": "number"
+                  }
                 },
                 "yaw": {
                   "type": "number"
@@ -1177,21 +1168,12 @@
                       ]
                     },
                     "to": {
-                      "type": "array",
-                      "prefixItems": [
-                        {
-                          "type": "number"
-                        },
-                        {
-                          "type": "number"
-                        },
-                        {
-                          "type": "number"
-                        }
-                      ],
-                      "items": false,
                       "minItems": 3,
-                      "maxItems": 3
+                      "maxItems": 3,
+                      "type": "array",
+                      "items": {
+                        "type": "number"
+                      }
                     }
                   },
                   "required": [
