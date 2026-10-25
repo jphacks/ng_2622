@@ -53,12 +53,28 @@ struct LiveRoomTrackerTests {
   /// round の startAt（UNIX 時刻のミリ秒）が Date になる。つなぎ直して届く同じ round は渡さない
   @Test func round() throws {
     var tracker = try joined()
+    tracker.now = { Date(timeIntervalSince1970: 1_792_800_000) }
     #expect(tracker.apply(try message(room("playing"))) == [])
     let json = #"{"type":"round","round":1,"sceneId":"park","startAt":1792800000500}"#
     let start = Date(timeIntervalSince1970: 1_792_800_000.5)
     #expect(tracker.apply(try message(json)) == [.event(.roundStarted(RoundInfo(sceneID: "park", startsAt: start)))])
     #expect(tracker.round == 1)
     #expect(tracker.apply(try message(json)) == [])
+  }
+
+  /// 端末の時計が大きくずれていたら（startAt が受け取った時刻から 5 秒より離れていたら）、受け取ってから 1.5 秒後に始める
+  @Test func roundWithClockSkew() throws {
+    let received = Date(timeIntervalSince1970: 1_792_800_060)
+    // 端末の時計が 60 秒進んでいる: startAt は端末から見て 58.5 秒前
+    #expect(LiveRoomTracker.startDate(fromMilliseconds: 1_792_800_001_500, receivedAt: received) == received + 1.5)
+    // 端末の時計が 60 秒遅れている
+    let late = Date(timeIntervalSince1970: 1_792_799_940)
+    #expect(LiveRoomTracker.startDate(fromMilliseconds: 1_792_800_001_500, receivedAt: late) == late + 1.5)
+    // ずれが小さければ startAt のまま（全員でそろえる）
+    let near = Date(timeIntervalSince1970: 1_792_800_002)
+    #expect(
+      LiveRoomTracker.startDate(fromMilliseconds: 1_792_800_001_500, receivedAt: near)
+        == Date(timeIntervalSince1970: 1_792_800_001.5))
   }
 
   /// progress は room の名前と色を付けた参加者の一覧になる。ほかのラウンドの progress は捨てる
