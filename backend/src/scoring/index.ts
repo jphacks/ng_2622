@@ -45,15 +45,18 @@ const isWav = (buf: ArrayBuffer) => {
 const round = (n: number) => Math.round(n * 10) / 10;
 
 // 1 人分の音声を採点する。例外は投げず、失敗は ok: false で返す。
-// deviceTranscript は端末で文字起こしした発話。あれば Azure の正解文と Claude の採点に使い、無ければ Azure の文字起こしを使う
+// deviceTranscript は端末で文字起こしした発話。あれば Azure の正解文と Claude の採点に使い、無ければ Azure の文字起こしを使う。
+// layout は部屋が AI で作った場面の配置（部屋の保存領域から渡す）。作り置きの場面と同じ採り方をする
 export async function score(
   env: ScoringEnv,
   wav: ArrayBuffer,
   sceneId: string,
   deviceTranscript?: string,
+  layout?: PoolScene,
 ): Promise<ScoreResult> {
   const started = Date.now();
-  const poolScene = findPoolScene(sceneId);
+  const poolScene =
+    findPoolScene(sceneId) ?? (layout?.id === sceneId ? layout : undefined);
   if (poolScene)
     return scorePoolScene(env, wav, poolScene, started, deviceTranscript);
   const scene = findScene(sceneId);

@@ -2,7 +2,11 @@ import { DurableObject } from "cloudflare:workers";
 import { fail, ok, type Result, type RoomError } from "../domain/result";
 import {
   authenticate,
+  beginGeneration,
+  canGenerate,
   createRoomState,
+  finishGeneration,
+  type GeneratedScene,
   hostIsAway,
   joinRoom,
   leaveRoom,
@@ -19,13 +23,20 @@ import {
   closeRound,
   type Grade,
   progressOf,
+  type Round,
   recordGrade,
   roundResults,
   skipAudio,
 } from "../domain/round";
-import type { Difficulty } from "../scenes/pool";
+import { type Difficulty, findPoolScene } from "../scenes/pool";
+import type { SceneLayout } from "../scenes/types";
 import { MAX_PLAYERS } from "../schemas/common";
 import { ClientMessage, type ServerMessage } from "../schemas/ws";
+import {
+  generateScene,
+  type SceneGenerationEnv,
+  sceneGenerationEnabled,
+} from "../usecases/scenes";
 
 type Attachment = { playerId: string | null };
 
@@ -36,10 +47,19 @@ const IDLE_TTL_MS = 2 * 60 * 60 * 1000;
 const HOST_GRACE_MS = 30 * 1000;
 const CLOSE_REPLACED = 4000;
 const CLOSE_LEFT = 1000;
+/** 部屋で AI に場面を作らせるときの待ち時間の上限。やり直さない（超えたら作り置きの場面にする） */
+const GENERATION_TIMEOUT_MS = 10 * 1000;
+/** AI で作った場面の配置を置くキー。部屋が消えるとき（alarm の deleteAll）に一緒に消える */
+const layoutKey = (sceneId: string) => `layout:${sceneId}`;
 
 export class Room extends DurableObject<CloudflareBindings> {
   /** undefined: まだ読んでいない、null: 部屋が無い */
   private state: RoomState | null | undefined;
+  /**
+   * 作っている最中の生成（メモリだけ）。ホストが抜けたら止める。
+   * 保存した状態が generating なのにここが違う id なら、DO が作り直されて生成が途切れている
+   */
+  private generation: { id: string; controller: AbortController } | null = null;
 
   /** そのコードの部屋がすでにあれば null */
   async create(roomId: string) {
@@ -54,12 +74,15 @@ export class Room extends DurableObject<CloudflareBindings> {
     return state ? summarize(state) : null;
   }
 
-  /** 音声を受け取ったときに呼ぶ。本人とラウンドを確かめて採点中にし、採点するシーンを返す */
+  /**
+   * 音声を受け取ったときに呼ぶ。本人とラウンドを確かめて採点中にし、採点するシーンを返す。
+   * AI で作った場面なら、この部屋に置いた配置も返す（採点はそれを使う）
+   */
   async beginGrading(input: {
     playerId: string;
     token: string;
     round: number;
-  }): Promise<Result<{ sceneId: string }>> {
+  }): Promise<Result<{ sceneId: string; layout?: SceneLayout }>> {
     const state = await this.load();
     if (!state) return fail("room_not_found", "部屋が無い");
     const player = authenticate(state, input.playerId, input.token);
@@ -68,7 +91,17 @@ export class Room extends DurableObject<CloudflareBindings> {
     const result = beginGrading(state, input);
     if (!result.ok) return result;
     await this.update(state, result.value.state);
-    return ok({ sceneId: result.value.sceneId });
+    const { sceneId } = result.value;
+    const layout = await this.sceneLayout(sceneId);
+    return ok(layout ? { sceneId, layout } : { sceneId });
+  }
+
+  /** この部屋で AI が作った場面の配置。無ければ null（作り置きの場面は置かない） */
+  async sceneLayout(sceneId: string): Promise<SceneLayout | null> {
+    if (findPoolScene(sceneId)) return null;
+    return (
+      (await this.ctx.storage.get<SceneLayout>(layoutKey(sceneId))) ?? null
+    );
   }
 
   /** 採点の結果を書き込む */
@@ -93,11 +126,12 @@ export class Room extends DurableObject<CloudflareBindings> {
   }
 
   async webSocketMessage(ws: WebSocket, raw: string | ArrayBuffer) {
-    const state = await this.load();
+    let state = await this.load();
     if (!state) {
       ws.close(1011, "room closed");
       return;
     }
+    state = await this.recoverInterruptedGeneration(state);
     const message = parseMessage(raw);
     if (!message) {
       return this.sendError(ws, {
@@ -212,6 +246,14 @@ export class Room extends DurableObject<CloudflareBindings> {
     playerId: string,
     input: { sceneId?: string; difficulty?: Difficulty },
   ) {
+    const env = this.env as CloudflareBindings & SceneGenerationEnv;
+    if (
+      input.difficulty !== undefined &&
+      input.sceneId === undefined &&
+      canGenerate(state, sceneGenerationEnabled(env))
+    ) {
+      return this.generate(ws, state, playerId, input.difficulty);
+    }
     const result = startRound(state, {
       playerId,
       sceneId: input.sceneId,
@@ -220,10 +262,95 @@ export class Room extends DurableObject<CloudflareBindings> {
       connectedIds: this.connectedPlayerIds(),
     });
     if (!result.ok) return this.sendError(ws, result.error);
+    await this.beginRound(result.value.state, result.value.round);
+  }
 
-    const { state: next, round } = result.value;
+  /**
+   * AI で場面を作ってからラウンドを始める。作っている間も他のメッセージは届くので、
+   * generating を保存してから待ち、終わったら同じ生成のままかを finishGeneration で確かめる。
+   * タイムアウト・失敗・断られたときは、黙って作り置きの場面にする
+   */
+  private async generate(
+    ws: WebSocket,
+    state: RoomState,
+    playerId: string,
+    difficulty: Difficulty,
+  ) {
+    const generationId = crypto.randomUUID();
+    const begun = beginGeneration(state, {
+      playerId,
+      difficulty,
+      generationId,
+    });
+    if (!begun.ok) return this.sendError(ws, begun.error);
+    const controller = new AbortController();
+    this.generation = { id: generationId, controller };
+    await this.update(state, begun.value);
+
+    try {
+      let scene: GeneratedScene | null = null;
+      let layout: SceneLayout | null = null;
+      try {
+        layout = await generateScene(
+          this.env as CloudflareBindings & SceneGenerationEnv,
+          { difficulty },
+          {
+            timeoutMs: GENERATION_TIMEOUT_MS,
+            maxAttempts: 1,
+            signal: controller.signal,
+          },
+        );
+        scene = { sceneId: layout.id, name: layout.name };
+      } catch (e) {
+        console.error("部屋での場面の生成に失敗。作り置きの場面にする", e);
+      }
+
+      const current = await this.load();
+      if (!current) return;
+      const finished = finishGeneration(current, {
+        generationId,
+        scene,
+        now: Date.now(),
+        connectedIds: this.connectedPlayerIds(),
+      });
+      // ホストが抜けて先に始めたなど、もうこの生成の番でない
+      if (!finished) return;
+      // round が届いてすぐ配置を取りに来るので、配る前に置く
+      if (layout && finished.round?.sceneId === layout.id) {
+        await this.ctx.storage.put(layoutKey(layout.id), layout);
+      }
+      await this.beginRound(finished.state, finished.round);
+    } finally {
+      // 始め終わるまで残す（途中で recoverInterruptedGeneration に途切れたと見なされないため）
+      if (this.generation?.id === generationId) this.generation = null;
+    }
+  }
+
+  /**
+   * 保存した状態は generating なのに、この DO が作っている最中でない（作り直されて生成が途切れた）なら、
+   * 作り置きの場面でラウンドを始める。部屋が generating のまま止まらないため
+   */
+  private async recoverInterruptedGeneration(state: RoomState) {
+    const id = state.generating?.id;
+    if (state.phase !== "generating" || !id || this.generation?.id === id) {
+      return state;
+    }
+    const finished = finishGeneration(state, {
+      generationId: id,
+      scene: null,
+      now: Date.now(),
+      connectedIds: this.connectedPlayerIds(),
+    });
+    if (!finished) return state;
+    await this.beginRound(finished.state, finished.round);
+    return finished.state;
+  }
+
+  /** ラウンドを始めた状態を保存して配る（room・round・progress の順）。round が無ければ room だけ */
+  private async beginRound(next: RoomState, round: Round | null) {
     await this.save(next);
     this.broadcastRoom(next);
+    if (!round) return;
     this.broadcast({
       type: "round",
       round: round.round,
@@ -236,7 +363,28 @@ export class Room extends DurableObject<CloudflareBindings> {
   private async leave(ws: WebSocket, state: RoomState, playerId: string) {
     setAttachment(ws, { playerId: null });
     ws.close(CLOSE_LEFT, "left the room");
-    await this.update(state, leaveRoom(state, playerId));
+    const next = leaveRoom(state, playerId);
+    // 作っている最中にホストが抜けたら、生成を止めて作り置きの場面ですぐ始める（ホストは leaveRoom で替わっている）。
+    // 切断しただけ（webSocketClose）では止めない
+    const generationId = state.generating?.id;
+    if (
+      state.phase === "generating" &&
+      generationId &&
+      state.hostId === playerId
+    ) {
+      if (this.generation?.id === generationId) {
+        this.generation.controller.abort();
+        this.generation = null;
+      }
+      const finished = finishGeneration(next, {
+        generationId,
+        scene: null,
+        now: Date.now(),
+        connectedIds: this.connectedPlayerIds(),
+      });
+      if (finished) return this.beginRound(finished.state, finished.round);
+    }
+    await this.update(state, next);
   }
 
   /** ドメインのルールの結果を保存して配る。受け付けられなければ送った本人にだけ返す */

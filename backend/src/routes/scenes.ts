@@ -2,6 +2,7 @@ import { Hono } from "hono";
 import { createMiddleware } from "hono/factory";
 import { describeRoute, validator } from "hono-openapi";
 import { isSceneId } from "../domain/scenes";
+import { createRoomRepository } from "../repositories/roomRepository";
 import { createSceneReviewRepository } from "../repositories/sceneReviewRepository";
 import { SceneGenerationError } from "../scenes/generate";
 import { findPoolScene } from "../scenes/pool";
@@ -13,6 +14,7 @@ import {
   ListScenesResponse,
   SceneIdParam,
   SceneLayout,
+  SceneLayoutQuery,
   SubmitReviewRequest,
   SubmitReviewResponse,
 } from "../schemas/http";
@@ -142,18 +144,38 @@ export const sceneRoutes = new Hono<AppEnv>()
     describeRoute({
       operationId: "getSceneLayout",
       tags: ["scenes"],
-      summary: "作り置きの場面の配置の JSON",
+      summary: "場面の配置の JSON",
       description:
-        "作り置きの場面（gen-…）の配置の JSON をそのまま返す。round で届いた sceneId の場面を組み立てるのに使う。手作りの場面には無い（404）",
+        "作り置きの場面（gen-…）か、部屋が AI で作った場面の配置の JSON をそのまま返す。round で届いた sceneId の場面を組み立てるのに使う。作り置きに無い場面は room（部屋のコード）を付けると、その部屋が作って置いた配置を返す（部屋が消えると無くなる）。手作りの場面には無い（404）",
       responses: {
         200: { description: "配置の JSON", content: jsonContent(SceneLayout) },
-        404: errorResponse("作り置きの場面が無い（unknown_scene）"),
+        400: errorResponse("room の形が違う（invalid_message）"),
+        404: errorResponse(
+          "作り置きの場面にも、room の部屋にも無い（unknown_scene）",
+        ),
       },
     }),
-    (c) => {
-      const scene = findPoolScene(c.req.param("sceneId"));
+    validator("query", SceneLayoutQuery, (result, c) => {
+      if (!result.success) {
+        return c.json(
+          errorBody("invalid_message", "room は部屋のコード（数字 4 桁）"),
+          400,
+        );
+      }
+    }),
+    async (c) => {
+      const sceneId = c.req.param("sceneId");
+      const { room } = c.req.valid("query");
+      const scene =
+        findPoolScene(sceneId) ??
+        (room
+          ? await createRoomRepository(c.env.ROOM).findSceneLayout(
+              room,
+              sceneId,
+            )
+          : null);
       if (!scene) {
-        return c.json(errorBody("unknown_scene", "作り置きの場面が無い"), 404);
+        return c.json(errorBody("unknown_scene", "場面が無い"), 404);
       }
       return c.json(scene);
     },

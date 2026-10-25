@@ -2,29 +2,37 @@ import { composeLayout } from "../scenes/compose";
 import {
   type GenerateEnv,
   type GenerateInput,
+  type GenerateOptions,
   generatePlan,
   SceneGenerationError,
 } from "../scenes/generate";
 import { newSceneId } from "../scenes/id";
 import { PARTS } from "../scenes/parts";
 
+export type SceneGenerationEnv = GenerateEnv & { SCENE_GENERATION?: string };
+
+/** 生成を止めるスイッチ。on のときだけ動かす（変数が無い・on 以外なら止める）。POST /scenes/generate と部屋で共通 */
+export const sceneGenerationEnabled = (env: { SCENE_GENERATION?: string }) =>
+  env.SCENE_GENERATION === "on";
+
 /**
- * 難易度（とテーマ）から場面を作り、配置の JSON を返す。保存はしない（作り置きのスクリプトが受け取って確かめる）。
- * Claude には関係だけを書かせ、座標は compose が計算する。失敗は SceneGenerationError で投げる
+ * 難易度（とテーマ）から場面を作り、配置の JSON を返す。保存はしない（作り置きのスクリプトは受け取って確かめ、部屋は自分の保存領域に置く）。
+ * Claude には関係だけを書かせ、座標は compose が計算する。失敗は SceneGenerationError で投げる。
+ * options は generatePlan に渡す（部屋は 10 秒・1 回だけ・止める signal 付き）
  */
 export const generateScene = async (
-  env: GenerateEnv & { SCENE_GENERATION?: string },
+  env: SceneGenerationEnv,
   input: GenerateInput,
+  options: GenerateOptions = {},
 ) => {
-  // on のときだけ動かす（変数が無い・on 以外なら止める）
-  if (env.SCENE_GENERATION !== "on") {
+  if (!sceneGenerationEnabled(env)) {
     throw new SceneGenerationError(
       "unavailable",
       "場面の生成は止めてある（SCENE_GENERATION が on でない）",
     );
   }
   const started = Date.now();
-  const result = await generatePlan(env, PARTS, input);
+  const result = await generatePlan(env, PARTS, input, {}, options);
   const sceneId = newSceneId();
   const layout = composeLayout(result.plan, PARTS, {
     id: sceneId,
