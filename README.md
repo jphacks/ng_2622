@@ -6,7 +6,7 @@
 
 ### デモ動画
 
-DEMO_VIDEO_URL
+https://github.com/user-attachments/assets/b51df3fd-1d8b-4c19-bede-7b744261bc7c
 
 ## 製品概要
 
