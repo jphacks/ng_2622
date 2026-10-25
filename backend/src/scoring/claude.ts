@@ -8,6 +8,14 @@ import type {
 } from "./types";
 
 const DEFAULT_MODEL = "claude-haiku-5-5";
+const DEFAULT_EFFORT = "high";
+
+type Effort = "low" | "medium" | "high" | "xhigh" | "max";
+const EFFORTS: readonly string[] = ["low", "medium", "high", "xhigh", "max"];
+
+// 知らない値は既定に戻す（設定の打ち間違いで採点を止めないため）
+const effortOf = (raw: string | undefined): Effort =>
+  raw && EFFORTS.includes(raw) ? (raw as Effort) : DEFAULT_EFFORT;
 
 const SYSTEM = `You grade short spoken English descriptions by Japanese learners in a party game.
 All players watched the same scene and described it freely in up to 20 seconds. The input is an automatic transcript, so ignore punctuation and small recognition errors.
@@ -135,7 +143,7 @@ export async function gradeLanguage(
     model: env.CLAUDE_MODEL || DEFAULT_MODEL,
     max_tokens: 4000,
     output_config: {
-      effort: "high",
+      effort: effortOf(env.CLAUDE_EFFORT),
       format: { type: "json_schema", schema: schemaFor(scene) },
     },
     system: SYSTEM,

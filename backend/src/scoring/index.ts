@@ -99,7 +99,9 @@ export async function score(
   }
 
   try {
+    const azureStarted = Date.now();
     const speech = await assessSpeech(env, wav);
+    const azureMs = Date.now() - azureStarted;
     if (!speech || speech.transcript.trim() === "") {
       return {
         ok: false,
@@ -109,10 +111,21 @@ export async function score(
       };
     }
     const words = speech.transcript.split(/\s+/).filter(Boolean).length;
+    const claudeStarted = Date.now();
     const language =
       words < MIN_WORDS
         ? { content: 0, expression: 0, elements: [], notes: SHORT_NOTES }
         : await gradeLanguage(env, scene, speech.transcript);
+    // 採点の所要時間の内訳（Cloudflare の Observability で見る）。claudeMs は Claude を呼ばなかったとき null
+    console.log({
+      event: "scoring_timing",
+      sceneId,
+      audioBytes: wav.byteLength,
+      words,
+      azureMs,
+      claudeMs: words < MIN_WORDS ? null : Date.now() - claudeStarted,
+      totalMs: Date.now() - started,
+    });
     return {
       ok: true,
       sceneId,
