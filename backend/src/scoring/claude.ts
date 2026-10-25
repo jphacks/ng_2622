@@ -35,15 +35,6 @@ Then write feedback in Japanese for the player. Be specific and encouraging, and
 7. rewrite: pick one sentence or fragment of the player and make it natural, keeping the meaning and level. before: copy it exactly from the transcript. after: the corrected English. reason: one short sentence in Japanese.
    Words that look like recognition errors (odd or meaningless words, very short fragments) are not the player's mistakes; do not correct them. If nothing needs fixing, return null.`;
 
-// 配置から作った基準（Scene.fromLayout）のときに足す決まり。説明が場面のすべてなので、それに照らして判定する
-const FROM_LAYOUT = `
-
-The scene description lists everything in the scene, generated from the 3D scene data. Treat it as the ground truth:
-- Give extra points only for details that agree with the description. Things that are not in the scene, or that contradict it, get nothing.
-- The description gives colors only for some things. When the player mentions a color the description does not give, neither reward nor penalize it.
-- For an element about an action, a color, a count or a position, "full" needs that detail itself; only naming the person or thing is "partial" at most (or "none" if no partial wording is given). A wrong detail is not "full".
-- Positions are given without left/right or front/back, because players see the scene from any side. Accept left/right or front/back wording when the stated relation (next to, near, and so on) is right.`;
-
 const schemaFor = (scene: Scene) => ({
   type: "object",
   properties: {
@@ -155,7 +146,7 @@ export async function gradeLanguage(
       effort: effortOf(env.CLAUDE_EFFORT),
       format: { type: "json_schema", schema: schemaFor(scene) },
     },
-    system: scene.fromLayout ? SYSTEM + FROM_LAYOUT : SYSTEM,
+    system: SYSTEM,
     messages: [
       {
         role: "user",

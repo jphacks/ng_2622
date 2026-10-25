@@ -152,10 +152,10 @@ const Vector = z.tuple([z.number(), z.number(), z.number()]);
 
 export const ScoringLayout = z
   .object({
-    difficulty: z
-      .enum(["easy", "normal", "hard"])
-      .optional()
-      .meta({ description: "難しさ。要素の数が変わる（省くと easy）" }),
+    description: z.string().max(2000).optional().meta({
+      description:
+        "場面の説明文（英語）。作り置きのときに書いて人が確かめたもの。採点の補足として Claude に渡す",
+    }),
     items: z
       .array(
         z.object({
@@ -181,13 +181,10 @@ export const ScoringLayout = z
   .meta({
     ref: "ScoringLayout",
     description:
-      "配置の JSON（scenenglish.scene/1）のうち、採点に使う項目。ほかの項目（name・description・elements など）は送っても無視する。座標や動きの細かい項目（duration など）も読まない",
+      "配置の JSON（scenenglish.scene/1）のうち、採点に使う項目。ほかの項目（name・elements など）は送っても無視する。座標や動きの細かい項目（duration など）も読まない",
   });
 
-const SceneKey = z.string().trim().min(1).max(128).optional().meta({
-  description:
-    "同じ場面をまとめるキー（例: 部屋のコードとラウンドの番号）。同じキーの人は、最初に作った同じ基準で採点される。省くと配置の中身から決める",
-});
+const Score = z.int().min(0).max(100);
 
 export const ScoreRequest = z
   .object({
@@ -198,74 +195,24 @@ export const ScoreRequest = z
       .min(1)
       .max(2000)
       .meta({ description: "発話の文字起こし（英語）" }),
-    sceneKey: SceneKey,
+    speech: z
+      .object({ accuracy: Score, fluency: Score, prosody: Score })
+      .optional()
+      .meta({
+        description:
+          "Azure の話し方の 3 つの点（正確さ・なめらかさ・抑揚）。送ると、次に伸ばす一つに話し方も選ばれる。話し方の点そのものは付けない",
+      }),
   })
   .meta({ ref: "ScoreRequest" });
 
-export const PrepareRubricRequest = z
-  .object({ layout: ScoringLayout, sceneKey: SceneKey })
-  .meta({ ref: "PrepareRubricRequest" });
-
-const ScoredScene = z
-  .object({
-    name: z.string().meta({ description: "場面の名前（日本語）" }),
-    description: z
-      .string()
-      .meta({ description: "配置から作った場面の説明（英語）" }),
-  })
-  .meta({ ref: "ScoredScene" });
-
-export const PrepareRubricResponse = z
-  .object({
-    sceneKey: z.string(),
-    created: z
-      .boolean()
-      .meta({ description: "この呼び出しで作ったか。false は覚えていたもの" }),
-    scene: ScoredScene,
-    elements: z.array(
-      z
-        .object({
-          id: z.string(),
-          label: z.string().meta({ description: "要素の名前（日本語）" }),
-          points: z.int().meta({ description: "配点" }),
-        })
-        .meta({ ref: "RubricElement" }),
-    ),
-  })
-  .meta({
-    ref: "PrepareRubricResponse",
-    description: "用意した採点の基準",
-  });
-
 export const ScoreResponse = z
   .object({
-    sceneKey: z.string().meta({
-      description:
-        "採点の基準を覚えたキー。sceneKey を送ったら key:<sceneKey>、省いたら layout:<配置のハッシュ>",
+    content: Score.meta({
+      description: "内容（0〜100）。採点基準の段階で付ける",
     }),
-    content: z.number().min(0).max(100).meta({
-      description: "内容（0〜100）。部分点で 0.5 刻みになることがある",
+    expression: Score.meta({
+      description: "表現（0〜100）。採点基準の段階で付ける",
     }),
-    expression: z.int().min(0).max(100).meta({ description: "表現（0〜100）" }),
-    scene: ScoredScene,
-    elements: z
-      .array(
-        z
-          .object({
-            id: z.string(),
-            label: z.string().meta({ description: "要素の名前（日本語）" }),
-            points: z.int().meta({ description: "配点" }),
-            level: z.enum(["full", "partial", "none"]),
-            evidence: z
-              .string()
-              .meta({ description: "判定の根拠にした発言。none なら空" }),
-          })
-          .meta({ ref: "ScoredElement" }),
-      )
-      .meta({
-        description:
-          "配置から作った要素ごとの判定。配点の合計は 90 で、残りの 10 は一覧にない正しい描写に出す。発話が短すぎるときは判定せず、全部 none",
-      }),
     transcript: z.string(),
     feedback: z
       .object({
@@ -277,9 +224,8 @@ export const ScoreResponse = z
           text: z.string(),
         }),
         nextStep: z.object({
-          kind: z.enum(["content", "expression"]),
-          gain: z.int().nullable().meta({
-            description: "足すと内容の点が何点伸びるか。内容の要素のときだけ",
+          kind: z.enum(["content", "expression", "speech"]).meta({
+            description: "speech は話し方の点を送ったときだけ",
           }),
           text: z.string(),
         }),
@@ -289,7 +235,7 @@ export const ScoreResponse = z
       })
       .meta({
         ref: "ContentFeedback",
-        description: "講評（話し方を除く）",
+        description: "講評。次に伸ばす一つは Claude が選ぶ",
       }),
     mode: z.enum(["live", "fixed"]).meta({
       description: "fixed は外部 API を呼ばない固定の点数（SCORING_MODE）",

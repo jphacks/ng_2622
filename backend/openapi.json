@@ -1008,62 +1008,6 @@
           "rating"
         ]
       },
-      "ScoredScene": {
-        "type": "object",
-        "properties": {
-          "name": {
-            "type": "string",
-            "description": "場面の名前（日本語）"
-          },
-          "description": {
-            "type": "string",
-            "description": "配置から作った場面の説明（英語）"
-          }
-        },
-        "required": [
-          "name",
-          "description"
-        ],
-        "additionalProperties": false
-      },
-      "ScoredElement": {
-        "type": "object",
-        "properties": {
-          "id": {
-            "type": "string"
-          },
-          "label": {
-            "type": "string",
-            "description": "要素の名前（日本語）"
-          },
-          "points": {
-            "type": "integer",
-            "minimum": -9007199254740991,
-            "maximum": 9007199254740991,
-            "description": "配点"
-          },
-          "level": {
-            "type": "string",
-            "enum": [
-              "full",
-              "partial",
-              "none"
-            ]
-          },
-          "evidence": {
-            "type": "string",
-            "description": "判定の根拠にした発言。none なら空"
-          }
-        },
-        "required": [
-          "id",
-          "label",
-          "points",
-          "level",
-          "evidence"
-        ],
-        "additionalProperties": false
-      },
       "ContentFeedback": {
         "type": "object",
         "properties": {
@@ -1091,17 +1035,10 @@
                 "type": "string",
                 "enum": [
                   "content",
-                  "expression"
-                ]
-              },
-              "gain": {
-                "type": [
-                  "integer",
-                  "null"
+                  "expression",
+                  "speech"
                 ],
-                "minimum": -9007199254740991,
-                "maximum": 9007199254740991,
-                "description": "足すと内容の点が何点伸びるか。内容の要素のときだけ"
+                "description": "speech は話し方の点を送ったときだけ"
               },
               "text": {
                 "type": "string"
@@ -1109,7 +1046,6 @@
             },
             "required": [
               "kind",
-              "gain",
               "text"
             ],
             "additionalProperties": false
@@ -1133,36 +1069,22 @@
           "rewrite"
         ],
         "additionalProperties": false,
-        "description": "講評（話し方を除く）"
+        "description": "講評。次に伸ばす一つは Claude が選ぶ"
       },
       "ScoreResponse": {
         "type": "object",
         "properties": {
-          "sceneKey": {
-            "type": "string",
-            "description": "採点の基準を覚えたキー。sceneKey を送ったら key:<sceneKey>、省いたら layout:<配置のハッシュ>"
-          },
           "content": {
-            "type": "number",
+            "type": "integer",
             "minimum": 0,
             "maximum": 100,
-            "description": "内容（0〜100）。部分点で 0.5 刻みになることがある"
+            "description": "内容（0〜100）。採点基準の段階で付ける"
           },
           "expression": {
             "type": "integer",
             "minimum": 0,
             "maximum": 100,
-            "description": "表現（0〜100）"
-          },
-          "scene": {
-            "$ref": "#/components/schemas/ScoredScene"
-          },
-          "elements": {
-            "type": "array",
-            "items": {
-              "$ref": "#/components/schemas/ScoredElement"
-            },
-            "description": "配置から作った要素ごとの判定。配点の合計は 90 で、残りの 10 は一覧にない正しい描写に出す。発話が短すぎるときは判定せず、全部 none"
+            "description": "表現（0〜100）。採点基準の段階で付ける"
           },
           "transcript": {
             "type": "string"
@@ -1185,11 +1107,8 @@
           }
         },
         "required": [
-          "sceneKey",
           "content",
           "expression",
-          "scene",
-          "elements",
           "transcript",
           "feedback",
           "mode",
@@ -1201,14 +1120,10 @@
       "ScoringLayout": {
         "type": "object",
         "properties": {
-          "difficulty": {
-            "description": "難しさ。要素の数が変わる（省くと easy）",
+          "description": {
+            "description": "場面の説明文（英語）。作り置きのときに書いて人が確かめたもの。採点の補足として Claude に渡す",
             "type": "string",
-            "enum": [
-              "easy",
-              "normal",
-              "hard"
-            ]
+            "maxLength": 2000
           },
           "items": {
             "minItems": 1,
@@ -1295,7 +1210,7 @@
         "required": [
           "items"
         ],
-        "description": "配置の JSON（scenenglish.scene/1）のうち、採点に使う項目。ほかの項目（name・description・elements など）は送っても無視する。座標や動きの細かい項目（duration など）も読まない"
+        "description": "配置の JSON（scenenglish.scene/1）のうち、採点に使う項目。ほかの項目（name・elements など）は送っても無視する。座標や動きの細かい項目（duration など）も読まない"
       },
       "ScoreRequest": {
         "type": "object",
@@ -1309,86 +1224,36 @@
             "maxLength": 2000,
             "description": "発話の文字起こし（英語）"
           },
-          "sceneKey": {
-            "description": "同じ場面をまとめるキー（例: 部屋のコードとラウンドの番号）。同じキーの人は、最初に作った同じ基準で採点される。省くと配置の中身から決める",
-            "type": "string",
-            "minLength": 1,
-            "maxLength": 128
+          "speech": {
+            "description": "Azure の話し方の 3 つの点（正確さ・なめらかさ・抑揚）。送ると、次に伸ばす一つに話し方も選ばれる。話し方の点そのものは付けない",
+            "type": "object",
+            "properties": {
+              "accuracy": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 100
+              },
+              "fluency": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 100
+              },
+              "prosody": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 100
+              }
+            },
+            "required": [
+              "accuracy",
+              "fluency",
+              "prosody"
+            ]
           }
         },
         "required": [
           "layout",
           "transcript"
-        ]
-      },
-      "RubricElement": {
-        "type": "object",
-        "properties": {
-          "id": {
-            "type": "string"
-          },
-          "label": {
-            "type": "string",
-            "description": "要素の名前（日本語）"
-          },
-          "points": {
-            "type": "integer",
-            "minimum": -9007199254740991,
-            "maximum": 9007199254740991,
-            "description": "配点"
-          }
-        },
-        "required": [
-          "id",
-          "label",
-          "points"
-        ],
-        "additionalProperties": false
-      },
-      "PrepareRubricResponse": {
-        "type": "object",
-        "properties": {
-          "sceneKey": {
-            "type": "string"
-          },
-          "created": {
-            "type": "boolean",
-            "description": "この呼び出しで作ったか。false は覚えていたもの"
-          },
-          "scene": {
-            "$ref": "#/components/schemas/ScoredScene"
-          },
-          "elements": {
-            "type": "array",
-            "items": {
-              "$ref": "#/components/schemas/RubricElement"
-            }
-          }
-        },
-        "required": [
-          "sceneKey",
-          "created",
-          "scene",
-          "elements"
-        ],
-        "additionalProperties": false,
-        "description": "用意した採点の基準"
-      },
-      "PrepareRubricRequest": {
-        "type": "object",
-        "properties": {
-          "layout": {
-            "$ref": "#/components/schemas/ScoringLayout"
-          },
-          "sceneKey": {
-            "description": "同じ場面をまとめるキー（例: 部屋のコードとラウンドの番号）。同じキーの人は、最初に作った同じ基準で採点される。省くと配置の中身から決める",
-            "type": "string",
-            "minLength": 1,
-            "maxLength": 128
-          }
-        },
-        "required": [
-          "layout"
         ]
       }
     }
@@ -1834,7 +1699,7 @@
           "scoring"
         ],
         "summary": "配置と文字起こしから採点する",
-        "description": "場面の配置の JSON（items）と発話の文字起こしを送る。配置と部品のメタデータ（名前・ポーズ・大きさ・あれば色）から採点の基準（場面の説明・要素・配点）を作り、内容と表現の点と講評を返す。画像は使わず、話し方（発音）も採点しない。同じ sceneKey（省いたら同じ配置）の基準は 1 日覚えて使い回すので、同じ場面の全員が同じ基準で採点される。",
+        "description": "場面の配置の JSON（items と description）と発話の文字起こしを送る。部品のメタデータ（名前・words・大きさ）と配置（座標・向き・動き）、説明文を Claude に渡し、内容と表現を採点基準の段階（0・20・40・60・80・100）で付けて講評を返す。画像は使わず、話し方（発音）の点も付けない。",
         "responses": {
           "200": {
             "description": "採点した",
@@ -1873,58 +1738,6 @@
             "application/json": {
               "schema": {
                 "$ref": "#/components/schemas/ScoreRequest"
-              }
-            }
-          }
-        }
-      }
-    },
-    "/score/rubric": {
-      "post": {
-        "operationId": "prepareRubric",
-        "tags": [
-          "scoring"
-        ],
-        "summary": "採点の基準を先に作っておく",
-        "description": "場面を選んだとき（ラウンドの前）に呼ぶと、採点の基準を作って覚えておく。あとの POST /score は基準を作る時間を待たずに済む。もう覚えていれば、それを返す。SCORING_MODE が fixed のときも基準は作る。",
-        "responses": {
-          "200": {
-            "description": "基準を用意した",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/PrepareRubricResponse"
-                }
-              }
-            }
-          },
-          "400": {
-            "description": "本文の形が違う・部品が 1 つも見つからない（invalid_message）",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorResponse"
-                }
-              }
-            }
-          },
-          "502": {
-            "description": "基準を作る途中で失敗した（scoring_failed）",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorResponse"
-                }
-              }
-            }
-          }
-        },
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/PrepareRubricRequest"
               }
             }
           }

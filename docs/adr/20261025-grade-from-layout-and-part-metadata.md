@@ -1,7 +1,7 @@
 # 2026/10/25 採点の基準は、配置の JSON と部品のメタデータから作る
 
 ## Status
-- accepted
+- superseded by [20261025-score-content-with-layout-and-rubric-bands](./20261025-score-content-with-layout-and-rubric-bands.md)（場面ごとに基準を作って覚えるのをやめ、配置の情報を座標のまま渡して採点基準の段階で付ける）
 
 ## Situation
 - 場面は部品（`assets/parts`）を配置の JSON で並べて作る方向になった（[ADR](./20261024-compose-scenes-from-stored-parts.md)）。AI やエージェントが場面を作ると、人が採点の要素（`elements`）を書く余裕は無い。
