@@ -104,4 +104,6 @@ enum RoundTiming {
   static let recording: TimeInterval = 20
   /// 待機に入ってから締め切りを押せない時間
   static let closeLock: TimeInterval = 2
+  /// 待機の画面で、正答例を少しずつ出して出し切るまでの時間（文の長さによらない）
+  static let answerReveal: TimeInterval = 3
 }

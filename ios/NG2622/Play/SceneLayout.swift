@@ -1,7 +1,7 @@
 import Foundation
 
 /// 配置の JSON（scenenglish.scene/1）。docs/design/scene-protocol.md の「配置の JSON」。
-/// アプリが並べるのに使う項目だけを読む（採点の description・elements はバックエンドが使う）
+/// アプリが並べるのに使う項目と、待機の画面に正答例として出す description を読む（採点の elements はバックエンドが使う）
 nonisolated struct SceneLayout: Decodable, Sendable, Equatable {
   static let protocolName = "scenenglish.scene/1"
 
@@ -11,18 +11,23 @@ nonisolated struct SceneLayout: Decodable, Sendable, Equatable {
   /// 日本語の名前（待合と結果に出す）
   let name: String
   let difficulty: String?
+  /// 場面の英語の説明。待機の画面に正答例として出す
+  let description: String?
   /// 置く部品。上から順に置く。読めない item は飛ばす（1 件が壊れていても、ほかは置く）
   let items: [Item]
 
   enum CodingKeys: String, CodingKey {
-    case `protocol`, id, name, difficulty, items
+    case `protocol`, id, name, difficulty, description, items
   }
 
-  init(protocol: String, id: String?, name: String, difficulty: String?, items: [Item]) {
+  init(
+    protocol: String, id: String?, name: String, difficulty: String?, description: String? = nil, items: [Item]
+  ) {
     self.protocol = `protocol`
     self.id = id
     self.name = name
     self.difficulty = difficulty
+    self.description = description
     self.items = items
   }
 
@@ -45,6 +50,8 @@ nonisolated struct SceneLayout: Decodable, Sendable, Equatable {
       id: try c.decodeIfPresent(String.self, forKey: .id),
       name: try c.decode(String.self, forKey: .name),
       difficulty: try c.decodeIfPresent(String.self, forKey: .difficulty),
+      // 説明が読めなくても場面は出す
+      description: try? c.decodeIfPresent(String.self, forKey: .description),
       items: items)
   }
 

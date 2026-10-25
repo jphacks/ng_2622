@@ -1,17 +1,32 @@
 import SwiftUI
 
-/// 待機の画面。参加者の一覧と、ホストだけの「締め切って発表する」
+/// 待機の画面。いま答えた場面と正答例、参加者の一覧と、ホストだけの「締め切って発表する」
 struct WaitingView: View {
   let session: RoomSession
+  /// いま答えたラウンド。nil なら場面と正答例を出さない
+  let round: RoundInfo?
   let enteredAt: Date
 
   @State private var confirming = false
 
   var body: some View {
     VStack(spacing: 0) {
-      ParticipantList(participants: session.participants)
-        .padding(.top, 40)
-      Spacer()
+      ScrollView {
+        VStack(spacing: 16) {
+          if let round {
+            WaitingScene(round: round, enteredAt: enteredAt)
+            if let answer = SceneCatalog.description(of: round.sceneID) {
+              ModelAnswer(text: answer, startsAt: enteredAt)
+            }
+          }
+          ParticipantList(participants: session.participants)
+        }
+        .padding(.top, 24)
+        .padding(.bottom, 20)
+        .frame(width: 346)
+        .frame(maxWidth: .infinity)
+      }
+      .scrollIndicators(.hidden)
       if session.isHost {
         CloseButton(enteredAt: enteredAt) {
           if session.remainingCount > 0 {
@@ -20,10 +35,11 @@ struct WaitingView: View {
             session.close()
           }
         }
+        .frame(width: 346)
+        .padding(.top, 10)
         .padding(.bottom, 30)
       }
     }
-    .frame(width: 346)
     .frame(maxWidth: .infinity)
     .sheet(isPresented: $confirming) {
       CloseConfirmSheet(remaining: session.remainingCount) {
@@ -36,6 +52,63 @@ struct WaitingView: View {
     .onChange(of: session.isRoundOver) { _, over in
       if over { confirming = false }
     }
+  }
+}
+
+/// いま答えた場面。ゆっくり回し続ける。触れない
+private struct WaitingScene: View {
+  let round: RoundInfo
+  let enteredAt: Date
+
+  var body: some View {
+    TimelineView(.animation) { context in
+      // 1 秒に 12 度（30 秒で 1 周）
+      let yaw = context.date.timeIntervalSince(enteredAt) * 12
+      DioramaView(
+        sceneID: round.sceneID, yaw: yaw, tilt: SceneOrbit.defaultTilt, startsAt: round.startsAt, distance: 4.6)
+    }
+    .frame(maxWidth: .infinity)
+    .frame(height: 190)
+    .background(Theme.background)
+    .clipShape(RoundedRectangle(cornerRadius: 22))
+    .allowsHitTesting(false)
+    .accessibilityHidden(true)
+  }
+}
+
+/// 正答例（場面の英語の説明）。AI が文を作るように、startsAt から少しずつ出して RoundTiming.answerReveal で出し切る
+private struct ModelAnswer: View {
+  let text: String
+  let startsAt: Date
+
+  var body: some View {
+    VStack(alignment: .leading, spacing: 8) {
+      Text("正答例")
+        .font(Theme.font(12, .heavy))
+        .foregroundStyle(Theme.accent)
+        .padding(.horizontal, 10)
+        .padding(.vertical, 3)
+        .background(Theme.accentSoft, in: Capsule())
+      TimelineView(.animation) { context in
+        let progress = min(1, max(0, context.date.timeIntervalSince(startsAt) / RoundTiming.answerReveal))
+        // 出し切ったときの大きさで場所を取り、文が伸びてもカードの大きさを変えない
+        Text(text)
+          .hidden()
+          .overlay(alignment: .topLeading) {
+            Text(text.prefix(Int((Double(text.count) * progress).rounded(.down))))
+          }
+      }
+      .font(Theme.font(16, .bold))
+      .foregroundStyle(Theme.ink)
+      .lineSpacing(3)
+      .frame(maxWidth: .infinity, alignment: .leading)
+    }
+    .padding(18)
+    .background(Theme.card, in: RoundedRectangle(cornerRadius: 22))
+    .shadow(color: Theme.ink.opacity(0.07), radius: 10, y: 6)
+    // 少しずつ出すのは見た目だけ。読み上げは初めから全文
+    .accessibilityElement(children: .ignore)
+    .accessibilityLabel("正答例。\(text)")
   }
 }
 

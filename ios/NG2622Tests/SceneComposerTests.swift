@@ -125,6 +125,16 @@ struct SceneComposerTests {
     #expect(layout.items.map(\.key) == ["a", "c"])
   }
 
+  /// 説明（正答例）は読む。無い・文字列でないときは nil にして、場面は読む
+  @Test func decodeDescription() throws {
+    let with = #"{"protocol":"scenenglish.scene/1","name":"x","description":"A park.","items":[]}"#
+    #expect(try SceneLayout.decode(Data(with.utf8)).description == "A park.")
+    let without = #"{"protocol":"scenenglish.scene/1","name":"x","items":[]}"#
+    #expect(try SceneLayout.decode(Data(without.utf8)).description == nil)
+    let broken = #"{"protocol":"scenenglish.scene/1","name":"x","description":3,"items":[]}"#
+    #expect(try SceneLayout.decode(Data(broken.utf8)).description == nil)
+  }
+
   @Test func generatedID() {
     #expect(GeneratedScene.isGenerated("gen-7k2m9q4x3a"))
     #expect(!GeneratedScene.isGenerated("park"))
@@ -143,11 +153,20 @@ struct SceneComposerTests {
       #expect(GeneratedScene.isGenerated(id))
       let layout = try await client.layout(sceneID: id)
       #expect(layout.id == id)
+      #expect(layout.description?.isEmpty == false, "\(id) に正答例が無い")
       for item in layout.items {
         #expect(parts.resolve(item.partRef) != nil, "\(item.part) が同梱に無い")
       }
     }
     await #expect(throws: SceneLayoutError.notFound) { try await client.layout(sceneID: "gen-nothing") }
+  }
+
+  /// 焼き込んだシーンはどれも、待機の画面に出す正答例を持っている
+  @Test func bakedScenesHaveDescription() {
+    #expect(!SceneCatalog.all.isEmpty)
+    for scene in SceneCatalog.all {
+      #expect(SceneCatalog.description(of: scene.id)?.isEmpty == false, "\(scene.id) に正答例が無い")
+    }
   }
 
   /// 知らない部品は飛ばして並べ、全部知らなければ nil（「場面を出せません」）
