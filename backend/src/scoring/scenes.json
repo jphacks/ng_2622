@@ -138,5 +138,153 @@
       }
     ],
     "extraMax": 10
+  },
+  {
+    "id": "beach",
+    "name": "海辺",
+    "description": "A sunny beach in summer. Two children are kneeling on the sand and building a sandcastle with a red flag. One of them is digging with a yellow shovel, and a red bucket is next to them. A seagull is flying away with a sandwich in its beak, and a woman in a pink dress is surprised and reaching up next to a checkered picnic blanket with a basket. A man is sleeping on a striped towel under a red and white beach umbrella with a straw hat on his face. A boy is floating in the sea with a red and white float ring. There is a small sailboat on the sea, two palm trees, a crab and rocks near the water, a surfboard standing in the sand, a beach ball, a cooler, and footprints in the sand.",
+    "elements": [
+      {
+        "id": "place",
+        "label": "海辺で",
+        "points": 15,
+        "accept": "beach, seaside, sea, ocean"
+      },
+      {
+        "id": "sandcastle",
+        "label": "子どもが砂のお城を作っている",
+        "points": 20,
+        "accept": "children or kids are building or making a sandcastle, or digging in the sand with a shovel and bucket",
+        "partial": "mentions children on the sand, or mentions a sandcastle, shovel, or bucket without connecting them"
+      },
+      {
+        "id": "seagull",
+        "label": "カモメがサンドイッチをくわえて飛んでいる",
+        "points": 20,
+        "accept": "a seagull or bird is flying away with or stealing a sandwich or food, or a surprised woman is reaching up toward the bird",
+        "partial": "mentions a seagull or bird, or a woman having a picnic, without saying the bird took the food"
+      },
+      {
+        "id": "sleeping",
+        "label": "男性がパラソルの下で寝ている",
+        "points": 15,
+        "accept": "a man is sleeping or lying under a beach umbrella or parasol, e.g. with a hat on his face",
+        "partial": "mentions a beach umbrella or a sleeping man without connecting them"
+      },
+      {
+        "id": "float",
+        "label": "男の子が浮き輪で海に浮いている",
+        "points": 10,
+        "accept": "a boy or child is floating or swimming in the sea with a float ring or tube",
+        "partial": "someone is in the sea or water, or mentions a float ring"
+      },
+      {
+        "id": "sailboat",
+        "label": "ヨットやヤシの木",
+        "points": 10,
+        "accept": "a sailboat, boat, or yacht on the sea, or palm trees on the beach",
+        "partial": "trees or a boat without details"
+      }
+    ],
+    "extraMax": 10
+  },
+  {
+    "id": "cafe",
+    "name": "カフェ",
+    "description": "Inside a cozy cafe with a wooden floor. A waiter in a black apron is walking with a tray of two cups of coffee. A man in a blue shirt has knocked over his coffee cup, and the coffee is spilling off the table onto the floor. He is raising his hand in surprise. A woman in a yellow sweater is typing on a laptop at a table by the window, and a small dog is sleeping under her table. A girl in a red dress is eating a piece of strawberry cake, and her mother is taking a picture of the cake with her phone. Behind the counter, a barista in a green apron is making coffee with an espresso machine. On the counter there is a glass case with cakes and a cash register. There is a chalkboard menu on the wall, three lamps hanging from a beam, big windows with plants, a coat rack, and an empty table with flowers.",
+    "elements": [
+      {
+        "id": "place",
+        "label": "カフェで",
+        "points": 15,
+        "accept": "cafe, coffee shop, restaurant"
+      },
+      {
+        "id": "spill",
+        "label": "男性がコーヒーをこぼしている",
+        "points": 20,
+        "accept": "a man knocked over his cup or spilled coffee on the table or floor",
+        "partial": "mentions a surprised man or coffee on a table without saying it spilled"
+      },
+      {
+        "id": "waiter",
+        "label": "店員がトレーでコーヒーを運んでいる",
+        "points": 15,
+        "accept": "a waiter or staff member is carrying or walking with a tray of coffee cups",
+        "partial": "mentions a waiter or a tray of coffee without saying they are carrying it"
+      },
+      {
+        "id": "laptop",
+        "label": "女性が窓際でパソコンを使っている",
+        "points": 15,
+        "accept": "a woman is using or typing on a laptop or computer at a table",
+        "partial": "mentions a laptop or computer, or a woman sitting by the window"
+      },
+      {
+        "id": "cake",
+        "label": "女の子がケーキを食べて母親が写真を撮っている",
+        "points": 15,
+        "accept": "a girl is eating cake, or her mother is taking a picture or photo of the cake with her phone",
+        "partial": "mentions cake on a table or someone using a phone"
+      },
+      {
+        "id": "dog",
+        "label": "テーブルの下で犬が寝ている",
+        "points": 10,
+        "accept": "a dog is sleeping or lying under the table",
+        "partial": "mentions a dog"
+      }
+    ],
+    "extraMax": 10
+  },
+  {
+    "id": "rainy_street",
+    "name": "雨のバス停",
+    "description": "A shopping street on a rainy day. A woman in a cream coat is waiting at the bus stop under a blue umbrella. A girl without an umbrella is running toward the bus stop with her bag over her head. A red car is driving through a big puddle and splashing water onto the sidewalk. A boy in a yellow raincoat and green boots is jumping into a puddle. An old man is sitting on the bench in the bus shelter and reading a newspaper. A gray cat is sitting on the windowsill of the bakery, staying dry under the awning. There is a bakery with a red and white striped awning and bread in the window, a flower shop with a green awning and buckets of flowers in front, a red mailbox, and a street lamp.",
+    "elements": [
+      {
+        "id": "rain",
+        "label": "雨の日の通り・バス停で",
+        "points": 15,
+        "accept": "it is raining, a rainy day, a rainy street, or at a bus stop in the rain",
+        "partial": "mentions a street or a bus stop without mentioning rain"
+      },
+      {
+        "id": "umbrella_woman",
+        "label": "女性が青い傘をさしてバスを待っている",
+        "points": 15,
+        "accept": "a woman is holding or standing under a blue umbrella at the bus stop",
+        "partial": "mentions a woman or an umbrella without connecting them"
+      },
+      {
+        "id": "running_girl",
+        "label": "傘のない女の子がカバンを頭に乗せて走っている",
+        "points": 20,
+        "accept": "a girl is running in the rain without an umbrella, or holding a bag over her head",
+        "partial": "someone is running, without mentioning the rain, no umbrella, or the bag"
+      },
+      {
+        "id": "car_splash",
+        "label": "赤い車が水たまりをはねている",
+        "points": 15,
+        "accept": "a red car is driving through a puddle or splashing water",
+        "partial": "mentions a red car or a puddle without saying the car is splashing water"
+      },
+      {
+        "id": "boy_puddle",
+        "label": "黄色いレインコートの男の子が水たまりで跳ねている",
+        "points": 15,
+        "accept": "a boy in a raincoat is jumping or playing in a puddle",
+        "partial": "mentions a boy in a raincoat or a child near a puddle"
+      },
+      {
+        "id": "old_man",
+        "label": "お年寄りがベンチで新聞を読んでいる",
+        "points": 10,
+        "accept": "an old man or man is sitting on the bench at the bus stop reading a newspaper",
+        "partial": "someone is sitting on the bench or mentions a newspaper"
+      }
+    ],
+    "extraMax": 10
   }
 ]
