@@ -4,6 +4,7 @@ import { describeRoute, validator } from "hono-openapi";
 import { isSceneId } from "../domain/scenes";
 import { createSceneReviewRepository } from "../repositories/sceneReviewRepository";
 import { SceneGenerationError } from "../scenes/generate";
+import { findPoolScene } from "../scenes/pool";
 import {
   ErrorResponse,
   GenerateSceneRequest,
@@ -134,6 +135,27 @@ export const sceneRoutes = new Hono<AppEnv>()
     async (c) => {
       const repository = createSceneReviewRepository(c.env.SCENE_REVIEWS);
       return c.json({ scenes: await listScenesWithRatings(repository) });
+    },
+  )
+  .get(
+    "/scenes/:sceneId/layout",
+    describeRoute({
+      operationId: "getSceneLayout",
+      tags: ["scenes"],
+      summary: "作り置きの場面の配置の JSON",
+      description:
+        "作り置きの場面（gen-…）の配置の JSON をそのまま返す。round で届いた sceneId の場面を組み立てるのに使う。手作りの場面には無い（404）",
+      responses: {
+        200: { description: "配置の JSON", content: jsonContent(SceneLayout) },
+        404: errorResponse("作り置きの場面が無い（unknown_scene）"),
+      },
+    }),
+    (c) => {
+      const scene = findPoolScene(c.req.param("sceneId"));
+      if (!scene) {
+        return c.json(errorBody("unknown_scene", "作り置きの場面が無い"), 404);
+      }
+      return c.json(scene);
     },
   )
   .get(

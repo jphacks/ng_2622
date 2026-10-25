@@ -21,6 +21,7 @@ import {
   roundResults,
   skipAudio,
 } from "../domain/round";
+import type { Difficulty } from "../scenes/pool";
 import { MAX_PLAYERS } from "../schemas/common";
 import { ClientMessage, type ServerMessage } from "../schemas/ws";
 
@@ -119,7 +120,7 @@ export class Room extends DurableObject<CloudflareBindings> {
 
     switch (message.type) {
       case "start":
-        return this.start(ws, state, playerId, message.sceneId);
+        return this.start(ws, state, playerId, message);
       case "close":
         return this.apply(ws, state, closeRound(state, { playerId }));
       case "again":
@@ -195,9 +196,14 @@ export class Room extends DurableObject<CloudflareBindings> {
     ws: WebSocket,
     state: RoomState,
     playerId: string,
-    sceneId: string | undefined,
+    input: { sceneId?: string; difficulty?: Difficulty },
   ) {
-    const result = startRound(state, { playerId, sceneId, now: Date.now() });
+    const result = startRound(state, {
+      playerId,
+      sceneId: input.sceneId,
+      difficulty: input.difficulty,
+      now: Date.now(),
+    });
     if (!result.ok) return this.sendError(ws, result.error);
 
     const { state: next, round } = result.value;
