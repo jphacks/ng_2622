@@ -95,6 +95,17 @@ test("作り置きの場面は bands（Claude 1 回）で内容・表現を付�
   assert.equal(r.feedback.speechTip.aspect, "fluency");
 });
 
+test("作り置きの場面でも、端末の文字起こしがあれば Claude の採点と結果に使う", async () => {
+  const bodies: string[] = [];
+  stubFetch(bodies);
+  const device = "A man is reading a book and a woman is drinking coffee";
+  const r = await score(env, wav(), index.easy.scenes[0], device);
+  assert.ok(r.ok, JSON.stringify(r));
+  const user = JSON.parse(bodies[0]).messages[0].content as string;
+  assert.match(user, new RegExp(`Transcript: ${device}`));
+  assert.equal(r.transcript, device);
+});
+
 test("SCORING_MODE=fixed では作り置きの場面でも Claude を呼ばず固定の点", async () => {
   globalThis.fetch = (async () => {
     throw new Error("呼ばない");
