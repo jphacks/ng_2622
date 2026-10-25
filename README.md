@@ -89,7 +89,72 @@ AI が 79 個の部品を組み合わせて作った場面を、人が画像で�
 - AI の採点を信頼できるものにしました。画像ではなく場面の配置（部品の名前・大きさ・座標・向き・動き）を正解として渡し、0・20・40・60・80・100 の段階ごとの基準で内容と表現を付けさせます。表現の基準は IELTS の語彙・文法の考え方に沿って書きました。
 - 採点の待ち時間を約半分にしました。モデルと思考の深さ（effort）を変えて測り、点数の傾向を保ったまま Claude の時間を 6〜8 秒から 3〜4 秒にしました。
 
+### 開発の進め方（ハッカソンで気をつけたこと）
+
+2 日間で完成度を上げるために、ウォーターフォールとアジャイルの良いところを組み合わせました。
+
+リーダーの高橋は、これまでの個人開発で 2 つのやり方を試してきました。
+
+- 仕様駆動開発（SDD）でロジックまで固めてから作る：仕様を読み解くだけで疲れ、作っている途中で仕様との食い違いが起きる。
+- 機能や UI を思いついた順に足していく：最終的な着地点がぼやけ、複数人で作ると一人ひとりの作るものがずれていく。
+
+そこで、**画面とその遷移だけは先に固めてチームのゴールにし、裏側のロジックは小さく設計しては作る**ことを繰り返しました。
+
+**1. 先に画面の遷移図と仮の画面を作る**
+
+Hack Day の前に、画面の遷移図を HTML の画面設計書として作り、仮の画面は Codex の画像生成で作りました（[#4](https://github.com/jphacks/ng_2622/pull/4)）。初日の昼過ぎには、3 人が画面のまとまりごとに HTML のモックを作りました（[#12](https://github.com/jphacks/ng_2622/pull/12)・[#15](https://github.com/jphacks/ng_2622/pull/15)・[#18](https://github.com/jphacks/ng_2622/pull/18)）。
+
+![画面の遷移図: 部屋（ホーム・部屋に入る・待合）→ プレイ（回転中・録音中・待機）→ 結果（結果発表・振り返り・みんなの描写）](docs/images/ui-flow.png)
+
+ゴールが絵で共有できていたので、アプリとバックエンドを並行して作れました。
+
+- アプリは仮のデータ（Mock）で画面を先につなぎ、初日の 15:57 にはホームから結果まで通して遊べるようになりました（[#25](https://github.com/jphacks/ng_2622/pull/25)）。
+- バックエンドは同じ時間に部屋と採点の API を作り（[#17](https://github.com/jphacks/ng_2622/pull/17)・[#20](https://github.com/jphacks/ng_2622/pull/20)・[#27](https://github.com/jphacks/ng_2622/pull/27)）、OpenAPI から作った型でアプリとつなぎました（[#37](https://github.com/jphacks/ng_2622/pull/37)）。
+- 初日の 19:13 に、アプリが本物のバックエンドにつながりました（[#40](https://github.com/jphacks/ng_2622/pull/40)）。
+
+**2. 裏側のロジックは、ペアプロで一つずつ設計して部分ごとに作る**
+
+採点・部屋・3D の場面などの裏側は、ペアプロで設計してから小さな PR で作ることを繰り返しました。Hack Day 中に merge した PR は 54 本で、5 人全員が書いています。
+
+- 大きな設計は、先に仕様書か ADR にしてから作りました。例えば、部品と配置のプロトコルを決めてから（[#42](https://github.com/jphacks/ng_2622/pull/42)）部品を作り（[#43](https://github.com/jphacks/ng_2622/pull/43)・[#46](https://github.com/jphacks/ng_2622/pull/46)）、場面の作り置きと採点の方針を決めてから（[#54](https://github.com/jphacks/ng_2622/pull/54)）作り直しました（[#61](https://github.com/jphacks/ng_2622/pull/61)・[#67](https://github.com/jphacks/ng_2622/pull/67)・[#69](https://github.com/jphacks/ng_2622/pull/69)）。
+- 54 本のうち 39 本は、実装と同じ PR で仕様書（[`docs/design/`](docs/design/)）か ADR（[`docs/adr/`](docs/adr/)）も直しています。決めたことと作ったものを、そのつど揃えました。
+
 ## 開発技術
+
+### 構成
+
+![構成図: 各自の iPhone（SwiftUI）は Cloudflare の Worker（Hono）とだけ WebSocket と HTTP で話す。Worker は部屋ごとの Room（Durable Object）と、場面の評価の SceneReviews（Durable Object）につなぎ、採点で Azure AI Speech と Claude API を呼ぶ。Room は場面の生成で Claude API を呼ぶ](docs/images/architecture.png)
+
+<details>
+<summary>図の元（mermaid）</summary>
+
+```mermaid
+flowchart LR
+  subgraph iPhone[各自の iPhone（SwiftUI）]
+    UI[画面と 3D（RealityKit）<br>部品の USDZ を同梱]
+    Rec[録音と文字起こし<br>SpeechAnalyzer]
+  end
+  subgraph CF[Cloudflare]
+    W[Worker（Hono）<br>API の入口・採点<br>作り置きの場面 27]
+    R[Room（Durable Object）<br>部屋ごとに 1 つ<br>開始時刻の配布・場面の生成]
+    SR[SceneReviews（Durable Object）<br>場面の ★ 評価]
+  end
+  Az[Azure AI Speech<br>発音評価]
+  Cl[Claude API<br>採点・講評・場面の生成]
+  UI <-->|WebSocket・場面の配置・評価| W
+  Rec -->|音声 WAV ＋ 文字起こし| W
+  W <-->|部屋ごとに振り分け| R
+  W <--> SR
+  W -->|話し方の採点| Az
+  W -->|内容・表現の採点と講評| Cl
+  R -->|場面の生成| Cl
+```
+
+</details>
+
+- iPhone は API のキーを持たず、Cloudflare とだけ話します。外部 API（Azure・Claude）はバックエンドだけが呼びます。
+- 部屋の状態（参加者・進行・点数）は部屋ごとの Durable Object が持ち、全員に WebSocket で配ります。
+- 音声は Worker が受け取ってすぐ応答し、採点は応答の後に続けて、終わったら部屋に書き込みます。
 
 ### 活用した技術
 
