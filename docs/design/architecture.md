@@ -65,6 +65,7 @@ sequenceDiagram
 | `GET /rooms/:id/ws` | WebSocket | 部屋に入る。最初に `join`（名前とアバターの色。ホストと復帰する人は参加者 ID と合言葉も）を送る。以後、部屋の状態・開始・進み具合・結果を受け取る |
 | `POST /rooms/:id/rounds/:n/audio` | HTTP | 自分の音声（WAV、最長 20 秒、約 0.6 MB）を本文にそのまま載せて送る。参加者 ID と合言葉をヘッダーに付ける。すぐ 202 を返し、採点は裏で続ける |
 | `GET /scenes` | HTTP | シーンの一覧と、それぞれの★の平均・評価した人数（待合のシーン選びに出す） |
+| `GET /scenes/:id/layout` | HTTP | 作り置きの場面（`gen-…`）の配置の JSON を、`backend/src/scenes/pool/` の JSON のまま返す。round で届いた場面を組み立てるのに使う。無い場面と手作りの場面は 404 `unknown_scene` |
 | `GET /scenes/:id/reviews` | HTTP | シーンの評価（★とコメント）を新しい順に返す |
 | `GET /parts` | HTTP | 部品のメタデータの一覧（Worker に同梱した一覧） |
 | `POST /scenes/generate` | HTTP | 作り置きのスクリプト（手元）が使う。難易度（とテーマ）から Claude が関係を書き、バックエンドが座標に直した配置の JSON を返す（保存しない）。合言葉が要る。形は [`scene-protocol.md`](./scene-protocol.md) |
@@ -75,7 +76,7 @@ API の型の正本は `backend/src/schemas/`（zod）で、そこから生成�
 
 WebSocket のメッセージ（ThatsFight の `src/shared/protocol.ts` に倣う）:
 
-- 端末から: `join`、`start`（ホスト、シーン ID。作り置きの場面に入れ替えたあとは難易度を送る案。[`scene-protocol.md`](./scene-protocol.md)）、`close`（ホスト、締め切り）、`again`（ホスト、同じ顔ぶれでもう一度）、`skip`（音声なしで終える。マイクが使えないときなど）、`leave`（退出。ホストが抜けたら次に入った人がホストになる）
+- 端末から: `join`、`start`（ホスト。シーン ID か難易度 `difficulty`（easy・normal・hard）のどちらか。難易度なら部屋が作り置きの場面から選ぶ。両方は invalid_message。[`scene-protocol.md`](./scene-protocol.md)）、`close`（ホスト、締め切り）、`again`（ホスト、同じ顔ぶれでもう一度）、`skip`（音声なしで終える。マイクが使えないときなど）、`leave`（退出。ホストが抜けたら次に入った人がホストになる）
 - 部屋から: `welcome`（本人にだけ。参加者 ID と合言葉）、`room`（参加者と状態）、`round`（シーン ID と開始時刻）、`progress`（各自の状態）、`results`（順位・全員の描写と内訳。自分の分は参加者 ID で選ぶ）、`error`
 
 ## データ
