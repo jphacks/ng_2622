@@ -15,14 +15,13 @@ struct PlayView: View {
   /// ドラッグの前回の位置
   @State private var lastDrag: CGSize?
 
-  private var introStart: Date { round.startsAt + RoundTiming.prompt }
-  private var introEnd: Date { introStart + RoundTiming.intro }
+  private var introEnd: Date { round.startsAt + RoundTiming.intro }
   private var recordingEnd: Date { introEnd + RoundTiming.recording }
 
   var body: some View {
     VStack(spacing: 0) {
       header
-        .frame(width: 346, height: 96)
+        .frame(width: 346, height: 126)
         .padding(.top, 24)
       scene
         .padding(.top, 0)
@@ -35,14 +34,17 @@ struct PlayView: View {
     .task(id: round) { await runTimeline() }
   }
 
-  // MARK: - 上（指示文 → カウントダウン → 録音中と残り時間）
+  // MARK: - 上（指示文とカウントダウン → 録音中と残り時間）
 
   private var header: some View {
     ZStack(alignment: .top) {
-      countdown
-        .padding(.top, 10)
-        .opacity(isRecording ? 0 : 1)
-        .offset(y: isRecording ? -14 : 0)
+      VStack(spacing: 4) {
+        prompt
+        countdown
+      }
+      .padding(.top, 10)
+      .opacity(isRecording ? 0 : 1)
+      .offset(y: isRecording ? -14 : 0)
       recordingStatus
         .padding(.top, 22)
         .opacity(isRecording ? 1 : 0)
@@ -54,15 +56,10 @@ struct PlayView: View {
 
   private var countdown: some View {
     TimelineView(.periodic(from: round.startsAt, by: 0.05)) { context in
-      let elapsed = context.date.timeIntervalSince(introStart)
+      let elapsed = context.date.timeIntervalSince(round.startsAt)
       let n = 3 - Int(floor(elapsed))
       ZStack {
-        if elapsed < 0 && !isRecording {
-          Text("この場面を英語で説明しよう")
-            .font(Theme.font(24, .heavy))
-            .foregroundStyle(Theme.ink)
-            .transition(.opacity)
-        } else if (1...3).contains(n) && !isRecording {
+        if (1...3).contains(n) && !isRecording {
           Text("\(n)")
             .font(Theme.font(72, .black))
             .monospacedDigit()
@@ -73,7 +70,22 @@ struct PlayView: View {
       }
       .frame(height: 76)
       .animation(.spring(duration: 0.35, bounce: 0.45), value: n)
-      .accessibilityLabel(elapsed < 0 ? "この場面を英語で説明しよう" : (1...3).contains(n) ? "\(n)" : "")
+      .accessibilityLabel((1...3).contains(n) ? "\(n)" : "")
+    }
+  }
+
+  /// 指示文。カウントダウンと同時に、左から書くように 0.7 秒で出す
+  private var prompt: some View {
+    TimelineView(.animation(paused: isRecording)) { context in
+      let t = min(1, max(0, context.date.timeIntervalSince(round.startsAt) / 0.7))
+      let p = 1 - (1 - t) * (1 - t)
+      Text("この場面を英語で説明しよう")
+        .font(Theme.font(24, .heavy))
+        .foregroundStyle(Theme.ink)
+        .mask(alignment: .leading) {
+          Rectangle().scaleEffect(x: p, anchor: .leading)
+        }
+        .offset(x: (1 - p) * -16)
     }
   }
 
@@ -200,7 +212,7 @@ struct PlayView: View {
   /// 回転中 → 録音中 → 20 秒で待機へ。時刻はラウンドの開始時刻から数える（全員の端末でそろえるため）
   private func runTimeline() async {
     if Date() < introEnd {
-      orbit.spin(from: introStart, duration: RoundTiming.intro)
+      orbit.spin(from: round.startsAt, duration: RoundTiming.intro)
       try? await Task.sleep(for: .seconds(introEnd.timeIntervalSinceNow))
       if Task.isCancelled { return }
     }
