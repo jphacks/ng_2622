@@ -8,7 +8,9 @@ export type ScoringEnv = {
   SCORING_MODE?: string;
   // 内容・表現・話し方の重み。"50,25,25" の形
   SCORE_WEIGHTS?: string;
+  // 採点に使う Claude のモデルと effort（low・medium・high・xhigh・max）。無ければ claude.ts の既定
   CLAUDE_MODEL?: string;
+  CLAUDE_EFFORT?: string;
 };
 
 export type Scene = {
