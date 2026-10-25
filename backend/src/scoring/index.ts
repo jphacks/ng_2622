@@ -54,7 +54,8 @@ export async function score(
 ): Promise<ScoreResult> {
   const started = Date.now();
   const poolScene = findPoolScene(sceneId);
-  if (poolScene) return scorePoolScene(env, wav, poolScene, started);
+  if (poolScene)
+    return scorePoolScene(env, wav, poolScene, started, deviceTranscript);
   const scene = findScene(sceneId);
   if (!scene) {
     return {
@@ -203,6 +204,7 @@ async function scorePoolScene(
   wav: ArrayBuffer,
   scene: PoolScene,
   started: number,
+  deviceTranscript?: string,
 ): Promise<ScoreResult> {
   const sceneId = scene.id;
   if (wav.byteLength > MAX_AUDIO_BYTES || !isWav(wav)) {
@@ -247,9 +249,12 @@ async function scorePoolScene(
 
   try {
     const azureStarted = Date.now();
-    const speech = await assessSpeech(env, wav);
+    // 手作りの場面と同じく、端末の文字起こしがあれば Azure の正解文と Claude の採点に使う
+    const fromDevice = deviceTranscript?.trim() ?? "";
+    const speech = await assessSpeech(env, wav, fromDevice);
     const azureMs = Date.now() - azureStarted;
-    if (!speech || speech.transcript.trim() === "") {
+    const transcript = fromDevice || speech?.transcript.trim() || "";
+    if (!speech || transcript === "") {
       return {
         ok: false,
         sceneId,
@@ -257,7 +262,6 @@ async function scorePoolScene(
         message: "英語の発話を聞き取れなかった",
       };
     }
-    const transcript = speech.transcript;
     const words = transcript.split(/\s+/).filter(Boolean).length;
     const sceneData = describeLayout(scene.items);
     if (!sceneData) {
@@ -297,6 +301,8 @@ async function scorePoolScene(
       sceneId,
       audioBytes: wav.byteLength,
       words,
+      transcriptSource: fromDevice ? "device" : "azure",
+      azureTranscript: speech.transcript,
       azureMs,
       claudeMs: words < MIN_WORDS ? null : Date.now() - claudeStarted,
       totalMs: Date.now() - started,
