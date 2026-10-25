@@ -11,6 +11,9 @@ export type ScoringEnv = {
   // 採点に使う Claude のモデルと effort（low・medium・high・xhigh・max）。無ければ claude.ts の既定
   CLAUDE_MODEL?: string;
   CLAUDE_EFFORT?: string;
+  // 配置から採点の基準を作るモデルと effort。無ければ CLAUDE_MODEL・CLAUDE_EFFORT
+  CLAUDE_RUBRIC_MODEL?: string;
+  CLAUDE_RUBRIC_EFFORT?: string;
 };
 
 export type Scene = {
@@ -22,6 +25,9 @@ export type Scene = {
   elements: SceneElement[];
   // 一覧にない正しい描写に出す点の上限。elements の points と足して 100 にする
   extraMax: number;
+  // 配置の JSON と部品のメタデータから作った基準か。true なら description に場面のすべてが書いてあるので、
+  // 一覧にない描写は description と合うものだけ加点し、description に無い色などには反応しない
+  fromLayout?: boolean;
 };
 
 export type SceneElement = {
@@ -82,6 +88,18 @@ export type Feedback = {
   };
   rewrite: Rewrite | null;
   speechTip: { aspect: SpeechAspect; text: string };
+};
+
+// 話し方の点が無いときの講評（配置から採点する POST /score）。次に伸ばすのは内容か表現
+export type ContentFeedback = {
+  strength: Feedback["strength"];
+  nextStep: {
+    kind: "content" | "expression";
+    // 内容の点（0〜100）で何点伸びるか。内容の要素のときだけ出す
+    gain: number | null;
+    text: string;
+  };
+  rewrite: Rewrite | null;
 };
 
 export type ElementJudgment = {

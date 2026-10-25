@@ -167,7 +167,7 @@ export const PlayerScore = z
   })
   .meta({ ref: "PlayerScore", description: "点数（各 0〜100 の整数）" });
 
-const Rewrite = z
+export const Rewrite = z
   .object({
     before: z
       .string()
