@@ -65,6 +65,9 @@ export const ErrorCode = z
     "invalid_audio",
     "not_in_results",
     "scoring_failed",
+    "generation_refused",
+    "generation_failed",
+    "generation_unavailable",
   ])
   .meta({
     ref: "ErrorCode",
@@ -72,7 +75,7 @@ export const ErrorCode = z
       "room_not_found: 部屋が無い",
       "room_full: 満員",
       "invalid_message: メッセージの形が違う",
-      "unauthorized: 参加者の ID と合言葉が合わない",
+      "unauthorized: 参加者の ID と合言葉が合わない（POST /scenes/generate では SCENE_WRITE_TOKEN が違う）",
       "not_host: ホストだけができる操作",
       "not_in_lobby: 待合でしかできない操作",
       "unknown_scene: シーンの ID が無い",
@@ -82,6 +85,9 @@ export const ErrorCode = z
       "invalid_audio: 音声が 1 MB までの WAV でない",
       "not_in_results: 結果発表のときにしかできない操作",
       "scoring_failed: 採点の途中で失敗した（Claude の呼び出しなど）",
+      "generation_refused: Claude が断った",
+      "generation_failed: Claude の応答が途中で止まった、または形が違った（やり直しても失敗した）",
+      "generation_unavailable: Claude を呼べない（タイムアウト・API の失敗・止めてある）",
     ].join("\n"),
   });
 

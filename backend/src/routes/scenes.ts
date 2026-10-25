@@ -1,13 +1,17 @@
 import { Hono } from "hono";
+import { createMiddleware } from "hono/factory";
 import { describeRoute, validator } from "hono-openapi";
 import { isSceneId } from "../domain/scenes";
 import { createSceneReviewRepository } from "../repositories/sceneReviewRepository";
+import { SceneGenerationError } from "../scenes/generate";
 import {
   ErrorResponse,
+  GenerateSceneRequest,
   ListReviewsQuery,
   ListReviewsResponse,
   ListScenesResponse,
   SceneIdParam,
+  SceneLayout,
   SubmitReviewRequest,
   SubmitReviewResponse,
 } from "../schemas/http";
@@ -16,6 +20,7 @@ import {
   listScenesWithRatings,
   submitReview,
 } from "../usecases/sceneReviews";
+import { generateScene } from "../usecases/scenes";
 import { type AppEnv, errorBody, jsonContent } from "./shared";
 
 const errorResponse = (description: string) => ({
@@ -29,7 +34,92 @@ const sceneIdParam = validator("param", SceneIdParam, (result, c) => {
   }
 });
 
+const encoder = new TextEncoder();
+
+/** Authorization: Bearer <SCENE_WRITE_TOKEN> か。合言葉が設定されていなければ通さない */
+const hasWriteToken = (
+  header: string | undefined,
+  token: string | undefined,
+) => {
+  if (!token || !header?.startsWith("Bearer ")) return false;
+  const a = encoder.encode(header.slice("Bearer ".length));
+  const b = encoder.encode(token);
+  if (a.byteLength !== b.byteLength) return false;
+  // 比べる時間が中身で変わらないよう、全部のバイトを見る（Workers の timingSafeEqual は Node のテストに無い）
+  let diff = 0;
+  for (let i = 0; i < a.byteLength; i++) diff |= a[i] ^ b[i];
+  return diff === 0;
+};
+
+/** 合言葉が要る口の前に置く。本文を読む前に断る */
+const requireWriteToken = createMiddleware<AppEnv>(async (c, next) => {
+  if (!hasWriteToken(c.req.header("authorization"), c.env.SCENE_WRITE_TOKEN)) {
+    return c.json(errorBody("unauthorized", "合言葉が違う"), 401);
+  }
+  await next();
+});
+
+const GENERATION_STATUS = {
+  refused: { code: "generation_refused", status: 422 },
+  invalid: { code: "generation_failed", status: 422 },
+  unavailable: { code: "generation_unavailable", status: 503 },
+} as const;
+
 export const sceneRoutes = new Hono<AppEnv>()
+  .post(
+    "/scenes/generate",
+    describeRoute({
+      operationId: "generateScene",
+      tags: ["scenes"],
+      summary: "AI で場面を作る（作り置き用）",
+      description:
+        "難易度（とテーマ）から、今ある部品だけで配置の JSON（scenenglish.scene/1、id は gen- ＋ 10 文字）を作って返す。保存はしない。作り置きのスクリプトが手元の wrangler dev に向けて呼び、アプリは呼ばない。形が違う・途中で止まった・5xx・接続の失敗のときだけ 1 回やり直す（各回 60 秒まで）。合言葉（Authorization: Bearer <SCENE_WRITE_TOKEN>）が要る。",
+      security: [{ sceneWriteToken: [] }],
+      responses: {
+        200: {
+          description: "作った配置の JSON",
+          content: jsonContent(SceneLayout),
+        },
+        400: errorResponse("本文の形が違う（invalid_message）"),
+        401: errorResponse("合言葉が違う（unauthorized）"),
+        422: errorResponse(
+          "作れなかった。Claude が断った（generation_refused）か、応答の形が違った（generation_failed）",
+        ),
+        503: errorResponse(
+          "Claude を呼べない（generation_unavailable。タイムアウト・API の失敗・止めてある）",
+        ),
+      },
+    }),
+    requireWriteToken,
+    validator("json", GenerateSceneRequest, (result, c) => {
+      if (!result.success) {
+        return c.json(
+          errorBody(
+            "invalid_message",
+            "difficulty は easy・normal・hard、theme は 1〜50 文字（任意）",
+          ),
+          400,
+        );
+      }
+    }),
+    async (c) => {
+      const body = c.req.valid("json");
+      try {
+        const layout = await generateScene(c.env, {
+          difficulty: body.difficulty,
+          theme: body.theme,
+        });
+        return c.json(layout, 200);
+      } catch (e) {
+        if (!(e instanceof SceneGenerationError)) throw e;
+        const { code, status } = GENERATION_STATUS[e.kind];
+        return c.json(
+          errorBody(code, `作れませんでした: ${e.message}`),
+          status,
+        );
+      }
+    },
+  )
   .get(
     "/scenes",
     describeRoute({
