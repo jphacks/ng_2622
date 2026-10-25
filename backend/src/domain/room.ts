@@ -116,7 +116,8 @@ export const joinRoom = (
 /**
  * ラウンドを始める。ホストだけが待合のときにできる。シーンを省くとおまかせ。
  * 難易度を送ると、その難易度の作り置きの場面のうち、この部屋でまだ出ていないものから選ぶ（シーンとの両方は送れない）。
- * このとき部屋に入っている人（join 済み）がラウンドの参加者になる
+ * このとき部屋に入っていて（join 済み）、つながっている人がラウンドの参加者になる。
+ * 切断中の人を入れると、その人の音声を待ち続けてラウンドが終わらないため
  */
 export const startRound = (
   state: RoomState,
@@ -125,6 +126,7 @@ export const startRound = (
     sceneId?: string;
     difficulty?: Difficulty;
     now: number;
+    connectedIds: ReadonlySet<string>;
   },
 ): Result<{ state: RoomState; round: Round }> => {
   if (input.playerId !== state.hostId) {
@@ -155,7 +157,9 @@ export const startRound = (
     round: (state.current?.round ?? 0) + 1,
     sceneId,
     startAt: input.now + START_DELAY_MS,
-    playerIds: state.players.filter((p) => p.name !== null).map((p) => p.id),
+    playerIds: state.players
+      .filter((p) => p.name !== null && input.connectedIds.has(p.id))
+      .map((p) => p.id),
     grades: {},
   };
   return ok({
@@ -189,11 +193,35 @@ export const leaveRoom = (state: RoomState, playerId: string): RoomState => {
   }
 
   const nextHost = rest.find((p) => p.name !== null) ?? rest[0];
-  return settleRound({
-    ...state,
-    hostId: nextHost?.id ?? state.hostId,
-    players: rest.map((p) => ({ ...p, isHost: p.id === nextHost?.id })),
-  });
+  return settleRound(
+    withHost({ ...state, players: rest }, nextHost?.id ?? state.hostId),
+  );
+};
+
+/**
+ * ホストが切断したまま戻らないときに替えるか。ホストが切断中で、
+ * ほかにつながっている参加者（join 済み）がいるとき替える
+ */
+export const hostIsAway = (
+  state: RoomState,
+  connectedIds: ReadonlySet<string>,
+) =>
+  !connectedIds.has(state.hostId) &&
+  state.players.some((p) => p.name !== null && connectedIds.has(p.id));
+
+/**
+ * 切断したまま戻らないホストを替える。つながっている人のうち、先に入った人がホストになる。
+ * 前のホストは参加者として残り、同じ合言葉で戻れる
+ */
+export const replaceAwayHost = (
+  state: RoomState,
+  connectedIds: ReadonlySet<string>,
+): RoomState => {
+  if (!hostIsAway(state, connectedIds)) return state;
+  const nextHost = state.players.find(
+    (p) => p.name !== null && connectedIds.has(p.id),
+  );
+  return nextHost ? withHost(state, nextHost.id) : state;
 };
 
 /** 進行中のラウンド（録音と採点待ち）。途中で戻ってきた人に送り直す */
@@ -218,6 +246,13 @@ export const visiblePlayers = (
           },
         ],
   );
+
+/** ホストを替える */
+const withHost = (state: RoomState, hostId: string): RoomState => ({
+  ...state,
+  hostId,
+  players: state.players.map((p) => ({ ...p, isHost: p.id === hostId })),
+});
 
 /** 同じ ID の参加者を入れ替える */
 const replacePlayer = (state: RoomState, player: Player): RoomState => ({

@@ -113,7 +113,7 @@
           "type"
         ],
         "additionalProperties": false,
-        "description": "ホストだけが送れる。待合のときだけ有効"
+        "description": "ホストだけが送れる。待合のときだけ有効。このときつながっている人がラウンドの参加者になる（切断中の人は入らない）"
       },
       "CloseMessage": {
         "type": "object",
@@ -314,7 +314,7 @@
           "players"
         ],
         "additionalProperties": false,
-        "description": "部屋の様子。参加者や状態が変わるたびに全員へ送る"
+        "description": "部屋の様子。参加者や状態が変わるたびに全員へ送る。ホストが抜けるか、切断したまま 30 秒戻らなければ、hostId はつながっている人のうち先に入った人に替わる"
       },
       "RoundMessage": {
         "type": "object",
