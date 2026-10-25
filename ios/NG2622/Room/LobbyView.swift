@@ -202,7 +202,7 @@ private struct ScenePicker: View {
 
 /// 難易度の選択（ホストだけ、SCENE_PICK = difficulty）。出題の場面は名前もサムネイルもスタートまで見せない。
 /// 場面は、その部屋でまだ出ていない作り置きの場面からランダムに出る（docs/design/ui/screens/lobby.md）。
-/// 下には、選んでいる難易度の例の場面を、組み立てた 3D で絵だけ出す（例は出題しない）
+/// 下には、選んでいる難易度の例の場面を絵だけ出す（例は出題しない）
 private struct DifficultyPicker: View {
   @Binding var selected: SceneDifficulty
   /// 選んでいる難易度の例の場面。無ければ絵を出さない
@@ -260,20 +260,30 @@ private struct DifficultyPicker: View {
   }
 }
 
-/// 例の場面の絵。斜め上から見た向きで止め、部品の動き（motion）だけを動かす。触れない
+/// 例の場面の絵。待合では動かさないので、3D を組み立てずに止めた絵（Room/Examples/<id>.png）を出す。触れない。
+/// png は、下の 3D と同じ向き・同じ枠（318×170pt を 3 倍）でアプリの画面から切り出したもの。
+/// index.json の例を変えて png が無いときは、これまでどおり 3D で出す
 private struct ExampleScene: View {
   let sceneID: String
 
   var body: some View {
-    // 枠が低いので、カメラを近づけて場面を枠いっぱいに出す。難易度を変えたら作り直す（読み込みの状態も新しくする）
-    DioramaView(sceneID: sceneID, yaw: -20, tilt: SceneOrbit.defaultTilt, distance: 4.6)
-      .id(sceneID)
-      .frame(maxWidth: .infinity)
-      .frame(height: 170)
-      .background(Theme.background)
-      .clipShape(RoundedRectangle(cornerRadius: 14))
-      .allowsHitTesting(false)
-      .accessibilityHidden(true)
+    Group {
+      if let image = UIImage(named: sceneID) {
+        Image(uiImage: image)
+          .resizable()
+          .scaledToFill()
+      } else {
+        // 枠が低いので、カメラを近づけて場面を枠いっぱいに出す。難易度を変えたら作り直す（読み込みの状態も新しくする）
+        DioramaView(sceneID: sceneID, yaw: -20, tilt: SceneOrbit.defaultTilt, distance: 4.6)
+          .id(sceneID)
+      }
+    }
+    .frame(maxWidth: .infinity)
+    .frame(height: 170)
+    .background(Theme.background)
+    .clipShape(RoundedRectangle(cornerRadius: 14))
+    .allowsHitTesting(false)
+    .accessibilityHidden(true)
   }
 }
 
