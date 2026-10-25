@@ -81,7 +81,10 @@ struct ScenePool {
     return id
   }
 
-  /// アプリに同梱した作り置きの場面（SampleLayouts/<sceneId>.json）。Mock で使う
+  /// アプリの中で作り置きの場面を置くフォルダ。ビルドのときに backend/src/scenes/pool から写す（project.yml の Copy scene pool）
+  static let directory = "pool"
+
+  /// アプリに同梱した作り置きの場面（pool/<sceneId>.json）。Mock で使う
   static let bundled = ScenePool(bundle: .main, examples: bundledExamples)
 
   /// 同梱の場面のうち、待合で例に見せるもの（リンゴが落ちる公園・スーパーのレジ・朝の駅のホーム）。
@@ -92,11 +95,11 @@ struct ScenePool {
     .hard: "gen-0cv84arpzw",
   ]
 
-  /// bundle の SampleLayouts/*.json を、配置の JSON の difficulty で分ける。読めないものと、difficulty の無いものは入れない
+  /// bundle の pool/*.json を、配置の JSON の difficulty で分ける。読めないものと、difficulty の無いものは入れない
   init(bundle: Bundle, examples: [SceneDifficulty: String] = [:]) {
-    let urls = bundle.urls(forResourcesWithExtension: "json", subdirectory: "SampleLayouts") ?? []
+    let urls = bundle.urls(forResourcesWithExtension: "json", subdirectory: Self.directory) ?? []
     var scenes: [SceneDifficulty: [String]] = [:]
-    for url in urls.sorted(by: { $0.lastPathComponent < $1.lastPathComponent }) {
+    for url in urls.sorted(by: { $0.lastPathComponent < $1.lastPathComponent }) where url.lastPathComponent != "index.json" {
       guard let data = try? Data(contentsOf: url), let layout = try? SceneLayout.decode(data),
         let difficulty = layout.difficulty.flatMap(SceneDifficulty.init(rawValue:))
       else {

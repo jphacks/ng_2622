@@ -113,7 +113,7 @@ final class HTTPSceneLayoutClient: SceneLayoutClient {
   }
 }
 
-/// 仮のデータ。通信せず、同梱の作り置きの場面（SampleLayouts/<sceneId>.json）を返す
+/// 仮のデータ。通信せず、同梱の作り置きの場面（pool/<sceneId>.json。元は backend/src/scenes/pool）を返す
 final class MockSceneLayoutClient: SceneLayoutClient {
   private let bundle: Bundle
 
@@ -122,7 +122,7 @@ final class MockSceneLayoutClient: SceneLayoutClient {
   }
 
   func layout(sceneID: String) async throws -> SceneLayout {
-    guard let url = bundle.url(forResource: sceneID, withExtension: "json", subdirectory: "SampleLayouts") else {
+    guard let url = bundle.url(forResource: sceneID, withExtension: "json", subdirectory: ScenePool.directory) else {
       throw SceneLayoutError.notFound
     }
     return try SceneLayout.decode(Data(contentsOf: url))

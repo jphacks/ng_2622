@@ -1,0 +1,5 @@
+{
+  "easy": { "example": "gen-is8k2455rz", "scenes": ["gen-g3s45ctddj"] },
+  "normal": { "example": "gen-wj9zltvuug", "scenes": ["gen-1etyx0jsm5"] },
+  "hard": { "example": "gen-0cv84arpzw", "scenes": ["gen-837svis7fz"] }
+}
