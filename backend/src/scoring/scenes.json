@@ -138,5 +138,56 @@
       }
     ],
     "extraMax": 10
+  },
+  {
+    "id": "jump_rope",
+    "name": "縄跳び",
+    "hologram": true,
+    "description": "A glowing hologram on a black background. A girl with purple hair tied in a bun, wearing a pink top, green shorts and yellow sneakers, is jumping rope on a glowing pink and blue ring. The bright blue rope is passing under her feet while she is in the air. At the same time, a small orange dog next to her is jumping too, in time with her. A yellow neon counter floating above them shows the number 100, and small colorful lights are floating around them. The whole scene is slowly turning around.",
+    "elements": [
+      {
+        "id": "girl",
+        "label": "女の子",
+        "points": 10,
+        "accept": "girl, young woman, woman, a girl with her hair in a bun",
+        "partial": "a person or someone"
+      },
+      {
+        "id": "jump_rope",
+        "label": "女の子が縄跳びをしている",
+        "points": 20,
+        "accept": "the girl is jumping rope or skipping rope",
+        "partial": "mentions a rope or jumping, without saying she is jumping rope"
+      },
+      {
+        "id": "under_feet",
+        "label": "跳んでいる間に縄が足の下を通る",
+        "points": 15,
+        "accept": "the rope is passing under her feet while she is in the air, e.g. she jumps over the rope",
+        "partial": "says the rope is moving or swinging, without saying it passes under her feet"
+      },
+      {
+        "id": "dog",
+        "label": "犬",
+        "points": 10,
+        "accept": "dog, puppy, a small orange dog",
+        "partial": "animal, pet"
+      },
+      {
+        "id": "together",
+        "label": "犬も女の子と同時に跳んでいる",
+        "points": 20,
+        "accept": "the dog is jumping at the same time as the girl, e.g. together with her or in time with her",
+        "partial": "says the dog is jumping or is next to her, without connecting the two"
+      },
+      {
+        "id": "counter",
+        "label": "上の数字が 100 を示している",
+        "points": 15,
+        "accept": "a counter or number above them shows 100 (one hundred), e.g. she has jumped 100 times",
+        "partial": "mentions a number, a counter or 100, without saying what it shows or where it is"
+      }
+    ],
+    "extraMax": 10
   }
 ]

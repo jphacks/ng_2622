@@ -34,14 +34,14 @@ enum SceneCatalog {
     all.first { $0.id == id }
   }
 
-  /// シーンの名前。AI で作った場面は、取った配置の JSON の名前。知らない ID のときは ID をそのまま返す
+  /// シーンの名前。ホログラムの場面は映像の名前、AI で作った場面は、取った配置の JSON の名前。知らない ID のときは ID をそのまま返す
   static func name(of id: String) -> String {
-    scene(id)?.name ?? SceneLayouts.store.name(of: id) ?? id
+    scene(id)?.name ?? HologramCatalog.info(id)?.name ?? SceneLayouts.store.name(of: id) ?? id
   }
 
-  /// シーンの英語の説明（正答例）。AI で作った場面は、取った配置の JSON の説明。無ければ nil
+  /// シーンの英語の説明（正答例）。ホログラムの場面は映像の説明、AI で作った場面は、取った配置の JSON の説明。無ければ nil
   static func description(of id: String) -> String? {
-    scene(id)?.description ?? SceneLayouts.store.description(of: id)
+    scene(id)?.description ?? HologramCatalog.info(id)?.description ?? SceneLayouts.store.description(of: id)
   }
 
   /// 一覧に出す小さなサムネイル。元の <id>.png（1600×1000）は大きいので、縮めて覚えておく

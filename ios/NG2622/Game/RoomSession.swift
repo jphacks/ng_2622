@@ -24,6 +24,9 @@ final class RoomSession {
   private(set) var participants: [Participant] = []
   /// 自分の声の録音。ラウンドが始まると用意し、録音中の画面で録り始める
   let recorder = VoiceRecorder()
+  /// この端末で「ホログラム」を選んで始めたか。ホログラムの映像を左右反転して出す（反射させると反転するため）。
+  /// ほかの人の端末には伝えない（同じ場面の映像を、反転せずに出す）
+  private(set) var isHologramDisplay = false
 
   /// 完了していない人（話している・採点中・切断中）の数
   var remainingCount: Int {
@@ -69,13 +72,23 @@ final class RoomSession {
   /// 選んだシーンは参加者には前もって伝えず、ラウンドが始まったときに round で届く
   func start(sceneID: String?) {
     guard isHost, phase == .lobby else { return }
+    isHologramDisplay = false
     Task { try? await client.startRound(sceneID: sceneID) }
   }
 
   /// ホストが難易度だけを選んでラウンドを始める。どの場面かはホストにも前もって伝えず、round で届く
   func start(difficulty: SceneDifficulty) {
     guard isHost, phase == .lobby else { return }
+    isHologramDisplay = false
     Task { try? await client.startRound(difficulty: difficulty) }
+  }
+
+  /// ホストが「ホログラム」でラウンドを始める。ホログラムの映像の中からランダムに 1 つ選ぶ。
+  /// この端末は映像を左右反転して出す（ペットボトルなどに反射させて見せるため）
+  func startHologram() {
+    guard isHost, phase == .lobby, let sceneID = HologramCatalog.randomID() else { return }
+    isHologramDisplay = true
+    Task { try? await client.startRound(sceneID: sceneID) }
   }
 
   /// 「話し終えた」か、20 秒たった

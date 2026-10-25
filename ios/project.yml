@@ -22,7 +22,8 @@ settings:
     SWIFT_VERSION: "6.0"
     SWIFT_DEFAULT_ACTOR_ISOLATION: MainActor
     SWIFT_APPROACHABLE_CONCURRENCY: YES
-    TARGETED_DEVICE_FAMILY: "1"
+    # iPhone と iPad。iPad はホログラム（ペットボトルなどをかぶせて映像を浮かせる）を大きく見せるのに使う
+    TARGETED_DEVICE_FAMILY: "1,2"
 # バックエンドの API の型（backend/openapi.json からビルドのときに作る。Packages/BackendAPI）
 packages:
   BackendAPI:
@@ -56,7 +57,7 @@ targets:
         INFOPLIST_KEY_NSCameraUsageDescription: 部屋の QR を読み取るためにカメラを使います
         # 録音のときに出す、マイクを使う理由
         INFOPLIST_KEY_NSMicrophoneUsageDescription: 英語で話した声を録音して採点するために使います。
-        # iPhone は縦向きだけ。iPad 向けの値は、全向きを入れないと警告が出るので入れておく（iPad では配らない）
+        # iPhone は縦向きだけ。iPad は全向き（全向きを入れないと警告が出る）
         INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone: UIInterfaceOrientationPortrait
         INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad: "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight"
         INFOPLIST_KEY_UIApplicationSceneManifest_Generation: YES
@@ -72,6 +73,12 @@ targets:
           rsync -a --delete --prune-empty-dirs --exclude='build/' --include='*/' --include='/index.json' \
             --include='/*/[0-9]*.usdz' --exclude='*' \
             "$SRCROOT/../assets/parts/" "$TARGET_BUILD_DIR/$UNLOCALIZED_RESOURCES_FOLDER_PATH/parts/"
+      # ホログラム用の映像は、アプリが読む <id>.json と <id>.mp4 だけを assets/holograms から写す。
+      # 反転済みの <id>_mirror.mp4（アプリの外で流す用）と、README.md・確認用の画像は入れない。アプリの中では holograms/<id>.mp4 になる
+      - name: Copy hologram videos
+        basedOnDependencyAnalysis: false
+        script: |
+          rsync -a --delete --exclude='*_mirror.mp4' --include='/*.json' --include='/*.mp4' --exclude='*'             "$SRCROOT/../assets/holograms/" "$TARGET_BUILD_DIR/$UNLOCALIZED_RESOURCES_FOLDER_PATH/holograms/"
     dependencies:
       - package: BackendAPI
   # アプリの中の、通信や画面に依らない変換（部屋のメッセージ → 画面のできごとなど）を確かめる

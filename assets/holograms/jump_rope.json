@@ -1,0 +1,17 @@
+{
+  "id": "jump_rope",
+  "name": "縄跳び",
+  "video": "jump_rope.mp4",
+  "difficulty": "hard",
+  "description": "A glowing hologram on a black background. A girl with purple hair tied in a bun, wearing a pink top, green shorts and yellow sneakers, is jumping rope on a glowing pink and blue ring. The bright blue rope is passing under her feet while she is in the air. At the same time, a small orange dog next to her is jumping too, in time with her. A yellow neon counter floating above them shows the number 100, and small colorful lights are floating around them. The whole scene is slowly turning around.",
+  "elements": [
+    "a girl is jumping rope",
+    "the rope is passing under her feet while she is in the air",
+    "she has purple hair in a bun and wears a pink top and green shorts",
+    "she is jumping on a glowing ring",
+    "a small orange dog is jumping next to her",
+    "the dog is jumping at the same time as the girl",
+    "a counter above them shows the number 100",
+    "small colorful lights are floating around them"
+  ]
+}

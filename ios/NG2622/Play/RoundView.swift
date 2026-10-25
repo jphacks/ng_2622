@@ -12,8 +12,15 @@ struct RoundView: View {
   var body: some View {
     ZStack {
       if case .playing(let round) = session.phase {
-        PlayView(round: round, recorder: session.recorder) { session.finishSpeaking() }
+        if HologramCatalog.isHologram(round.sceneID) {
+          HologramPlayView(round: round, recorder: session.recorder, mirrored: session.isHologramDisplay) {
+            session.finishSpeaking()
+          }
           .transition(.opacity)
+        } else {
+          PlayView(round: round, recorder: session.recorder) { session.finishSpeaking() }
+            .transition(.opacity)
+        }
       } else if let waitingSince {
         WaitingView(session: session, round: round, enteredAt: waitingSince)
           .transition(.opacity)

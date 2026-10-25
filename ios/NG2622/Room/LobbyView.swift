@@ -14,6 +14,8 @@ struct LobbyView: View {
   @State private var sceneID: String?
   /// ホストが選んだ難易度（pick が difficulty のとき）
   @State private var difficulty = SceneDifficulty.easy
+  /// ホストが「ホログラム」を選んだか。選ぶと、シーンや難易度の代わりにホログラムの映像から選んで始める
+  @State private var hologram = false
 
   var body: some View {
     VStack(spacing: 0) {
@@ -36,6 +38,10 @@ struct LobbyView: View {
           ScenePicker(selected: $sceneID)
             .padding(.top, 16)
         }
+        if !HologramCatalog.all.isEmpty {
+          HologramChoice(on: $hologram)
+            .padding(.top, 12)
+        }
       }
 
       Spacer(minLength: 12)
@@ -54,6 +60,10 @@ struct LobbyView: View {
   }
 
   private func start() {
+    if hologram {
+      session.startHologram()
+      return
+    }
     switch pick {
     case .difficulty: session.start(difficulty: difficulty)
     case .list: session.start(sceneID: sceneID)
@@ -255,6 +265,46 @@ private struct ExampleScene: View {
       .clipShape(RoundedRectangle(cornerRadius: 14))
       .allowsHitTesting(false)
       .accessibilityHidden(true)
+  }
+}
+
+/// 「ホログラム」（ホストだけ）。選ぶと、スタートでホログラムの映像の中からランダムに 1 つ選ばれ、
+/// 黒い画面に「3・2・1」→ 映像（20 秒）で遊ぶ。ペットボトルなどをかぶせて、映像を浮かせて見せる
+private struct HologramChoice: View {
+  @Binding var on: Bool
+
+  var body: some View {
+    Button {
+      on.toggle()
+    } label: {
+      HStack(spacing: 12) {
+        Image(systemName: "cube.transparent.fill")
+          .font(.system(size: 22, weight: .bold))
+          .foregroundStyle(on ? .white : Theme.accent)
+          .frame(width: 44, height: 44)
+          .background(on ? Color.white.opacity(0.18) : Theme.accentSoft, in: RoundedRectangle(cornerRadius: 12))
+        VStack(alignment: .leading, spacing: 2) {
+          Text("ホログラム")
+            .font(Theme.font(16, .heavy))
+            .foregroundStyle(on ? .white : Theme.ink)
+          Text("黒い画面に映像を浮かべて遊ぶ")
+            .font(Theme.font(12, .bold))
+            .foregroundStyle(on ? .white.opacity(0.85) : Theme.muted)
+        }
+        Spacer()
+        Image(systemName: on ? "checkmark.circle.fill" : "circle")
+          .font(.system(size: 22, weight: .bold))
+          .foregroundStyle(on ? .white : Theme.line)
+      }
+      .padding(12)
+      .background(on ? Theme.accent : Theme.card, in: RoundedRectangle(cornerRadius: 22))
+      .shadow(color: Theme.ink.opacity(0.07), radius: 10, y: 6)
+    }
+    .buttonStyle(.plain)
+    .animation(.easeOut(duration: 0.2), value: on)
+    .sensoryFeedback(.selection, trigger: on)
+    .accessibilityLabel("ホログラム")
+    .accessibilityAddTraits(on ? .isSelected : [])
   }
 }
 

@@ -61,15 +61,22 @@ private struct WaitingScene: View {
   let enteredAt: Date
 
   var body: some View {
-    TimelineView(.animation) { context in
-      // 1 秒に 12 度（30 秒で 1 周）
-      let yaw = context.date.timeIntervalSince(enteredAt) * 12
-      DioramaView(
-        sceneID: round.sceneID, yaw: yaw, tilt: SceneOrbit.defaultTilt, startsAt: round.startsAt, distance: 4.6)
+    Group {
+      if let url = HologramCatalog.videoURL(of: round.sceneID) {
+        // ホログラムの場面は 3D が無いので、映像を反転せずに流す
+        LoopingVideoView(url: url)
+      } else {
+        TimelineView(.animation) { context in
+          // 1 秒に 12 度（30 秒で 1 周）
+          let yaw = context.date.timeIntervalSince(enteredAt) * 12
+          DioramaView(
+            sceneID: round.sceneID, yaw: yaw, tilt: SceneOrbit.defaultTilt, startsAt: round.startsAt, distance: 4.6)
+        }
+      }
     }
     .frame(maxWidth: .infinity)
     .frame(height: 190)
-    .background(Theme.background)
+    .background(HologramCatalog.isHologram(round.sceneID) ? Color.black : Theme.background)
     .clipShape(RoundedRectangle(cornerRadius: 22))
     .allowsHitTesting(false)
     .accessibilityHidden(true)

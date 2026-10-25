@@ -22,6 +22,8 @@ export type Scene = {
   elements: SceneElement[];
   // 一覧にない正しい描写に出す点の上限。elements の points と足して 100 にする
   extraMax: number;
+  // ホログラム用の映像の場面（assets/holograms/<id>）。待合で「ホログラム」を選んだときだけ出し、「おまかせ」では選ばない
+  hologram?: boolean;
 };
 
 export type SceneElement = {
