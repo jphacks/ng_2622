@@ -9,7 +9,7 @@ import {
   ScoreResponse,
 } from "../schemas/http";
 import { prepareRubric, scoreLayout } from "../scoring/fromLayout";
-import { type AppEnv, errorBody, jsonContent } from "./shared";
+import { type AppEnv, devOnly, errorBody, jsonContent } from "./shared";
 
 const errorResponse = (description: string) => ({
   description,
@@ -25,6 +25,7 @@ const failure = (reason: "unknown_parts" | "api_error") =>
 export const scoreRoutes = new Hono<AppEnv>()
   .post(
     "/score",
+    devOnly,
     describeRoute({
       operationId: "scoreLayout",
       tags: ["scoring"],
@@ -66,6 +67,7 @@ export const scoreRoutes = new Hono<AppEnv>()
   )
   .post(
     "/score/rubric",
+    devOnly,
     describeRoute({
       operationId: "prepareRubric",
       tags: ["scoring"],
