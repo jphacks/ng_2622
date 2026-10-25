@@ -2,6 +2,7 @@
 
 ## Status
 - accepted
+- 部分 supersede: 内容・表現について「点数は専用の評価と採点基準で出し、LLM には講評を書かせる」とした分担は、[20261025-score-content-with-layout-and-rubric-bands](./20261025-score-content-with-layout-and-rubric-bands.md) で「場面の配置の情報を渡し、Claude が採点基準の段階で 0〜100 を付ける」に置き換えた。3 項目と重み、話し方と文字起こしを Azure で採ることは存続する。
 
 ## Situation
 - 作品は、日本人の英語学習者が約 20 秒の自由発話で場面を描写し、その発話を AI が採点して競うもの（[`docs/design/usecase.md`](../design/usecase.md)）。
