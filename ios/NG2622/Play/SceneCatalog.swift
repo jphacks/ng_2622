@@ -1,12 +1,13 @@
 import Foundation
 import UIKit
 
-/// 遊べる 3D シーン。assets/scenes/<id>.json から読む（採点用の説明はバックエンドが使うので読まない）
+/// 遊べる 3D シーン。assets/scenes/<id>.json から読む（採点の elements はバックエンドが使うので読まない）
 struct SceneInfo: Identifiable, Decodable, Hashable, Sendable {
   let id: String
   /// 画面に出す名前（例: 公園）
   let name: String
-
+  /// 場面の英語の説明。待機の画面に正答例として出す
+  let description: String?
 }
 
 enum SceneCatalog {
@@ -36,6 +37,11 @@ enum SceneCatalog {
   /// シーンの名前。AI で作った場面は、取った配置の JSON の名前。知らない ID のときは ID をそのまま返す
   static func name(of id: String) -> String {
     scene(id)?.name ?? SceneLayouts.store.name(of: id) ?? id
+  }
+
+  /// シーンの英語の説明（正答例）。AI で作った場面は、取った配置の JSON の説明。無ければ nil
+  static func description(of id: String) -> String? {
+    scene(id)?.description ?? SceneLayouts.store.description(of: id)
   }
 
   /// 一覧に出す小さなサムネイル。元の <id>.png（1600×1000）は大きいので、縮めて覚えておく

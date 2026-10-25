@@ -27,11 +27,12 @@ enum SceneLayouts {
   static let store = SceneLayoutStore(client: client)
 }
 
-/// 配置の JSON を覚えておく所。同じ場面は 1 度だけ取りに行く。名前は結果の画面でも使う
+/// 配置の JSON を覚えておく所。同じ場面は 1 度だけ取りに行く。名前は結果の画面で、説明は待機の画面で使う
 final class SceneLayoutStore {
   private let client: any SceneLayoutClient
   private var loads: [String: Task<SceneLayout, any Error>] = [:]
   private var names: [String: String] = [:]
+  private var descriptions: [String: String] = [:]
 
   init(client: any SceneLayoutClient) {
     self.client = client
@@ -49,6 +50,7 @@ final class SceneLayoutStore {
     do {
       let layout = try await task.value
       names[sceneID] = layout.name
+      descriptions[sceneID] = layout.description
       return layout
     } catch {
       // 取れなかったものは覚えず、次にまた取りに行く
@@ -60,6 +62,11 @@ final class SceneLayoutStore {
   /// 取ったことのある場面の名前
   func name(of sceneID: String) -> String? {
     names[sceneID]
+  }
+
+  /// 取ったことのある場面の英語の説明
+  func description(of sceneID: String) -> String? {
+    descriptions[sceneID]
   }
 }
 
