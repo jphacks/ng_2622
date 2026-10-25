@@ -3,7 +3,7 @@
 AI や人が書いた配置が、場面として組めているか（向き・接地・位置・大きさ）を目で確かめるためのもの。
 アプリと同じく、知らない部品は飛ばして警告を出し、残りを並べる。
 動き（motion）は描けないので、move は行き先への矢印、fall は真下への点線で示し、下の欄に文字でも添える。
-各部品の上には key を小さく書く。下の欄には name・description・elements の label と配点を書く。
+各部品の上には key を小さく書く。下の欄には name・difficulty・id・description・elements の label と配点を書く。
 
 座標（scene-protocol.md の「座標」）: m・Y が上・正面 +Z・原点は底面の中心・yaw は度で上から見て反時計回り。
 Blender は Z が上なので、プロトコルの (x, y, z) を Blender の (x, -z, y) に置く。USDZ の読み込み（usd_import）が
@@ -298,7 +298,7 @@ def info_panel(cam, layout: dict, notes: list[str], motions: list[str], font) ->
     x0 = -hw + margin
     col2 = -hw + 2 * hw * 0.55
     y = top - margin - 24 * px
-    head = f"{layout.get('name', '(name なし)')}   [{layout.get('difficulty', '?')}]"
+    head = f"{layout.get('name', '(name なし)')}   [{layout.get('difficulty', '?')}]   {layout.get('id', '')}"
     text("name", head, 26 * px, ink, font, cam, (x0, y, d))
     y -= 36 * px
     left_em = (col2 - x0 - margin) / (17 * px)
