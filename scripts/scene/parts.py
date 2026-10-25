@@ -94,6 +94,20 @@ def make_materials() -> None:
         "bed_frame": ("#a8683a", 0.55), "mattress": ("#f4f1ea", 0.8), "blanket": ("#7fb5d9", 0.85), "pillow": ("#ffffff", 0.85),
         # 乗り物の座席
         "seat_fabric": ("#3d6f9e", 0.85),
+        # 室内の床（木の床・教室の床・タイル・じゅうたん）
+        "floor_gap": ("#7a4e2c", 0.7), "floor_wood_a": ("#b9804e", 0.55), "floor_wood_b": ("#a8703f", 0.55),
+        "floor_wood_c": ("#c48c58", 0.55),
+        "class_gap": ("#b89262", 0.7), "class_wood_a": ("#e2c08e", 0.5), "class_wood_b": ("#d6b07c", 0.5),
+        "class_wood_c": ("#ead0a2", 0.5),
+        "grout": ("#a9a69f", 0.8), "tile_white": ("#f6f5f1", 0.25), "tile_gray": ("#cfd4d8", 0.25),
+        "carpet": ("#7d93b8", 0.95), "carpet_border": ("#5d729b", 0.95), "carpet_line": ("#efe3c8", 0.95),
+        # 屋外の床（駅のホーム・砂浜・石畳・土）
+        "platform": ("#cfccc5", 0.85), "tactile": ("#f2c230", 0.6), "ballast": ("#8d857b", 0.95),
+        "sleeper": ("#7a5a42", 0.8), "rail": ("#a3a9b1", 0.35),
+        "sand": ("#efdcab", 0.95), "sand_dark": ("#e2c98e", 0.95), "sand_light": ("#f7ead0", 0.95),
+        "shell": ("#f8d4c8", 0.5), "pebble": ("#b9b1a5", 0.8),
+        "stone_joint": ("#8c877f", 0.9), "stone_a": ("#b8b3aa", 0.85), "stone_b": ("#a9a39a", 0.85), "stone_c": ("#c7c2b8", 0.85),
+        "dirt": ("#c79c6c", 0.95), "dirt_dark": ("#b5875a", 0.95), "dirt_light": ("#d6b083", 0.95),
     }))
     M["iron"] = material("iron", "#2b2b30", 0.35, metal=0.8)
     M["ball"] = material("ball", "#e8352b", 0.3, coat=0.6)
@@ -119,6 +133,7 @@ def make_materials() -> None:
     M["laptop_screen"] = material("laptop_screen", "#3f78c8", 0.2, emit=0.6)   # screen（スマートフォン）より暗くして、白く飛ばないようにする
     # 窓のガラスの向こうは明るい空（classroom.py の sky と同じ）
     M["window_glass"] = material("window_glass", "#9fd0ff", 0.2, emit=0.5)
+    M["platform_edge"] = material("platform_edge", "#f6f5f1", 0.7)   # ホームの端の白線（向きの目印）
 
 
 CHILD_SCALE = 0.75   # 子どもの大きさ（大人に対する倍率）
@@ -129,6 +144,7 @@ SEAT_Z = 0.46        # 座るポーズに合う座面の高さ。chair・sofa �
 GRASS_THICK = 0.002  # 芝の板（上面 2 mm）。濃淡のまだらはその上に 0.5 mm
 ROAD_THICK = 0.003   # 道路の板（上面 3 mm）。白線はその上に 0.5 mm
 MARK_THICK = 0.0005  # 芝のまだら・道路の白線の厚さ
+FLOOR_THICK = 0.002  # 床の部品（floor_*・platform_station など）の板。芝の板と同じ 2 mm で、模様はその上に MARK_THICK ずつ重ねる
 
 
 # ---------- 部品の一覧 ----------
@@ -1022,6 +1038,175 @@ def person_builder(pose: str, look: str):
 for _pose, _look in PEOPLE:
     part(f"person_{_pose}_{_look}", "person", f"{LOOKS[_look]['label']}（{POSES[_pose]['label']}）",
          [(LOOKS[_look]["noun"], "noun"), *POSES[_pose]["words"]], pose=_pose, front=("eye", 1))(person_builder(_pose, _look))
+
+
+# ---------- 床（8 m 四方の地面の部品） ----------
+#
+# どれも grass_patch と同じく 8 m × 8 m の薄い板（上面 2 mm）。模様は板の上に 0.5 mm ずつ重ねるので、
+# 上面はいちばん高いところで 3 mm ほど。上に置く物は y = 0 のままでよい。
+
+FLOOR = 8.0   # 床の一辺（m）
+
+
+def floor_plate(p, mat, size=(FLOOR, FLOOR), center=(0, 0), radius=0.05):
+    """床の板。上面は FLOOR_THICK。"""
+    p.slab(size, FLOOR_THICK, FLOOR_THICK, radius, mat, segments=2 if radius < 0.1 else 6, center=center)
+
+
+def mark(p, size, loc, mat, layer=1):
+    """床の板の上の模様（厚さ MARK_THICK の板）。layer は重ねる段（2 なら 1 段目の模様の上）。"""
+    p.box((size[0], size[1], MARK_THICK), (loc[0], loc[1], FLOOR_THICK + MARK_THICK * (layer - 0.5)), mat)
+
+
+def spot(p, r, loc, mat, layer=1):
+    """床の板の上の、平たい円のまだら。"""
+    p.cyl(r, r, MARK_THICK, (loc[0], loc[1], FLOOR_THICK + MARK_THICK * (layer - 0.5)), mat, segs=14, smooth=False)
+
+
+def planks(p, rng, mats, width, length, along_x, gap=0.012, half=FLOOR / 2):
+    """フローリングの板を、継ぎ目をずらして並べる。板のすき間から下の板（目地の色）が見える。
+
+    along_x なら板の長い向きは X（左右）、そうでなければ Y（Blender の前後）。
+    """
+    rows = round(2 * half / width)
+    for r in range(rows):
+        b = -half + width * (r + 0.5)
+        a = -half - rng.uniform(0, length)
+        while a < half:
+            a0, a1 = max(a, -half), min(a + length, half)
+            if a1 - a0 > 0.1:
+                la, lb = a1 - a0 - gap, width - gap
+                ca = (a0 + a1) / 2
+                size, loc = ((la, lb), (ca, b)) if along_x else ((lb, la), (b, ca))
+                mark(p, size, loc, rng.choice(mats))
+            a += length
+
+
+@part("floor_wood", "ground", "木の床（8 m 四方）", [("floor", "noun"), ("wooden floor", "noun")])
+def build_floor_wood(root):
+    """部屋の木の床（フローリング）。幅 0.4 m・長さ 1.6 m の濃い茶色の板を左右（X）に長く並べる。"""
+    rng = random.Random(2622)
+    p = Part("floor_wood")
+    floor_plate(p, M["floor_gap"])
+    planks(p, rng, [M["floor_wood_a"], M["floor_wood_b"], M["floor_wood_c"]], 0.4, 1.6, along_x=True)
+    p.finish(root)
+
+
+@part("floor_classroom", "ground", "教室の床（8 m 四方）", [("floor", "noun"), ("classroom floor", "noun")])
+def build_floor_classroom(root):
+    """学校の教室の床。木の床（floor_wood）より明るい色の細い板（幅 0.2 m）を、前後（Z）に長く並べる。"""
+    rng = random.Random(2623)
+    p = Part("floor_classroom")
+    floor_plate(p, M["class_gap"])
+    planks(p, rng, [M["class_wood_a"], M["class_wood_b"], M["class_wood_c"]], 0.2, 1.8, along_x=False, gap=0.008)
+    p.finish(root)
+
+
+@part("floor_tile", "ground", "白いタイルの床（8 m 四方）", [("floor", "noun"), ("tile", "noun"), ("tile floor", "noun")])
+def build_floor_tile(root):
+    """台所や店の白いタイルの床。0.5 m 角のタイルを、灰色の目地（下の板）を 3 cm あけ、白と薄い灰色を市松に並べる。"""
+    p = Part("floor_tile")
+    floor_plate(p, M["grout"])
+    n, cell, gap = 16, FLOOR / 16, 0.03
+    for i in range(n):
+        for j in range(n):
+            mat = M["tile_white"] if (i + j) % 2 == 0 else M["tile_gray"]
+            mark(p, (cell - gap, cell - gap), (-FLOOR / 2 + cell * (i + 0.5), -FLOOR / 2 + cell * (j + 0.5)), mat)
+    p.finish(root)
+
+
+@part("floor_carpet", "ground", "じゅうたん（8 m 四方）", [("carpet", "noun"), ("rug", "noun"), ("floor", "noun")])
+def build_floor_carpet(root):
+    """部屋いっぱいのじゅうたん。青い地に、縁の近くを濃い青の帯とクリーム色の細い線で囲む。"""
+    p = Part("floor_carpet")
+    floor_plate(p, M["carpet"])
+    for inset, band, mat in ((0.25, 0.4, M["carpet_border"]), (0.8, 0.06, M["carpet_line"])):
+        span = FLOOR - 2 * inset          # 帯の外側の一辺
+        c = FLOOR / 2 - inset - band / 2  # 帯の中心までの距離
+        for s in (-1, 1):
+            mark(p, (span, band), (0, s * c), mat)
+            mark(p, (band, span - 2 * band), (s * c, 0), mat)
+    p.finish(root)
+
+
+# 駅のホーム: ホームの端は奥（-Z）。奥の 2.8 m は線路で、線路の中心は z = -2.6（Blender の y = 2.6）
+PLATFORM_TRACK = 2.8                          # 線路の部分の奥行き（m）
+PLATFORM_TRACK_Z = FLOOR / 2 - PLATFORM_TRACK / 2   # 線路の中心（プロトコルの z = -2.6）
+RAIL_GAUGE = 1.067                            # 線路の幅（日本の在来線）
+
+
+@part("platform_station", "ground", "駅のホーム（奥に線路、8 m 四方）",
+      [("platform", "noun"), ("station", "noun"), ("train station", "noun")], front=("platform_edge", -1))
+def build_platform_station(root):
+    """駅のホームと線路。手前の 5.2 m がホームで、奥（-Z）の端に白線、その 0.8 m 手前に黄色い点字ブロックの帯がある。
+
+    奥の 2.8 m は線路（砕石・枕木・2 本のレール）で、線路の中心は z = -2.6。train をここに置く。
+    ホームも線路も同じ高さの薄い板（ホームの段差は作らない）。
+    """
+    p = Part("platform_station")
+    plat_d = FLOOR - PLATFORM_TRACK
+    edge_y = FLOOR / 2 - PLATFORM_TRACK   # Blender の y。ホームの端（奥）
+    floor_plate(p, M["platform"], size=(FLOOR, plat_d), center=(0, edge_y - plat_d / 2))
+    floor_plate(p, M["ballast"], size=(FLOOR, PLATFORM_TRACK), center=(0, PLATFORM_TRACK_Z))
+    mark(p, (FLOOR, 0.12), (0, edge_y - 0.1), M["platform_edge"])   # 端の白線
+    mark(p, (FLOOR, 0.3), (0, edge_y - 0.95), M["tactile"])           # 点字ブロックの帯
+    for k in range(40):   # 点字ブロックの点（少し明るい黄色の代わりに、帯の上に小さな四角を重ねる）
+        mark(p, (0.12, 0.12), (-FLOOR / 2 + 0.1 + k * 0.2, edge_y - 0.95), M["flower_yellow"], layer=2)
+    for k in range(13):   # 枕木
+        mark(p, (0.2, 2.0), (-FLOOR / 2 + 0.3 + k * 0.62, PLATFORM_TRACK_Z), M["sleeper"])
+    for s in (-1, 1):     # レール（枕木の上）
+        mark(p, (FLOOR, 0.07), (0, PLATFORM_TRACK_Z + s * RAIL_GAUGE / 2), M["rail"], layer=2)
+    p.finish(root)
+
+
+@part("sand_beach", "ground", "砂浜（8 m 四方）", [("beach", "noun"), ("sand", "noun")])
+def build_sand_beach(root):
+    """海辺の砂浜。砂の色の板に濃淡のまだらと、小さな貝がらと小石を散らす。"""
+    rng = random.Random(2624)
+    p = Part("sand_beach")
+    floor_plate(p, M["sand"], radius=0.3)
+    for _ in range(45):
+        r = rng.uniform(0.25, 0.7)
+        spot(p, r, (rng.uniform(-3.9 + r, 3.9 - r), rng.uniform(-3.9 + r, 3.9 - r)), rng.choice([M["sand_dark"], M["sand_light"]]))
+    for k in range(18):   # 貝がら（平たい玉）と小石
+        x, y = rng.uniform(-3.6, 3.6), rng.uniform(-3.6, 3.6)
+        r = rng.uniform(0.03, 0.05)
+        p.sphere(r, (x, y, r * 0.35), M["shell"] if k % 2 else M["pebble"], scale=(1, 0.8, 0.35), segs=8)   # 底は y = 0
+    p.finish(root)
+
+
+@part("sidewalk_stone", "ground", "石畳の歩道（8 m 四方）", [("sidewalk", "noun"), ("pavement", "noun"), ("stone path", "noun")])
+def build_sidewalk_stone(root):
+    """石畳の歩道。幅 0.4 m・長さ 0.6 m の灰色の石を、1 列ごとに半分ずらして並べる。目地は濃い灰色。"""
+    rng = random.Random(2625)
+    p = Part("sidewalk_stone")
+    floor_plate(p, M["stone_joint"])
+    width, length, gap, half = 0.4, 0.6, 0.025, FLOOR / 2
+    for r in range(round(FLOOR / width)):
+        y = -half + width * (r + 0.5)
+        x = -half - (length / 2 if r % 2 else 0)
+        while x < half:
+            x0, x1 = max(x, -half), min(x + length, half)
+            if x1 - x0 > 0.1:
+                mark(p, (x1 - x0 - gap, width - gap), ((x0 + x1) / 2, y), rng.choice([M["stone_a"], M["stone_b"], M["stone_c"]]))
+            x += length
+    p.finish(root)
+
+
+@part("ground_dirt", "ground", "土のグラウンド（8 m 四方）", [("ground", "noun"), ("dirt", "noun"), ("field", "noun")])
+def build_ground_dirt(root):
+    """学校の校庭のような土のグラウンド。濃淡のまだらと小石に、石灰の白線を 1 本（手前寄りを左右に）引く。"""
+    rng = random.Random(2626)
+    p = Part("ground_dirt")
+    floor_plate(p, M["dirt"], radius=0.3)
+    for _ in range(50):
+        r = rng.uniform(0.25, 0.65)
+        spot(p, r, (rng.uniform(-3.9 + r, 3.9 - r), rng.uniform(-3.9 + r, 3.9 - r)), rng.choice([M["dirt_dark"], M["dirt_light"]]))
+    mark(p, (FLOOR - 0.6, 0.1), (0, -1.5), M["stripe"], layer=2)
+    for _ in range(16):
+        r = rng.uniform(0.025, 0.045)
+        p.sphere(r, (rng.uniform(-3.7, 3.7), rng.uniform(-3.7, 3.7), r * 0.45), M["pebble"], scale=(1, 0.85, 0.45), segs=8)
+    p.finish(root)
 
 
 # ---------- 書き出し ----------

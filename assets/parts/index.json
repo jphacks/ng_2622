@@ -1173,5 +1173,169 @@
     "anchors": {
       "hip": [0.0, 0.36, -0.15]
     }
+  },
+  {
+    "id": "floor_wood",
+    "version": 1,
+    "file": "parts/floor_wood/1.usdz",
+    "category": "ground",
+    "words": [
+      {
+        "word": "floor",
+        "pos": "noun"
+      },
+      {
+        "word": "wooden floor",
+        "pos": "noun"
+      }
+    ],
+    "size": [8.0, 0.002, 8.0],
+    "label": "木の床（8 m 四方）"
+  },
+  {
+    "id": "floor_classroom",
+    "version": 1,
+    "file": "parts/floor_classroom/1.usdz",
+    "category": "ground",
+    "words": [
+      {
+        "word": "floor",
+        "pos": "noun"
+      },
+      {
+        "word": "classroom floor",
+        "pos": "noun"
+      }
+    ],
+    "size": [8.0, 0.002, 8.0],
+    "label": "教室の床（8 m 四方）"
+  },
+  {
+    "id": "floor_tile",
+    "version": 1,
+    "file": "parts/floor_tile/1.usdz",
+    "category": "ground",
+    "words": [
+      {
+        "word": "floor",
+        "pos": "noun"
+      },
+      {
+        "word": "tile",
+        "pos": "noun"
+      },
+      {
+        "word": "tile floor",
+        "pos": "noun"
+      }
+    ],
+    "size": [8.0, 0.002, 8.0],
+    "label": "白いタイルの床（8 m 四方）"
+  },
+  {
+    "id": "floor_carpet",
+    "version": 1,
+    "file": "parts/floor_carpet/1.usdz",
+    "category": "ground",
+    "words": [
+      {
+        "word": "carpet",
+        "pos": "noun"
+      },
+      {
+        "word": "rug",
+        "pos": "noun"
+      },
+      {
+        "word": "floor",
+        "pos": "noun"
+      }
+    ],
+    "size": [8.0, 0.002, 8.0],
+    "label": "じゅうたん（8 m 四方）"
+  },
+  {
+    "id": "platform_station",
+    "version": 1,
+    "file": "parts/platform_station/1.usdz",
+    "category": "ground",
+    "words": [
+      {
+        "word": "platform",
+        "pos": "noun"
+      },
+      {
+        "word": "station",
+        "pos": "noun"
+      },
+      {
+        "word": "train station",
+        "pos": "noun"
+      }
+    ],
+    "size": [8.0, 0.003, 8.0],
+    "label": "駅のホーム（奥に線路、8 m 四方）"
+  },
+  {
+    "id": "sand_beach",
+    "version": 1,
+    "file": "parts/sand_beach/1.usdz",
+    "category": "ground",
+    "words": [
+      {
+        "word": "beach",
+        "pos": "noun"
+      },
+      {
+        "word": "sand",
+        "pos": "noun"
+      }
+    ],
+    "size": [8.0, 0.035, 8.0],
+    "label": "砂浜（8 m 四方）"
+  },
+  {
+    "id": "sidewalk_stone",
+    "version": 1,
+    "file": "parts/sidewalk_stone/1.usdz",
+    "category": "ground",
+    "words": [
+      {
+        "word": "sidewalk",
+        "pos": "noun"
+      },
+      {
+        "word": "pavement",
+        "pos": "noun"
+      },
+      {
+        "word": "stone path",
+        "pos": "noun"
+      }
+    ],
+    "size": [8.0, 0.002, 8.0],
+    "label": "石畳の歩道（8 m 四方）"
+  },
+  {
+    "id": "ground_dirt",
+    "version": 1,
+    "file": "parts/ground_dirt/1.usdz",
+    "category": "ground",
+    "words": [
+      {
+        "word": "ground",
+        "pos": "noun"
+      },
+      {
+        "word": "dirt",
+        "pos": "noun"
+      },
+      {
+        "word": "field",
+        "pos": "noun"
+      }
+    ],
+    "size": [8.0, 0.039, 8.0],
+    "label": "土のグラウンド（8 m 四方）"
   }
 ]

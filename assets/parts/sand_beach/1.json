@@ -1,0 +1,18 @@
+{
+  "id": "sand_beach",
+  "version": 1,
+  "file": "parts/sand_beach/1.usdz",
+  "category": "ground",
+  "words": [
+    {
+      "word": "beach",
+      "pos": "noun"
+    },
+    {
+      "word": "sand",
+      "pos": "noun"
+    }
+  ],
+  "size": [8.0, 0.035, 8.0],
+  "label": "砂浜（8 m 四方）"
+}

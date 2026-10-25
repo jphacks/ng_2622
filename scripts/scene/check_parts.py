@@ -48,6 +48,9 @@ EXPECTED = [
     "person_hold_woman_a", "person_hold_girl_a", "person_put_adult_a", "person_put_woman_a", "person_put_boy_a",
     "person_drink_woman_a", "person_drink_adult_a", "person_write_boy_a", "person_write_girl_a", "person_look_girl_a",
     "person_carry_boy_a", "person_carry_woman_a", "person_carry_girl_a", "person_sit_girl_a", "person_sit_boy_a",
+    # 床（8 m 四方の地面）。室内も駅も芝生か道路になっていたので足した
+    "floor_wood", "floor_tile", "floor_carpet", "floor_classroom",
+    "platform_station", "sand_beach", "sidewalk_stone", "ground_dirt",
 ]
 
 # 向きの目印（parts.py の front と同じ）。(マテリアル名, 向き, 比べる相手)。向きが 1 なら相手より +Z 側、
@@ -58,7 +61,7 @@ FRONT = {"bench": ("bench_back", -1, None), "chair": ("chair_back", -1, None), "
          "animal_run_dog_a": ("dog_dark", 1, None),
          "window": ("window_sill", 1, None), "checkout_counter": ("counter_front", 1, None), "shelf": ("shelf_back", -1, None),
          "shirt": ("shirt_collar", 1, None), "seat": ("seat_back", -1, None), "laptop": ("trackpad", 1, None),
-         "cart": ("cart_handle", -1, None)}
+         "cart": ("cart_handle", -1, None), "platform_station": ("platform_edge", -1, None)}
 FRONT.update({pid: ("eye", 1, "hair") for pid in EXPECTED if pid.startswith("person_")})
 
 # anchors を付けるはずの部品と、その種類（scene-protocol.md の「部品のメタデータ」）
