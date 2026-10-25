@@ -123,6 +123,11 @@ Hack Day の前に、画面の遷移図を HTML の画面設計書として作�
 
 ### 構成
 
+![構成図: 各自の iPhone（SwiftUI）は Cloudflare の Worker（Hono）とだけ WebSocket と HTTP で話す。Worker は部屋ごとの Room（Durable Object）と、場面の評価の SceneReviews（Durable Object）につなぎ、採点で Azure AI Speech と Claude API を呼ぶ。Room は場面の生成で Claude API を呼ぶ](docs/images/architecture.png)
+
+<details>
+<summary>図の元（mermaid）</summary>
+
 ```mermaid
 flowchart LR
   subgraph iPhone[各自の iPhone（SwiftUI）]
@@ -144,6 +149,8 @@ flowchart LR
   W -->|内容・表現の採点と講評| Cl
   R -->|場面の生成| Cl
 ```
+
+</details>
 
 - iPhone は API のキーを持たず、Cloudflare とだけ話します。外部 API（Azure・Claude）はバックエンドだけが呼びます。
 - 部屋の状態（参加者・進行・点数）は部屋ごとの Durable Object が持ち、全員に WebSocket で配ります。
