@@ -1,6 +1,8 @@
 # 3D シーン
 
-アプリに出す 3D シーン（ジオラマ）。仕様は [`docs/design/scene-generation.md`](../../docs/design/scene-generation.md)。
+手作りの 3D シーン（ジオラマ）6 つ。仕様は [`docs/design/scene-generation.md`](../../docs/design/scene-generation.md)。
+
+いまの待合は難易度だけを選び、部品を並べて作った作り置きの場面（[`backend/src/scenes/pool/`](../../backend/src/scenes/pool/README.md)）で遊ぶ。ここのシーンは、iOS の `SCENE_PICK = list`（`ios/Config/Local.xcconfig.example`）で一覧から選んだときと、シーンを選ばずにスタートしたときのおまかせで出る。
 
 難易度は「かんたん」と「ふつう」の 2 つ。`<id>.json` の `difficulty`（`easy` / `normal`）に書く。
 
