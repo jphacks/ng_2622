@@ -14,6 +14,9 @@ struct PlayView: View {
   @State private var hintUsed = false
   /// ドラッグの前回の位置
   @State private var lastDrag: CGSize?
+  /// 3D の枠の高さと、指示文とカウントダウンのまとまりの高さ。まとまりを置く位置の計算に使う
+  @State private var sceneHeight: CGFloat = 0
+  @State private var introHeight: CGFloat = 0
 
   private var introEnd: Date { round.startsAt + RoundTiming.intro }
   private var recordingEnd: Date { introEnd + RoundTiming.recording }
@@ -21,9 +24,12 @@ struct PlayView: View {
   var body: some View {
     VStack(spacing: 0) {
       header
-        .frame(width: 346, height: 96)
+        .frame(width: 346, height: 126)
         .padding(.top, 24)
+        // 下にずらした指示文が 3D の枠に重なっても隠れないように
+        .zIndex(1)
       scene
+        .onGeometryChange(for: CGFloat.self) { $0.size.height } action: { sceneHeight = $0 }
         .padding(.top, 0)
       footer
         .frame(width: 346, height: 70)
@@ -34,14 +40,19 @@ struct PlayView: View {
     .task(id: round) { await runTimeline() }
   }
 
-  // MARK: - 上（カウントダウン → 録音中と残り時間）
+  // MARK: - 上（指示文とカウントダウン → 録音中と残り時間）
 
   private var header: some View {
     ZStack(alignment: .top) {
-      countdown
-        .padding(.top, 10)
-        .opacity(isRecording ? 0 : 1)
-        .offset(y: isRecording ? -14 : 0)
+      VStack(spacing: 4) {
+        prompt
+        countdown
+      }
+      .onGeometryChange(for: CGFloat.self) { $0.size.height } action: { introHeight = $0 }
+      .offset(y: introOffset)
+      .allowsHitTesting(false)
+      .opacity(isRecording ? 0 : 1)
+      .offset(y: isRecording ? -14 : 0)
       recordingStatus
         .padding(.top, 22)
         .opacity(isRecording ? 1 : 0)
@@ -51,12 +62,23 @@ struct PlayView: View {
     .animation(.easeOut(duration: 0.5), value: isRecording)
   }
 
+  /// 3D の模型の高さの半分（枠の真ん中に描かれる。iPhone 17 Pro で測った値）
+  private static let dioramaHalfHeight: CGFloat = 113
+
+  /// 指示文とカウントダウンのまとまりの中心を、セーフエリアの上端と 3D の模型の上端のちょうど真ん中に置く。
+  /// 座標は header の上端が 0（セーフエリアの上端は -24、3D の枠の上端は 126）
+  private var introOffset: CGFloat {
+    let top: CGFloat = -24
+    let dioramaTop = 126 + sceneHeight / 2 - Self.dioramaHalfHeight
+    return max(10, (top + dioramaTop) / 2 - introHeight / 2)
+  }
+
   private var countdown: some View {
     TimelineView(.periodic(from: round.startsAt, by: 0.05)) { context in
       let elapsed = context.date.timeIntervalSince(round.startsAt)
       let n = 3 - Int(floor(elapsed))
       ZStack {
-        if elapsed >= 0 && (1...3).contains(n) && !isRecording {
+        if (1...3).contains(n) && !isRecording {
           Text("\(n)")
             .font(Theme.font(72, .black))
             .monospacedDigit()
@@ -67,7 +89,22 @@ struct PlayView: View {
       }
       .frame(height: 76)
       .animation(.spring(duration: 0.35, bounce: 0.45), value: n)
-      .accessibilityLabel(n >= 1 ? "\(n)" : "")
+      .accessibilityLabel((1...3).contains(n) ? "\(n)" : "")
+    }
+  }
+
+  /// 指示文。カウントダウンと同時に、左から書くように 0.7 秒で出す
+  private var prompt: some View {
+    TimelineView(.animation(paused: isRecording)) { context in
+      let t = min(1, max(0, context.date.timeIntervalSince(round.startsAt) / 0.7))
+      let p = 1 - (1 - t) * (1 - t)
+      Text("この場面を英語で説明しよう")
+        .font(Theme.font(24, .heavy))
+        .foregroundStyle(Theme.ink)
+        .mask(alignment: .leading) {
+          Rectangle().scaleEffect(x: p, anchor: .leading)
+        }
+        .offset(x: (1 - p) * -16)
     }
   }
 
