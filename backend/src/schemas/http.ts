@@ -97,6 +97,19 @@ export const ListScenesResponse = z
 
 export const SceneIdParam = z.object({ sceneId: SceneId });
 
+export const SceneLayoutQuery = z.object({
+  // RoomId（ref 付き）に説明を足すと OpenAPI で RoomId が入力用と出力用に分かれるので、形だけ同じにする
+  room: z
+    .string()
+    .regex(/^\d{4}$/)
+    .optional()
+    .meta({
+      description:
+        "部屋のコード（数字 4 桁）。部屋が AI で作った場面（作り置きに無い sceneId）は、その部屋に置いてあるので付けて取る。作り置きの場面には要らない",
+      example: "0427",
+    }),
+});
+
 export const ListReviewsQuery = z.object({
   limit: z.coerce.number().int().min(1).max(100).default(20).meta({
     description: "何件返すか（1〜100、既定 20）",

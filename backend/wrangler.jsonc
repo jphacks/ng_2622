@@ -9,8 +9,9 @@
   // 採点の設定。SCORING_MODE は "live"（Azure と Claude を呼ぶ）か "fixed"（固定の点数）。
   // 本番は live。PR のプレビューは料金を抑えるため fixed（下の previews）。AZURE_LOCATION は Azure のリソースのリージョン
   // CLAUDE_MODEL・CLAUDE_EFFORT は採点に使う Claude。Haiku 5.5 の high は 1 回 7〜8 秒かかったので、Sonnet 5.5 の low（3〜4 秒）にしている
-  // SCENE_GENERATION は "on" のときだけ POST /scenes/generate が Claude を呼ぶ（それ以外は 503）。
-  // 作り置きは手元の wrangler dev で行うので、デプロイ先では off のままにする
+  // SCENE_GENERATION は "on" のときだけ場面を AI で作る。POST /scenes/generate（それ以外は 503）と、
+  // 部屋が難易度のスタートで作る生成（それ以外は作り置きの場面から選ぶ）の両方のスイッチ。
+  // 作り置きは手元の wrangler dev で行う。部屋での生成を出すまで、デプロイ先では off のままにする
   "vars": {
     "SCORING_MODE": "live",
     "SCORE_WEIGHTS": "50,25,25",

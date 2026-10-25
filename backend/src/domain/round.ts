@@ -30,6 +30,8 @@ export type Grade =
 export type Round = {
   round: number;
   sceneId: string;
+  /** AI で作った場面の名前（結果発表に出す）。作り置き・手作りの場面は sceneId から引くので無い */
+  sceneName?: string;
   /** 回転を始める時刻（UNIX 時刻のミリ秒） */
   startAt: number;
   /** スタートしたときに部屋にいた人。後から抜けた人は数えない */
@@ -179,7 +181,7 @@ export const roundResults = (
   return {
     round: current.round,
     sceneId: current.sceneId,
-    sceneName: sceneName(current.sceneId),
+    sceneName: current.sceneName ?? sceneName(current.sceneId),
     players,
   };
 };

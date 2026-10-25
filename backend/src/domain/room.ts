@@ -28,12 +28,24 @@ export type RoomState = {
   current: Round | null;
   /** この部屋で難易度から選んで出した作り置きの場面。重ねて出さないために覚える（前の版で保存した部屋には無い） */
   playedSceneIds?: string[];
+  /** AI で作っている最中（phase が generating のときだけ）。id で、終わったときに同じ生成かを確かめる */
+  generating?: Generation | null;
+  /** この部屋で AI の生成を試した回数（失敗も数える）。MAX_GENERATIONS で打ち止め（前の版で保存した部屋には無い） */
+  generationCount?: number;
 };
+
+export type Generation = { id: string; difficulty: Difficulty };
+
+/** AI で作った場面。名前は結果発表に出す */
+export type GeneratedScene = { sceneId: string; name: string };
 
 // ---------- ドメインルール ----------
 
 /** 全員に round が届くまでの余裕 */
 const START_DELAY_MS = 1500;
+
+/** 1 部屋で AI に場面を作らせる回数の上限（料金を抑えるため）。超えたら作り置きの場面から選ぶ */
+export const MAX_GENERATIONS = 20;
 
 /** 待合の状態で部屋を作る。作った人がホストになる */
 export const createRoomState = (roomId: string) => {
@@ -129,6 +141,87 @@ export const startRound = (
     connectedIds: ReadonlySet<string>;
   },
 ): Result<{ state: RoomState; round: Round }> => {
+  const checked = checkStart(state, input);
+  if (!checked.ok) return checked;
+
+  if (input.difficulty !== undefined) {
+    return ok(
+      startPoolRound(state, { ...input, difficulty: input.difficulty }),
+    );
+  }
+  return ok(
+    withRound(state, {
+      sceneId: input.sceneId ?? pickRandomSceneId(),
+      now: input.now,
+      connectedIds: input.connectedIds,
+    }),
+  );
+};
+
+/** この部屋でまだ AI に作らせてよいか。スイッチが on で、試した回数が上限に届いていないこと */
+export const canGenerate = (state: RoomState, enabled: boolean) =>
+  enabled && (state.generationCount ?? 0) < MAX_GENERATIONS;
+
+/**
+ * 難易度から AI で場面を作り始める（phase を generating にする）。確かめることは startRound と同じ。
+ * 試した回数をここで 1 つ増やす（失敗しても数える）。できたら finishGeneration でラウンドを始める
+ */
+export const beginGeneration = (
+  state: RoomState,
+  input: { playerId: string; difficulty: Difficulty; generationId: string },
+): Result<RoomState> => {
+  const checked = checkStart(state, input);
+  if (!checked.ok) return checked;
+  return ok({
+    ...state,
+    phase: "generating",
+    generating: { id: input.generationId, difficulty: input.difficulty },
+    generationCount: (state.generationCount ?? 0) + 1,
+  });
+};
+
+/**
+ * 生成が終わったら（失敗・止めたときは scene を null で）ラウンドを始める。失敗したら同じ難易度の作り置きの場面にする。
+ * 作っている間に別の生成に替わった・もう generating でない（ホストが抜けて先に始めた）なら null で、何もしない。
+ * つながっている参加者が 1 人もいなければ、ラウンドは始めずに待合に戻す（round は null）
+ */
+export const finishGeneration = (
+  state: RoomState,
+  input: {
+    generationId: string;
+    scene: GeneratedScene | null;
+    now: number;
+    connectedIds: ReadonlySet<string>;
+  },
+): { state: RoomState; round: Round | null } | null => {
+  const generation = state.generating;
+  if (state.phase !== "generating" || generation?.id !== input.generationId) {
+    return null;
+  }
+  const rest: RoomState = { ...state, generating: null };
+  const anyone = state.players.some(
+    (p) => p.name !== null && input.connectedIds.has(p.id),
+  );
+  if (!anyone) return { state: { ...rest, phase: "lobby" }, round: null };
+  if (!input.scene) {
+    return startPoolRound(rest, {
+      ...input,
+      difficulty: generation.difficulty,
+    });
+  }
+  return withRound(rest, {
+    sceneId: input.scene.sceneId,
+    sceneName: input.scene.name,
+    now: input.now,
+    connectedIds: input.connectedIds,
+  });
+};
+
+/** スタートを受け付けるか。ホストだけ、待合のときだけ、シーンと難易度はどちらか一方 */
+const checkStart = (
+  state: RoomState,
+  input: { playerId: string; sceneId?: string; difficulty?: Difficulty },
+): Result<null> => {
   if (input.playerId !== state.hostId) {
     return fail("not_host", "スタートできるのはホストだけ");
   }
@@ -144,28 +237,50 @@ export const startRound = (
   if (input.sceneId !== undefined && !isSceneId(input.sceneId)) {
     return fail("unknown_scene", `シーン ${input.sceneId} は無い`);
   }
+  return ok(null);
+};
 
-  let sceneId = input.sceneId ?? pickRandomSceneId();
-  let playedSceneIds = state.playedSceneIds;
-  if (input.difficulty !== undefined) {
-    const picked = pickPoolSceneId(input.difficulty, playedSceneIds ?? []);
-    sceneId = picked.sceneId;
-    playedSceneIds = picked.played;
-  }
+/** 難易度から作り置きの場面を選んでラウンドを始める。出した場面を履歴に足す */
+const startPoolRound = (
+  state: RoomState,
+  input: {
+    difficulty: Difficulty;
+    now: number;
+    connectedIds: ReadonlySet<string>;
+  },
+) => {
+  const picked = pickPoolSceneId(input.difficulty, state.playedSceneIds ?? []);
+  return withRound(
+    { ...state, playedSceneIds: picked.played },
+    {
+      sceneId: picked.sceneId,
+      now: input.now,
+      connectedIds: input.connectedIds,
+    },
+  );
+};
 
+/** このシーンでラウンドを始める（phase を playing にする） */
+const withRound = (
+  state: RoomState,
+  input: {
+    sceneId: string;
+    sceneName?: string;
+    now: number;
+    connectedIds: ReadonlySet<string>;
+  },
+): { state: RoomState; round: Round } => {
   const round: Round = {
     round: (state.current?.round ?? 0) + 1,
-    sceneId,
+    sceneId: input.sceneId,
+    ...(input.sceneName !== undefined ? { sceneName: input.sceneName } : {}),
     startAt: input.now + START_DELAY_MS,
     playerIds: state.players
       .filter((p) => p.name !== null && input.connectedIds.has(p.id))
       .map((p) => p.id),
     grades: {},
   };
-  return ok({
-    state: { ...state, phase: "playing", current: round, playedSceneIds },
-    round,
-  });
+  return { state: { ...state, phase: "playing", current: round }, round };
 };
 
 /** ホストが結果発表から同じ顔ぶれで待合に戻す */
@@ -184,7 +299,8 @@ export const playAgain = (
 
 /**
  * 部屋から抜ける。席を空け、ホストが抜けたら次に入った人がホストになる。
- * ラウンド中なら、残りの人がそろったかを決め直す
+ * ラウンド中なら、残りの人がそろったかを決め直す。
+ * AI で作っている最中にホストが抜けたときは、ここでは generating のまま返す（生成を止めて作り置きで始めるのは呼ぶ側）
  */
 export const leaveRoom = (state: RoomState, playerId: string): RoomState => {
   const rest = state.players.filter((p) => p.id !== playerId);
