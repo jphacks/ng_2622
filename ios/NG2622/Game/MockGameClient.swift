@@ -181,7 +181,7 @@ final class MockGameClient: GameClient {
     lastSent = []
     plans = [:]
     for p in members where !p.isSelf {
-      let recordingEnd = RoundTiming.intro + .random(in: 7...RoundTiming.recording)
+      let recordingEnd = RoundTiming.prompt + RoundTiming.intro + .random(in: 7...RoundTiming.recording)
       plans[p.id] = Plan(recordingEnd: recordingEnd, gradingEnd: recordingEnd + .random(in: 2.5...6))
     }
     continuation.yield(.roundStarted(RoundInfo(sceneID: roundSceneID, startsAt: start)))
@@ -221,7 +221,7 @@ final class MockGameClient: GameClient {
         p.status = if let end = selfGradingEnd { r < end ? .grading : .done } else { .talking }
       } else if let plan = plans[p.id] {
         p.status =
-          if member.status == .offline || (p.id == dropperID && r > RoundTiming.intro + 6) { .offline }
+          if member.status == .offline || (p.id == dropperID && r > RoundTiming.prompt + RoundTiming.intro + 6) { .offline }
           else if r < plan.recordingEnd { .talking }
           else if r < plan.gradingEnd { .grading }
           else { .done }

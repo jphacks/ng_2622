@@ -15,7 +15,8 @@ struct PlayView: View {
   /// ドラッグの前回の位置
   @State private var lastDrag: CGSize?
 
-  private var introEnd: Date { round.startsAt + RoundTiming.intro }
+  private var introStart: Date { round.startsAt + RoundTiming.prompt }
+  private var introEnd: Date { introStart + RoundTiming.intro }
   private var recordingEnd: Date { introEnd + RoundTiming.recording }
 
   var body: some View {
@@ -34,7 +35,7 @@ struct PlayView: View {
     .task(id: round) { await runTimeline() }
   }
 
-  // MARK: - 上（カウントダウン → 録音中と残り時間）
+  // MARK: - 上（指示文 → カウントダウン → 録音中と残り時間）
 
   private var header: some View {
     ZStack(alignment: .top) {
@@ -53,10 +54,15 @@ struct PlayView: View {
 
   private var countdown: some View {
     TimelineView(.periodic(from: round.startsAt, by: 0.05)) { context in
-      let elapsed = context.date.timeIntervalSince(round.startsAt)
+      let elapsed = context.date.timeIntervalSince(introStart)
       let n = 3 - Int(floor(elapsed))
       ZStack {
-        if elapsed >= 0 && (1...3).contains(n) && !isRecording {
+        if elapsed < 0 && !isRecording {
+          Text("この場面を英語で説明しよう")
+            .font(Theme.font(24, .heavy))
+            .foregroundStyle(Theme.ink)
+            .transition(.opacity)
+        } else if (1...3).contains(n) && !isRecording {
           Text("\(n)")
             .font(Theme.font(72, .black))
             .monospacedDigit()
@@ -67,7 +73,7 @@ struct PlayView: View {
       }
       .frame(height: 76)
       .animation(.spring(duration: 0.35, bounce: 0.45), value: n)
-      .accessibilityLabel(n >= 1 ? "\(n)" : "")
+      .accessibilityLabel(elapsed < 0 ? "この場面を英語で説明しよう" : (1...3).contains(n) ? "\(n)" : "")
     }
   }
 
@@ -194,7 +200,7 @@ struct PlayView: View {
   /// 回転中 → 録音中 → 20 秒で待機へ。時刻はラウンドの開始時刻から数える（全員の端末でそろえるため）
   private func runTimeline() async {
     if Date() < introEnd {
-      orbit.spin(from: round.startsAt, duration: RoundTiming.intro)
+      orbit.spin(from: introStart, duration: RoundTiming.intro)
       try? await Task.sleep(for: .seconds(introEnd.timeIntervalSinceNow))
       if Task.isCancelled { return }
     }

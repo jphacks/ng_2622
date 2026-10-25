@@ -98,6 +98,8 @@ struct Participant: Identifiable, Sendable, Equatable {
 
 /// ラウンドの時間の決まり
 enum RoundTiming {
+  /// 指示文（この場面を英語で説明しよう）を出す。このあとカウントダウンと回転に入る
+  static let prompt: TimeInterval = 2
   /// 回転中（1 周）
   static let intro: TimeInterval = 3
   /// 録音の最長
