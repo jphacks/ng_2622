@@ -3,11 +3,13 @@ import { fail, ok, type Result, type RoomError } from "../domain/result";
 import {
   authenticate,
   createRoomState,
+  hostIsAway,
   joinRoom,
   leaveRoom,
   ongoingRound,
   playAgain,
   type RoomState,
+  replaceAwayHost,
   startRound,
   summarize,
   visiblePlayers,
@@ -28,7 +30,10 @@ import { ClientMessage, type ServerMessage } from "../schemas/ws";
 type Attachment = { playerId: string | null };
 
 const STATE_KEY = "state";
+/** ホストが切断した時刻。戻らないまま HOST_GRACE_MS たったらホストを替える */
+const HOST_AWAY_KEY = "hostAwaySince";
 const IDLE_TTL_MS = 2 * 60 * 60 * 1000;
+const HOST_GRACE_MS = 30 * 1000;
 const CLOSE_REPLACED = 4000;
 const CLOSE_LEFT = 1000;
 
@@ -136,21 +141,29 @@ export class Room extends DurableObject<CloudflareBindings> {
     }
   }
 
-  async webSocketClose() {
-    // 参加者は消さず、同じ合言葉での復帰を待つ
+  async webSocketClose(ws: WebSocket) {
+    // 参加者は消さず、同じ合言葉での復帰を待つ。ホストが戻らなければ alarm で替える
     const state = await this.load();
     if (!state) return;
     this.broadcastRoom(state);
     this.broadcastProgress(state);
+    await this.scheduleAlarm(state, ws);
   }
 
-  async webSocketError() {
-    await this.webSocketClose();
+  async webSocketError(ws: WebSocket) {
+    await this.webSocketClose(ws);
   }
 
+  /** 切断したまま戻らないホストを替える。誰もつながっていなければ部屋を消す */
   async alarm() {
-    if (this.openSockets().length > 0) {
-      await this.keepAlive();
+    const state = await this.load();
+    if (state && this.openSockets().length > 0) {
+      const awaySince = await this.ctx.storage.get<number>(HOST_AWAY_KEY);
+      if (awaySince !== undefined && Date.now() >= awaySince + HOST_GRACE_MS) {
+        const next = replaceAwayHost(state, this.connectedPlayerIds());
+        if (next !== state) return this.update(state, next);
+      }
+      await this.scheduleAlarm(state);
       return;
     }
     await this.ctx.storage.deleteAll();
@@ -166,9 +179,10 @@ export class Room extends DurableObject<CloudflareBindings> {
     if (!result.ok) return this.sendError(ws, result.error);
 
     const { player, rejoined } = result.value;
-    await this.save(result.value.state);
+    // 保存の前に接続を本人に結び付ける（戻ってきたホストを切断中と数えないため）
     if (rejoined) this.closeOtherConnections(ws, player.id);
     setAttachment(ws, { playerId: player.id });
+    await this.save(result.value.state);
 
     this.send(ws, {
       type: "welcome",
@@ -203,6 +217,7 @@ export class Room extends DurableObject<CloudflareBindings> {
       sceneId: input.sceneId,
       difficulty: input.difficulty,
       now: Date.now(),
+      connectedIds: this.connectedPlayerIds(),
     });
     if (!result.ok) return this.sendError(ws, result.error);
 
@@ -292,9 +307,11 @@ export class Room extends DurableObject<CloudflareBindings> {
     }
   }
 
-  private connectedPlayerIds() {
+  /** except は閉じかけの接続（webSocketClose の中ではまだ開いて見えることがある） */
+  private connectedPlayerIds(except?: WebSocket) {
     const ids = new Set<string>();
     for (const ws of this.openSockets()) {
+      if (ws === except) continue;
       const { playerId } = attachmentOf(ws);
       if (playerId) ids.add(playerId);
     }
@@ -317,11 +334,26 @@ export class Room extends DurableObject<CloudflareBindings> {
   private async save(state: RoomState) {
     this.state = state;
     await this.ctx.storage.put(STATE_KEY, state);
-    await this.keepAlive();
+    await this.scheduleAlarm(state);
   }
 
-  private async keepAlive() {
-    await this.ctx.storage.setAlarm(Date.now() + IDLE_TTL_MS);
+  /**
+   * 次の alarm を決める。ホストが切断中なら切断から HOST_GRACE_MS 後（ホストを替える）、
+   * そうでなければ IDLE_TTL_MS 後（誰もつながっていなければ部屋を消す）
+   */
+  private async scheduleAlarm(state: RoomState, closing?: WebSocket) {
+    const now = Date.now();
+    if (hostIsAway(state, this.connectedPlayerIds(closing))) {
+      let since = await this.ctx.storage.get<number>(HOST_AWAY_KEY);
+      if (since === undefined) {
+        since = now;
+        await this.ctx.storage.put(HOST_AWAY_KEY, since);
+      }
+      await this.ctx.storage.setAlarm(since + HOST_GRACE_MS);
+      return;
+    }
+    await this.ctx.storage.delete(HOST_AWAY_KEY);
+    await this.ctx.storage.setAlarm(now + IDLE_TTL_MS);
   }
 }
 

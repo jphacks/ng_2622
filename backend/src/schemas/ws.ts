@@ -48,7 +48,8 @@ export const StartMessage = z
   })
   .meta({
     ref: "StartMessage",
-    description: "ホストだけが送れる。待合のときだけ有効",
+    description:
+      "ホストだけが送れる。待合のときだけ有効。このときつながっている人がラウンドの参加者になる（切断中の人は入らない）",
   });
 
 export const CloseMessage = z.object({ type: z.literal("close") }).meta({
@@ -130,7 +131,8 @@ export const RoomMessage = z
   })
   .meta({
     ref: "RoomMessage",
-    description: "部屋の様子。参加者や状態が変わるたびに全員へ送る",
+    description:
+      "部屋の様子。参加者や状態が変わるたびに全員へ送る。ホストが抜けるか、切断したまま 30 秒戻らなければ、hostId はつながっている人のうち先に入った人に替わる",
   });
 
 export const RoundMessage = z
