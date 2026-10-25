@@ -15,6 +15,9 @@ protocol GameClient: AnyObject {
 
   /// ホストがラウンドを始める（start）。sceneID が nil なら「おまかせ」で、部屋の側がランダムに選ぶ
   func startRound(sceneID: String?) async throws
+  /// ホストが難易度だけを選んでラウンドを始める（SCENE_PICK = difficulty）。場面は、その部屋でまだ出ていない
+  /// 作り置きの場面からランダムに選ぶ（ScenePool）。今は Mock だけがアプリの中で選ぶ
+  func startRound(difficulty: SceneDifficulty) async throws
   /// 自分が話し終えた。録音した音声を送る（POST /rooms/:id/rounds/:n/audio）。録れなかったときは nil
   func finishSpeaking(audio: RecordedAudio?) async throws
   /// ホストが締め切って発表する（close）

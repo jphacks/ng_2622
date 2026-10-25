@@ -1,0 +1,129 @@
+{
+  "protocol": "scenenglish.scene/1",
+  "id": "gen-0cv84arpzw",
+  "name": "朝の駅のホーム",
+  "difficulty": "hard",
+  "description": "A morning train station platform. A woman is sitting on a bench in the center, and a man is looking at his smartphone on the left. On the right, a boy is sitting on a seat while a man carries a box in front. A boy is running toward the back, and a bag is next to the bench.",
+  "elements": [
+    {
+      "id": "place",
+      "label": "駅のホームで",
+      "points": 8,
+      "accept": "station platform, train station, railway platform",
+      "partial": "a station or a place outdoors"
+    },
+    {
+      "id": "woman_sit",
+      "label": "女の人がベンチに座っている",
+      "points": 12,
+      "accept": "a woman is sitting on a bench",
+      "partial": "mentions a woman or a bench, without the sitting"
+    },
+    {
+      "id": "man_phone",
+      "label": "男の人がスマホを見ている",
+      "points": 12,
+      "accept": "a man is looking at his smartphone",
+      "partial": "mentions a man or a phone"
+    },
+    {
+      "id": "man_carry",
+      "label": "男の人が箱を運んでいる",
+      "points": 12,
+      "accept": "a man is carrying a box",
+      "partial": "a man carrying something"
+    },
+    {
+      "id": "boy_sit",
+      "label": "男の子が座席に座っている",
+      "points": 10,
+      "accept": "a boy is sitting on a seat",
+      "partial": "a boy or a child"
+    },
+    {
+      "id": "boy_run",
+      "label": "男の子が走っている",
+      "points": 12,
+      "accept": "a boy is running toward the back",
+      "partial": "a boy is running, without the direction"
+    },
+    {
+      "id": "machine",
+      "label": "自動販売機",
+      "points": 10,
+      "accept": "a vending machine",
+      "partial": "a machine"
+    },
+    {
+      "id": "bag_bench",
+      "label": "ベンチのそばにかばん",
+      "points": 14,
+      "accept": "a bag is next to the bench",
+      "partial": "a bag"
+    }
+  ],
+  "extraMax": 10,
+  "items": [
+    {
+      "key": "floor",
+      "part": "grass_patch",
+      "position": [0, 0, 0]
+    },
+    {
+      "key": "bench",
+      "part": "bench",
+      "position": [0, 0, 0]
+    },
+    {
+      "key": "woman",
+      "part": "person_sit_woman_a",
+      "position": [0, 0.002, 0.255]
+    },
+    {
+      "key": "bag",
+      "part": "bag",
+      "position": [1.09, 0, 0]
+    },
+    {
+      "key": "bottle",
+      "part": "bottle",
+      "position": [-0.936, 0, 0]
+    },
+    {
+      "key": "man_phone",
+      "part": "person_phone_adult_a",
+      "position": [-2.75, 0, 0]
+    },
+    {
+      "key": "seat",
+      "part": "seat",
+      "position": [2.75, 0, 2.75]
+    },
+    {
+      "key": "boy_sit",
+      "part": "person_sit_boy_a",
+      "position": [2.75, 0.1, 2.982]
+    },
+    {
+      "key": "man_carry",
+      "part": "person_carry_adult_a",
+      "position": [0, 0, 2.75]
+    },
+    {
+      "key": "boy_run",
+      "part": "person_run_boy_a",
+      "position": [0, 0, -0.75],
+      "yaw": 125.7,
+      "motion": {
+        "type": "move",
+        "to": [2.667, 0, -2.667],
+        "duration": 6
+      }
+    },
+    {
+      "key": "machine",
+      "part": "vending_machine",
+      "position": [2.75, 0, -2.75]
+    }
+  ]
+}

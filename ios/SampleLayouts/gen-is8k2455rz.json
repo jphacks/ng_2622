@@ -1,0 +1,74 @@
+{
+  "protocol": "scenenglish.scene/1",
+  "id": "gen-is8k2455rz",
+  "name": "リンゴが落ちる公園",
+  "difficulty": "easy",
+  "description": "A sunny park. A red apple is falling from a tree. A man is walking past the tree, and a red ball is on the grass.",
+  "elements": [
+    {
+      "id": "place",
+      "label": "公園で",
+      "points": 15,
+      "accept": "park, garden, lawn, grass"
+    },
+    {
+      "id": "apple_fall",
+      "label": "リンゴが木から落ちている",
+      "points": 35,
+      "accept": "an apple is falling from the tree",
+      "partial": "mentions an apple or the tree, without saying it is falling"
+    },
+    {
+      "id": "man_walk",
+      "label": "男の人が歩いている",
+      "points": 25,
+      "accept": "a man is walking (past the tree)",
+      "partial": "mentions a man or a person, without saying he is walking"
+    },
+    {
+      "id": "ball",
+      "label": "赤いボール",
+      "points": 15,
+      "accept": "a red ball (on the grass)",
+      "partial": "a ball, without the color"
+    }
+  ],
+  "extraMax": 10,
+  "items": [
+    {
+      "key": "grass",
+      "part": "grass_patch",
+      "position": [0, 0, 0]
+    },
+    {
+      "key": "tree",
+      "part": "tree",
+      "position": [0, 0, -2.75]
+    },
+    {
+      "key": "apple",
+      "part": "apple_red",
+      "position": [0.405, 2.213, -2.452],
+      "motion": {
+        "type": "fall",
+        "duration": 1.2
+      }
+    },
+    {
+      "key": "man",
+      "part": "person_walk_adult_a",
+      "position": [1.744, 0, -1.908],
+      "yaw": -66.6,
+      "motion": {
+        "type": "move",
+        "to": [-2.667, 0, 0],
+        "duration": 6
+      }
+    },
+    {
+      "key": "ball",
+      "part": "ball_red",
+      "position": [2.75, 0, 2.75]
+    }
+  ]
+}

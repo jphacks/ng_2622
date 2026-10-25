@@ -33,9 +33,9 @@ enum SceneCatalog {
     all.first { $0.id == id }
   }
 
-  /// シーンの名前。知らない ID のときは ID をそのまま返す
+  /// シーンの名前。AI で作った場面は、取った配置の JSON の名前。知らない ID のときは ID をそのまま返す
   static func name(of id: String) -> String {
-    scene(id)?.name ?? id
+    scene(id)?.name ?? SceneLayouts.store.name(of: id) ?? id
   }
 
   /// 一覧に出す小さなサムネイル。元の <id>.png（1600×1000）は大きいので、縮めて覚えておく

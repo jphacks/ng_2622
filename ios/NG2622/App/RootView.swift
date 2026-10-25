@@ -15,12 +15,20 @@ struct RootView: View {
           MissingBackendURLView()
         }
       case .mock:
-        AppFlow { MockGameClient(options: config.mock) }
+        AppFlow {
+          MockGameClient(options: config.mock, pool: config.scenePick == .difficulty ? .bundled : nil)
+        }
       }
     }
     .foregroundStyle(Theme.ink)
-    // 3D シーンは読み込みに時間がかかるので、起動したらすぐ読み始める（最初に出す公園から）
-    .task { SceneLibrary.shared.preload(SceneCatalog.all.map(\.id)) }
+    // 3D シーンは読み込みに時間がかかるので、起動したらすぐ読み始める（最初に出す公園から）。
+    // Mock で難易度で選ぶときは、作り置きの場面も組み立てておく
+    .task {
+      SceneLibrary.shared.preload(SceneCatalog.all.map(\.id))
+      if config.mode == .mock, config.scenePick == .difficulty {
+        SceneLibrary.shared.preload(SceneDifficulty.allCases.flatMap { ScenePool.bundled.scenes[$0] ?? [] })
+      }
+    }
   }
 }
 

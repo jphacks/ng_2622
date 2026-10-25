@@ -7,6 +7,9 @@
 	<string>$(BACKEND_MODE)</string>
 	<key>BackendURL</key>
 	<string>$(BACKEND_URL)</string>
+	<!-- 待合でのシーンの選び方（difficulty / list）。Mock.xcconfig・Live.xcconfig で決める -->
+	<key>ScenePick</key>
+	<string>$(SCENE_PICK)</string>
 	<!-- Mock の振る舞い（Config/Mock.xcconfig）。Live では空になり、使わない -->
 	<key>MockOtherPlayers</key>
 	<string>$(MOCK_OTHER_PLAYERS)</string>

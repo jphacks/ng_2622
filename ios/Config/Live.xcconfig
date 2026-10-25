@@ -3,5 +3,9 @@
 
 BACKEND_MODE = live
 
+// 待合でのシーンの選び方。今の API の start は sceneId だけなので、手作りのシーンの一覧（list）にしておく。
+// バックエンドが難易度で選ぶようになったら difficulty にする（docs/design/scene-protocol.md の「待合での出し方」）
+SCENE_PICK = list
+
 // 各自の設定で上書きする（無くてもよい）。PR のプレビューにつなぐときは BACKEND_URL を書く
 #include? "Local.xcconfig"
