@@ -1,0 +1,75 @@
+{
+  "protocol": "scenenglish.scene/1",
+  "id": "gen-g8g7nvgt9v",
+  "name": "リビングでくつろぐ部屋",
+  "difficulty": "easy",
+  "description": "A living room. A woman is sitting on a sofa. A cup is on the table. A boy is running in the room.",
+  "elements": [
+    {
+      "id": "place",
+      "label": "部屋で",
+      "points": 10,
+      "accept": "living room, room, home",
+      "partial": "inside, house"
+    },
+    {
+      "id": "woman_sit",
+      "label": "女の人がソファに座っている",
+      "points": 30,
+      "accept": "a woman is sitting on a sofa",
+      "partial": "mentions a woman or a sofa, without saying she is sitting on it"
+    },
+    {
+      "id": "cup_table",
+      "label": "テーブルの上にカップがある",
+      "points": 25,
+      "accept": "a cup is on the table",
+      "partial": "mentions a cup or a table, without saying where the cup is"
+    },
+    {
+      "id": "boy_run",
+      "label": "男の子が走っている",
+      "points": 25,
+      "accept": "a boy is running",
+      "partial": "mentions a boy, without saying he is running"
+    }
+  ],
+  "extraMax": 10,
+  "items": [
+    {
+      "key": "floor",
+      "part": "floor_wood",
+      "position": [0, 0, 0]
+    },
+    {
+      "key": "wall",
+      "part": "wall_window",
+      "position": [0, 0, -3.86]
+    },
+    {
+      "key": "sofa",
+      "part": "sofa",
+      "position": [0, 0, -2.75]
+    },
+    {
+      "key": "woman",
+      "part": "person_sit_woman_a",
+      "position": [0, -0.02, -2.475]
+    },
+    {
+      "key": "table",
+      "part": "table",
+      "position": [1.3, 0, -1.835]
+    },
+    {
+      "key": "cup",
+      "part": "cup",
+      "position": [1.3, 0.72, -1.835]
+    },
+    {
+      "key": "boy",
+      "part": "person_run_boy_a",
+      "position": [2.75, 0, 2.75]
+    }
+  ]
+}

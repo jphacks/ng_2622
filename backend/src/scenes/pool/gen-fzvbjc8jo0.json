@@ -1,0 +1,134 @@
+{
+  "protocol": "scenenglish.scene/1",
+  "id": "gen-fzvbjc8jo0",
+  "name": "にぎやかなリビング",
+  "difficulty": "hard",
+  "description": "A living room with a wooden floor. A woman is sitting on a sofa. A table is in front of the sofa. A laptop is on the table. A cup is on the table. A man is reading next to the shelf. A dog is running toward a red ball. A girl is standing next to the table.",
+  "elements": [
+    {
+      "id": "place",
+      "label": "リビングで",
+      "points": 7,
+      "accept": "living room, room, home",
+      "partial": "inside a house"
+    },
+    {
+      "id": "woman_sit",
+      "label": "女の人がソファに座っている",
+      "points": 14,
+      "accept": "a woman is sitting on a sofa",
+      "partial": "mentions a woman or a sofa, without saying she is sitting on it"
+    },
+    {
+      "id": "table_front",
+      "label": "テーブルがソファの前にある",
+      "points": 11,
+      "accept": "a table is in front of the sofa",
+      "partial": "mentions a table, without saying where it is"
+    },
+    {
+      "id": "laptop",
+      "label": "テーブルの上にノートパソコンがある",
+      "points": 10,
+      "accept": "a laptop is on the table",
+      "partial": "mentions a laptop or a computer, without saying where it is"
+    },
+    {
+      "id": "cup",
+      "label": "テーブルの上にカップがある",
+      "points": 7,
+      "accept": "a cup is on the table",
+      "partial": "a cup or a drink"
+    },
+    {
+      "id": "man_read",
+      "label": "男の人が棚のそばで本を読んでいる",
+      "points": 14,
+      "accept": "a man is reading next to the shelf",
+      "partial": "mentions a man reading, without the shelf"
+    },
+    {
+      "id": "dog_ball",
+      "label": "犬が赤いボールに向かって走っている",
+      "points": 17,
+      "accept": "a dog is running toward a red ball",
+      "partial": "mentions a dog running, or a red ball"
+    },
+    {
+      "id": "girl",
+      "label": "女の子がテーブルのそばに立っている",
+      "points": 10,
+      "accept": "a girl is standing next to the table",
+      "partial": "mentions a girl, without saying she is standing"
+    }
+  ],
+  "extraMax": 10,
+  "items": [
+    {
+      "key": "floor",
+      "part": "floor_wood",
+      "position": [0, 0, 0]
+    },
+    {
+      "key": "wall",
+      "part": "wall_window",
+      "position": [0, 0, -3.86]
+    },
+    {
+      "key": "sofa",
+      "part": "sofa",
+      "position": [0, 0, -2.75]
+    },
+    {
+      "key": "woman",
+      "part": "person_sit_woman_a",
+      "position": [0, -0.02, -2.475]
+    },
+    {
+      "key": "table",
+      "part": "table",
+      "position": [1.3, 0, -1.835]
+    },
+    {
+      "key": "laptop",
+      "part": "laptop",
+      "position": [1.3, 0.72, -1.835]
+    },
+    {
+      "key": "cup",
+      "part": "cup",
+      "position": [1.3, 0.72, -2.135]
+    },
+    {
+      "key": "shelf",
+      "part": "shelf",
+      "position": [-2.75, 0, 0]
+    },
+    {
+      "key": "man",
+      "part": "person_read_adult_a",
+      "position": [-1.769, 0, 0]
+    },
+    {
+      "key": "ball",
+      "part": "ball_red",
+      "position": [2.75, 0, 2.75]
+    },
+    {
+      "key": "dog",
+      "part": "animal_run_dog_a",
+      "position": [-2.75, 0, 2.75],
+      "yaw": 90,
+      "motion": {
+        "type": "move",
+        "to": [1.93, 0, 2.75],
+        "duration": 6
+      }
+    },
+    {
+      "key": "girl",
+      "part": "person_stand_girl_a",
+      "position": [2.237, 0, -1.835]
+    }
+  ]
+}

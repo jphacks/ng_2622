@@ -142,13 +142,14 @@ struct SceneComposerTests {
 
   // MARK: - 同梱
 
-  /// Mock の作り置きの場面（SampleLayouts/*.json）は読めて、ID はファイルの名前と同じで、使う部品はどれもアプリに同梱されている
+  /// Mock の作り置きの場面（pool/*.json）は読めて、ID はファイルの名前と同じで、使う部品はどれもアプリに同梱されている
   @Test func sampleLayoutsUseBundledParts() async throws {
     let client = MockSceneLayoutClient()
     let parts = PartLibrary(bundle: .main, remoteBaseURL: nil)
     #expect(parts.bundledIDs.count >= 34)
-    let urls = Bundle.main.urls(forResourcesWithExtension: "json", subdirectory: "SampleLayouts") ?? []
-    #expect(urls.count == 6)
+    let urls = (Bundle.main.urls(forResourcesWithExtension: "json", subdirectory: ScenePool.directory) ?? [])
+      .filter { $0.lastPathComponent != "index.json" }
+    #expect(urls.count == 30)
     for id in urls.map({ $0.deletingPathExtension().lastPathComponent }) {
       #expect(GeneratedScene.isGenerated(id))
       let layout = try await client.layout(sceneID: id)

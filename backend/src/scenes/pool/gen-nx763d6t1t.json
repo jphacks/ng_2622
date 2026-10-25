@@ -1,0 +1,74 @@
+{
+  "protocol": "scenenglish.scene/1",
+  "id": "gen-nx763d6t1t",
+  "name": "店で買い物",
+  "difficulty": "easy",
+  "description": "A small store. A woman is standing next to a shopping cart. A red apple is on the checkout counter. A boy is running in the store.",
+  "elements": [
+    {
+      "id": "place",
+      "label": "店で",
+      "points": 11,
+      "accept": "store, shop, supermarket"
+    },
+    {
+      "id": "woman_cart",
+      "label": "女の人がカートの横にいる",
+      "points": 27,
+      "accept": "a woman is next to a shopping cart",
+      "partial": "mentions a woman or a cart, without the relation"
+    },
+    {
+      "id": "apple_counter",
+      "label": "レジのカウンターの上にリンゴがある",
+      "points": 26,
+      "accept": "a red apple is on the checkout counter",
+      "partial": "mentions an apple, without saying where it is"
+    },
+    {
+      "id": "boy_run",
+      "label": "男の子が走っている",
+      "points": 26,
+      "accept": "a boy is running",
+      "partial": "mentions a boy, without saying he is running"
+    }
+  ],
+  "extraMax": 10,
+  "items": [
+    {
+      "key": "floor",
+      "part": "floor_tile",
+      "position": [0, 0, 0]
+    },
+    {
+      "key": "wall",
+      "part": "wall_store_shelves",
+      "position": [0, 0, -3.734]
+    },
+    {
+      "key": "counter",
+      "part": "checkout_counter",
+      "position": [2.75, 0, -2.75]
+    },
+    {
+      "key": "apple",
+      "part": "apple_red",
+      "position": [2.75, 0.9, -2.75]
+    },
+    {
+      "key": "cart",
+      "part": "cart",
+      "position": [-2.75, 0, 0]
+    },
+    {
+      "key": "woman",
+      "part": "person_hold_woman_a",
+      "position": [-2.082, 0, 0]
+    },
+    {
+      "key": "boy",
+      "part": "person_run_boy_a",
+      "position": [2.75, 0, 2.75]
+    }
+  ]
+}

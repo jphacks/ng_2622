@@ -1,0 +1,133 @@
+{
+  "protocol": "scenenglish.scene/1",
+  "id": "gen-b5438s2pun",
+  "name": "にぎやかな店の中",
+  "difficulty": "hard",
+  "description": "This is a store. A woman is standing in front of the checkout counter. A basket is on the checkout counter. A man is carrying a box toward the counter. A girl is standing between a shopping cart and a shelf. A man is looking at his phone in the middle of the store. A bag is on the floor next to the cart. A red apple is on the shelf.",
+  "elements": [
+    {
+      "id": "place",
+      "label": "店で",
+      "points": 8,
+      "accept": "store, shop, supermarket"
+    },
+    {
+      "id": "woman_counter",
+      "label": "女の人がレジの前に立っている",
+      "points": 12,
+      "accept": "a woman is standing in front of the checkout counter",
+      "partial": "mentions a woman, without saying where she is"
+    },
+    {
+      "id": "basket_counter",
+      "label": "レジの上にかごがある",
+      "points": 11,
+      "accept": "a basket is on the checkout counter",
+      "partial": "mentions a basket, without saying where it is"
+    },
+    {
+      "id": "man_carry",
+      "label": "男の人が箱を運んでいる",
+      "points": 14,
+      "accept": "a man is carrying a box (toward the counter)",
+      "partial": "mentions a man or a box, without saying he is carrying it"
+    },
+    {
+      "id": "girl_between",
+      "label": "女の子がカートと棚の間に立っている",
+      "points": 16,
+      "accept": "a girl is standing between the shopping cart and the shelf",
+      "partial": "mentions a girl, without saying where she is"
+    },
+    {
+      "id": "man_phone",
+      "label": "男の人がスマホを見ている",
+      "points": 11,
+      "accept": "a man is looking at his phone",
+      "partial": "mentions a man standing, without the phone"
+    },
+    {
+      "id": "bag",
+      "label": "カートの隣にかばんがある",
+      "points": 9,
+      "accept": "a bag is on the floor next to the cart",
+      "partial": "a bag, without saying where it is"
+    },
+    {
+      "id": "apple",
+      "label": "棚の上に赤いリンゴがある",
+      "points": 9,
+      "accept": "a red apple is on the shelf",
+      "partial": "an apple, without the shelf or the color"
+    }
+  ],
+  "extraMax": 10,
+  "items": [
+    {
+      "key": "floor",
+      "part": "floor_tile",
+      "position": [0, 0, 0]
+    },
+    {
+      "key": "wall",
+      "part": "wall_store_shelves",
+      "position": [0, 0, -3.734]
+    },
+    {
+      "key": "counter",
+      "part": "checkout_counter",
+      "position": [2.75, 0, -2.75]
+    },
+    {
+      "key": "basket",
+      "part": "basket",
+      "position": [2.75, 0.9, -2.75]
+    },
+    {
+      "key": "woman",
+      "part": "person_put_woman_a",
+      "position": [2.75, 0, -1.971]
+    },
+    {
+      "key": "shelf",
+      "part": "shelf",
+      "position": [-2.75, 0, -2.75]
+    },
+    {
+      "key": "apple",
+      "part": "apple_red",
+      "position": [-2.75, 1.8, -2.75]
+    },
+    {
+      "key": "cart",
+      "part": "cart",
+      "position": [-2.75, 0, 2.75]
+    },
+    {
+      "key": "girl",
+      "part": "person_stand_girl_a",
+      "position": [-2.75, 0, 0]
+    },
+    {
+      "key": "bag",
+      "part": "bag",
+      "position": [-2.17, 0, 2.75]
+    },
+    {
+      "key": "man_phone",
+      "part": "person_phone_adult_a",
+      "position": [0, 0, 0]
+    },
+    {
+      "key": "man_carry",
+      "part": "person_carry_adult_a",
+      "position": [2.75, 0, 2.75],
+      "yaw": 180,
+      "motion": {
+        "type": "move",
+        "to": [2.75, 0, -1.491],
+        "duration": 6
+      }
+    }
+  ]
+}

@@ -1,0 +1,139 @@
+{
+  "protocol": "scenenglish.scene/1",
+  "id": "gen-s6rtuhtzvz",
+  "name": "にぎやかな教室",
+  "difficulty": "hard",
+  "description": "A classroom with a blackboard. A girl is sitting on a chair and writing at a table. A book is on the table. A boy is sitting on a chair at another table. A man is standing between the two tables. A woman is carrying a box across the front of the room. There is a shelf at the back on the right. A red ball is on the floor.",
+  "elements": [
+    {
+      "id": "place",
+      "label": "教室で",
+      "points": 8,
+      "accept": "classroom, school, blackboard",
+      "partial": "room"
+    },
+    {
+      "id": "girl_write",
+      "label": "女の子が椅子に座って書いている",
+      "points": 15,
+      "accept": "a girl is sitting on a chair and writing at a table",
+      "partial": "mentions a girl, without saying she is writing"
+    },
+    {
+      "id": "book_on_table",
+      "label": "テーブルの上に本がある",
+      "points": 10,
+      "accept": "a book is on the table",
+      "partial": "mentions a book, without saying where it is"
+    },
+    {
+      "id": "boy_sit",
+      "label": "男の子が別のテーブルで座っている",
+      "points": 11,
+      "accept": "a boy is sitting on a chair at another table",
+      "partial": "mentions a boy, without saying he is sitting"
+    },
+    {
+      "id": "man_between",
+      "label": "男の人が二つのテーブルの間に立っている",
+      "points": 15,
+      "accept": "a man is standing between the two tables",
+      "partial": "mentions a man standing, without saying where"
+    },
+    {
+      "id": "woman_carry",
+      "label": "女の人が箱を運んで横切っている",
+      "points": 15,
+      "accept": "a woman is carrying a box across the room",
+      "partial": "mentions a woman or a box, without saying she is carrying it"
+    },
+    {
+      "id": "shelf",
+      "label": "奥の右に棚がある",
+      "points": 8,
+      "accept": "a shelf at the back on the right",
+      "partial": "a shelf"
+    },
+    {
+      "id": "ball",
+      "label": "床に赤いボールがある",
+      "points": 8,
+      "accept": "a red ball is on the floor",
+      "partial": "a ball, without the color"
+    }
+  ],
+  "extraMax": 10,
+  "items": [
+    {
+      "key": "floor",
+      "part": "floor_classroom",
+      "position": [0, 0, 0]
+    },
+    {
+      "key": "wall",
+      "part": "wall_blackboard",
+      "position": [0, 0, -3.88]
+    },
+    {
+      "key": "table1",
+      "part": "table",
+      "position": [-2.75, 0, 0]
+    },
+    {
+      "key": "chair1",
+      "part": "chair",
+      "position": [-2.75, 0, -0.685]
+    },
+    {
+      "key": "girl",
+      "part": "person_write_girl_a",
+      "position": [-2.751, 0.1, -0.554]
+    },
+    {
+      "key": "book",
+      "part": "book",
+      "position": [-2.75, 0.72, 0]
+    },
+    {
+      "key": "table2",
+      "part": "table",
+      "position": [2.75, 0, 0]
+    },
+    {
+      "key": "chair2",
+      "part": "chair",
+      "position": [2.75, 0, -0.685]
+    },
+    {
+      "key": "boy",
+      "part": "person_sit_boy_a",
+      "position": [2.75, 0.1, -0.535]
+    },
+    {
+      "key": "man",
+      "part": "person_stand_adult_a",
+      "position": [0, 0, 0]
+    },
+    {
+      "key": "woman",
+      "part": "person_carry_woman_a",
+      "position": [0, 0, 2.75],
+      "yaw": 91.8,
+      "motion": {
+        "type": "move",
+        "to": [2.667, 0, 2.667],
+        "duration": 6
+      }
+    },
+    {
+      "key": "shelf",
+      "part": "shelf",
+      "position": [2.75, 0, -2.75]
+    },
+    {
+      "key": "ball",
+      "part": "ball_red",
+      "position": [-2.75, 0, 2.75]
+    }
+  ]
+}

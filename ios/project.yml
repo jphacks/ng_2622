@@ -40,10 +40,6 @@ targets:
           - "*.usdz"
           - "*.png"
           - "*.json"
-      # Mock で出す、AI で作り置いた場面（配置の JSON）。アプリの中では SampleLayouts/<sceneId>.json になる
-      - path: SampleLayouts
-        type: folder
-        buildPhase: resources
     settings:
       base:
         PRODUCT_NAME: NG2622
@@ -72,6 +68,13 @@ targets:
           rsync -a --delete --prune-empty-dirs --exclude='build/' --include='*/' --include='/index.json' \
             --include='/*/[0-9]*.usdz' --exclude='*' \
             "$SRCROOT/../assets/parts/" "$TARGET_BUILD_DIR/$UNLOCALIZED_RESOURCES_FOLDER_PATH/parts/"
+      # Mock で出す、AI で作り置いた場面（配置の JSON）と、その一覧の index.json を backend/src/scenes/pool から写す（ios/ には写さない）。
+      # 置き場所はバックエンドと 1 か所にする。README.md は入れない。アプリの中では pool/<sceneId>.json と pool/index.json になる
+      - name: Copy scene pool
+        basedOnDependencyAnalysis: false
+        script: |
+          rsync -a --delete --include='/*.json' --exclude='*' \
+            "$SRCROOT/../backend/src/scenes/pool/" "$TARGET_BUILD_DIR/$UNLOCALIZED_RESOURCES_FOLDER_PATH/pool/"
     dependencies:
       - package: BackendAPI
   # アプリの中の、通信や画面に依らない変換（部屋のメッセージ → 画面のできごとなど）を確かめる

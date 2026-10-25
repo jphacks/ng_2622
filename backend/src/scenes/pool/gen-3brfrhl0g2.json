@@ -1,0 +1,100 @@
+{
+  "protocol": "scenenglish.scene/1",
+  "id": "gen-3brfrhl0g2",
+  "name": "校庭で遊ぶ子どもたち",
+  "difficulty": "normal",
+  "description": "A playground. A boy is running toward a red ball. A girl is standing next to a tree. A man is carrying a box. A bench is under the tree. A bottle is on the bench.",
+  "elements": [
+    {
+      "id": "place",
+      "label": "校庭で",
+      "points": 9,
+      "accept": "playground, school ground, field",
+      "partial": "outside, ground"
+    },
+    {
+      "id": "boy_run",
+      "label": "男の子がボールに向かって走っている",
+      "points": 21,
+      "accept": "a boy is running toward a red ball",
+      "partial": "a boy is running, without the ball"
+    },
+    {
+      "id": "girl_stand",
+      "label": "女の子が木の横に立っている",
+      "points": 17,
+      "accept": "a girl is standing next to a tree",
+      "partial": "mentions a girl, without saying where she is"
+    },
+    {
+      "id": "man_carry",
+      "label": "男の人が箱を運んでいる",
+      "points": 17,
+      "accept": "a man is carrying a box",
+      "partial": "mentions a man, without saying he is carrying a box"
+    },
+    {
+      "id": "bench_tree",
+      "label": "ベンチが木の下にある",
+      "points": 13,
+      "accept": "a bench is under the tree",
+      "partial": "mentions a bench"
+    },
+    {
+      "id": "bottle",
+      "label": "ベンチの上にペットボトルがある",
+      "points": 13,
+      "accept": "a bottle is on the bench",
+      "partial": "mentions a bottle"
+    }
+  ],
+  "extraMax": 10,
+  "items": [
+    {
+      "key": "ground",
+      "part": "ground_dirt",
+      "position": [0, 0, 0]
+    },
+    {
+      "key": "tree",
+      "part": "tree",
+      "position": [-2.734, 0, -2.75]
+    },
+    {
+      "key": "bench",
+      "part": "bench",
+      "position": [-2.734, 0, -1.755]
+    },
+    {
+      "key": "bottle",
+      "part": "bottle",
+      "position": [-2.734, 0.482, -1.675]
+    },
+    {
+      "key": "girl",
+      "part": "person_stand_girl_a",
+      "position": [-1.131, 0, -2.75]
+    },
+    {
+      "key": "ball",
+      "part": "ball_red",
+      "position": [2.75, 0, 2.75]
+    },
+    {
+      "key": "boy",
+      "part": "person_run_boy_a",
+      "position": [-2.75, 0, 2.75],
+      "yaw": 90,
+      "motion": {
+        "type": "move",
+        "to": [2.217, 0, 2.75],
+        "duration": 5
+      }
+    },
+    {
+      "key": "man",
+      "part": "person_carry_adult_a",
+      "position": [2.75, 0, 0]
+    }
+  ]
+}

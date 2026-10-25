@@ -1,0 +1,75 @@
+{
+  "protocol": "scenenglish.scene/1",
+  "id": "gen-098scv1adb",
+  "name": "カフェで本を読む男の人",
+  "difficulty": "easy",
+  "description": "A small cafe. A man is reading a book next to a table. A cup of coffee is on the table. A woman is sitting on a chair behind the table.",
+  "elements": [
+    {
+      "id": "place",
+      "label": "カフェで",
+      "points": 10,
+      "accept": "cafe, coffee shop",
+      "partial": "a room or a shop"
+    },
+    {
+      "id": "man_read",
+      "label": "男の人が本を読んでいる",
+      "points": 30,
+      "accept": "a man is reading a book (next to the table)",
+      "partial": "mentions a man, without saying he is reading"
+    },
+    {
+      "id": "cup_on_table",
+      "label": "テーブルの上にコーヒーカップがある",
+      "points": 25,
+      "accept": "a cup of coffee is on the table",
+      "partial": "mentions a cup or coffee, without saying where it is"
+    },
+    {
+      "id": "woman_sit",
+      "label": "女の人が椅子に座っている",
+      "points": 25,
+      "accept": "a woman is sitting on a chair (behind the table)",
+      "partial": "mentions a woman, without saying she is sitting"
+    }
+  ],
+  "extraMax": 10,
+  "items": [
+    {
+      "key": "floor",
+      "part": "floor_wood",
+      "position": [0, 0, 0]
+    },
+    {
+      "key": "wall",
+      "part": "wall_window",
+      "position": [0, 0, -3.86]
+    },
+    {
+      "key": "table",
+      "part": "table",
+      "position": [0, 0, 0]
+    },
+    {
+      "key": "chair",
+      "part": "chair",
+      "position": [0, 0, -0.685]
+    },
+    {
+      "key": "woman",
+      "part": "person_sit_woman_a",
+      "position": [0, -0.02, -0.51]
+    },
+    {
+      "key": "cup",
+      "part": "cup",
+      "position": [0, 0.72, 0]
+    },
+    {
+      "key": "man",
+      "part": "person_read_adult_a",
+      "position": [0.981, 0, 0]
+    }
+  ]
+}

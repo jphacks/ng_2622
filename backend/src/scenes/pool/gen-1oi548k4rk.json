@@ -1,0 +1,135 @@
+{
+  "protocol": "scenenglish.scene/1",
+  "id": "gen-1oi548k4rk",
+  "name": "砂浜で遊ぶ家族",
+  "difficulty": "hard",
+  "description": "A family is playing on a sandy beach. A man is reading a book next to the umbrella. A bag is under the umbrella. A girl is looking at the dog. A dog is running toward a red ball. A boy is running across the beach. A woman is carrying a box near the bench. A bottle is on the bench.",
+  "elements": [
+    {
+      "id": "place",
+      "label": "砂浜で",
+      "points": 7,
+      "accept": "beach, sand, seaside"
+    },
+    {
+      "id": "man_read",
+      "label": "男の人が傘の横で本を読んでいる",
+      "points": 13,
+      "accept": "a man is reading a book (next to the umbrella)",
+      "partial": "mentions a man or a book, without saying he is reading"
+    },
+    {
+      "id": "bag_under",
+      "label": "傘の下にかばんがある",
+      "points": 11,
+      "accept": "a bag is under the umbrella",
+      "partial": "mentions a bag or an umbrella, without the position"
+    },
+    {
+      "id": "girl_look",
+      "label": "女の子が犬を見ている",
+      "points": 11,
+      "accept": "a girl is looking at the dog",
+      "partial": "mentions a girl standing, without saying she looks at the dog"
+    },
+    {
+      "id": "dog_run",
+      "label": "犬が赤いボールに向かって走っている",
+      "points": 15,
+      "accept": "a dog is running toward a red ball",
+      "partial": "a dog is running, or a dog and a ball"
+    },
+    {
+      "id": "boy_run",
+      "label": "男の子が浜辺を走っている",
+      "points": 11,
+      "accept": "a boy is running (across the beach)",
+      "partial": "mentions a boy, without saying he is running"
+    },
+    {
+      "id": "woman_carry",
+      "label": "女の人がベンチの近くで箱を運んでいる",
+      "points": 13,
+      "accept": "a woman is carrying a box (near the bench)",
+      "partial": "mentions a woman or a box, without saying she is carrying it"
+    },
+    {
+      "id": "bottle_bench",
+      "label": "ベンチの上にペットボトルがある",
+      "points": 9,
+      "accept": "a bottle is on the bench",
+      "partial": "mentions a bottle or a bench, without the position"
+    }
+  ],
+  "extraMax": 10,
+  "items": [
+    {
+      "key": "sand",
+      "part": "sand_beach",
+      "position": [0, 0, 0]
+    },
+    {
+      "key": "umbrella",
+      "part": "umbrella",
+      "position": [-2.75, 0, -2.75]
+    },
+    {
+      "key": "bag",
+      "part": "bag",
+      "position": [-2.75, 0, -2.75]
+    },
+    {
+      "key": "man",
+      "part": "person_read_adult_a",
+      "position": [-1.805, 0, -2.75]
+    },
+    {
+      "key": "bench",
+      "part": "bench",
+      "position": [2.75, 0, -2.75]
+    },
+    {
+      "key": "bottle",
+      "part": "bottle",
+      "position": [2.75, 0.482, -2.67]
+    },
+    {
+      "key": "woman",
+      "part": "person_carry_woman_a",
+      "position": [3.715, 0, -1.942]
+    },
+    {
+      "key": "ball",
+      "part": "ball_red",
+      "position": [2.75, 0, 2.75]
+    },
+    {
+      "key": "dog",
+      "part": "animal_run_dog_a",
+      "position": [0, 0, 0],
+      "yaw": 45,
+      "motion": {
+        "type": "move",
+        "to": [2.17, 0, 2.17],
+        "duration": 5
+      }
+    },
+    {
+      "key": "girl",
+      "part": "person_look_girl_a",
+      "position": [-2.75, 0, 2.75],
+      "yaw": 135
+    },
+    {
+      "key": "boy",
+      "part": "person_run_boy_a",
+      "position": [0, 0, 2.75],
+      "yaw": -135.9,
+      "motion": {
+        "type": "move",
+        "to": [-2.667, 0, 0],
+        "duration": 5
+      }
+    }
+  ]
+}

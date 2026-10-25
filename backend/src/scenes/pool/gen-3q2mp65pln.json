@@ -1,0 +1,75 @@
+{
+  "protocol": "scenenglish.scene/1",
+  "id": "gen-3q2mp65pln",
+  "name": "教室で勉強する子どもたち",
+  "difficulty": "easy",
+  "description": "A classroom. A girl is sitting on a chair and writing at a table. A boy is running next to the table. A book is on the table.",
+  "elements": [
+    {
+      "id": "place",
+      "label": "教室で",
+      "points": 11,
+      "accept": "classroom, school",
+      "partial": "room"
+    },
+    {
+      "id": "girl_write",
+      "label": "女の子が椅子に座って書いている",
+      "points": 32,
+      "accept": "a girl is sitting on a chair and writing (at the table)",
+      "partial": "mentions a girl, without saying she is writing"
+    },
+    {
+      "id": "boy_run",
+      "label": "男の子が走っている",
+      "points": 26,
+      "accept": "a boy is running (next to the table)",
+      "partial": "mentions a boy, without saying he is running"
+    },
+    {
+      "id": "book",
+      "label": "テーブルの上に本がある",
+      "points": 21,
+      "accept": "a book is on the table",
+      "partial": "mentions a book, without saying where it is"
+    }
+  ],
+  "extraMax": 10,
+  "items": [
+    {
+      "key": "floor",
+      "part": "floor_classroom",
+      "position": [0, 0, 0]
+    },
+    {
+      "key": "wall",
+      "part": "wall_blackboard",
+      "position": [0, 0, -3.88]
+    },
+    {
+      "key": "table",
+      "part": "table",
+      "position": [0, 0, 0]
+    },
+    {
+      "key": "chair",
+      "part": "chair",
+      "position": [0, 0, -0.685]
+    },
+    {
+      "key": "girl",
+      "part": "person_write_girl_a",
+      "position": [-0.001, 0.1, -0.554]
+    },
+    {
+      "key": "book",
+      "part": "book",
+      "position": [0, 0.72, 0]
+    },
+    {
+      "key": "boy",
+      "part": "person_run_boy_a",
+      "position": [2.75, 0, 2.75]
+    }
+  ]
+}

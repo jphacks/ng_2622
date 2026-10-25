@@ -1,0 +1,99 @@
+{
+  "protocol": "scenenglish.scene/1",
+  "id": "gen-zd2giq5tll",
+  "name": "静かな図書館",
+  "difficulty": "normal",
+  "description": "This is a library. There is a bookshelf at the back left. A man is reading a book in front of the shelf. A woman is sitting on a chair at a table. A book is on the table. A girl is standing next to the table.",
+  "elements": [
+    {
+      "id": "place",
+      "label": "図書館で",
+      "points": 9,
+      "accept": "library",
+      "partial": "a room with books"
+    },
+    {
+      "id": "shelf",
+      "label": "奥に本棚がある",
+      "points": 9,
+      "accept": "a bookshelf (at the back left)",
+      "partial": "a shelf"
+    },
+    {
+      "id": "man_read",
+      "label": "男の人が本棚の前で本を読んでいる",
+      "points": 22,
+      "accept": "a man is reading a book (in front of the shelf)",
+      "partial": "mentions a man, without saying he is reading"
+    },
+    {
+      "id": "woman_sit",
+      "label": "女の人がテーブルで椅子に座っている",
+      "points": 18,
+      "accept": "a woman is sitting on a chair at the table",
+      "partial": "mentions a woman or a person, without saying she is sitting"
+    },
+    {
+      "id": "book_on_table",
+      "label": "テーブルの上に本がある",
+      "points": 14,
+      "accept": "a book is on the table",
+      "partial": "mentions a book, without saying where it is"
+    },
+    {
+      "id": "girl_stand",
+      "label": "女の子がテーブルの横に立っている",
+      "points": 18,
+      "accept": "a girl is standing next to the table",
+      "partial": "mentions a girl, without saying where she is"
+    }
+  ],
+  "extraMax": 10,
+  "items": [
+    {
+      "key": "floor",
+      "part": "floor_carpet",
+      "position": [0, 0, 0]
+    },
+    {
+      "key": "wall",
+      "part": "wall_window",
+      "position": [0, 0, -3.86]
+    },
+    {
+      "key": "shelf",
+      "part": "shelf",
+      "position": [-2.75, 0, -2.75]
+    },
+    {
+      "key": "man",
+      "part": "person_read_adult_a",
+      "position": [-2.75, 0, -2.141]
+    },
+    {
+      "key": "table",
+      "part": "table",
+      "position": [0, 0, 0]
+    },
+    {
+      "key": "chair",
+      "part": "chair",
+      "position": [0, 0, -0.685]
+    },
+    {
+      "key": "woman",
+      "part": "person_sit_woman_a",
+      "position": [0, -0.02, -0.51]
+    },
+    {
+      "key": "book",
+      "part": "book",
+      "position": [0, 0.72, 0]
+    },
+    {
+      "key": "girl",
+      "part": "person_stand_girl_a",
+      "position": [0.937, 0, 0]
+    }
+  ]
+}

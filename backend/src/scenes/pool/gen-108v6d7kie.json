@@ -1,0 +1,80 @@
+{
+  "protocol": "scenenglish.scene/1",
+  "id": "gen-108v6d7kie",
+  "name": "図書館で本を読む",
+  "difficulty": "easy",
+  "description": "A quiet library. A man is reading a book next to a shelf. A woman is sitting on a chair at a table. A cup is on the table.",
+  "elements": [
+    {
+      "id": "place",
+      "label": "図書館で",
+      "points": 11,
+      "accept": "library",
+      "partial": "a room"
+    },
+    {
+      "id": "man_read",
+      "label": "男の人が本を読んでいる",
+      "points": 26,
+      "accept": "a man is reading a book",
+      "partial": "mentions a man, without saying he is reading"
+    },
+    {
+      "id": "woman_sit",
+      "label": "女の人が椅子に座っている",
+      "points": 32,
+      "accept": "a woman is sitting on a chair (at the table)",
+      "partial": "mentions a woman, without saying she is sitting"
+    },
+    {
+      "id": "cup_table",
+      "label": "テーブルの上にカップがある",
+      "points": 21,
+      "accept": "a cup is on the table",
+      "partial": "mentions a cup, without saying where it is"
+    }
+  ],
+  "extraMax": 10,
+  "items": [
+    {
+      "key": "floor",
+      "part": "floor_carpet",
+      "position": [0, 0, 0]
+    },
+    {
+      "key": "wall",
+      "part": "wall_window",
+      "position": [0, 0, -3.86]
+    },
+    {
+      "key": "shelf",
+      "part": "shelf",
+      "position": [-2.75, 0, -2.75]
+    },
+    {
+      "key": "man",
+      "part": "person_read_adult_a",
+      "position": [-1.769, 0, -2.75]
+    },
+    {
+      "key": "table",
+      "part": "table",
+      "position": [2.75, 0, 0]
+    },
+    {
+      "key": "chair",
+      "part": "chair",
+      "position": [2.75, 0, -0.685]
+    },
+    {
+      "key": "woman",
+      "part": "person_sit_woman_a",
+      "position": [2.75, -0.02, -0.51]
+    },
+    {
+      "key": "cup",
+      "part": "cup",
+      "position": [2.75, 0.72, 0]
+    }
+  ]
+}

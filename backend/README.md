@@ -27,6 +27,10 @@ pnpm openapi          # openapi.json を生成し直す
 - `SCORING_MODE=fixed` で外部 API を呼ばず固定の点数を返す。`wrangler.jsonc` で本番は live、PR のプレビューは fixed にしてある。本番の `AZURE_API_KEY` と `CLAUDE_API_KEY` は `wrangler secret put` で Worker に登録する。採点に使う Claude は `CLAUDE_MODEL` と `CLAUDE_EFFORT`（`low`・`medium`・`high`・`xhigh`・`max`）で変えられ、本番は `wrangler.jsonc` で Sonnet 5.5 の low にしてある。書かなければ Haiku 5.5 の high。
 - シーンは仮で `src/scoring/scenes.json` に置いている。`id` は 3D シーン（`assets/scenes/<id>`）と同じにする。
 
+## 作り置きの場面（`src/scenes/pool/`）
+
+AI で作り置いた場面（配置の JSON）と、難易度ごとの例と出題の候補を書いた `index.json`。形と足し方は [`src/scenes/pool/README.md`](./src/scenes/pool/README.md)。iOS の Mock もビルドのときにここから写して使う。
+
 ### 手元で採点を試す
 
 `backend/.dev.vars` に次を書いて `pnpm dev` する（値は repo 直下の `.env` と同じ）。
