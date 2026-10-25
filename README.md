@@ -91,6 +91,34 @@ AI が 79 個の部品を組み合わせて作った場面を、人が画像で�
 
 ## 開発技術
 
+### 構成
+
+```mermaid
+flowchart LR
+  subgraph iPhone[各自の iPhone（SwiftUI）]
+    UI[画面と 3D（RealityKit）<br>部品の USDZ を同梱]
+    Rec[録音と文字起こし<br>SpeechAnalyzer]
+  end
+  subgraph CF[Cloudflare]
+    W[Worker（Hono）<br>API の入口・採点<br>作り置きの場面 27]
+    R[Room（Durable Object）<br>部屋ごとに 1 つ<br>開始時刻の配布・場面の生成]
+    SR[SceneReviews（Durable Object）<br>場面の ★ 評価]
+  end
+  Az[Azure AI Speech<br>発音評価]
+  Cl[Claude API<br>採点・講評・場面の生成]
+  UI <-->|WebSocket・場面の配置・評価| W
+  Rec -->|音声 WAV ＋ 文字起こし| W
+  W <-->|部屋ごとに振り分け| R
+  W <--> SR
+  W -->|話し方の採点| Az
+  W -->|内容・表現の採点と講評| Cl
+  R -->|場面の生成| Cl
+```
+
+- iPhone は API のキーを持たず、Cloudflare とだけ話します。外部 API（Azure・Claude）はバックエンドだけが呼びます。
+- 部屋の状態（参加者・進行・点数）は部屋ごとの Durable Object が持ち、全員に WebSocket で配ります。
+- 音声は Worker が受け取ってすぐ応答し、採点は応答の後に続けて、終わったら部屋に書き込みます。
+
 ### 活用した技術
 
 #### 外部API
