@@ -3,6 +3,9 @@
 
 BACKEND_MODE = mock
 
+// 待合でのシーンの選び方。difficulty は難易度だけを選び、作り置きの場面（ios/SampleLayouts）から出す。list は手作りのシーンの一覧
+SCENE_PICK = difficulty
+
 // 仮のデータの振る舞い。変えるときは Local.xcconfig に書く（書き方は Local.xcconfig.example）
 // 自分のほかの参加者の数（0〜7）。部屋に入るときは、うち 1 人がホストになる（0 でも 1 人はいる）
 MOCK_OTHER_PLAYERS = 3

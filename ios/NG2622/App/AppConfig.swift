@@ -11,6 +11,8 @@ struct AppConfig {
 
   let mode: BackendMode
   let backendURL: URL?
+  /// 待合でのシーンの選び方（SCENE_PICK）
+  let scenePick: ScenePick
   /// Mock の振る舞い（Live では使わない）
   let mock: MockGameClient.Options
 
@@ -34,6 +36,9 @@ struct AppConfig {
       mock.hostStartDelay = max(0, delay)
     }
     // 値が読めないときは、通信しない Mock にしておく
-    return AppConfig(mode: BackendMode(rawValue: raw) ?? .mock, backendURL: url, mock: mock)
+    let mode = BackendMode(rawValue: raw) ?? .mock
+    // 値が無い・読めないときは、Mock は難易度、Live は一覧（Mock.xcconfig・Live.xcconfig の既定値と同じ）
+    let pick = string("ScenePick").flatMap { ScenePick(rawValue: $0.lowercased()) } ?? (mode == .mock ? .difficulty : .list)
+    return AppConfig(mode: mode, backendURL: url, scenePick: pick, mock: mock)
   }()
 }

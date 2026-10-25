@@ -75,7 +75,7 @@ final class SceneOrbit {
 }
 
 /// 画面の更新ごとに呼ぶ。step が false を返すと止まる
-private final class FrameTicker {
+final class FrameTicker {
   private var link: CADisplayLink?
   private let step: (TimeInterval) -> Bool
   private var last: CFTimeInterval?
