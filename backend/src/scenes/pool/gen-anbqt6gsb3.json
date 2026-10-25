@@ -1,0 +1,75 @@
+{
+  "protocol": "scenenglish.scene/1",
+  "id": "gen-anbqt6gsb3",
+  "name": "台所で料理する人",
+  "difficulty": "easy",
+  "description": "A small kitchen. A woman is standing next to the counter. A frying pan is on the kitchen counter. A red apple is on a table.",
+  "elements": [
+    {
+      "id": "place",
+      "label": "台所で",
+      "points": 11,
+      "accept": "kitchen",
+      "partial": "a room"
+    },
+    {
+      "id": "woman",
+      "label": "女の人がカウンターのそばに立っている",
+      "points": 27,
+      "accept": "a woman is standing next to the counter",
+      "partial": "mentions a woman or a person, without saying where she is"
+    },
+    {
+      "id": "pan",
+      "label": "カウンターの上にフライパンがある",
+      "points": 26,
+      "accept": "a frying pan is on the kitchen counter",
+      "partial": "mentions a pan, without saying where it is"
+    },
+    {
+      "id": "apple",
+      "label": "テーブルの上に赤いリンゴがある",
+      "points": 26,
+      "accept": "a red apple is on the table",
+      "partial": "an apple, without saying where it is"
+    }
+  ],
+  "extraMax": 10,
+  "items": [
+    {
+      "key": "floor",
+      "part": "floor_tile",
+      "position": [0, 0, 0]
+    },
+    {
+      "key": "wall",
+      "part": "wall_kitchen_tile",
+      "position": [0, 0, -3.757]
+    },
+    {
+      "key": "counter",
+      "part": "kitchen_counter",
+      "position": [0, 0, -2.75]
+    },
+    {
+      "key": "pan",
+      "part": "pan",
+      "position": [0, 0.9, -2.75]
+    },
+    {
+      "key": "woman",
+      "part": "person_hold_woman_a",
+      "position": [1.588, 0, -2.75]
+    },
+    {
+      "key": "table",
+      "part": "table",
+      "position": [2.75, 0, 2.75]
+    },
+    {
+      "key": "apple",
+      "part": "apple_red",
+      "position": [2.75, 0.72, 2.75]
+    }
+  ]
+}

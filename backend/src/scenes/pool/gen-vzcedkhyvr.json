@@ -1,0 +1,65 @@
+{
+  "protocol": "scenenglish.scene/1",
+  "id": "gen-vzcedkhyvr",
+  "name": "バス停で待つ人",
+  "difficulty": "easy",
+  "description": "A bus stop on a street. A woman is sitting on the seat in the bus shelter. A man is standing next to the bus shelter. A red ball is on the sidewalk.",
+  "elements": [
+    {
+      "id": "place",
+      "label": "バス停で",
+      "points": 15,
+      "accept": "bus stop, street, sidewalk",
+      "partial": "outside, town"
+    },
+    {
+      "id": "woman_sit",
+      "label": "女の人がバス停で座っている",
+      "points": 30,
+      "accept": "a woman is sitting in the bus shelter",
+      "partial": "mentions a woman or a person, without saying she is sitting"
+    },
+    {
+      "id": "man_stand",
+      "label": "男の人がバス停の横に立っている",
+      "points": 30,
+      "accept": "a man is standing next to the bus stop",
+      "partial": "mentions a man, without saying he is standing"
+    },
+    {
+      "id": "ball",
+      "label": "赤いボール",
+      "points": 15,
+      "accept": "a red ball (on the sidewalk)",
+      "partial": "a ball, without the color"
+    }
+  ],
+  "extraMax": 10,
+  "items": [
+    {
+      "key": "ground",
+      "part": "sidewalk_stone",
+      "position": [0, 0, 0]
+    },
+    {
+      "key": "shelter",
+      "part": "bus_shelter",
+      "position": [0, 0, -2.75]
+    },
+    {
+      "key": "woman",
+      "part": "person_sit_woman_a",
+      "position": [-0.245, -0.02, -2.945]
+    },
+    {
+      "key": "man",
+      "part": "person_stand_adult_a",
+      "position": [2.061, 0, -2.75]
+    },
+    {
+      "key": "ball",
+      "part": "ball_red",
+      "position": [2.75, 0, 2.75]
+    }
+  ]
+}

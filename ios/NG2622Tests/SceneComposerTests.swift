@@ -149,7 +149,7 @@ struct SceneComposerTests {
     #expect(parts.bundledIDs.count >= 34)
     let urls = (Bundle.main.urls(forResourcesWithExtension: "json", subdirectory: ScenePool.directory) ?? [])
       .filter { $0.lastPathComponent != "index.json" }
-    #expect(urls.count == 6)
+    #expect(urls.count == 30)
     for id in urls.map({ $0.deletingPathExtension().lastPathComponent }) {
       #expect(GeneratedScene.isGenerated(id))
       let layout = try await client.layout(sceneID: id)

@@ -1,0 +1,98 @@
+{
+  "protocol": "scenenglish.scene/1",
+  "id": "gen-ew36womk49",
+  "name": "カフェでくつろぐ人たち",
+  "difficulty": "normal",
+  "description": "A small cafe. A woman is sitting on a chair at a table. A cup of coffee is on the table. A man is reading a book next to the table. A bag is on the floor near the man. A vending machine is at the back left.",
+  "elements": [
+    {
+      "id": "place",
+      "label": "カフェで",
+      "points": 10,
+      "accept": "cafe, coffee shop"
+    },
+    {
+      "id": "woman_sit",
+      "label": "女の人が椅子に座っている",
+      "points": 20,
+      "accept": "a woman is sitting on a chair (at the table)",
+      "partial": "mentions a woman or a person, without saying she is sitting"
+    },
+    {
+      "id": "cup",
+      "label": "テーブルの上にコーヒーカップがある",
+      "points": 15,
+      "accept": "a cup of coffee is on the table",
+      "partial": "a cup or a drink, without saying where it is"
+    },
+    {
+      "id": "man_read",
+      "label": "男の人が本を読んでいる",
+      "points": 20,
+      "accept": "a man is reading a book (next to the table)",
+      "partial": "mentions a man standing, without reading"
+    },
+    {
+      "id": "bag",
+      "label": "男の人の近くにかばんがある",
+      "points": 15,
+      "accept": "a bag is on the floor near the man",
+      "partial": "mentions a bag, without saying where it is"
+    },
+    {
+      "id": "machine",
+      "label": "自動販売機",
+      "points": 10,
+      "accept": "a vending machine (at the back left)",
+      "partial": "a machine or a box"
+    }
+  ],
+  "extraMax": 10,
+  "items": [
+    {
+      "key": "floor",
+      "part": "floor_wood",
+      "position": [0, 0, 0]
+    },
+    {
+      "key": "wall",
+      "part": "wall_window",
+      "position": [0, 0, -3.86]
+    },
+    {
+      "key": "table",
+      "part": "table",
+      "position": [0, 0, 0]
+    },
+    {
+      "key": "chair",
+      "part": "chair",
+      "position": [0, 0, -0.685]
+    },
+    {
+      "key": "woman",
+      "part": "person_sit_woman_a",
+      "position": [0, -0.02, -0.51]
+    },
+    {
+      "key": "cup",
+      "part": "cup",
+      "position": [0, 0.72, 0]
+    },
+    {
+      "key": "man",
+      "part": "person_read_adult_a",
+      "position": [0.981, 0, 0]
+    },
+    {
+      "key": "bag",
+      "part": "bag",
+      "position": [1.552, 0, 0.477]
+    },
+    {
+      "key": "machine",
+      "part": "vending_machine",
+      "position": [-2.75, 0, -2.75]
+    }
+  ]
+}

@@ -1,0 +1,105 @@
+{
+  "protocol": "scenenglish.scene/1",
+  "id": "gen-xef36toaa0",
+  "name": "道のベンチと犬",
+  "difficulty": "normal",
+  "description": "A woman is sitting on a bench. A bag is on the bench. A man is looking at his phone. He is standing next to a vending machine. A trash bin is next to the vending machine. A dog is running to a red ball.",
+  "elements": [
+    {
+      "id": "woman_bench",
+      "label": "女の人がベンチに座っている",
+      "points": 17,
+      "accept": "a woman is sitting on a bench",
+      "partial": "mentions a woman or a bench, without saying she is sitting"
+    },
+    {
+      "id": "bag_bench",
+      "label": "ベンチの上にかばんがある",
+      "points": 13,
+      "accept": "a bag is on the bench",
+      "partial": "mentions a bag, without saying where it is"
+    },
+    {
+      "id": "man_phone",
+      "label": "男の人がスマホを見ている",
+      "points": 17,
+      "accept": "a man is looking at his phone",
+      "partial": "mentions a man standing, without the phone"
+    },
+    {
+      "id": "man_machine",
+      "label": "男の人が自動販売機の横にいる",
+      "points": 13,
+      "accept": "a man is standing next to a vending machine",
+      "partial": "mentions a vending machine only"
+    },
+    {
+      "id": "bin",
+      "label": "自動販売機の隣にごみ箱がある",
+      "points": 9,
+      "accept": "a trash bin is next to the vending machine",
+      "partial": "a trash bin"
+    },
+    {
+      "id": "dog_ball",
+      "label": "犬が赤いボールに向かって走っている",
+      "points": 21,
+      "accept": "a dog is running to a red ball",
+      "partial": "mentions a dog or a ball, without the running action"
+    }
+  ],
+  "extraMax": 10,
+  "items": [
+    {
+      "key": "street",
+      "part": "sidewalk_stone",
+      "position": [0, 0, 0]
+    },
+    {
+      "key": "bench",
+      "part": "bench",
+      "position": [2.75, 0, -2.75]
+    },
+    {
+      "key": "woman",
+      "part": "person_sit_woman_a",
+      "position": [2.75, 0.002, -2.495]
+    },
+    {
+      "key": "bag",
+      "part": "bag",
+      "position": [2.75, 0.482, -2.67]
+    },
+    {
+      "key": "machine",
+      "part": "vending_machine",
+      "position": [-2.75, 0, 0]
+    },
+    {
+      "key": "man",
+      "part": "person_phone_adult_a",
+      "position": [-1.924, 0, 0]
+    },
+    {
+      "key": "bin",
+      "part": "trash_bin",
+      "position": [-3.51, 0, 0]
+    },
+    {
+      "key": "ball",
+      "part": "ball_red",
+      "position": [2.75, 0, 2.75]
+    },
+    {
+      "key": "dog",
+      "part": "animal_run_dog_a",
+      "position": [-2.75, 0, 2.75],
+      "yaw": 90,
+      "motion": {
+        "type": "move",
+        "to": [1.93, 0, 2.75],
+        "duration": 5
+      }
+    }
+  ]
+}

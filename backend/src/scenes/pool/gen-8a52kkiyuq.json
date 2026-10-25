@@ -1,0 +1,104 @@
+{
+  "protocol": "scenenglish.scene/1",
+  "id": "gen-8a52kkiyuq",
+  "name": "夕ご飯の準備をする台所",
+  "difficulty": "normal",
+  "description": "A kitchen. A pan is on the kitchen counter. A woman is putting something down next to the counter. A girl is sitting on a chair at the table. A plate is on the table. A red apple is on the plate.",
+  "elements": [
+    {
+      "id": "place",
+      "label": "台所で",
+      "points": 9,
+      "accept": "kitchen",
+      "partial": "a room or a house"
+    },
+    {
+      "id": "pan_on_counter",
+      "label": "カウンターの上にフライパンがある",
+      "points": 14,
+      "accept": "a pan is on the kitchen counter",
+      "partial": "mentions a pan, without saying where it is"
+    },
+    {
+      "id": "woman_put",
+      "label": "女の人がカウンターのそばで物を置いている",
+      "points": 18,
+      "accept": "a woman is putting something down next to the counter",
+      "partial": "mentions a woman, without saying what she is doing"
+    },
+    {
+      "id": "girl_sit",
+      "label": "女の子がテーブルで椅子に座っている",
+      "points": 18,
+      "accept": "a girl is sitting on a chair at the table",
+      "partial": "mentions a girl or a child, without saying she is sitting"
+    },
+    {
+      "id": "plate_on_table",
+      "label": "テーブルの上にお皿がある",
+      "points": 13,
+      "accept": "a plate is on the table",
+      "partial": "mentions a plate or a dish, without saying where it is"
+    },
+    {
+      "id": "apple_on_plate",
+      "label": "お皿の上に赤いリンゴがある",
+      "points": 18,
+      "accept": "a red apple is on the plate",
+      "partial": "an apple, without saying where it is"
+    }
+  ],
+  "extraMax": 10,
+  "items": [
+    {
+      "key": "floor",
+      "part": "floor_tile",
+      "position": [0, 0, 0]
+    },
+    {
+      "key": "wall",
+      "part": "wall_kitchen_tile",
+      "position": [0, 0, -3.757]
+    },
+    {
+      "key": "counter",
+      "part": "kitchen_counter",
+      "position": [0, 0, -2.75]
+    },
+    {
+      "key": "pan",
+      "part": "pan",
+      "position": [0, 0.9, -2.75]
+    },
+    {
+      "key": "woman",
+      "part": "person_put_woman_a",
+      "position": [1.592, 0, -2.75]
+    },
+    {
+      "key": "table",
+      "part": "table",
+      "position": [2.75, 0, 0]
+    },
+    {
+      "key": "chair",
+      "part": "chair",
+      "position": [2.75, 0, -0.685]
+    },
+    {
+      "key": "girl",
+      "part": "person_sit_girl_a",
+      "position": [2.75, 0.1, -0.554]
+    },
+    {
+      "key": "plate",
+      "part": "plate",
+      "position": [2.75, 0.72, 0]
+    },
+    {
+      "key": "apple",
+      "part": "apple_red",
+      "position": [2.75, 0.73, 0]
+    }
+  ]
+}

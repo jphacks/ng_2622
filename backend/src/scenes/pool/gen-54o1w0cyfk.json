@@ -1,0 +1,139 @@
+{
+  "protocol": "scenenglish.scene/1",
+  "id": "gen-54o1w0cyfk",
+  "name": "静かな図書館",
+  "difficulty": "hard",
+  "description": "This is a library. Two tall shelves stand at the back. A trash bin is between the shelves. A girl is sitting on a chair and writing at the table. A book and a laptop are on the table. A man is standing in front of the left shelf and reading a book. A woman is walking toward the right. A boy is carrying a box near the right shelf.",
+  "elements": [
+    {
+      "id": "place",
+      "label": "図書館で",
+      "points": 7,
+      "accept": "library",
+      "partial": "a room or a school"
+    },
+    {
+      "id": "shelves",
+      "label": "奥に背の高い棚が2つある",
+      "points": 8,
+      "accept": "two tall shelves are at the back",
+      "partial": "mentions shelves or bookshelves, without the number or place"
+    },
+    {
+      "id": "bin_between",
+      "label": "ごみ箱が棚の間にある",
+      "points": 14,
+      "accept": "a trash bin is between the shelves",
+      "partial": "mentions a trash bin, without saying where it is"
+    },
+    {
+      "id": "girl_write",
+      "label": "女の子が椅子に座って書いている",
+      "points": 14,
+      "accept": "a girl is sitting on a chair and writing at the table",
+      "partial": "mentions a girl sitting, without writing"
+    },
+    {
+      "id": "table_items",
+      "label": "テーブルの上に本とノートパソコンがある",
+      "points": 11,
+      "accept": "a book and a laptop are on the table",
+      "partial": "mentions only a book or only a laptop on the table"
+    },
+    {
+      "id": "man_read",
+      "label": "男の人が棚の前で本を読んでいる",
+      "points": 13,
+      "accept": "a man is standing in front of the shelf and reading a book",
+      "partial": "mentions a man standing, without reading"
+    },
+    {
+      "id": "woman_walk",
+      "label": "女の人が右へ歩いている",
+      "points": 10,
+      "accept": "a woman is walking toward the right",
+      "partial": "mentions a woman, without walking"
+    },
+    {
+      "id": "boy_carry",
+      "label": "男の子が箱を運んでいる",
+      "points": 13,
+      "accept": "a boy is carrying a box (near the right shelf)",
+      "partial": "mentions a boy, without the box"
+    }
+  ],
+  "extraMax": 10,
+  "items": [
+    {
+      "key": "floor",
+      "part": "floor_carpet",
+      "position": [0, 0, 0]
+    },
+    {
+      "key": "wall",
+      "part": "wall_window",
+      "position": [0, 0, -3.86]
+    },
+    {
+      "key": "shelf_left",
+      "part": "shelf",
+      "position": [-2.75, 0, -2.75]
+    },
+    {
+      "key": "shelf_right",
+      "part": "shelf",
+      "position": [2.75, 0, -2.75]
+    },
+    {
+      "key": "bin",
+      "part": "trash_bin",
+      "position": [0, 0, -2.75]
+    },
+    {
+      "key": "table",
+      "part": "table",
+      "position": [0, 0, 0]
+    },
+    {
+      "key": "chair",
+      "part": "chair",
+      "position": [0, 0, -0.685]
+    },
+    {
+      "key": "girl",
+      "part": "person_write_girl_a",
+      "position": [-0.001, 0.1, -0.554]
+    },
+    {
+      "key": "book",
+      "part": "book",
+      "position": [0, 0.72, 0]
+    },
+    {
+      "key": "laptop",
+      "part": "laptop",
+      "position": [-0.3, 0.72, 0]
+    },
+    {
+      "key": "man",
+      "part": "person_read_adult_a",
+      "position": [-2.75, 0, -2.141]
+    },
+    {
+      "key": "woman",
+      "part": "person_walk_woman_a",
+      "position": [-2.75, 0, 2.75],
+      "yaw": 116.9,
+      "motion": {
+        "type": "move",
+        "to": [2.667, 0, 0],
+        "duration": 6
+      }
+    },
+    {
+      "key": "boy",
+      "part": "person_carry_boy_a",
+      "position": [3.664, 0, -2.143]
+    }
+  ]
+}

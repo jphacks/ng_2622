@@ -1,0 +1,99 @@
+{
+  "protocol": "scenenglish.scene/1",
+  "id": "gen-yy111spsnv",
+  "name": "公園のベンチでひと休み",
+  "difficulty": "normal",
+  "description": "A sunny park. A woman is sitting on a bench under a tree. A man is reading a book next to the bench. A boy is running on the grass toward a red ball. A bottle is on the bench.",
+  "elements": [
+    {
+      "id": "place",
+      "label": "公園で",
+      "points": 10,
+      "accept": "park, garden, lawn, grass"
+    },
+    {
+      "id": "woman_sit",
+      "label": "女の人がベンチに座っている",
+      "points": 19,
+      "accept": "a woman is sitting on a bench",
+      "partial": "mentions a woman or a person, without saying she is sitting"
+    },
+    {
+      "id": "under_tree",
+      "label": "木の下にベンチがある",
+      "points": 14,
+      "accept": "the bench is under a tree",
+      "partial": "mentions a tree or a bench, without the relation"
+    },
+    {
+      "id": "man_read",
+      "label": "男の人が本を読んでいる",
+      "points": 19,
+      "accept": "a man is reading a book (next to the bench)",
+      "partial": "mentions a man standing, without reading"
+    },
+    {
+      "id": "boy_run",
+      "label": "男の子がボールに向かって走っている",
+      "points": 18,
+      "accept": "a boy is running to a red ball",
+      "partial": "a boy is running, or a red ball"
+    },
+    {
+      "id": "bottle",
+      "label": "ベンチの上のペットボトル",
+      "points": 10,
+      "accept": "a bottle is on the bench",
+      "partial": "a bottle"
+    }
+  ],
+  "extraMax": 10,
+  "items": [
+    {
+      "key": "grass",
+      "part": "grass_patch",
+      "position": [0, 0, 0]
+    },
+    {
+      "key": "tree",
+      "part": "tree",
+      "position": [0, 0, -2.75]
+    },
+    {
+      "key": "bench",
+      "part": "bench",
+      "position": [0, 0, -1.755]
+    },
+    {
+      "key": "woman",
+      "part": "person_sit_woman_a",
+      "position": [0, 0.002, -1.5]
+    },
+    {
+      "key": "bottle",
+      "part": "bottle",
+      "position": [0, 0.482, -1.675]
+    },
+    {
+      "key": "man",
+      "part": "person_read_adult_a",
+      "position": [1.181, 0, -1.037]
+    },
+    {
+      "key": "ball",
+      "part": "ball_red",
+      "position": [2.75, 0, 2.75]
+    },
+    {
+      "key": "boy",
+      "part": "person_run_boy_a",
+      "position": [-2.75, 0, 2.75],
+      "yaw": 90,
+      "motion": {
+        "type": "move",
+        "to": [2.217, 0, 2.75],
+        "duration": 5
+      }
+    }
+  ]
+}

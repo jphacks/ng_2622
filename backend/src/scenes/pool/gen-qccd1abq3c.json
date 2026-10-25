@@ -1,0 +1,75 @@
+{
+  "protocol": "scenenglish.scene/1",
+  "id": "gen-qccd1abq3c",
+  "name": "公園のベンチで本を読む",
+  "difficulty": "easy",
+  "description": "A quiet park. A man is sitting on a bench. A dog is running on the grass. A red ball is next to the tree.",
+  "elements": [
+    {
+      "id": "place",
+      "label": "公園で",
+      "points": 9,
+      "accept": "park, garden, lawn, grass"
+    },
+    {
+      "id": "man_sit",
+      "label": "男の人がベンチに座っている",
+      "points": 27,
+      "accept": "a man is sitting on a bench",
+      "partial": "mentions a man or a bench, without saying he is sitting"
+    },
+    {
+      "id": "dog_run",
+      "label": "犬が走っている",
+      "points": 27,
+      "accept": "a dog is running (on the grass)",
+      "partial": "mentions a dog, without saying it is running"
+    },
+    {
+      "id": "ball_tree",
+      "label": "木のそばに赤いボールがある",
+      "points": 27,
+      "accept": "a red ball is next to the tree",
+      "partial": "a ball, or a tree, without the relation"
+    }
+  ],
+  "extraMax": 10,
+  "items": [
+    {
+      "key": "grass",
+      "part": "grass_patch",
+      "position": [0, 0, 0]
+    },
+    {
+      "key": "tree",
+      "part": "tree",
+      "position": [2.734, 0, -2.75]
+    },
+    {
+      "key": "bench",
+      "part": "bench",
+      "position": [-2.75, 0, -2.75]
+    },
+    {
+      "key": "man",
+      "part": "person_sit_adult_a",
+      "position": [-2.75, 0.002, -2.47]
+    },
+    {
+      "key": "dog",
+      "part": "animal_run_dog_a",
+      "position": [0, 0, 2.75],
+      "yaw": -135.9,
+      "motion": {
+        "type": "move",
+        "to": [-2.667, 0, 0],
+        "duration": 6
+      }
+    },
+    {
+      "key": "ball",
+      "part": "ball_red",
+      "position": [1.248, 0, -2.75]
+    }
+  ]
+}

@@ -1,0 +1,138 @@
+{
+  "protocol": "scenenglish.scene/1",
+  "id": "gen-ik3kjed8w0",
+  "name": "にぎやかなカフェ",
+  "difficulty": "hard",
+  "description": "This is a cafe. A woman is sitting on a chair at the left table. A cup of coffee is on the left table. A man is sitting on a chair at the right table. A laptop is on the right table. Another man is standing between the two tables, talking on the phone. A woman is walking in front of the tables. A vending machine is in the back left corner.",
+  "elements": [
+    {
+      "id": "place",
+      "label": "カフェで",
+      "points": 7,
+      "accept": "cafe, coffee shop"
+    },
+    {
+      "id": "woman_sit",
+      "label": "女の人が左のテーブルの椅子に座っている",
+      "points": 13,
+      "accept": "a woman is sitting on a chair at the left table",
+      "partial": "mentions a woman, without saying she is sitting"
+    },
+    {
+      "id": "cup",
+      "label": "テーブルの上にコーヒーカップがある",
+      "points": 9,
+      "accept": "a cup of coffee is on the table",
+      "partial": "a cup or a drink, without saying where it is"
+    },
+    {
+      "id": "man_sit",
+      "label": "男の人が右のテーブルの椅子に座っている",
+      "points": 13,
+      "accept": "a man is sitting on a chair at the right table",
+      "partial": "mentions a man, without saying he is sitting"
+    },
+    {
+      "id": "laptop",
+      "label": "右のテーブルの上にノートパソコンがある",
+      "points": 9,
+      "accept": "a laptop is on the right table",
+      "partial": "a laptop or a computer, without saying where it is"
+    },
+    {
+      "id": "man_phone",
+      "label": "男の人が二つのテーブルの間で電話をしている",
+      "points": 17,
+      "accept": "a man is standing between the tables, talking on the phone",
+      "partial": "a man is talking on the phone, or a man is standing"
+    },
+    {
+      "id": "woman_walk",
+      "label": "女の人がテーブルの前を歩いている",
+      "points": 13,
+      "accept": "a woman is walking in front of the tables",
+      "partial": "mentions a woman walking, without saying where"
+    },
+    {
+      "id": "machine",
+      "label": "左奥に自動販売機がある",
+      "points": 9,
+      "accept": "a vending machine is in the back left corner",
+      "partial": "a vending machine, without saying where"
+    }
+  ],
+  "extraMax": 10,
+  "items": [
+    {
+      "key": "floor",
+      "part": "floor_wood",
+      "position": [0, 0, 0]
+    },
+    {
+      "key": "wall",
+      "part": "wall_window",
+      "position": [0, 0, -3.86]
+    },
+    {
+      "key": "table1",
+      "part": "table",
+      "position": [-2.75, 0, 0]
+    },
+    {
+      "key": "chair1",
+      "part": "chair",
+      "position": [-2.75, 0, -0.685]
+    },
+    {
+      "key": "woman1",
+      "part": "person_sit_woman_a",
+      "position": [-2.75, -0.02, -0.51]
+    },
+    {
+      "key": "cup",
+      "part": "cup",
+      "position": [-2.75, 0.72, 0]
+    },
+    {
+      "key": "table2",
+      "part": "table",
+      "position": [2.75, 0, 0]
+    },
+    {
+      "key": "chair2",
+      "part": "chair",
+      "position": [2.75, 0, -0.685]
+    },
+    {
+      "key": "man1",
+      "part": "person_sit_adult_a",
+      "position": [2.75, -0.02, -0.485]
+    },
+    {
+      "key": "laptop",
+      "part": "laptop",
+      "position": [2.75, 0.72, 0]
+    },
+    {
+      "key": "man2",
+      "part": "person_phone_adult_a",
+      "position": [0, 0, 0]
+    },
+    {
+      "key": "woman2",
+      "part": "person_walk_woman_a",
+      "position": [1.455, 0, 0.778],
+      "yaw": 90,
+      "motion": {
+        "type": "move",
+        "to": [3.045, 0, 0.778],
+        "duration": 6
+      }
+    },
+    {
+      "key": "machine",
+      "part": "vending_machine",
+      "position": [-2.75, 0, -2.75]
+    }
+  ]
+}

@@ -1,5 +1,44 @@
 {
-  "easy": { "example": "gen-is8k2455rz", "scenes": ["gen-g3s45ctddj"] },
-  "normal": { "example": "gen-wj9zltvuug", "scenes": ["gen-1etyx0jsm5"] },
-  "hard": { "example": "gen-0cv84arpzw", "scenes": ["gen-837svis7fz"] }
+  "easy": {
+    "example": "gen-qccd1abq3c",
+    "scenes": [
+      "gen-098scv1adb",
+      "gen-108v6d7kie",
+      "gen-3q2mp65pln",
+      "gen-anbqt6gsb3",
+      "gen-g8g7nvgt9v",
+      "gen-hd0dvf0mlv",
+      "gen-nx763d6t1t",
+      "gen-ollvx1uzar",
+      "gen-vzcedkhyvr"
+    ]
+  },
+  "normal": {
+    "example": "gen-3brfrhl0g2",
+    "scenes": [
+      "gen-7q5atbrxwd",
+      "gen-8a52kkiyuq",
+      "gen-ew36womk49",
+      "gen-fxzxvf5i8z",
+      "gen-gndqrszqbh",
+      "gen-j4o1dkp18j",
+      "gen-xef36toaa0",
+      "gen-yy111spsnv",
+      "gen-zd2giq5tll"
+    ]
+  },
+  "hard": {
+    "example": "gen-s6rtuhtzvz",
+    "scenes": [
+      "gen-1oi548k4rk",
+      "gen-54o1w0cyfk",
+      "gen-6sl29jx4d9",
+      "gen-b5438s2pun",
+      "gen-b69go6aaqu",
+      "gen-d02dgjnp80",
+      "gen-fzvbjc8jo0",
+      "gen-ik3kjed8w0",
+      "gen-terxgvs6j3"
+    ]
+  }
 }

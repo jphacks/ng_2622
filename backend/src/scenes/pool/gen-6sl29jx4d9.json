@@ -1,0 +1,156 @@
+{
+  "protocol": "scenenglish.scene/1",
+  "id": "gen-6sl29jx4d9",
+  "name": "にぎやかな台所",
+  "difficulty": "hard",
+  "description": "A frying pan is on the kitchen counter. A woman is putting a plate on the table. A girl is sitting on a chair behind the table. A cup is on the table. A man is carrying a box. A dog is running toward a red ball. An apple is in the basket. The basket is next to the kitchen counter.",
+  "elements": [
+    {
+      "id": "pan",
+      "label": "フライパンがカウンターの上にある",
+      "points": 10,
+      "accept": "a frying pan is on the kitchen counter",
+      "partial": "a pan, without saying where it is"
+    },
+    {
+      "id": "woman_put",
+      "label": "女の人がテーブルに皿を置いている",
+      "points": 13,
+      "accept": "a woman is putting a plate on the table",
+      "partial": "mentions a woman or a plate, without the action"
+    },
+    {
+      "id": "girl_sit",
+      "label": "女の子が椅子に座っている",
+      "points": 13,
+      "accept": "a girl is sitting on a chair (behind the table)",
+      "partial": "mentions a girl, without saying she is sitting"
+    },
+    {
+      "id": "cup",
+      "label": "テーブルの上にカップがある",
+      "points": 8,
+      "accept": "a cup is on the table",
+      "partial": "a cup, without saying where it is"
+    },
+    {
+      "id": "man_carry",
+      "label": "男の人が箱を運んでいる",
+      "points": 13,
+      "accept": "a man is carrying a box",
+      "partial": "mentions a man, without the box or the action"
+    },
+    {
+      "id": "dog_ball",
+      "label": "犬が赤いボールに向かって走っている",
+      "points": 15,
+      "accept": "a dog is running toward a red ball",
+      "partial": "a dog running, or a ball"
+    },
+    {
+      "id": "apple_basket",
+      "label": "リンゴがかごの中にある",
+      "points": 10,
+      "accept": "an apple is in the basket",
+      "partial": "an apple or a basket"
+    },
+    {
+      "id": "basket_counter",
+      "label": "かごがカウンターの隣にある",
+      "points": 8,
+      "accept": "the basket is next to the kitchen counter",
+      "partial": "a basket, without saying where it is"
+    }
+  ],
+  "extraMax": 10,
+  "items": [
+    {
+      "key": "floor",
+      "part": "floor_tile",
+      "position": [0, 0, 0]
+    },
+    {
+      "key": "wall",
+      "part": "wall_kitchen_tile",
+      "position": [0, 0, -3.757]
+    },
+    {
+      "key": "counter",
+      "part": "kitchen_counter",
+      "position": [0, 0, -2.75]
+    },
+    {
+      "key": "pan",
+      "part": "pan",
+      "position": [0, 0.9, -2.75]
+    },
+    {
+      "key": "table",
+      "part": "table",
+      "position": [0, 0, 0]
+    },
+    {
+      "key": "chair",
+      "part": "chair",
+      "position": [0, 0, -0.685]
+    },
+    {
+      "key": "girl",
+      "part": "person_sit_girl_a",
+      "position": [0, 0.1, -0.554]
+    },
+    {
+      "key": "woman",
+      "part": "person_put_woman_a",
+      "position": [1.054, 0, 0],
+      "yaw": -90
+    },
+    {
+      "key": "plate",
+      "part": "plate",
+      "position": [0, 0.72, 0]
+    },
+    {
+      "key": "cup",
+      "part": "cup",
+      "position": [-0.25, 0.72, 0]
+    },
+    {
+      "key": "man",
+      "part": "person_carry_adult_a",
+      "position": [-2.75, 0, -2.75],
+      "yaw": 1.7,
+      "motion": {
+        "type": "move",
+        "to": [-2.667, 0, 0],
+        "duration": 6
+      }
+    },
+    {
+      "key": "basket",
+      "part": "basket",
+      "position": [1.559, 0, -2.75]
+    },
+    {
+      "key": "apple",
+      "part": "apple_red",
+      "position": [1.559, 0, -2.75]
+    },
+    {
+      "key": "ball",
+      "part": "ball_red",
+      "position": [-2.75, 0, 2.75]
+    },
+    {
+      "key": "dog",
+      "part": "animal_run_dog_a",
+      "position": [2.75, 0, 2.75],
+      "yaw": -90,
+      "motion": {
+        "type": "move",
+        "to": [-1.929, 0, 2.75],
+        "duration": 5
+      }
+    }
+  ]
+}

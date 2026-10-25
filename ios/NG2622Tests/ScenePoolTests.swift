@@ -114,14 +114,14 @@ struct ScenePoolTests {
     #expect(throws: (any Error).self) { try ScenePool(index: Data("[]".utf8)) }
   }
 
-  /// 同梱の作り置きの場面（pool/index.json）は、難易度ごとに 2 つ（例 1 つと出題 1 つ）あり、配置の JSON の difficulty と合っている
+  /// 同梱の作り置きの場面（pool/index.json）は、難易度ごとに 10（例 1 つと出題 9）あり、配置の JSON の difficulty と合っている
   @Test func bundledPool() async throws {
     let pool = ScenePool.bundled
     #expect(pool.difficulties == SceneDifficulty.allCases)
     let client = MockSceneLayoutClient()
     for difficulty in SceneDifficulty.allCases {
       let ids = pool.scenes[difficulty] ?? []
-      #expect(ids.count == 2)
+      #expect(ids.count == 10)
       let example = try #require(pool.example(of: difficulty))
       #expect(ids.contains(example))
       #expect(pool.candidates(of: difficulty) == ids.filter { $0 != example })
@@ -133,10 +133,10 @@ struct ScenePoolTests {
     let files = (Bundle.main.urls(forResourcesWithExtension: "json", subdirectory: ScenePool.directory) ?? [])
       .map { $0.deletingPathExtension().lastPathComponent }.filter { $0 != "index" }
     #expect(Set(files) == Set(SceneDifficulty.allCases.flatMap { pool.scenes[$0] ?? [] }))
-    // 例: かんたん＝リンゴが落ちる公園、ふつう＝スーパーのレジ、むずかしい＝朝の駅のホーム
-    #expect(try await client.layout(sceneID: pool.example(of: .easy) ?? "").name == "リンゴが落ちる公園")
-    #expect(try await client.layout(sceneID: pool.example(of: .normal) ?? "").name == "スーパーのレジ")
-    #expect(try await client.layout(sceneID: pool.example(of: .hard) ?? "").name == "朝の駅のホーム")
+    // 例: かんたん＝公園のベンチで本を読む、ふつう＝校庭で遊ぶ子どもたち、むずかしい＝にぎやかな教室
+    #expect(try await client.layout(sceneID: pool.example(of: .easy) ?? "").name == "公園のベンチで本を読む")
+    #expect(try await client.layout(sceneID: pool.example(of: .normal) ?? "").name == "校庭で遊ぶ子どもたち")
+    #expect(try await client.layout(sceneID: pool.example(of: .hard) ?? "").name == "にぎやかな教室")
   }
 
   /// Mock のホストが難易度でスタートすると、その難易度の作り置きの場面（例でないもの）でラウンドが始まる
