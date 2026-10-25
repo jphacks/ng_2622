@@ -1,6 +1,6 @@
 # 部品と配置のプロトコル（v1）
 
-> Status: **合意済み**（2026-10-24）。方針と理由は [`scene-generation.md`](./scene-generation.md) の「部品と配置のプロトコル」。この文書は、部品・配置の JSON・API の形を決める正本。
+> Status: **合意済み**（2026-10-24、2026-10-25 に「AI で場面を作り置く」を改訂）。方針と理由は [`scene-generation.md`](./scene-generation.md) の「部品と配置のプロトコル」。この文書は、部品・配置の JSON・API の形を決める正本。
 
 3D のシーンを「部品（USDZ ＋メタデータ）」と「配置の JSON」に分ける。部品は先に作って保存しておき、配置を書く側（Claude・亀井さんのエージェント・人）は、どの部品をどこに置くかと採点の情報だけを書く。アプリは配置の JSON どおりに部品を並べる。
 
@@ -112,7 +112,7 @@ RealityKit に合わせる。
 | 項目 | 型 | 意味 |
 | --- | --- | --- |
 | `protocol` | 文字列 | `scenenglish.scene/1` で固定。形を変えるときは数字を上げる |
-| `id` | 文字列 | シーンの ID。`POST /scenes` が付けるので、書く側は省いてよい。AI が作ったシーンは `gen-` ＋ 英小文字と数字 10 文字 |
+| `id` | 文字列 | シーンの ID。`POST /scenes` が付けるので、書く側は省いてよい。AI が作ったシーン（作り置きの場面も）は `gen-` ＋ 英小文字と数字 10 文字 |
 | `name` | 文字列 | 日本語の名前（待合と結果に出す） |
 | `difficulty` | 文字列 | `easy`・`normal`・`hard` |
 | `description` | 文字列 | 場面の説明（英語）。採点で Claude に渡す |
@@ -131,6 +131,8 @@ RealityKit に合わせる。
 | `partial` | 文字列（任意） | 半分の点にする言い方（英語）。無ければ部分点なし |
 
 要素は、置いた部品の `words` と、部品どうしの関係（「犬がボールに向かって走っている」など）から作る。関係のほうに高い配点を付けると、名詞を並べるだけでなく文で描写したくなる。
+
+2026-10-25 に、採点を「配置の情報と採点基準の段階」で付ける形に改めた（[`usecase.md`](./usecase.md) の採点、[ADR](../adr/20261025-score-content-with-layout-and-rubric-bands.md)）。新しい採点では、要素は「主な見どころ」（参考）として Claude に渡し、言えたかを返させて「次に伸ばす一つ」に使う。正解の一覧としては扱わず、`points`・`partial`・`extraMax` は点に使わない。形は `scenenglish.scene/1` のまま残す。
 
 ### 置く部品（`items[]`）
 
@@ -170,66 +172,131 @@ v1 の基本は止まった場面で、動作は人物のポーズで表す。�
 
 ## API
 
-今の `/scenes`（シーンの一覧と評価、[ADR](../adr/20261024-store-scene-reviews-in-a-global-durable-object.md)）を広げる。部品とシーンの JSON は R2 に置く。
+今の `/scenes`（シーンの一覧と評価、[ADR](../adr/20261024-store-scene-reviews-in-a-global-durable-object.md)）を広げる。部品と、`POST /scenes` で保存したシーンの JSON は R2 に置く。作り置きの場面は R2 ではなく、Worker に同梱する（下の「AI で場面を作り置く」）。
 
 | メソッドとパス | だれが使う | 中身 |
 | --- | --- | --- |
 | `GET /parts` | 配置を書く側・アプリ | 部品のメタデータの一覧（各部品の最新の版） |
 | `GET /parts/{id}/{version}.usdz` | アプリ | 部品の USDZ（R2 から返す。版ごとに中身が変わらないので、長くキャッシュしてよい） |
 | `PUT /parts/{id}/{version}` | 亀井さんのエージェント | 部品を保存する。本文は multipart（`meta` にメタデータの JSON、`file` に USDZ）。合言葉が要る |
-| `POST /scenes` | 亀井さんのエージェント・人 | 配置の JSON を保存し、`{ "sceneId": "gen-…" }` を返す。合言葉が要る |
-| `POST /scenes/generate` | アプリ（待合のホスト） | 本文は `{ "prompt": "リンゴが落ちる公園" }`。Claude が部品の一覧を見て配置の JSON を書き、保存して `{ "sceneId": "gen-…" }` を返す。合言葉は要らない（バックエンドが自分で保存する） |
-| `GET /scenes/{sceneId}/layout` | アプリ | 配置の JSON |
+| `POST /scenes` | 亀井さんのエージェント・人 | 配置の JSON を保存し、`{ "sceneId": "gen-…" }` を返す。合言葉が要る。R2 と合わせて、亀井さんのエージェントが使うときに入れる |
+| `POST /scenes/generate` | 作り置きのスクリプト（手元） | 本文は `{ "difficulty": "easy", "theme": "公園" }`（`theme` は任意）。Claude が部品の一覧を見て配置の JSON を書き、保存せずにそのまま返す。合言葉が要る。アプリは呼ばない |
+| `GET /scenes/{sceneId}/layout` | アプリ | 配置の JSON（作り置きの場面は同梱の JSON から、`POST /scenes` で保存したものは R2 から返す） |
 
-- 合言葉: Worker の secret `SCENE_WRITE_TOKEN` に置き、`Authorization: Bearer <合言葉>` で送る。合言葉は亀井さんに直接渡し、ファイルには書かない。
+- 合言葉: Worker の secret `SCENE_WRITE_TOKEN` に置き（手元の `wrangler dev` では `.dev.vars`）、`Authorization: Bearer <合言葉>` で送る。合言葉は亀井さんに直接渡し、ファイルには書かない。
 - R2 の置き場所: `parts/<id>/<version>.usdz`、`parts/<id>/<version>.json`（メタデータ）、`scenes/<sceneId>.json`（配置）。
-- 部屋の流れは今のまま。ホストは `start` で `sceneId` を送り、部屋は round で全員に配る。採点は、同梱のシーンなら `backend/src/scoring/scenes.json`、`gen-` のシーンなら R2 の配置の JSON の `description`・`elements`・`extraMax` を使う。
-- 同梱のシーン（公園・教室・駅前など）は、焼き込んだ USDZ のまま残す。プロトコルに直すのは、確かめのための 1 つだけ。
+- 部屋は round で `sceneId` を全員に配る（今のまま）。作り置きの場面では、ホストは `start` で難易度を送り、部屋が場面を選ぶ（案。下の「待合での出し方」）。採点は、作り置きの場面なら同梱の配置の JSON、`POST /scenes` で保存した場面なら R2 の配置の JSON を使う。
+- 手作りの 6 場面（公園・教室・駅前・雨のバス停・海辺・カフェ）は、部品の配置で作り直し、作り置きの場面と同じ形で採点する（2026-10-25）。作り直すまでは使わない。外すのは、作り置きの場面と新しい採点が本番に入るのと同時にする。それまでは、焼き込んだ USDZ と今の採点のまま遊べる。
 
-## AI で場面を作る（`POST /scenes/generate`、2026-10-24 に決定）
+## AI で場面を作り置く（`POST /scenes/generate`、2026-10-25 に決定）
 
-> **2026-10-25 見直し中（未確定）**: ホストが一言を書く形は、書いた人だけが場面の中身を知っていて有利になるのでやめる。
-> - 1 つの場面に正解の文（採点の要素）を複数持たせる。今の採点の形（要素の合計 90 ＋ `extraMax` 10）のまま。
-> - 場面は遊ぶ前にスクリプトでまとめて作り置き、描いた画像を人が目で確かめたものだけを repo の JSON にして Worker に同梱する（採点の `scenes.json` と同じ扱い）。待合でその場では作らない。まず難易度ごとに 10 場面（計 30）。
-> - 作り置きのスクリプトも `POST /scenes/generate` を呼ぶ（Claude への指示と座標の計算を 1 箇所にまとめるため）。呼ぶ先は手元の `wrangler dev` で、Claude のキーは手元の `.dev.vars` だけに置く。
-> - `POST /scenes/generate` は合言葉（`SCENE_WRITE_TOKEN`）が要る。アプリは呼ばない。入力は難易度（と任意のテーマ）だけで、配置の JSON を返すだけにして保存しない。クラウドに残すときは、その JSON を `POST /scenes` に送る（`POST /scenes` と R2 は亀井さんのエージェントが使うときに入れる）。
-> - テーマ（公園・カフェ・店・駅・部屋など）は一覧を指示に入れ、Claude がそこから選ぶ。Claude は 1 回の呼び出しで、正解の文（要素）を先に書き、その文を描ける部品と関係を後に書く。
-> - 待合では、ホストは難易度だけを選ぶ。作り置いた場面は、その部屋でまだ出ていないものからランダムに出し、名前もスタートまで見せない。手作りの場面は今どおり一覧で選べる。
-> - 下の節は 2026-10-24 の決定のまま。合意したら書き直す。
+> 2026-10-24 には「待合でホストが一言（お題）を書き、その場で作る」と決めていたが、2026-10-25 に作り置きに改めた（[ADR](../adr/20261025-pre-generate-ai-scenes-and-pick-by-difficulty.md)）。一言を書いた人だけが場面の中身を知っていて、有利になるため。
 
-ホストの一言から、今ある部品だけで配置の JSON を作る。亀井さんのスクラッチのエージェントとは別の、軽い生成。Claude の Messages API を、出力の形（JSON Schema）を決めて 1 回呼ぶ。ツールを使うループ（エージェント）にはしない。
+今ある部品だけで配置の JSON を作る。亀井さんのスクラッチのエージェントとは別の、軽い生成。Claude の Messages API を、出力の形（JSON Schema）を決めて 1 回呼ぶ。ツールを使うループ（エージェント）にはしない。
 
-- 書かせ方: Claude には座標を書かせず、部品どうしの関係（`on`・`under`・`next_to`・`in_front_of`・`behind` など）と大まかな場所だけを書かせる。バックエンドが部品の `size` から座標を計算し、上の「配置の JSON」にして保存する。プロトコルの形は変えない。計算した座標で場面がちゃんと組めることを、実際に描いた画像で確かめてから採用する。
-- 生成の口の入力: `{ "prompt": "リンゴが落ちる公園", "difficulty": "easy" }`。`difficulty` は省けば `easy`。難しさで、置く部品の数と描写してほしい要素の数・関係の複雑さを変える（目安: easy は部品 4〜6・要素 4、normal は 6〜10・6、hard は 10〜15・8）。
+### 作り置きの流れ
+
+```
+作り置きのスクリプト（手元）──POST /scenes/generate──▶ 手元の wrangler dev ──▶ Claude
+        │ 配置の JSON が返る（保存はしない）
+        ▼
+render_layout.py で PNG に描く ──▶ 人が目で確かめる ──▶ 良いものだけ repo の JSON にして commit ──▶ Worker に同梱
+```
+
+- 場面は遊ぶ前にスクリプトでまとめて作る。待合でその場では作らない。
+- 数: まず難易度ごとに 10 場面（計 30）。
+- 確かめ方: `scripts/scene/render_layout.py` で PNG に描き、人が目で見る。崩れていないか、要素の文がその絵から言えるかを見る。だめなものは捨てて作り直す。
+- 置き場所（案）: `backend/src/scenes/pool/` に 1 場面 1 ファイルの JSON で置き、Worker に同梱する（採点の `backend/src/scoring/scenes.json` と同じ扱い）。R2 には置かない。
+- ID（案）: 今までどおり `gen-` ＋ 英小文字と数字 10 文字。生成の口が付けて返す。
+- 作り置きのスクリプトも `POST /scenes/generate` を呼ぶ。Claude への指示と座標の計算を 1 箇所にまとめるため。
+- 呼ぶ先は手元の `wrangler dev`。生成に使う Claude のキーは手元の `.dev.vars` だけに置き、本番では作り置きをしない。
+- 履歴: 作り置きの場面は repo の JSON なので、git の履歴に残る。部品の ID と座標がそろっているので、部品と合わせれば過去の場面をそのまま再現できる。
+
+### 生成の口
+
+| 項目 | 中身 |
+| --- | --- |
+| 呼ぶ人 | 作り置きのスクリプト。アプリは呼ばない |
+| 合言葉 | 要る。`Authorization: Bearer <SCENE_WRITE_TOKEN>`（下の API の節と同じ合言葉） |
+| 入力 | `{ "difficulty": "easy", "theme": "公園" }`。`theme` は任意。省けば、指示の中のテーマの一覧（公園・カフェ・店・駅・部屋など）から Claude が選ぶ |
+| 出力 | 配置の JSON（上の形）をそのまま返す。保存はしない |
+| クラウドに残すとき | 返った JSON を `POST /scenes` に送る。生成の口に保存のフラグは付けない。`POST /scenes` と R2 は、亀井さんのエージェントが使うときに入れる |
+
+### 難易度の中身（推測）
+
+[`research/scene-levels-emotions.md`](./research/scene-levels-emotions.md) の A・B・C の段階に合わせる案。
+
+| 難易度 | 段階 | 動詞 | 要素の数 | 部品の数の目安 |
+| --- | --- | --- | --- | --- |
+| かんたん（`easy`） | A（初級） | stand・walk・run・sit・eat・read など | 4 | 4〜6 |
+| ふつう（`normal`） | B（中級） | lean・reach・pick up・check watch など | 6 | 6〜10 |
+| むずかしい（`hard`） | C（上級） | glance・stroll・crouch など | 8 | 10〜15 |
+
+- 部品の数の目安は、2026-10-24 に決めた値のまま。
+- 言える動詞は、部品のポーズで決まる。今の部品には中級・上級の動詞のポーズが少ないので、足りない分は関係の複雑さ（`between`・`across` など）と要素の数で難しくする（推測）。
+
+### 待合での出し方
+
+- ホストは難易度（かんたん・ふつう・むずかしい）だけを選ぶ。どの場面かは、名前もサムネイルもスタートまで見せない。ホストも知らない。
+- 部屋は、その難易度の作り置きの場面のうち、その部屋でまだ出ていないものからランダムに選ぶ。全部出たら最初に戻る。
+- `start` で難易度を送り、部屋が選んだ `sceneId` を round で全員に配る（案）。
+- 手作りの 6 場面の扱いは、下の API の節の最後。
+
+### 失敗したとき
+
+- 形が違う・途中で止まった・5xx・接続の失敗のときだけ、1 回やり直す。断られた（refusal）・4xx・タイムアウトではやり直さない。
+- だめなら、理由を付けて失敗を返す。スクリプトはその場面を飛ばし、次を作る。
+- 待合で待たせないので、締め切りは短くしなくてよい。各回の `timeout` は 60 秒にする（案）。
+
+### 実測（2026-10-25）
+
+Haiku 5.5、手元の `wrangler dev`、旧形式の口（一言を渡す形）で 1 場面を作るのにかかった時間。
+
+| 難易度 | 時間 |
+| --- | --- |
+| かんたん | 3〜5 秒 |
+| ふつう | 3〜8 秒 |
+| むずかしい | 12〜14 秒 |
+
+### やめたこと（2026-10-25）
+
+作り置きにして、合言葉と手元での実行に限ったので、次は要らなくなった。
+
+- ホストの一言（お題）の入力と、不適切な一言への対策（system でかわす決まり）
+- 待合で待つ長さの上限（20 秒の締め切り）
+- 1 回の生成の費用の上限
+- 作った場面を R2 に保存し、一言・難しさ・モデル・日時を R2 のメタデータに残すこと
+
+### 書かせ方
+
+- Claude には座標を書かせず、部品どうしの関係（`on`・`under`・`next_to`・`in_front_of`・`behind` など）と大まかな場所だけを書かせる。バックエンドが部品の `size` から座標を計算し、上の「配置の JSON」にする。プロトコルの形は変えない。
+- Claude は 1 回の呼び出しで、正解の文（要素）を先に書き、その文を描ける部品と関係を後に書く。言わせたい文から場面を組み立てるため。
 - 座らせる・上に置く: 部品のメタデータの `anchors`（`top`・`seat`・`hip`）から座標を計算する。
-- 呼び方: 採点（`backend/src/scoring/claude.ts`）と同じ SDK（`@anthropic-ai/sdk`）の `messages.create` を 1 回呼ぶ。429・5xx・接続の失敗の再送と、失敗の種類の切り分けを SDK に任せるため。
-- モデル: まず `claude-haiku-5-5`（採点と同じ）で試し、作った場面を人が目で確かめてから、`claude-sonnet-5-5` などに変えるかを決める。モデルは環境変数で変えられるようにする。
-- 履歴: 作った場面は待合の一覧に出さず、使い回さない。配置の JSON（R2 の `scenes/<sceneId>.json`）に、一言・難しさ・使ったモデル・作った日時を R2 のメタデータとして付けて残す。部品の ID と座標がそろっているので、部品と合わせれば過去の場面をそのまま再現できる。
-- 不適切な一言: system に「実在の人の名前や悪口・差別・性的・暴力的な言葉は、名前・説明・要素に使わず、日常の場面に置き換える」と書いてかわす。Claude が断ったときは「作れませんでした」にする。言葉の一覧での検査はしない。
-- 失敗したとき: 形が違う・途中で止まった・5xx・接続の失敗のときだけ、残りが 5 秒以上あれば 1 回やり直す。断られた（refusal）・4xx・タイムアウトではやり直さない。だめなら、理由を付けて「作れませんでした」を返す。ホストは言い方を変えて頼み直すか、同梱のシーンを選べる。待つのは長くて 20 秒。
+- 呼び方: 採点（`backend/src/scoring/claude.ts`）と同じ SDK（`@anthropic-ai/sdk`）の `messages.create` を 1 回呼ぶ。
+- モデル: まず `claude-haiku-5-5` で作り、作った場面を人が目で確かめてから、`claude-sonnet-5-5` などに変えるかを決める。モデルは環境変数で変えられるようにする。
 
 ### Claude に書かせる形と呼び方
 
-Claude には次の形（JSON Schema）で書かせる。部品の ID は `enum` にし、一覧に無い部品は返らないようにする。
+Claude には次の形（JSON Schema）で書かせる。`elements` を `items` より前に置き、要素を先に書かせる。部品の ID は `enum` にし、一覧に無い部品は返らないようにする。
 
 ```
 { name, description,
+  elements: [{ id, label, points, accept, partial? }],
   items: [{ key, part,
             place: { relation: ground | on | in | under | above | next_to | in_front_of | behind | near | between | sit_on,
                      target?, target2?（between のとき）, zone?（手前・真ん中・奥 × 左・中・右の 9 区画） },
             facing?: camera | left | right | away | toward（key）,
-            motion?: { type: fall | move | rotate | sway, toward?（key か区画）, path?: across | along（toward の部品を横切る・沿う）, duration } }],
-  elements: [{ id, label, points, accept, partial? }] }
+            motion?: { type: fall | move | rotate | sway, toward?（key か区画）, path?: across | along（toward の部品を横切る・沿う）, duration } }] }
 ```
 
-バックエンドは、これを上の「配置の JSON」に直して保存する。
+バックエンドは、これを上の「配置の JSON」に直して返す。
 
 - 地面に置くもの（`ground`）は、区画の中に `size` で重ならないよう並べる。
 - `on` は相手の `anchors.top`（無ければ高さ）の上に置く。`sit_on` は相手の `anchors.seat` に人の `anchors.hip` を合わせる。ほかの関係は、相手の `size` に 10 cm の隙間を足した位置に置く。
 - `above` は相手の真上に、触れない高さ（相手の高さ＋ 0.3 m）で置く。
 - 向き（`facing`）と動きの行き先（`motion.toward`）は、相手の座標から計算する。`path: across` は相手（道路など）を短い辺の向きに横切り、`along` は長い辺に沿って動かす。
 - 関係の種類は、調べた結果（[`research/scene-sentence-coverage.md`](./research/scene-sentence-coverage.md)）で多かった位置の言い方（beside・on・under・near・behind・toward・in front of・across・between・above・along）を表せるように選んだ。beside は `next_to`、toward は `motion.toward` で表す。
-- 配点は合計 90 に直し、`extraMax` は 10 にする。知らない `target` は無視し、区画の真ん中に置く。
+- 配点は合計 90 に直し、`extraMax` は 10 にする。新しい採点（[`usecase.md`](./usecase.md) の採点）では使わないが、プロトコルの形を変えないため。知らない `target` は無視し、区画の真ん中に置く。
 
 Claude の API（Messages API）に渡すもの:
 
@@ -238,13 +305,13 @@ Claude の API（Messages API）に渡すもの:
 | `model` | 環境変数（既定は `claude-haiku-5-5`） |
 | `max_tokens` | 8000 |
 | `output_config` | `{ effort: "medium", format: { type: "json_schema", schema } }` |
-| `system` | 規則・関係の意味・部品の一覧（`index.json` から id・label・category・words・pose・size・anchors）・例 1〜2 個。`cache_control` でキャッシュする |
-| `messages` | `[{ role: "user", content: "難しさ: easy\nお題: リンゴが落ちる公園" }]` |
+| `system` | 規則・関係の意味・難易度ごとの目安・テーマの一覧・部品の一覧（`index.json` から id・label・category・words・pose・size・anchors）・例 1〜2 個。`cache_control` でキャッシュする |
+| `messages` | `[{ role: "user", content: "難しさ: easy\nテーマ: 公園" }]`。テーマを省いたときは「テーマ: 一覧から選ぶ」 |
 | `thinking` | 指定しない（Haiku 5.5 は既定で考える） |
 | `temperature` | 送らない（2026-10-21 から 400 になる） |
-| SDK の設定 | 全体の締め切りを 20 秒にし、各回の `timeout` は残り時間に合わせて渡す。SDK の再送は使わない（`maxRetries` 0） |
+| SDK の設定 | 各回の `timeout` は 60 秒（案）。SDK の再送は使わない（`maxRetries` 0）。やり直しは上の「失敗したとき」の決まりで口の側が行う |
 
-`stop_reason` が `end_turn` でなければ失敗とする。Haiku 5.5 には断ったとき（`refusal`）にサーバー側で別のモデルへ回す仕組みが無いので、断られたら「作れませんでした」にする。
+`stop_reason` が `end_turn` でなければ失敗とする。Haiku 5.5 には断ったとき（`refusal`）にサーバー側で別のモデルへ回す仕組みが無いので、断られたら失敗を返す。
 
 ## アプリの組み立て
 
@@ -282,5 +349,9 @@ deep research（[`research/scene-parts-research.md`](./research/scene-parts-rese
 - 最初に用意する部品の一覧は上で決めた（2026-10-24）。数の決め方の目安は次のとおり。
   - 目安: ほぼ同じ文も含めて 1000 通り以上の描写の文が作れればよい。文の数はおよそ N × P × (N − 1) ＋ A × P × N（N は名前で呼べる部品の数、P は前置詞の数、A は人物・動物のポーズの部品の数）で、部品の数の 2 乗で増える。例えば物 18・ポーズ 8・地面 4 の 30 部品で、P = 8 なら約 6,900 通り、15 部品でも約 1,600 通りになる。
   - 言える動詞の数は、ポーズの数と動きの 4 種類でしか増えない。物を足しても動詞は増えないので、部品を選ぶときはポーズ（動詞）の数を重く見る。
-- `POST /scenes/generate` の 1 回の費用の上限（[`cost-safety.md`](./cost-safety.md)）。モデルは上の「AI で場面を作る」で決めた。
+- 作り置きの場面の置き場所（`backend/src/scenes/pool/`）と ID の付け方（生成の口が `gen-` ＋ 10 文字を付ける）は案。作り始めるときに決める。
+- 難易度の中身（上の表）は推測。作り置きの最初の 30 場面を目で確かめ、実際に遊んでから直す。
+- 作った条件（テーマ・モデル・日時）をどこに残すか（commit のメッセージで足りるか、場面の一覧のファイルを置くか）。
+- `start` で難易度を送る形（メッセージの項目名、まだ出ていない場面を部屋のどこで覚えるか）は、アプリと部屋を入れ替えるときに決める。
+- 新しい採点で使わない `points`・`partial`・`extraMax` を、プロトコルから外すか（外すなら `scenenglish.scene/2` に上げる）。
 - 端末のキャッシュの持ち方と容量。
