@@ -18,6 +18,8 @@ final class RoomSession {
   let me: PlayerProfile
   private(set) var isHost = false
   private(set) var phase: Phase = .lobby
+  /// ホストのスタートを受けて、部屋が場面を AI で作っている。待合の画面のまま、難易度とスタートを止める
+  private(set) var isGenerating = false
   /// 部屋のコード（4 桁）。入るまでは nil
   private(set) var code: String?
   /// 参加者と状態。待合では接続の状態、ラウンド中は進み具合
@@ -68,13 +70,13 @@ final class RoomSession {
   /// ホストがラウンドを始める。sceneID が nil なら「おまかせ」（部屋の側がランダムに選ぶ）。
   /// 選んだシーンは参加者には前もって伝えず、ラウンドが始まったときに round で届く
   func start(sceneID: String?) {
-    guard isHost, phase == .lobby else { return }
+    guard isHost, phase == .lobby, !isGenerating else { return }
     Task { try? await client.startRound(sceneID: sceneID) }
   }
 
   /// ホストが難易度だけを選んでラウンドを始める。どの場面かはホストにも前もって伝えず、round で届く
   func start(difficulty: SceneDifficulty) {
-    guard isHost, phase == .lobby else { return }
+    guard isHost, phase == .lobby, !isGenerating else { return }
     Task { try? await client.startRound(difficulty: difficulty) }
   }
 
@@ -114,9 +116,16 @@ final class RoomSession {
       code = room.code
       participants = room.members
       updateHost(from: room.members)
+      isGenerating = false
+    case .generating(let room):
+      code = room.code
+      participants = room.members
+      updateHost(from: room.members)
+      isGenerating = true
     case .roundStarted(let info):
       // 前のラウンドの録音は消す
       recorder.prepare()
+      isGenerating = false
       phase = .playing(info)
     case .participantsChanged(let list):
       participants = list
@@ -127,6 +136,7 @@ final class RoomSession {
       code = room.code
       participants = room.members
       updateHost(from: room.members)
+      isGenerating = false
       phase = .lobby
     case .hostChanged(let isSelf):
       isHost = isSelf

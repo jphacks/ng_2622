@@ -36,6 +36,19 @@ struct RoomSessionTests {
     #expect(session.isHost)
   }
 
+  /// 場面を作っている間は isGenerating で、ホストはもう一度スタートできない。round が届くと終わる
+  @Test func generating() {
+    let session = session()
+    session.handle(.room(RoomState(code: "0427", members: [member("me", isSelf: true, isHost: true)])))
+    session.handle(.generating(RoomState(code: "0427", members: [member("me", isSelf: true, isHost: true)])))
+    #expect(session.isGenerating)
+    #expect(session.phase == .lobby)
+    let info = RoundInfo(sceneID: "gen-abcdefghij", startsAt: Date(), room: "0427")
+    session.handle(.roundStarted(info))
+    #expect(!session.isGenerating)
+    #expect(session.phase == .playing(info))
+  }
+
   /// もう一度で待合に戻ったときも、届いた members に合わせる
   @Test func returnedToLobby() {
     let session = session()

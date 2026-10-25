@@ -14,6 +14,8 @@ struct DioramaView: View {
   var startsAt: Date?
   /// カメラから見る点までの距離（m）。小さく出すときは近づけて、場面を枠いっぱいに出す
   var distance: Float = 7.8
+  /// 部屋のコード。部屋がその場で AI で作った場面の配置を取るときに付ける
+  var room: String?
 
   /// 形が出たか。読み込み済みなら最初から出す。まだなら、読み込めたらふわっと出す
   @State private var isShown: Bool
@@ -21,12 +23,13 @@ struct DioramaView: View {
   @State private var failed = false
   @State private var motion = SceneMotionDriver()
 
-  init(sceneID: String, yaw: Double, tilt: Double, startsAt: Date? = nil, distance: Float = 7.8) {
+  init(sceneID: String, yaw: Double, tilt: Double, startsAt: Date? = nil, distance: Float = 7.8, room: String? = nil) {
     self.sceneID = sceneID
     self.yaw = yaw
     self.tilt = tilt
     self.startsAt = startsAt
     self.distance = distance
+    self.room = room
     _isShown = State(initialValue: SceneLibrary.shared.isLoaded(sceneID))
   }
 
@@ -44,7 +47,7 @@ struct DioramaView: View {
       content.add(camera)
       Self.apply(yaw: yaw, tilt: tilt, distance: distance, world: world, camera: camera)
 
-      if let scene = await SceneLibrary.shared.instance(of: sceneID) {
+      if let scene = await SceneLibrary.shared.instance(of: sceneID, room: room) {
         world.addChild(scene.root)
         motion.start(scene.moving, from: startsAt ?? Date())
       } else {

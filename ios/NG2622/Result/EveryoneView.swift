@@ -14,7 +14,7 @@ struct EveryoneView: View {
         .padding(.top, 8)
       ScrollView {
         VStack(spacing: 14) {
-          EveryoneScene(sceneID: results.sceneID, appearedAt: appearedAt)
+          EveryoneScene(sceneID: results.sceneID, room: results.room, appearedAt: appearedAt)
           ForEach(results.players) { p in
             TranscriptCard(player: p)
           }
@@ -30,13 +30,15 @@ struct EveryoneView: View {
 /// このラウンドの場面。描写と見比べられるよう、ゆっくり回し続ける。触れない
 private struct EveryoneScene: View {
   let sceneID: String
+  /// 部屋のコード。部屋がその場で作った場面の配置を取るときに付ける
+  let room: String?
   let appearedAt: Date
 
   var body: some View {
     TimelineView(.animation) { context in
       // 1 秒に 12 度（30 秒で 1 周）。待機の画面と同じ
       let yaw = context.date.timeIntervalSince(appearedAt) * 12 - 20
-      DioramaView(sceneID: sceneID, yaw: yaw, tilt: SceneOrbit.defaultTilt, distance: 4.6)
+      DioramaView(sceneID: sceneID, yaw: yaw, tilt: SceneOrbit.defaultTilt, distance: 4.6, room: room)
     }
     .frame(maxWidth: .infinity)
     .frame(height: 190)

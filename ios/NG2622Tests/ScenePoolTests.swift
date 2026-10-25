@@ -140,18 +140,22 @@ struct ScenePoolTests {
   }
 
   /// Mock のホストが難易度でスタートすると、その難易度の作り置きの場面（例でないもの）でラウンドが始まる
+  /// 始まる前に、場面を作っている（generating）が届く
   @Test func mockStartsWithDifficulty() async throws {
-    let client = MockGameClient(options: .init(otherPlayers: 0), pool: .bundled)
+    let client = MockGameClient(options: .init(otherPlayers: 0, generatingDuration: 0.05), pool: .bundled)
     _ = try await client.createRoom(as: PlayerProfile(name: "たろう", color: 0x5B5BE6))
     try await client.startRound(difficulty: .hard)
     var sceneID: String?
+    var generated = false
     for await event in client.events {
+      if case .generating = event { generated = true }
       if case .roundStarted(let info) = event {
         sceneID = info.sceneID
         break
       }
     }
     client.leaveRoom()
+    #expect(generated)
     #expect(ScenePool.bundled.candidates(of: .hard).contains(sceneID ?? ""))
     #expect(sceneID != ScenePool.bundled.example(of: .hard))
   }
@@ -165,15 +169,20 @@ struct ScenePoolTests {
     #expect(remote.requested.isEmpty)
     #expect(try await client.layout(sceneID: "gen-notbundled").name == "遠くの場面")
     #expect(remote.requested == ["gen-notbundled"])
+    // 部屋がその場で作った場面は、部屋のコードを付けて取りに行く
+    _ = try await client.layout(sceneID: "gen-fresh", room: "0427")
+    #expect(remote.rooms.last == "0427")
   }
 }
 
 /// 呼ばれた sceneId を覚え、いつも同じ配置を返す
 private final class RecordingLayoutClient: SceneLayoutClient {
   private(set) var requested: [String] = []
+  private(set) var rooms: [String?] = []
 
-  func layout(sceneID: String) async throws -> SceneLayout {
+  func layout(sceneID: String, room: String?) async throws -> SceneLayout {
     requested.append(sceneID)
+    rooms.append(room)
     return try SceneLayout.decode(Data(#"{"protocol":"scenenglish.scene/1","name":"遠くの場面","items":[]}"#.utf8))
   }
 }

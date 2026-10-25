@@ -49,13 +49,15 @@ struct LiveRoomTracker {
       hostID = room.hostId
       // ラウンド中と結果発表の room は、参加者の名前と色を覚えるだけ（状態は続けて届く progress で渡す）。
       // ただしホストが抜けて替わったら、新しいホストがスタート・締め切り・もう一度を押せるよう知らせる
-      guard room.phase == .lobby else {
+      guard Self.inLobby(room.phase) else {
         guard let previousHost, previousHost != room.hostId else { return [] }
         return [.event(.hostChanged(isSelf: room.hostId == selfID))]
       }
       let state = RoomState(code: room.roomId, members: room.players.map(lobbyParticipant))
+      // 場面を作っている間も待合の画面のまま。参加者とホストは待合と同じように渡す
+      if room.phase == .generating { return [.event(.generating(state))] }
       // 結果発表（かラウンド中）から待合に戻った。ホストの again か、つなぎ直したら戻っていた
-      if let previous, previous != .lobby { return [.event(.returnedToLobby(state))] }
+      if let previous, !Self.inLobby(previous) { return [.event(.returnedToLobby(state))] }
       return [.event(.room(state))]
 
     case .round(let message):
@@ -63,7 +65,8 @@ struct LiveRoomTracker {
       guard message.round != round else { return [] }
       round = message.round
       let info = RoundInfo(
-        sceneID: message.sceneId, startsAt: Self.startDate(fromMilliseconds: message.startAt, receivedAt: now()))
+        sceneID: message.sceneId, startsAt: Self.startDate(fromMilliseconds: message.startAt, receivedAt: now()),
+        room: roomID)
       return [.event(.roundStarted(info))]
 
     case .progress(let progress):
@@ -79,11 +82,18 @@ struct LiveRoomTracker {
     case .results(let results):
       guard results.round != resultsRound else { return [] }
       resultsRound = results.round
-      return [.event(.results(RoundResults(results, selfID: selfID)))]
+      var roundResults = RoundResults(results, selfID: selfID)
+      roundResults.room = roomID
+      return [.event(.results(roundResults))]
 
     case .error(let error):
       return [.error(code: error.code, message: error.message)]
     }
+  }
+
+  /// 待合の画面を出す phase（待合と、スタートを受けて場面を作っている間）
+  static func inLobby(_ phase: Schemas.RoomPhase) -> Bool {
+    phase == .lobby || phase == .generating
   }
 
   /// 待合での参加者。つながっていない人は切断中

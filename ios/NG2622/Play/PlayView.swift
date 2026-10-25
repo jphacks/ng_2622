@@ -147,7 +147,8 @@ struct PlayView: View {
 
   private var scene: some View {
     ZStack {
-      DioramaView(sceneID: round.sceneID, yaw: orbit.yaw, tilt: orbit.tilt, startsAt: round.startsAt)
+      DioramaView(
+        sceneID: round.sceneID, yaw: orbit.yaw, tilt: orbit.tilt, startsAt: round.startsAt, room: round.room)
         .allowsHitTesting(false)
       // 指の操作はこの面で受ける（録音中だけ）
       Color.clear

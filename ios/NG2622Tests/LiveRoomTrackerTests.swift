@@ -57,7 +57,11 @@ struct LiveRoomTrackerTests {
     #expect(tracker.apply(try message(room("playing"))) == [])
     let json = #"{"type":"round","round":1,"sceneId":"park","startAt":1792800000500}"#
     let start = Date(timeIntervalSince1970: 1_792_800_000.5)
-    #expect(tracker.apply(try message(json)) == [.event(.roundStarted(RoundInfo(sceneID: "park", startsAt: start)))])
+    // 部屋のコードも付ける（部屋がその場で作った場面の配置を取るときに要る）
+    #expect(
+      tracker.apply(try message(json)) == [
+        .event(.roundStarted(RoundInfo(sceneID: "park", startsAt: start, room: "0427")))
+      ])
     #expect(tracker.round == 1)
     #expect(tracker.apply(try message(json)) == [])
   }
@@ -109,6 +113,7 @@ struct LiveRoomTrackerTests {
       return
     }
     #expect(results.sceneID == "park")
+    #expect(results.room == "0427")
     #expect(results.sceneName == "公園")
     #expect(results.players.map(\.id) == [host, me, other])
     #expect(results.players[1].isSelf)
@@ -176,6 +181,33 @@ struct LiveRoomTrackerTests {
     }
   }
 
+  /// スタートを受けて場面を作っている room（generating）は、待合と同じ参加者の一覧で generating になる。
+  /// 作り終えて round が届けば始まり、待合に戻る扱い（returnedToLobby）にはしない
+  @Test func generating() throws {
+    var tracker = try joined()
+    let updates = tracker.apply(try message(room("generating")))
+    guard case .event(.generating(let state)) = updates.first, updates.count == 1 else {
+      Issue.record("generating でない: \(updates)")
+      return
+    }
+    #expect(state.code == "0427")
+    #expect(state.members.map(\.isHost) == [true, false, false])
+    let round = tracker.apply(try message(#"{"type":"round","round":1,"sceneId":"gen-abcdefghij","startAt":0}"#))
+    guard case .event(.roundStarted(let info)) = round.first else {
+      Issue.record("roundStarted でない: \(round)")
+      return
+    }
+    #expect(info.sceneID == "gen-abcdefghij")
+    #expect(info.room == "0427")
+    // 作れずに待合へ戻ったときも、ふつうの room
+    var other = try joined()
+    _ = other.apply(try message(room("generating")))
+    guard case .event(.room) = other.apply(try message(room("lobby"))).first else {
+      Issue.record("room でない")
+      return
+    }
+  }
+
   @Test func error() throws {
     var tracker = try joined()
     let updates = tracker.apply(try message(#"{"type":"error","code":"not_in_lobby","message":"始まっている"}"#))
@@ -216,6 +248,7 @@ struct LiveRoomTrackerTranscriptTests {
         case .welcome: kinds.append("welcome")
         case .error(let code, _): kinds.append("error:\(code.rawValue)")
         case .event(.room): kinds.append("room")
+        case .event(.generating): kinds.append("generating")
         case .event(.roundStarted): kinds.append("round")
         case .event(.participantsChanged(let list)): kinds.append("progress:" + list.map { "\($0.status)" }.joined(separator: ","))
         case .event(.results(let results)):

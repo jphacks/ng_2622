@@ -29,6 +29,9 @@ protocol GameClient: AnyObject {
 enum GameEvent: Sendable, Equatable {
   /// 部屋の参加者と接続の状態（room）
   case room(RoomState)
+  /// ホストのスタートを受けて、部屋が場面を AI で作っている（room の phase が generating）。
+  /// 作り終えると round が届く。作らない・作れなかったときは、これを飛ばして round が届く
+  case generating(RoomState)
   /// ラウンドが始まった。全員の端末で同じ時刻に回転を始める（round）
   case roundStarted(RoundInfo)
   /// ラウンド中の各自の状態が変わった（progress）
@@ -75,6 +78,8 @@ struct RoundInfo: Sendable, Equatable {
   let sceneID: String
   /// 回転を始める時刻
   let startsAt: Date
+  /// 部屋のコード。部屋がその場で AI で作った場面（作り置きに無い）の配置を取るときに付ける。Mock は nil
+  var room: String? = nil
 }
 
 struct Participant: Identifiable, Sendable, Equatable {
