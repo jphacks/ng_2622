@@ -101,7 +101,7 @@ private struct ScenePicker: View {
         Spacer()
         randomButton
       }
-      HStack(spacing: 8) {
+      LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 8), count: 3), spacing: 10) {
         ForEach(SceneCatalog.all) { scene in
           tile(scene)
         }
@@ -138,9 +138,9 @@ private struct ScenePicker: View {
     return Button {
       selected = scene.id
     } label: {
-      VStack(spacing: 5) {
+      VStack(spacing: 4) {
         Color.clear
-          .aspectRatio(1.4, contentMode: .fit)
+          .aspectRatio(1.55, contentMode: .fit)
           .overlay {
             if let image = SceneCatalog.thumbnail(scene.id) {
               Image(uiImage: image)
@@ -156,6 +156,8 @@ private struct ScenePicker: View {
         Text(scene.name)
           .font(Theme.font(14, .heavy))
           .foregroundStyle(on ? Theme.accent : Theme.ink)
+          .lineLimit(1)
+          .minimumScaleFactor(0.85)
         RatingBadge(rating: ratings[scene.id])
       }
       .frame(maxWidth: .infinity)
