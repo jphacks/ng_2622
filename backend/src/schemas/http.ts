@@ -148,7 +148,12 @@ export const SubmitAudioResponse = z
       "受け取って採点を始めた。点数は返さず、全員の採点がそろったら WebSocket の results で届く",
   });
 
-const Vector = z.tuple([z.number(), z.number(), z.number()]);
+// z.tuple は OpenAPI で prefixItems になり、iOS の swift-openapi-generator が読めない。
+// 長さ 3 の配列として書き出し、型だけ 3 つの組に戻す
+const Vector = z
+  .array(z.number())
+  .length(3)
+  .transform((v) => v as [number, number, number]);
 
 export const ScoringLayout = z
   .object({
