@@ -1,7 +1,7 @@
 # 収益モデルの試算
 
 > 調査と試算（2026-10-26、@TEIKOTA の依頼で実行）。README の「今後の展望」の「収益モデル」の元。
-> グラフ入りの版は [`revenue-model.html`](./revenue-model.html)。作るスクリプトは [`scripts/revenue/build.py`](../../../scripts/revenue/build.py) で、前提の数字はその先頭にまとめてある。
+> グラフ入りの版は [`scripts/revenue/build.py`](../../../scripts/revenue/build.py) で作れる（`docs/design/research/build/` に出し、commit しない）。前提の数字はスクリプトの先頭にまとめてある。
 > 数字は公開されている料金と業界の数字に前提を置いた試算で、利用者の実測ではない。
 
 ## 検討した案

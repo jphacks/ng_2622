@@ -1,6 +1,6 @@
 """収益モデルの試算を 1 つの HTML に生成する。
 
-  出力  docs/design/research/revenue-model.html（commit する。グラフは PNG で埋め込み、外部の CDN は使わない）
+  出力  docs/design/research/build/revenue-model.html（gitignore。グラフは PNG で埋め込み、外部の CDN は使わない）
 
 前提の数字はこのファイルの先頭にまとめてある。変えたら再実行し、docs/design/research/revenue-model.md の数字も合わせて直す。
 
@@ -21,7 +21,7 @@ plt.rcParams["font.family"] = ["Hiragino Sans", "Noto Sans JP", "sans-serif"]
 plt.rcParams["axes.spines.top"] = False
 plt.rcParams["axes.spines.right"] = False
 
-OUT = Path(__file__).resolve().parents[2] / "docs/design/research/revenue-model.html"
+OUT = Path(__file__).resolve().parents[2] / "docs/design/research/build/revenue-model.html"
 
 # ---- 前提（出典は HTML の末尾） ----
 FX = 158  # 円 / USD（2026-10-07 の相場。scene-generation-cost.md と同じ）
@@ -185,6 +185,7 @@ def main():
         R2=breakeven_rounds(0.02), R3=breakeven_rounds(0.03), R5=breakeven_rounds(0.05), C10=breakeven_conv(10) * 100,
         IMPS=AD_IMPS, CPM=AD_CPM_JPY, FILL=AD_FILL * 100,
     )
+    OUT.parent.mkdir(parents=True, exist_ok=True)
     OUT.write_text(html, encoding="utf-8")
     print(f"wrote {OUT}")
     print(f"free cost A={fa:.1f} B={fb:.1f} ad={AD_PER_FREE:.1f} prem cost={pc:.0f} margin={PREM_NET-pc:.0f} breakeven={be_a:.1f}%")
