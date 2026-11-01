@@ -19,11 +19,12 @@ backend/src/scenes/pool/ AI で作り置いた場面（配置の JSON）と、�
 docs/adr/         設計・運用の意思決定ログ
 docs/design/      仕様の正本（使い方・画面の流れ・アーキテクチャ・採点・コスト対策）
 docs/design/ui/   画面設計書の元データ（screens/*.md、仮の画面の画像）
+docs/app-store/   App Store への申請の手順と入れる値、スクリーンショット（プライバシーポリシーは docs/privacy-policy.md）
 assets/scenes/    3D シーン（USDZ）と採点用の場面の説明（JSON）。scripts/scene/ が Blender で生成する
 assets/parts/     シーンを組み立てる作り置きの部品（USDZ とメタデータの JSON）。scripts/scene/parts.py が Blender で生成する
 ios/              iOS アプリ（SwiftUI）と unit test（ios/NG2622Tests）。xcodegen で ios/project.yml から作り、.xcodeproj は commit しない
 ios/Packages/     iOS のローカルの Swift パッケージ。BackendAPI は backend/openapi.json から API の型をビルドのたびに作る
-scripts/          規約の検査スクリプト、GitHub 設定スクリプト、画面設計書の生成（ui-spec/）、3D シーンの生成（scene/）
+scripts/          規約の検査スクリプト、GitHub 設定スクリプト、画面設計書の生成（ui-spec/）、3D シーンの生成（scene/）、アプリのアイコンの生成（app-icon/）
 tests/            scripts/ の self-test
 lefthook.yml      git hook（pre-commit / commit-msg / pre-push）
 biome.json        Biome（TypeScript・JSON などの整形と lint）の設定
@@ -99,6 +100,8 @@ open ios/NG2622.xcodeproj                   # scheme「NG2622 Mock」（仮の�
 xcodebuild -project ios/NG2622.xcodeproj -scheme "NG2622 Mock" -destination 'generic/platform=iOS Simulator' -skipPackagePluginValidation build   # コマンドラインでビルドするときは -skipPackagePluginValidation を付ける
 (cd ios/Packages/BackendAPI && swift test)  # WebSocket のメッセージが openapi.json から作った型で読めるか、BearerToken が合言葉を付けるかを確かめる（Mac で動く。シミュレータは要らない）
 xcodebuild -project ios/NG2622.xcodeproj -scheme "NG2622 Mock" -destination 'platform=iOS Simulator,name=iPhone 18 Pro' -skipPackagePluginValidation test   # アプリの unit test（ios/NG2622Tests。部屋のメッセージの変換など）
+# App Store に出すときは scheme「NG2622 Store」（Release-Store。Local.xcconfig を読まない）で Archive する。手順は docs/app-store/README.md
+blender --background --factory-startup --python scripts/app-icon/render_park.py && uv run --with pillow python3 scripts/app-icon/build.py  # アプリのアイコンを作り直す
 TEST_RUNNER_LIVE_BACKEND_URL=http://localhost:8787 xcodebuild -project ios/NG2622.xcodeproj -scheme "NG2622 Live" -destination 'platform=iOS Simulator,name=iPhone 18 Pro' -skipPackagePluginValidation test   # 手元のバックエンド（pnpm dev）に LiveGameClient を 2 つつなぐ結合テストも動かす
 ```
 

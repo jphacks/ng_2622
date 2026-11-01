@@ -1,0 +1,10 @@
+// App Store に出すビルドの構成（scheme「NG2622 Store」の Archive が使う）。本番のバックエンドにつなぐ
+// 各自の Local.xcconfig は読まない（bundle ID・チーム・つなぎ先が人によって変わらないように）
+#include "Shared.xcconfig"
+
+BACKEND_MODE = live
+SCENE_PICK = difficulty
+
+// ストアに出す bundle ID と、配る Apple Developer のチーム（高橋の個人チーム）。チーム ID は秘密ではない
+PRODUCT_BUNDLE_IDENTIFIER = jp.jphacks.ng2622.app
+DEVELOPMENT_TEAM = PHYJ4DL63M

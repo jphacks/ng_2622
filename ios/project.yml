@@ -12,11 +12,14 @@ configs:
   Release-Mock: release
   Debug-Live: debug
   Release-Live: release
+  # App Store に出すビルド（Config/Store.xcconfig）。Local.xcconfig を読まない
+  Release-Store: release
 configFiles:
   Debug-Mock: Config/Mock.xcconfig
   Release-Mock: Config/Mock.xcconfig
   Debug-Live: Config/Live.xcconfig
   Release-Live: Config/Live.xcconfig
+  Release-Store: Config/Store.xcconfig
 settings:
   base:
     SWIFT_VERSION: "6.0"
@@ -56,8 +59,20 @@ targets:
         INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone: UIInterfaceOrientationPortrait
         INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad: "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight"
         INFOPLIST_KEY_UIApplicationSceneManifest_Generation: YES
-        MARKETING_VERSION: "0.1.0"
+        INFOPLIST_KEY_LSApplicationCategoryType: public.app-category.education
+        # 通信は HTTPS（OS の暗号）だけなので、App Store Connect の輸出規制の質問を毎回聞かれないようにする
+        INFOPLIST_KEY_ITSAppUsesNonExemptEncryption: NO
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
+        # ストアに出すたびに上げる。MARKETING_VERSION は見せる版、CURRENT_PROJECT_VERSION は同じ版の中で毎回上げるビルド番号
+        MARKETING_VERSION: "1.0.0"
         CURRENT_PROJECT_VERSION: "1"
+      configs:
+        # 実機から Mac の IP の手元のバックエンドにつなぐときの、ローカルネットワークの許可の説明。開発のときだけ入れる
+        # （ストアのビルドに「開発用」の説明を残さない）
+        Debug-Mock:
+          INFOPLIST_KEY_NSLocalNetworkUsageDescription: 開発用に、同じ Wi-Fi の Mac で動かしているバックエンドにつなぐために使います。
+        Debug-Live:
+          INFOPLIST_KEY_NSLocalNetworkUsageDescription: 開発用に、同じ Wi-Fi の Mac で動かしているバックエンドにつなぐために使います。
     # 場面を組み立てる部品は、アプリが読む index.json と <id>/<version>.usdz だけを assets/parts から写す（ios/ には写さない）。
     # フォルダごと入れると README.md・contact_sheet.png・メタデータの <version>.json・手元の build/ まで入ってしまう。
     # どの部品も 1.usdz なので、平らに並べると名前がぶつかる。アプリの中では parts/<id>/<version>.usdz になる
@@ -90,6 +105,20 @@ targets:
     # BackendAPI はアプリに静的に入っている（test から直接つなぐと動的なフレームワークになり、リンクできない）
     dependencies:
       - target: NG2622
+  # App Store のスクリーンショットを撮る UI テスト（SCREENSHOT_DIR があるときだけ撮る。docs/app-store/README.md）
+  NG2622UITests:
+    type: bundle.ui-testing
+    platform: iOS
+    sources:
+      - path: NG2622UITests
+    settings:
+      base:
+        GENERATE_INFOPLIST_FILE: YES
+        PRODUCT_BUNDLE_IDENTIFIER: "$(inherited).uitests"
+        # XCTestCase は MainActor ではないので、アプリの既定（MainActor）を外す
+        SWIFT_DEFAULT_ACTOR_ISOLATION: nonisolated
+    dependencies:
+      - target: NG2622
 schemes:
   NG2622 Mock:
     build:
@@ -101,6 +130,7 @@ schemes:
       config: Debug-Mock
       targets:
         - NG2622Tests
+        - NG2622UITests
     profile:
       config: Release-Mock
     analyze:
@@ -123,3 +153,16 @@ schemes:
       config: Debug-Live
     archive:
       config: Release-Live
+  # App Store に出すビルド。Product > Archive で Release-Store を作り、Organizer から App Store Connect に上げる
+  NG2622 Store:
+    build:
+      targets:
+        NG2622: all
+    run:
+      config: Release-Store
+    profile:
+      config: Release-Store
+    analyze:
+      config: Release-Store
+    archive:
+      config: Release-Store
