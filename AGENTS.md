@@ -19,7 +19,7 @@ backend/src/scenes/pool/ AI で作り置いた場面（配置の JSON）と、�
 docs/adr/         設計・運用の意思決定ログ
 docs/design/      仕様の正本（使い方・画面の流れ・アーキテクチャ・採点・コスト対策）
 docs/design/ui/   画面設計書の元データ（screens/*.md、仮の画面の画像）
-docs/app-store/   App Store への申請の手順と入れる値、スクリーンショット（プライバシーポリシーは docs/privacy-policy.md）
+docs/app-store/   App Store への申請の手順と入れる値、スクリーンショット（プライバシーポリシーはルートの PRIVACY_POLICY.md）
 assets/scenes/    3D シーン（USDZ）と採点用の場面の説明（JSON）。scripts/scene/ が Blender で生成する
 assets/parts/     シーンを組み立てる作り置きの部品（USDZ とメタデータの JSON）。scripts/scene/parts.py が Blender で生成する
 ios/              iOS アプリ（SwiftUI）と unit test（ios/NG2622Tests）。xcodegen で ios/project.yml から作り、.xcodeproj は commit しない

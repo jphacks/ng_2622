@@ -14,7 +14,7 @@ ScenEnglish を App Store に出すための手順と、App Store Connect に入
 | scheme | `NG2622 Store` |
 | アイコン | [`ios/NG2622/Assets.xcassets/AppIcon.appiconset/AppIcon.png`](../../ios/NG2622/Assets.xcassets/AppIcon.appiconset/AppIcon.png)（作り方は [`scripts/app-icon/build.py`](../../scripts/app-icon/build.py)） |
 | プライバシーマニフェスト | [`ios/NG2622/App/PrivacyInfo.xcprivacy`](../../ios/NG2622/App/PrivacyInfo.xcprivacy) |
-| プライバシーポリシー | <https://github.com/jphacks/ng_2622/blob/main/docs/privacy-policy.md>（[`docs/privacy-policy.md`](../privacy-policy.md)） |
+| プライバシーポリシー | <https://github.com/jphacks/ng_2622/blob/main/PRIVACY_POLICY.md>（[`PRIVACY_POLICY.md`](../../PRIVACY_POLICY.md)）。**提出より前に main に入っている必要がある** |
 | スクリーンショット | [`screenshots/`](./screenshots/)（6.9 インチ、1320 × 2868） |
 
 ## 手順
@@ -87,7 +87,7 @@ Mock の仮の結果（`MockResults.swift`）は公園の場面向けの文な�
 | カテゴリ | プライマリ 教育、セカンダリ ゲーム（サブカテゴリ 教育 / Word） |
 | コンテンツの権利 | 第三者のコンテンツを含まない（3D の部品は自作、文と講評は AI が生成） |
 | 年齢制限 | 下の「年齢制限の質問」 |
-| プライバシーポリシーの URL | <https://github.com/jphacks/ng_2622/blob/main/docs/privacy-policy.md> |
+| プライバシーポリシーの URL | <https://github.com/jphacks/ng_2622/blob/main/PRIVACY_POLICY.md> |
 
 ### 価格と配信
 
