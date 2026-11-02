@@ -46,6 +46,8 @@ targets:
     settings:
       base:
         PRODUCT_NAME: NG2622
+        # iPhone だけで配る。xcodegen は target に iPad も入れる（"1,2"）ので、上の base の値ではなく target に書く
+        TARGETED_DEVICE_FAMILY: "1"
         CODE_SIGN_STYLE: Automatic
         # 署名のチーム ID と bundle ID は Config/Local.xcconfig（各自で作る）から入る
         GENERATE_INFOPLIST_FILE: YES
@@ -65,7 +67,7 @@ targets:
         ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
         # ストアに出すたびに上げる。MARKETING_VERSION は見せる版、CURRENT_PROJECT_VERSION は同じ版の中で毎回上げるビルド番号
         MARKETING_VERSION: "1.0.0"
-        CURRENT_PROJECT_VERSION: "1"
+        CURRENT_PROJECT_VERSION: "2"
       configs:
         # 実機から Mac の IP の手元のバックエンドにつなぐときの、ローカルネットワークの許可の説明。開発のときだけ入れる
         # （ストアのビルドに「開発用」の説明を残さない）
