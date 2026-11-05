@@ -23,8 +23,6 @@
 		<key>NSAllowsLocalNetworking</key>
 		<true/>
 	</dict>
-	<!-- 実機から Mac の IP につなぐときに出る、ローカルネットワークの許可の説明 -->
-	<key>NSLocalNetworkUsageDescription</key>
-	<string>開発用に、同じ Wi-Fi の Mac で動かしているバックエンドにつなぐために使います。</string>
+	<!-- 実機から Mac の IP につなぐときのローカルネットワークの許可の説明は、開発の構成だけに入れる（project.yml の configs） -->
 </dict>
 </plist>
