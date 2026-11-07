@@ -8,6 +8,13 @@ struct WaitingView: View {
   let enteredAt: Date
 
   @State private var confirming = false
+  /// 正答例の読み上げ。押した人の端末でだけ流す
+  @State private var voice = ModelVoice()
+
+  /// まだ話している人がいる間は読み上げない（その人のマイクに入り、文字起こしと発音の採点がずれるため）
+  private var someoneTalking: Bool {
+    session.participants.contains { $0.status == .talking }
+  }
 
   var body: some View {
     VStack(spacing: 0) {
@@ -16,7 +23,7 @@ struct WaitingView: View {
           if let round {
             WaitingScene(round: round, enteredAt: enteredAt)
             if let answer = SceneCatalog.description(of: round.sceneID) {
-              ModelAnswer(text: answer, startsAt: enteredAt)
+              ModelAnswer(text: answer, startsAt: enteredAt, voice: voice, canSpeak: !someoneTalking)
             }
           }
           ParticipantList(participants: session.participants)
@@ -52,6 +59,7 @@ struct WaitingView: View {
     .onChange(of: session.isRoundOver) { _, over in
       if over { confirming = false }
     }
+    .onDisappear { voice.stop() }
   }
 }
 
@@ -77,19 +85,30 @@ private struct WaitingScene: View {
   }
 }
 
-/// 正答例（場面の英語の説明）。AI が文を作るように、startsAt から少しずつ出して RoundTiming.answerReveal で出し切る
+/// 正答例（場面の英語の説明）。AI が文を作るように、startsAt から少しずつ出して RoundTiming.answerReveal で出し切る。
+/// 右上のボタンで、発音のお手本として読み上げる（話している人がいる間は押せない）
 private struct ModelAnswer: View {
   let text: String
   let startsAt: Date
+  let voice: ModelVoice
+  let canSpeak: Bool
 
   var body: some View {
     VStack(alignment: .leading, spacing: 8) {
-      Text("正答例")
-        .font(Theme.font(12, .heavy))
-        .foregroundStyle(Theme.accent)
-        .padding(.horizontal, 10)
-        .padding(.vertical, 3)
-        .background(Theme.accentSoft, in: Capsule())
+      HStack {
+        Text("正答例")
+          .font(Theme.font(12, .heavy))
+          .foregroundStyle(Theme.accent)
+          .padding(.horizontal, 10)
+          .padding(.vertical, 3)
+          .background(Theme.accentSoft, in: Capsule())
+        Spacer()
+        let speaking = voice.speakingText == text
+        SpeakButton(isPlaying: speaking, label: "正答例のお手本を聞く") {
+          if speaking { voice.stop() } else { voice.speak(text) }
+        }
+        .disabled(!canSpeak && !speaking)
+      }
       TimelineView(.animation) { context in
         let progress = min(1, max(0, context.date.timeIntervalSince(startsAt) / RoundTiming.answerReveal))
         // 出し切ったときの大きさで場所を取り、文が伸びてもカードの大きさを変えない

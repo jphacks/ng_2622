@@ -24,7 +24,7 @@ const env = {
   SCORING_MODE: "live",
 };
 
-const stubFetch = (claudeBodies: string[]) => {
+const stubFetch = (claudeBodies: string[], words: unknown[] = []) => {
   globalThis.fetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
     const url = String(input instanceof Request ? input.url : input);
     if (url.includes("stt.speech.microsoft.com")) {
@@ -36,7 +36,7 @@ const stubFetch = (claudeBodies: string[]) => {
             AccuracyScore: 90,
             FluencyScore: 70,
             ProsodyScore: 80,
-            Words: [],
+            Words: words,
           },
         ],
       });
@@ -104,6 +104,32 @@ test("作り置きの場面でも、端末の文字起こしがあれば Claude 
   const user = JSON.parse(bodies[0]).messages[0].content as string;
   assert.match(user, new RegExp(`Transcript: ${device}`));
   assert.equal(r.transcript, device);
+});
+
+test("Azure の単語ごとの点と時刻（100 ナノ秒単位）を、ミリ秒にして結果に載せる", async () => {
+  stubFetch(
+    [],
+    [
+      { Word: "a", Offset: 5_000_000, Duration: 1_000_000, AccuracyScore: 98 },
+      {
+        Word: "man",
+        Offset: 6_100_000,
+        Duration: 3_200_000,
+        // 古い形式では点がこの下に入る
+        PronunciationAssessment: {
+          AccuracyScore: 41.6,
+          ErrorType: "Mispronunciation",
+        },
+      },
+      { Word: "", Offset: 0, Duration: 0, AccuracyScore: 0 },
+    ],
+  );
+  const r = await score(env, wav(), index.easy.scenes[0]);
+  assert.ok(r.ok, JSON.stringify(r));
+  assert.deepEqual(r.words, [
+    { word: "a", accuracy: 98, offsetMs: 500, durationMs: 100 },
+    { word: "man", accuracy: 42, offsetMs: 610, durationMs: 320 },
+  ]);
 });
 
 test("SCORING_MODE=fixed では作り置きの場面でも Claude を呼ばず固定の点", async () => {

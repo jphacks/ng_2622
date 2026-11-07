@@ -23,7 +23,11 @@ extension RoundResults {
         PlayerResult(
           id: p.id, name: p.name, color: p.color, isSelf: p.isSelf,
           score: sample.score, transcript: sample.transcript, comment: sample.review.strength))
-      if p.isSelf { myReview = sample.review }
+      if p.isSelf {
+        var review = sample.review
+        review.words = sample.words
+        myReview = review
+      }
     }
 
     // 点数の高い順。採点できなかった人は最後
@@ -45,6 +49,17 @@ private struct MockSample {
   var score: PlayerResult.Score {
     let total = (Double(content) * 0.5 + Double(expression) * 0.25 + Double(speaking) * 0.25).rounded()
     return PlayerResult.Score(content: content, expression: expression, speaking: speaking, total: Int(total))
+  }
+
+  /// 仮の単語ごとの点と位置。Azure と同じく、記号を除いた小文字の単語を 1 語 0.4 秒で並べる。
+  /// 話し方のコツが名指しした単語（無ければ最も長い単語）だけ 60 点未満にする
+  var words: [SpokenWord] {
+    let tokens = transcript.split(separator: " ").map(SpokenWord.normalized).filter { !$0.isEmpty }
+    let named = review.speechTip.split(separator: "“").dropFirst().first?.split(separator: "”").first.map(String.init)
+    let weak = named ?? tokens.max { $0.count < $1.count }
+    return tokens.enumerated().map { i, word in
+      SpokenWord(word: word, accuracy: word == weak ? 48 : 92, offsetMs: 300 + i * 400, durationMs: 340)
+    }
   }
 
   static func samples(for sceneID: String) -> [MockSample] {

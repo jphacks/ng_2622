@@ -7,12 +7,15 @@ final class VoicePlayer: NSObject, AVAudioPlayerDelegate {
   private(set) var isPlaying = false
   @ObservationIgnored private var player: AVAudioPlayer?
   @ObservationIgnored private var sessionActive = false
+  /// 一部だけ流すとき、終わりの時刻で止める
+  @ObservationIgnored private var stopTask: Task<Void, Never>?
 
   func toggle(_ audio: RecordedAudio) {
     if isPlaying { stop() } else { play(audio) }
   }
 
-  func play(_ audio: RecordedAudio) {
+  /// segment を渡すと、録音の頭からその範囲（秒）だけを流す（振り返りの単語の聞き比べ）
+  func play(_ audio: RecordedAudio, segment: Range<TimeInterval>? = nil) {
     stop()
     do {
       let session = AVAudioSession.sharedInstance()
@@ -22,15 +25,26 @@ final class VoicePlayer: NSObject, AVAudioPlayerDelegate {
       sessionActive = true
       let player = try AVAudioPlayer(contentsOf: audio.url)
       player.delegate = self
+      if let segment { player.currentTime = max(0, segment.lowerBound) }
       guard player.play() else { return finish() }
       self.player = player
       isPlaying = true
+      if let segment {
+        let id = ObjectIdentifier(player)
+        stopTask = Task { [weak self] in
+          try? await Task.sleep(for: .seconds(segment.upperBound - segment.lowerBound))
+          guard !Task.isCancelled, let self, let current = self.player, ObjectIdentifier(current) == id else { return }
+          self.stop()
+        }
+      }
     } catch {
       finish()
     }
   }
 
   func stop() {
+    stopTask?.cancel()
+    stopTask = nil
     player?.stop()
     finish()
   }

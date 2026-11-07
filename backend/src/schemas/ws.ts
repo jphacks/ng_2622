@@ -222,6 +222,19 @@ export const Feedback = z
   })
   .meta({ ref: "Feedback", description: "振り返りの講評" });
 
+export const SpokenWord = z
+  .object({
+    word: z.string(),
+    accuracy: z.int().min(0).max(100).meta({
+      description: "発音の正確さ（Azure の単語の AccuracyScore）",
+    }),
+    offsetMs: z.int().min(0).meta({
+      description: "録音の頭からの開始時刻（ミリ秒）",
+    }),
+    durationMs: z.int().min(0).meta({ description: "長さ（ミリ秒）" }),
+  })
+  .meta({ ref: "SpokenWord", description: "発話の 1 単語" });
+
 export const PlayerResult = z
   .object({
     id: PlayerId,
@@ -245,6 +258,10 @@ export const PlayerResult = z
     feedback: Feedback.nullable().meta({
       description:
         "振り返りに出す講評。全員分が届くが、詳しく出すのは本人の画面だけにする。採点できなかった人は null",
+    }),
+    words: z.array(SpokenWord).optional().meta({
+      description:
+        "発話の単語ごとの発音の点と、録音の中の位置（振り返りの単語の聞き比べに使う）。採点できなかった人・固定の点数のモードでは空。アプリとバックエンドは別々に出すので、この項目の無い results も読めるように省略可にしている",
     }),
   })
   .meta({ ref: "PlayerResult" });

@@ -29,11 +29,55 @@ struct RoundResults: Sendable, Equatable {
     let rewrite: Rewrite?
     /// 話し方のコツ
     let speechTip: String
+    /// 発話の単語ごとの発音の点と録音の中の位置（単語の聞き比べ）。届かなかったときは空
+    var words: [SpokenWord] = []
 
     struct Rewrite: Sendable, Equatable {
       let before: String
       let after: String
       let reason: String
+    }
+  }
+}
+
+/// 発話の 1 単語（Azure の発音評価の単語）。振り返りで、お手本と自分の録音のその部分を聞き比べる
+struct SpokenWord: Sendable, Equatable {
+  let word: String
+  /// 発音の正確さ（0〜100）
+  let accuracy: Int
+  /// 録音の頭からの開始時刻と長さ（ミリ秒）
+  let offsetMs: Int
+  let durationMs: Int
+
+  /// これより低い単語に色を付ける。バックエンドの話し方のコツ（feedback.ts の WEAK_WORD）と同じ 60 点
+  static let weakBelow = 60
+  var isWeak: Bool { accuracy < Self.weakBelow }
+
+  /// 自分の録音から流す範囲（秒）。Azure の区切りは詰まっているので、前後に少し余白を足す
+  var segment: Range<TimeInterval> {
+    let start = max(0, Double(offsetMs) / 1000 - 0.08)
+    let end = Double(offsetMs + durationMs) / 1000 + 0.12
+    return start..<max(end, start + 0.2)
+  }
+
+  /// 照らし合わせ用に、小文字にして英字・数字・アポストロフィ以外を除く（Azure の単語は記号の無い形で返る）
+  static func normalized(_ text: some StringProtocol) -> String {
+    let kept = text.lowercased().replacingOccurrences(of: "’", with: "'").unicodeScalars
+      .filter { CharacterSet.alphanumerics.contains($0) || $0 == "'" }
+    return String(String.UnicodeScalarView(kept))
+  }
+
+  /// 文字起こしを空白で区切った語に、words を前から順に当てる。表示は文字起こしのまま（大文字・記号つき）にするため。
+  /// Azure が語を落としたり分けたりしても続きを当てられるよう、3 語先まで探す。当たらない語は word が nil
+  static func align(transcript: String, words: [SpokenWord]) -> [(token: String, word: SpokenWord?)] {
+    var next = 0
+    return transcript.split(separator: " ").map { token in
+      let key = normalized(token)
+      guard !key.isEmpty,
+        let hit = words[next...].prefix(3).firstIndex(where: { normalized($0.word) == key })
+      else { return (String(token), nil) }
+      next = hit + 1
+      return (String(token), words[hit])
     }
   }
 }
