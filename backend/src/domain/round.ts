@@ -1,4 +1,5 @@
 import type { z } from "zod";
+import type { Difficulty } from "../scenes/pool";
 import type { PlayerStatus } from "../schemas/common";
 import type { PlayerResult, ResultsMessage } from "../schemas/ws";
 import type { Feedback } from "../scoring";
@@ -32,6 +33,8 @@ export type Round = {
   sceneId: string;
   /** AI で作った場面の名前（結果発表に出す）。作り置き・手作りの場面は sceneId から引くので無い */
   sceneName?: string;
+  /** 難易度（記録に残す）。手作りの場面（シーンを名指しして始めた）には無い */
+  difficulty?: Difficulty;
   /** 回転を始める時刻（UNIX 時刻のミリ秒） */
   startAt: number;
   /** スタートしたときに部屋にいた人。後から抜けた人は数えない */
@@ -48,14 +51,19 @@ type Status = z.infer<typeof PlayerStatus>;
 export const beginGrading = (
   state: RoomState,
   input: { playerId: string; round: number },
-): Result<{ state: RoomState; sceneId: string }> => {
+): Result<{ state: RoomState; sceneId: string; difficulty?: Difficulty }> => {
   const current = submittableRound(state, input);
   if (!current.ok) return current;
 
   const next = withGrade(state, current.value, input.playerId, {
     status: "grading",
   });
-  return ok({ state: settleRound(next), sceneId: current.value.sceneId });
+  const { sceneId, difficulty } = current.value;
+  return ok({
+    state: settleRound(next),
+    sceneId,
+    ...(difficulty ? { difficulty } : {}),
+  });
 };
 
 /** 音声なしで終える（マイクが使えないときなど）。その人は「採点できませんでした」になる */

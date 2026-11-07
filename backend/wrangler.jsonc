@@ -20,11 +20,12 @@
     "CLAUDE_EFFORT": "low",
     "SCENE_GENERATION": "on"
   },
-  // SCENE_REVIEWS はシーンの評価（全シーンで 1 つ）
+  // SCENE_REVIEWS はシーンの評価（全シーンで 1 つ）。PLAY_RECORDS は 1 人 1 ラウンドの記録（全部屋で 1 つ。利用実験の集計に使う）
   "durable_objects": {
     "bindings": [
       { "name": "ROOM", "class_name": "Room" },
-      { "name": "SCENE_REVIEWS", "class_name": "SceneReviews" }
+      { "name": "SCENE_REVIEWS", "class_name": "SceneReviews" },
+      { "name": "PLAY_RECORDS", "class_name": "PlayRecords" }
     ]
   },
   // 無料プランは SQLite 版のみ。出した tag は書き換えず、新しい tag で足す
@@ -33,7 +34,8 @@
     { "tag": "v1", "new_sqlite_classes": ["Room"] },
     { "tag": "v2", "new_sqlite_classes": ["SceneReviews"] },
     { "tag": "v3", "new_sqlite_classes": ["SceneRubrics"] },
-    { "tag": "v4", "deleted_classes": ["SceneRubrics"] }
+    { "tag": "v4", "deleted_classes": ["SceneRubrics"] },
+    { "tag": "v5", "new_sqlite_classes": ["PlayRecords"] }
   ],
   // PR ごとのプレビュー（wrangler preview）の設定。vars や DO の binding は上の階層から引き継がれないので、
   // プレビューでも使うものはここにも書く
@@ -46,7 +48,8 @@
     "durable_objects": {
       "bindings": [
         { "name": "ROOM", "class_name": "Room" },
-        { "name": "SCENE_REVIEWS", "class_name": "SceneReviews" }
+        { "name": "SCENE_REVIEWS", "class_name": "SceneReviews" },
+        { "name": "PLAY_RECORDS", "class_name": "PlayRecords" }
       ]
     }
   }

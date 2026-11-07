@@ -1,5 +1,7 @@
 import { fail, ok } from "../domain/result";
 import type { Grade } from "../domain/round";
+import type { PlayRecordInput } from "../durable-objects/playRecords";
+import type { PlayRecordRepository } from "../repositories/playRecordRepository";
 import type { RoomRepository } from "../repositories/roomRepository";
 import type { SceneLayout } from "../scenes/types";
 import { type ScoreResult, type ScoringEnv, score } from "../scoring";
@@ -44,7 +46,11 @@ export const submitAudio = async (
     audio: ArrayBuffer;
     /** 端末で文字起こしした発話。無ければ Azure の文字起こしを使う */
     transcript?: string;
+    /** 端末ごとの乱数の ID。あれば採点の結果を記録に残す（古いアプリは送らない） */
+    deviceId?: string;
   },
+  /** 記録の置き場所。無ければ記録しない */
+  records?: PlayRecordRepository,
 ) => {
   if (input.audio.byteLength > MAX_AUDIO_BYTES || !isWav(input.audio)) {
     return fail("invalid_audio", "1 MB までの WAV を送る");
@@ -67,7 +73,34 @@ export const submitAudio = async (
       playerId,
       grade: result ? toGrade(result) : { status: "failed" },
     });
+    if (result?.ok && records && input.deviceId) {
+      // 記録に失敗しても遊びは止めない
+      await records
+        .append(toRecord(result, input.deviceId, begun.value.difficulty))
+        .catch((e) => console.error("記録に失敗", e));
+    }
   };
   waitUntil(grade());
   return ok(null);
 };
+
+/** 採点できた 1 人分を、記録の 1 行にする。表示名は入れない */
+const toRecord = (
+  result: Extract<ScoreResult, { ok: true }>,
+  deviceId: string,
+  difficulty: string | undefined,
+): PlayRecordInput => ({
+  deviceId,
+  sceneId: result.sceneId,
+  difficulty: difficulty ?? null,
+  transcript: result.transcript,
+  content: result.content,
+  expression: result.expression,
+  speech: result.speech,
+  total: result.total,
+  accuracy: result.speechDetail.accuracy,
+  fluency: result.speechDetail.fluency,
+  prosody: result.speechDetail.prosody,
+  feedback: result.feedback,
+  elements: result.elements,
+});

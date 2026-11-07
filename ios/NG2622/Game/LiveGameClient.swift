@@ -167,13 +167,14 @@ final class LiveGameClient: GameClient {
   }
 
   /// POST /rooms/{roomId}/rounds/{round}/audio。X-Player-Id と Authorization: Bearer <合言葉> を付ける。
-  /// 文字起こしは X-Transcript に載せる（作った Client が URL エンコードする）
+  /// 文字起こしは X-Transcript に載せる（作った Client が URL エンコードする）。
+  /// X-Device-Id には場面の評価と同じ端末の乱数の ID を付け、バックエンドが利用実験の記録に残す（表示名は残さない）
   private func upload(_ data: Data, transcript: String?, round: Int) async throws {
     guard let roomID, let credentials else { throw GameError.connectionFailed }
     let client = APIClient.make(url: baseURL, middlewares: [BearerToken(credentials.token)])
     let output = try await client.submitAudio(
       path: .init(roomId: roomID, round: String(round)),
-      headers: .init(xPlayerId: credentials.playerID, xTranscript: transcript),
+      headers: .init(xPlayerId: credentials.playerID, xTranscript: transcript, xDeviceId: SceneReviews.reviewerID),
       body: .audioWav(HTTPBody(data)))
     switch output {
     case .accepted:

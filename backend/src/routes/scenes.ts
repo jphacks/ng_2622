@@ -24,7 +24,7 @@ import {
   submitReview,
 } from "../usecases/sceneReviews";
 import { generateScene } from "../usecases/scenes";
-import { type AppEnv, errorBody, jsonContent } from "./shared";
+import { type AppEnv, errorBody, hasBearerToken, jsonContent } from "./shared";
 
 const errorResponse = (description: string) => ({
   description,
@@ -37,26 +37,9 @@ const sceneIdParam = validator("param", SceneIdParam, (result, c) => {
   }
 });
 
-const encoder = new TextEncoder();
-
-/** Authorization: Bearer <SCENE_WRITE_TOKEN> か。合言葉が設定されていなければ通さない */
-const hasWriteToken = (
-  header: string | undefined,
-  token: string | undefined,
-) => {
-  if (!token || !header?.startsWith("Bearer ")) return false;
-  const a = encoder.encode(header.slice("Bearer ".length));
-  const b = encoder.encode(token);
-  if (a.byteLength !== b.byteLength) return false;
-  // 比べる時間が中身で変わらないよう、全部のバイトを見る（Workers の timingSafeEqual は Node のテストに無い）
-  let diff = 0;
-  for (let i = 0; i < a.byteLength; i++) diff |= a[i] ^ b[i];
-  return diff === 0;
-};
-
-/** 合言葉が要る口の前に置く。本文を読む前に断る */
+/** 合言葉（SCENE_WRITE_TOKEN）が要る口の前に置く。本文を読む前に断る */
 const requireWriteToken = createMiddleware<AppEnv>(async (c, next) => {
-  if (!hasWriteToken(c.req.header("authorization"), c.env.SCENE_WRITE_TOKEN)) {
+  if (!hasBearerToken(c.req.header("authorization"), c.env.SCENE_WRITE_TOKEN)) {
     return c.json(errorBody("unauthorized", "合言葉が違う"), 401);
   }
   await next();

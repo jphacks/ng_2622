@@ -61,6 +61,10 @@ export const AudioHeaders = z.object({
     description:
       "端末で文字起こしした発話を URL エンコードしたもの（元の文で 2000 文字まで）。あれば発音評価の正解文と内容・表現の採点に使い、無ければ Azure の文字起こしを使う",
   }),
+  "x-device-id": z.uuid().optional().meta({
+    description:
+      "端末ごとの乱数の ID（場面の評価の reviewerId と同じ）。あれば採点の結果を利用実験の記録に残す。表示名は残さない",
+  }),
 });
 
 export const Rating = z.int().min(1).max(5).meta({
@@ -390,3 +394,52 @@ export const GenerateSceneRequest = z
     }),
   })
   .meta({ ref: "GenerateSceneRequest" });
+
+// 利用実験の記録（GET /records）。チームが集計するための口で、アプリは呼ばない
+
+export const ListRecordsQuery = z.object({
+  after: z.coerce.number().int().min(0).default(0).meta({
+    description: "この id より後の行を返す（続きは前の応答の next を渡す）",
+  }),
+  limit: z.coerce.number().int().min(1).max(1000).default(500).meta({
+    description: "何件返すか（1〜1000、既定 500）",
+  }),
+});
+
+export const PlayRecord = z
+  .object({
+    id: z.int().min(1),
+    createdAt: z.iso.datetime(),
+    deviceId: z.string().meta({ description: "端末ごとの乱数の ID" }),
+    sceneId: z.string(),
+    difficulty: z
+      .string()
+      .nullable()
+      .meta({ description: "easy・normal・hard。手作りの場面は null" }),
+    transcript: z.string(),
+    words: z.int().min(0).meta({ description: "文字起こしの語数" }),
+    content: z.number(),
+    expression: z.number(),
+    speech: z.number(),
+    total: z.number(),
+    accuracy: z.number(),
+    fluency: z.number(),
+    prosody: z.number(),
+    feedback: z.unknown().meta({ description: "振り返りの講評" }),
+    elements: z.array(z.unknown()).meta({
+      description: "内容の要素ごとの判定（手作りの場面だけ）",
+    }),
+  })
+  .meta({
+    ref: "PlayRecord",
+    description: "1 人 1 ラウンドの記録。録音と表示名は残さない",
+  });
+
+export const ListRecordsResponse = z
+  .object({
+    records: z.array(PlayRecord).meta({ description: "古い順" }),
+    next: z.int().nullable().meta({
+      description: "続きがあれば、次に after に渡す id。無ければ null",
+    }),
+  })
+  .meta({ ref: "ListRecordsResponse" });

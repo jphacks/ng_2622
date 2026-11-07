@@ -121,6 +121,17 @@ main に `backend/` の変更が入ると、GitHub Actions（`.github/workflows/
   - 難易度（`start` の `difficulty`）を受けたら、`src/scenes/pool/index.json` のその難易度の場面から、その部屋でまだ出ていないものをランダムに選ぶ。全部出たら最初に戻る。生成が有効なら、先に部屋が AI で作る（「部屋で AI に作らせる」）。
   - シーン ID を受けたら、そのシーンにする。手作りの場面は採点と同じ `src/scoring/scenes.json` から読む。どちらも無ければ手作りの場面からおまかせで選ぶ。
 
+## 利用実験の記録（`src/durable-objects/playRecords.ts`）
+
+英語力がどれだけ伸びるか・続けて遊ぶかを数えるため、1 人 1 ラウンドの記録を残す。
+
+- 置き場所は SQLite の Durable Object `PlayRecords`（全部屋で 1 つ。`getByName("global")`）。
+- 音声に `X-Device-Id`（端末ごとの乱数の ID。場面の評価の `reviewerId` と同じ）が付いていて、採点できたときだけ 1 行足す。中身は、日時・端末の ID・場面と難易度・文字起こしと語数・点数・話し方の 3 つの点・講評・内容の要素ごとの判定。表示名と録音は残さない。
+- 180 日を過ぎた行は、書き込むたびに消す。
+- 記録への書き込みに失敗しても、遊び（採点と results）は止めない。
+- チームは `GET /records`（`Authorization: Bearer <RECORDS_TOKEN>`）で古い順に取る。`RECORDS_TOKEN` が入っていなければ誰も読めない（401）。本番とプレビューには「secret」の手順で入れる。
+- 端末ごとの推移（遊んだ日数・ラウンド数・語数と内容点の最初と最近）は `RECORDS_TOKEN=... python3 scripts/records/summary.py --url <バックエンドの URL>` で出す。
+
 ## API のスキーマ（OpenAPI）
 
 API の型は zod で書き、[hono-openapi](https://hono.dev/examples/hono-openapi) が OpenAPI を生成する。iOS はリポジトリにある `backend/openapi.json` から型を作る。

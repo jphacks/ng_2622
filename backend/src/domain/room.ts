@@ -212,6 +212,7 @@ export const finishGeneration = (
   return withRound(rest, {
     sceneId: input.scene.sceneId,
     sceneName: input.scene.name,
+    difficulty: generation.difficulty,
     now: input.now,
     connectedIds: input.connectedIds,
   });
@@ -254,6 +255,7 @@ const startPoolRound = (
     { ...state, playedSceneIds: picked.played },
     {
       sceneId: picked.sceneId,
+      difficulty: input.difficulty,
       now: input.now,
       connectedIds: input.connectedIds,
     },
@@ -266,6 +268,7 @@ const withRound = (
   input: {
     sceneId: string;
     sceneName?: string;
+    difficulty?: Difficulty;
     now: number;
     connectedIds: ReadonlySet<string>;
   },
@@ -274,6 +277,7 @@ const withRound = (
     round: (state.current?.round ?? 0) + 1,
     sceneId: input.sceneId,
     ...(input.sceneName !== undefined ? { sceneName: input.sceneName } : {}),
+    ...(input.difficulty !== undefined ? { difficulty: input.difficulty } : {}),
     startAt: input.now + START_DELAY_MS,
     playerIds: state.players
       .filter((p) => p.name !== null && input.connectedIds.has(p.id))

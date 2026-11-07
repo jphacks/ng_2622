@@ -82,7 +82,9 @@ export class Room extends DurableObject<CloudflareBindings> {
     playerId: string;
     token: string;
     round: number;
-  }): Promise<Result<{ sceneId: string; layout?: SceneLayout }>> {
+  }): Promise<
+    Result<{ sceneId: string; layout?: SceneLayout; difficulty?: Difficulty }>
+  > {
     const state = await this.load();
     if (!state) return fail("room_not_found", "部屋が無い");
     const player = authenticate(state, input.playerId, input.token);
@@ -91,9 +93,13 @@ export class Room extends DurableObject<CloudflareBindings> {
     const result = beginGrading(state, input);
     if (!result.ok) return result;
     await this.update(state, result.value.state);
-    const { sceneId } = result.value;
+    const { sceneId, difficulty } = result.value;
     const layout = await this.sceneLayout(sceneId);
-    return ok(layout ? { sceneId, layout } : { sceneId });
+    return ok({
+      sceneId,
+      ...(layout ? { layout } : {}),
+      ...(difficulty ? { difficulty } : {}),
+    });
   }
 
   /** この部屋で AI が作った場面の配置。無ければ null（作り置きの場面は置かない） */
