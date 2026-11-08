@@ -215,7 +215,10 @@ private struct TranscriptCard: View {
         // お手本を読んでいる間と、自分の録音のその単語を流している間だけ地を付ける
         let active =
           comparing == i && (wordPlayer.isPlaying || (item.word != nil && voice.speakingText == item.word?.word))
+        // 押せる語には点線の下線を引き、押せることが分かるようにする
         let label = Text(item.token)
+          .underline(
+            item.word != nil, pattern: .dot, color: item.word?.isWeak == true ? Theme.red : Theme.gray)
           .font(Theme.font(17, .bold))
           .foregroundStyle(item.word?.isWeak == true ? Theme.red : Theme.ink)
           .padding(.horizontal, 3)
