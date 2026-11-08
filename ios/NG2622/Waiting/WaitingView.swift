@@ -11,11 +11,6 @@ struct WaitingView: View {
   /// 正答例の読み上げ。押した人の端末でだけ流す
   @State private var voice = ModelVoice()
 
-  /// まだ話している人がいる間は読み上げない（その人のマイクに入り、文字起こしと発音の採点がずれるため）
-  private var someoneTalking: Bool {
-    session.participants.contains { $0.status == .talking }
-  }
-
   var body: some View {
     VStack(spacing: 0) {
       ScrollView {
@@ -23,7 +18,7 @@ struct WaitingView: View {
           if let round {
             WaitingScene(round: round, enteredAt: enteredAt)
             if let answer = SceneCatalog.description(of: round.sceneID) {
-              ModelAnswer(text: answer, startsAt: enteredAt, voice: voice, canSpeak: !someoneTalking)
+              ModelAnswer(text: answer, startsAt: enteredAt, voice: voice)
             }
           }
           ParticipantList(participants: session.participants)
@@ -86,12 +81,11 @@ private struct WaitingScene: View {
 }
 
 /// 正答例（場面の英語の説明）。AI が文を作るように、startsAt から少しずつ出して RoundTiming.answerReveal で出し切る。
-/// 右上のボタンで、発音のお手本として読み上げる（話している人がいる間は押せない）
+/// 右上のボタンで、発音のお手本として読み上げる。待機の画面に入ったらすぐ押せる
 private struct ModelAnswer: View {
   let text: String
   let startsAt: Date
   let voice: ModelVoice
-  let canSpeak: Bool
 
   var body: some View {
     VStack(alignment: .leading, spacing: 8) {
@@ -107,7 +101,6 @@ private struct ModelAnswer: View {
         SpeakButton(isPlaying: speaking, label: "正答例のお手本を聞く") {
           if speaking { voice.stop() } else { voice.speak(text) }
         }
-        .disabled(!canSpeak && !speaking)
       }
       TimelineView(.animation) { context in
         let progress = min(1, max(0, context.date.timeIntervalSince(startsAt) / RoundTiming.answerReveal))
