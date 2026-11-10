@@ -155,10 +155,10 @@ User-generated content is limited to the display name and the English descriptio
 ScenEnglish is an English speaking game for Japanese learners of English (students and adults) who want to practice speaking with friends. Players look at the same 3D scene at the same time and describe it in English. The app scores what they said (content), how they said it (expression), and how they spoke (pronunciation and fluency), and shows one concrete thing to improve next. It solves the problem that speaking practice is boring and hard to start alone: describing a scene removes "what should I say?", and playing against friends makes it fun.
 
 3. How to use the main features (no login is needed; one person can play alone)
-1) On the home screen, enter any display name and tap "部屋を作る" (Create room).
+1) On the home screen, enter any display name and tap "部屋を作る" (Create room). The app asks for microphone access at this point. Please allow it, because your spoken description is recorded and scored in step 4.
 2) In the lobby, choose a difficulty ("かんたん" = easy) and tap "スタート" (Start). Other players are not required.
 3) The server generates a 3D scene with AI (about 10-20 seconds; a running character is shown while waiting).
-4) After the countdown, describe the scene in English for up to 20 seconds (e.g. "There is a park. A boy is playing with a dog."), then tap "話し終えた" (Done). Please allow microphone access when asked.
+4) After the countdown, describe the scene in English for up to 20 seconds (e.g. "There is a park. A boy is playing with a dog."), then tap "話し終えた" (Done).
 5) After scoring (about 10-20 seconds), the ranking, everyone's descriptions, your score breakdown and feedback are shown. You can replay your voice and rate the scene.
 "部屋に入る" (Join room) needs the 4-digit code or QR code of a room created on another device. The camera is used only to scan this QR code.
 
