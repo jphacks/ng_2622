@@ -1,0 +1,30 @@
+{
+  "id": "person_take_book_teen_a",
+  "version": 1,
+  "file": "parts/person_take_book_teen_a/1.usdz",
+  "category": "person",
+  "words": [
+    {
+      "word": "boy",
+      "pos": "noun"
+    },
+    {
+      "word": "reach",
+      "pos": "verb"
+    },
+    {
+      "word": "book",
+      "pos": "noun"
+    }
+  ],
+  "pose": "take_book",
+  "size": [0.596, 2.048, 0.638],
+  "label": "背の高い男の子（高い所の本を取る）",
+  "uses": ["bookshelf"],
+  "anchors": {
+    "hand_l": [-0.252, 0.78, -0.129],
+    "hand_r": [0.138, 2.0, 0.271],
+    "feet": [0.018, 0.0, -0.129],
+    "head": [0.018, 1.52, -0.129]
+  }
+}

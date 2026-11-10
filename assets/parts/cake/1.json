@@ -1,0 +1,17 @@
+{
+  "id": "cake",
+  "version": 1,
+  "file": "parts/cake/1.usdz",
+  "category": "food",
+  "words": [
+    {
+      "word": "cake",
+      "pos": "noun"
+    }
+  ],
+  "size": [0.4, 0.144, 0.4],
+  "label": "丸いケーキ",
+  "anchors": {
+    "top": 0.112
+  }
+}

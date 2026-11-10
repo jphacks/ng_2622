@@ -1,0 +1,23 @@
+{
+  "id": "animal_sit_dog_a",
+  "version": 1,
+  "file": "parts/animal_sit_dog_a/1.usdz",
+  "category": "animal",
+  "words": [
+    {
+      "word": "dog",
+      "pos": "noun"
+    },
+    {
+      "word": "sit",
+      "pos": "verb"
+    },
+    {
+      "word": "watch",
+      "pos": "verb"
+    }
+  ],
+  "pose": "rest",
+  "size": [0.419, 0.961, 0.935],
+  "label": "座って見ている犬"
+}

@@ -1,0 +1,30 @@
+{
+  "id": "person_press_woman_a",
+  "version": 1,
+  "file": "parts/person_press_woman_a/1.usdz",
+  "category": "person",
+  "words": [
+    {
+      "word": "woman",
+      "pos": "noun"
+    },
+    {
+      "word": "buy",
+      "pos": "verb"
+    },
+    {
+      "word": "press",
+      "pos": "verb"
+    }
+  ],
+  "pose": "press",
+  "size": [0.597, 1.695, 0.838],
+  "label": "女の人（機械のボタンを押す）",
+  "uses": ["ticket_machine"],
+  "anchors": {
+    "hand_l": [-0.253, 0.78, -0.179],
+    "hand_r": [0.137, 1.18, 0.371],
+    "feet": [0.017, 0.0, -0.179],
+    "head": [0.017, 1.52, -0.179]
+  }
+}

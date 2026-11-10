@@ -1,0 +1,27 @@
+{
+  "id": "person_clap_boy_a",
+  "version": 1,
+  "file": "parts/person_clap_boy_a/1.usdz",
+  "category": "person",
+  "words": [
+    {
+      "word": "boy",
+      "pos": "noun"
+    },
+    {
+      "word": "clap",
+      "pos": "verb"
+    }
+  ],
+  "pose": "clap",
+  "size": [0.413, 1.031, 0.585],
+  "label": "男の子（座って拍手する）",
+  "uses": ["chair"],
+  "anchors": {
+    "hand_l": [-0.023, 0.585, 0.105],
+    "hand_r": [0.037, 0.615, 0.12],
+    "feet": [-0.001, 0.0, -0.15],
+    "head": [-0.001, 0.9, -0.15],
+    "hip": [-0.001, 0.36, -0.15]
+  }
+}

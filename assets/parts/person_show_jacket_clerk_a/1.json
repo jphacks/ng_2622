@@ -1,0 +1,30 @@
+{
+  "id": "person_show_jacket_clerk_a",
+  "version": 1,
+  "file": "parts/person_show_jacket_clerk_a/1.usdz",
+  "category": "person",
+  "words": [
+    {
+      "word": "clerk",
+      "pos": "noun"
+    },
+    {
+      "word": "show",
+      "pos": "verb"
+    },
+    {
+      "word": "jacket",
+      "pos": "noun"
+    }
+  ],
+  "pose": "show_jacket",
+  "size": [0.766, 1.695, 0.775],
+  "label": "店の店員（上着を広げて見せる）",
+  "holds": "jacket",
+  "anchors": {
+    "hand_l": [-0.2, 1.25, 0.298],
+    "hand_r": [0.2, 1.25, 0.298],
+    "feet": [0.0, 0.0, -0.162],
+    "head": [0.0, 1.52, -0.162]
+  }
+}

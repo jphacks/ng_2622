@@ -1,0 +1,14 @@
+{
+  "id": "plant_pot",
+  "version": 1,
+  "file": "parts/plant_pot/1.usdz",
+  "category": "plant",
+  "words": [
+    {
+      "word": "plant",
+      "pos": "noun"
+    }
+  ],
+  "size": [1.032, 1.564, 0.846],
+  "label": "鉢植えの木"
+}

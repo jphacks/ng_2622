@@ -1,0 +1,30 @@
+{
+  "id": "person_basket_adult_a",
+  "version": 1,
+  "file": "parts/person_basket_adult_a/1.usdz",
+  "category": "person",
+  "words": [
+    {
+      "word": "man",
+      "pos": "noun"
+    },
+    {
+      "word": "basket",
+      "pos": "noun"
+    },
+    {
+      "word": "wait",
+      "pos": "verb"
+    }
+  ],
+  "pose": "basket",
+  "size": [0.869, 1.695, 0.497],
+  "label": "男の人（かごを持つ）",
+  "holds": "basket",
+  "anchors": {
+    "hand_l": [-0.389, 0.78, -0.02],
+    "hand_r": [0.241, 0.78, 0.0],
+    "feet": [-0.119, 0.0, -0.02],
+    "head": [-0.119, 1.52, -0.02]
+  }
+}

@@ -1,0 +1,30 @@
+{
+  "id": "person_lift_desk_girl_a",
+  "version": 1,
+  "file": "parts/person_lift_desk_girl_a/1.usdz",
+  "category": "person",
+  "words": [
+    {
+      "word": "girl",
+      "pos": "noun"
+    },
+    {
+      "word": "carry",
+      "pos": "verb"
+    },
+    {
+      "word": "move",
+      "pos": "verb"
+    }
+  ],
+  "pose": "lift_desk",
+  "size": [0.428, 1.305, 0.516],
+  "label": "女の子（机を両手で持って運ぶ）",
+  "uses": ["table"],
+  "anchors": {
+    "hand_l": [-0.18, 0.72, 0.222],
+    "hand_r": [0.18, 0.72, 0.222],
+    "feet": [0.0, 0.0, -0.078],
+    "head": [0.0, 1.14, -0.078]
+  }
+}

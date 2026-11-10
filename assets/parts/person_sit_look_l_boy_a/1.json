@@ -1,0 +1,36 @@
+{
+  "id": "person_sit_look_l_boy_a",
+  "version": 1,
+  "file": "parts/person_sit_look_l_boy_a/1.usdz",
+  "category": "person",
+  "words": [
+    {
+      "word": "boy",
+      "pos": "noun"
+    },
+    {
+      "word": "sit",
+      "pos": "verb"
+    },
+    {
+      "word": "look",
+      "pos": "verb"
+    },
+    {
+      "word": "listen",
+      "pos": "verb"
+    }
+  ],
+  "pose": "sit_look_l",
+  "size": [0.422, 1.037, 0.585],
+  "label": "男の子（座って横を見る）",
+  "gaze": "l",
+  "mirror": "person_sit_look_r_boy_a",
+  "anchors": {
+    "hand_l": [-0.127, 0.42, 0.075],
+    "hand_r": [0.127, 0.42, 0.075],
+    "feet": [0.0, 0.0, -0.15],
+    "head": [0.0, 0.9, -0.15],
+    "hip": [0.0, 0.36, -0.15]
+  }
+}

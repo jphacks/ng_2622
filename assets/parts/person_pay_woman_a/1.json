@@ -1,0 +1,31 @@
+{
+  "id": "person_pay_woman_a",
+  "version": 1,
+  "file": "parts/person_pay_woman_a/1.usdz",
+  "category": "person",
+  "words": [
+    {
+      "word": "woman",
+      "pos": "noun"
+    },
+    {
+      "word": "pay",
+      "pos": "verb"
+    },
+    {
+      "word": "money",
+      "pos": "noun"
+    }
+  ],
+  "pose": "pay",
+  "size": [0.562, 1.695, 0.97],
+  "label": "女の人（お金を払う）",
+  "holds": "money",
+  "uses": ["checkout_counter"],
+  "anchors": {
+    "hand_l": [-0.16, 1.0, 0.055],
+    "hand_r": [0.1, 1.03, 0.355],
+    "feet": [0.0, 0.0, -0.245],
+    "head": [0.0, 1.52, -0.245]
+  }
+}

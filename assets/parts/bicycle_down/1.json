@@ -1,0 +1,18 @@
+{
+  "id": "bicycle_down",
+  "version": 1,
+  "file": "parts/bicycle_down/1.usdz",
+  "category": "vehicle",
+  "words": [
+    {
+      "word": "bicycle",
+      "pos": "noun"
+    },
+    {
+      "word": "bike",
+      "pos": "noun"
+    }
+  ],
+  "size": [0.99, 0.5, 1.66],
+  "label": "倒れた自転車"
+}

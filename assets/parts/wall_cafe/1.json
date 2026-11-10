@@ -1,0 +1,26 @@
+{
+  "id": "wall_cafe",
+  "version": 1,
+  "file": "parts/wall_cafe/1.usdz",
+  "category": "building",
+  "words": [
+    {
+      "word": "cafe",
+      "pos": "noun"
+    },
+    {
+      "word": "counter",
+      "pos": "noun"
+    },
+    {
+      "word": "menu",
+      "pos": "noun"
+    },
+    {
+      "word": "wall",
+      "pos": "noun"
+    }
+  ],
+  "size": [8.0, 2.6, 0.86],
+  "label": "カフェの奥の壁（カウンターつき）"
+}

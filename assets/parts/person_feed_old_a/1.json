@@ -1,0 +1,26 @@
+{
+  "id": "person_feed_old_a",
+  "version": 1,
+  "file": "parts/person_feed_old_a/1.usdz",
+  "category": "person",
+  "words": [
+    {
+      "word": "old man",
+      "pos": "noun"
+    },
+    {
+      "word": "feed",
+      "pos": "verb"
+    }
+  ],
+  "pose": "feed",
+  "size": [0.567, 1.62, 0.701],
+  "label": "おじいさん（鳥にえさをやる）",
+  "uses": ["animal_bird_a"],
+  "anchors": {
+    "hand_l": [-0.24, 0.741, -0.17],
+    "hand_r": [0.131, 0.712, 0.305],
+    "feet": [0.017, 0.0, -0.17],
+    "head": [0.017, 1.444, -0.17]
+  }
+}

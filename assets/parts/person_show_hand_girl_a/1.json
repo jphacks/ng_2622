@@ -1,0 +1,29 @@
+{
+  "id": "person_show_hand_girl_a",
+  "version": 1,
+  "file": "parts/person_show_hand_girl_a/1.usdz",
+  "category": "person",
+  "words": [
+    {
+      "word": "girl",
+      "pos": "noun"
+    },
+    {
+      "word": "show",
+      "pos": "verb"
+    },
+    {
+      "word": "hand",
+      "pos": "noun"
+    }
+  ],
+  "pose": "show_hand",
+  "size": [0.445, 1.324, 0.546],
+  "label": "女の子（手を差し出して見せる）",
+  "anchors": {
+    "hand_l": [-0.188, 0.585, -0.093],
+    "hand_r": [0.044, 0.795, 0.237],
+    "feet": [0.014, 0.0, -0.093],
+    "head": [0.014, 1.14, -0.093]
+  }
+}

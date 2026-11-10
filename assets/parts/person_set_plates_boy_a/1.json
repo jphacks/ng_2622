@@ -1,0 +1,31 @@
+{
+  "id": "person_set_plates_boy_a",
+  "version": 1,
+  "file": "parts/person_set_plates_boy_a/1.usdz",
+  "category": "person",
+  "words": [
+    {
+      "word": "boy",
+      "pos": "noun"
+    },
+    {
+      "word": "put",
+      "pos": "verb"
+    },
+    {
+      "word": "plate",
+      "pos": "noun"
+    }
+  ],
+  "pose": "set_plates",
+  "size": [0.423, 1.271, 0.637],
+  "label": "男の子（皿を並べる）",
+  "holds": "plates",
+  "uses": ["table", "plate"],
+  "anchors": {
+    "hand_l": [-0.127, 0.803, 0.199],
+    "hand_r": [0.127, 0.803, 0.199],
+    "feet": [0.0, 0.0, -0.176],
+    "head": [0.0, 1.14, -0.176]
+  }
+}

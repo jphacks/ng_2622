@@ -1,13 +1,17 @@
 import Anthropic from "@anthropic-ai/sdk";
 import { z } from "zod";
 import {
+  DISTANCES,
   type Difficulty,
   FACINGS,
+  LINKS,
   MOTIONS,
   PATHS,
   type Part,
   RELATIONS,
   type ScenePlan,
+  SIDES,
+  TURNS,
   ZONES,
 } from "./types";
 
@@ -322,6 +326,11 @@ export const planSchema = (parts: Part[]) => ({
               target: { type: "string" },
               target2: { type: "string" },
               zone: { type: "string", enum: [...ZONES] },
+              spot: { type: "string" },
+              link: { type: "string", enum: [...LINKS] },
+              side: { type: "string", enum: [...SIDES] },
+              distance: { type: "string", enum: [...DISTANCES] },
+              turn: { type: "string", enum: [...TURNS] },
             },
             required: ["relation"],
             additionalProperties: false,
@@ -368,6 +377,11 @@ const Plan = z.object({
           target: z.string().optional(),
           target2: z.string().optional(),
           zone: z.enum(ZONES).optional(),
+          spot: z.string().optional(),
+          link: z.enum(LINKS).optional(),
+          side: z.enum(SIDES).optional(),
+          distance: z.enum(DISTANCES).optional(),
+          turn: z.enum(TURNS).optional(),
         }),
         facing: z.string().optional(),
         motion: z

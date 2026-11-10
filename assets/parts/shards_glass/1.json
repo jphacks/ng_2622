@@ -1,0 +1,18 @@
+{
+  "id": "shards_glass",
+  "version": 1,
+  "file": "parts/shards_glass/1.usdz",
+  "category": "thing",
+  "words": [
+    {
+      "word": "glass",
+      "pos": "noun"
+    },
+    {
+      "word": "pieces",
+      "pos": "noun"
+    }
+  ],
+  "size": [0.951, 0.046, 0.674],
+  "label": "ガラスの破片（床に散らばる）"
+}

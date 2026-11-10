@@ -1,0 +1,27 @@
+{
+  "id": "person_cut_mother_a",
+  "version": 1,
+  "file": "parts/person_cut_mother_a/1.usdz",
+  "category": "person",
+  "words": [
+    {
+      "word": "woman",
+      "pos": "noun"
+    },
+    {
+      "word": "cut",
+      "pos": "verb"
+    }
+  ],
+  "pose": "cut",
+  "size": [0.563, 1.703, 0.949],
+  "label": "お母さん（ケーキを切る）",
+  "holds": "knife",
+  "uses": ["table", "cake"],
+  "anchors": {
+    "hand_l": [-0.199, 0.8, 0.185],
+    "hand_r": [0.121, 0.84, 0.265],
+    "feet": [0.001, 0.0, -0.235],
+    "head": [0.001, 1.52, -0.235]
+  }
+}

@@ -1,0 +1,32 @@
+{
+  "id": "person_read_sit_adult_a",
+  "version": 1,
+  "file": "parts/person_read_sit_adult_a/1.usdz",
+  "category": "person",
+  "words": [
+    {
+      "word": "man",
+      "pos": "noun"
+    },
+    {
+      "word": "read",
+      "pos": "verb"
+    },
+    {
+      "word": "book",
+      "pos": "noun"
+    }
+  ],
+  "pose": "read_sit",
+  "size": [0.562, 1.375, 0.78],
+  "label": "男の人（座って本を読む）",
+  "holds": "book",
+  "uses": ["chair"],
+  "anchors": {
+    "hand_l": [-0.16, 0.76, 0.1],
+    "hand_r": [0.16, 0.76, 0.1],
+    "feet": [0.0, 0.0, -0.2],
+    "head": [0.0, 1.2, -0.2],
+    "hip": [0.0, 0.48, -0.2]
+  }
+}

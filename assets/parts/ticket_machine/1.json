@@ -1,0 +1,23 @@
+{
+  "id": "ticket_machine",
+  "version": 1,
+  "file": "parts/ticket_machine/1.usdz",
+  "category": "furniture",
+  "words": [
+    {
+      "word": "ticket machine",
+      "pos": "noun"
+    },
+    {
+      "word": "machine",
+      "pos": "noun"
+    }
+  ],
+  "size": [0.9, 1.7, 0.52],
+  "label": "切符の券売機",
+  "anchors": {
+    "spots": {
+      "screen": [0.0, 1.2, 0.25]
+    }
+  }
+}

@@ -1,0 +1,19 @@
+{
+  "id": "animal_bird_a",
+  "version": 1,
+  "file": "parts/animal_bird_a/1.usdz",
+  "category": "animal",
+  "words": [
+    {
+      "word": "bird",
+      "pos": "noun"
+    },
+    {
+      "word": "eat",
+      "pos": "verb"
+    }
+  ],
+  "pose": "peck",
+  "size": [0.169, 0.225, 0.462],
+  "label": "地面をつつく小鳥"
+}

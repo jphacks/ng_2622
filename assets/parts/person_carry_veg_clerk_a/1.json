@@ -1,0 +1,34 @@
+{
+  "id": "person_carry_veg_clerk_a",
+  "version": 1,
+  "file": "parts/person_carry_veg_clerk_a/1.usdz",
+  "category": "person",
+  "words": [
+    {
+      "word": "clerk",
+      "pos": "noun"
+    },
+    {
+      "word": "carry",
+      "pos": "verb"
+    },
+    {
+      "word": "box",
+      "pos": "noun"
+    },
+    {
+      "word": "vegetable",
+      "pos": "noun"
+    }
+  ],
+  "pose": "carry_veg",
+  "size": [0.571, 1.695, 0.819],
+  "label": "店の店員（野菜の箱を運ぶ）",
+  "holds": "box of vegetables",
+  "anchors": {
+    "hand_l": [-0.24, 0.88, 0.226],
+    "hand_r": [0.24, 0.88, 0.226],
+    "feet": [0.0, 0.0, -0.154],
+    "head": [0.0, 1.52, -0.154]
+  }
+}

@@ -1,0 +1,27 @@
+{
+  "id": "bookshelf",
+  "version": 1,
+  "file": "parts/bookshelf/1.usdz",
+  "category": "furniture",
+  "words": [
+    {
+      "word": "bookshelf",
+      "pos": "noun"
+    },
+    {
+      "word": "book",
+      "pos": "noun"
+    },
+    {
+      "word": "shelf",
+      "pos": "noun"
+    }
+  ],
+  "size": [1.4, 2.3, 0.44],
+  "label": "本の詰まった本棚",
+  "anchors": {
+    "spots": {
+      "top_book": [0.0, 2.032, 0.22]
+    }
+  }
+}

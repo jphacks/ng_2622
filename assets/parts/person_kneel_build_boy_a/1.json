@@ -1,0 +1,30 @@
+{
+  "id": "person_kneel_build_boy_a",
+  "version": 1,
+  "file": "parts/person_kneel_build_boy_a/1.usdz",
+  "category": "person",
+  "words": [
+    {
+      "word": "boy",
+      "pos": "noun"
+    },
+    {
+      "word": "build",
+      "pos": "verb"
+    },
+    {
+      "word": "make",
+      "pos": "verb"
+    }
+  ],
+  "pose": "kneel_build",
+  "size": [0.423, 1.054, 0.711],
+  "label": "男の子（ひざをついて砂で作る）",
+  "uses": ["sand_castle"],
+  "anchors": {
+    "hand_l": [-0.15, 0.21, 0.319],
+    "hand_r": [0.15, 0.21, 0.319],
+    "feet": [0.0, 0.0, 0.005],
+    "head": [0.0, 0.915, 0.005]
+  }
+}

@@ -1,0 +1,18 @@
+{
+  "id": "shards_metal",
+  "version": 1,
+  "file": "parts/shards_metal/1.usdz",
+  "category": "thing",
+  "words": [
+    {
+      "word": "metal",
+      "pos": "noun"
+    },
+    {
+      "word": "pieces",
+      "pos": "noun"
+    }
+  ],
+  "size": [0.732, 0.04, 0.621],
+  "label": "金属の破片（床に散らばる）"
+}

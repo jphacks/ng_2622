@@ -1,0 +1,29 @@
+{
+  "id": "person_ask_girl_a",
+  "version": 1,
+  "file": "parts/person_ask_girl_a/1.usdz",
+  "category": "person",
+  "words": [
+    {
+      "word": "girl",
+      "pos": "noun"
+    },
+    {
+      "word": "ask",
+      "pos": "verb"
+    },
+    {
+      "word": "point",
+      "pos": "verb"
+    }
+  ],
+  "pose": "ask",
+  "size": [0.74, 1.386, 0.426],
+  "label": "女の子（指さして頼む）",
+  "anchors": {
+    "hand_l": [-0.336, 1.35, 0.079],
+    "hand_r": [0.279, 0.787, 0.177],
+    "feet": [0.159, 0.0, -0.033],
+    "head": [0.159, 1.14, -0.033]
+  }
+}

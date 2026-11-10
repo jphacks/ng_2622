@@ -1,0 +1,29 @@
+{
+  "id": "person_check_hand_mother_a",
+  "version": 1,
+  "file": "parts/person_check_hand_mother_a/1.usdz",
+  "category": "person",
+  "words": [
+    {
+      "word": "woman",
+      "pos": "noun"
+    },
+    {
+      "word": "check",
+      "pos": "verb"
+    },
+    {
+      "word": "hand",
+      "pos": "noun"
+    }
+  ],
+  "pose": "check_hand",
+  "size": [0.559, 1.71, 0.8],
+  "label": "お母さん（手を確かめる）",
+  "anchors": {
+    "hand_l": [-0.07, 0.8, 0.352],
+    "hand_r": [0.09, 0.8, 0.352],
+    "feet": [0.0, 0.0, -0.148],
+    "head": [0.0, 1.52, -0.148]
+  }
+}

@@ -1,0 +1,30 @@
+{
+  "id": "person_lift_desk_boy_a",
+  "version": 1,
+  "file": "parts/person_lift_desk_boy_a/1.usdz",
+  "category": "person",
+  "words": [
+    {
+      "word": "boy",
+      "pos": "noun"
+    },
+    {
+      "word": "carry",
+      "pos": "verb"
+    },
+    {
+      "word": "move",
+      "pos": "verb"
+    }
+  ],
+  "pose": "lift_desk",
+  "size": [0.428, 1.271, 0.479],
+  "label": "男の子（机を両手で持って運ぶ）",
+  "uses": ["table"],
+  "anchors": {
+    "hand_l": [-0.18, 0.72, 0.203],
+    "hand_r": [0.18, 0.72, 0.203],
+    "feet": [0.0, 0.0, -0.097],
+    "head": [0.0, 1.14, -0.097]
+  }
+}

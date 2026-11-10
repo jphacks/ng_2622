@@ -1,0 +1,25 @@
+{
+  "id": "person_offer_boy_a",
+  "version": 1,
+  "file": "parts/person_offer_boy_a/1.usdz",
+  "category": "person",
+  "words": [
+    {
+      "word": "boy",
+      "pos": "noun"
+    },
+    {
+      "word": "help",
+      "pos": "verb"
+    }
+  ],
+  "pose": "offer",
+  "size": [0.448, 1.271, 0.553],
+  "label": "男の子（手を差し出す）",
+  "anchors": {
+    "hand_l": [-0.19, 0.585, -0.134],
+    "hand_r": [0.118, 1.2, 0.241],
+    "feet": [0.013, 0.0, -0.134],
+    "head": [0.013, 1.14, -0.134]
+  }
+}

@@ -1,0 +1,27 @@
+{
+  "id": "person_sleep_teen_a",
+  "version": 1,
+  "file": "parts/person_sleep_teen_a/1.usdz",
+  "category": "person",
+  "words": [
+    {
+      "word": "boy",
+      "pos": "noun"
+    },
+    {
+      "word": "sleep",
+      "pos": "verb"
+    }
+  ],
+  "pose": "sleep",
+  "size": [0.561, 1.096, 0.78],
+  "label": "背の高い男の子（机に伏せて眠る）",
+  "uses": ["table", "chair"],
+  "anchors": {
+    "hand_l": [-0.13, 0.76, 0.22],
+    "hand_r": [0.13, 0.76, 0.22],
+    "feet": [0.0, 0.0, -0.2],
+    "head": [0.0, 0.9, 0.14],
+    "hip": [0.0, 0.48, -0.2]
+  }
+}

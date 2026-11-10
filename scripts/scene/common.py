@@ -207,7 +207,7 @@ class Part:
                               matrix=Matrix.LocRotScale((a + b) / 2, d.to_track_quat("Z", "Y"), Vector((1, 1, 1))))
         self._merge(tb, mat, smooth=True)
 
-    def finish(self, parent, loc=(0, 0, 0), rot_z=0.0, scale=1.0) -> bpy.types.Object:
+    def finish(self, parent, loc=(0, 0, 0), rot_z=0.0, scale=1.0, rot=None) -> bpy.types.Object:
         mesh = bpy.data.meshes.new(self.name)
         self.bm.normal_update()
         self.bm.to_mesh(mesh)
@@ -218,7 +218,7 @@ class Part:
         bpy.context.scene.collection.objects.link(obj)
         obj.parent = parent
         obj.location = (*loc, 0) if len(loc) == 2 else loc  # 高さを省いたら床（0）に置く
-        obj.rotation_euler = (0, 0, rot_z)
+        obj.rotation_euler = rot if rot else (0, 0, rot_z)
         obj.scale = (scale, scale, scale)
         return obj
 
@@ -253,13 +253,15 @@ def hand_points(pose: str, point_side: int = 1) -> list[Vector]:
     return [Vector(h) for h in hands]
 
 
-def person(root, name, loc, rot_z, outfit: dict, pose="stand", scale=1.0, point_side=1, hands=None, lift=0.0):
+def person(root, name, loc, rot_z, outfit: dict, pose="stand", scale=1.0, point_side=1, hands=None, lift=0.0, head=None):
     """デフォルメした人物。正面は -Y。
 
-    outfit は skin・hair・top・bottom・shoe・eye のマテリアルと、skirt（True でスカート）、
+    outfit は skin・hair・top・bottom・shoe・eye のマテリアルと、sleeve（長袖の色。無ければ半袖）、skirt（True でスカート）、
     hair_style（short / bun / long / hood）を持つ。cheek・mouth のマテリアルがあれば、ほおと口も描く。
     point_side は指さす向き（1 で +X、-1 で -X）。hands は左右の手の位置 [(x, y, dz), (x, y, dz)] で、
     ポーズの手の位置を置き換える（dz は肩の高さからの差。物を持たせるときに使う）。lift は体を浮かせる高さ（跳ぶ）。
+    head は頭の向き {"pitch": 下を向く角度, "yaw": +X 側を向く角度, "at": 頭の中心 (x, y, z)}（ラジアン。省けば正面）。
+    頭だけ別のメッシュに作って回す（loc と rot_z が 0 の、部品の人物だけで使う）。
     """
     assert pose in POSES, pose
     p = Part(name)
@@ -301,27 +303,37 @@ def person(root, name, loc, rot_z, outfit: dict, pose="stand", scale=1.0, point_
     # 胴・首・頭
     p.cyl(0.17, 0.19, sh_z - hip_z + 0.04, (0, 0, (hip_z + sh_z) / 2), o["top"], segs=16)
     p.sphere(0.19, (0, 0, sh_z), o["top"], scale=(1.1, 0.85, 0.42))
-    p.cyl(0.055, 0.055, 0.1, (0, 0, sh_z + 0.07), o["skin"], segs=10)
-    p.sphere(0.15, (0, 0, head_z), o["skin"])
-    style = o.get("hair_style", "short")
-    if style == "hood":
-        # フード（髪のマテリアルにフードの色を渡す）。顔の前だけ空ける
-        p.sphere(0.172, (0, 0.045, head_z + 0.02), o["hair"], scale=(1.02, 1, 1.02))
-        p.cyl(0.13, 0.13, 0.03, (0, -0.1, head_z + 0.0), o["hair"], rot=(math.pi / 2, 0, 0), segs=20)
+    def draw_head(q, hz):
+        q.sphere(0.15, (0, 0, hz), o["skin"])
+        style = o.get("hair_style", "short")
+        if style == "hood":
+            # フード（髪のマテリアルにフードの色を渡す）。顔の前だけ空ける
+            q.sphere(0.172, (0, 0.045, hz + 0.02), o["hair"], scale=(1.02, 1, 1.02))
+            q.cyl(0.13, 0.13, 0.03, (0, -0.1, hz + 0.0), o["hair"], rot=(math.pi / 2, 0, 0), segs=20)
+        else:
+            q.sphere(0.158, (0, 0.03, hz + 0.045), o["hair"], scale=(1, 1, 0.82))
+        if style == "bun":
+            q.sphere(0.07, (0, 0.1, hz + 0.15), o["hair"])
+        elif style == "long":
+            q.box((0.3, 0.1, 0.32), (0, 0.1, hz - 0.12), o["hair"], bevel=0.04)
+        for sx in (-1, 1):
+            q.sphere(0.02, (sx * 0.055, -0.135, hz), o["eye"], segs=8)
+            if style != "hood":
+                q.sphere(0.03, (sx * 0.15, 0, hz), o["skin"], segs=8)
+            if o.get("cheek"):
+                q.sphere(0.026, (sx * 0.09, -0.125, hz - 0.045), o["cheek"], scale=(1, 0.45, 0.7), segs=10)
+        if o.get("mouth"):
+            q.sphere(0.02, (0, -0.145, hz - 0.065), o["mouth"], scale=(1.3, 0.5, 0.6), segs=10)
+
+    if head:
+        at = Vector(head.get("at", (0, 0, head_z)))
+        p.limb((0, 0, sh_z + 0.02), at.lerp(Vector((0, 0, sh_z + 0.02)), 0.3), 0.055, 0.055, o["skin"], segs=10)
+        hp = Part(name + "_head")
+        draw_head(hp, 0.0)
+        hp.finish(root, loc=tuple(at * scale), scale=scale, rot=(head.get("pitch", 0.0), 0, head.get("yaw", 0.0)))
     else:
-        p.sphere(0.158, (0, 0.03, head_z + 0.045), o["hair"], scale=(1, 1, 0.82))
-    if style == "bun":
-        p.sphere(0.07, (0, 0.1, head_z + 0.15), o["hair"])
-    elif style == "long":
-        p.box((0.3, 0.1, 0.32), (0, 0.1, head_z - 0.12), o["hair"], bevel=0.04)
-    for sx in (-1, 1):
-        p.sphere(0.02, (sx * 0.055, -0.135, head_z), o["eye"], segs=8)
-        if style != "hood":
-            p.sphere(0.03, (sx * 0.15, 0, head_z), o["skin"], segs=8)
-        if o.get("cheek"):
-            p.sphere(0.026, (sx * 0.09, -0.125, head_z - 0.045), o["cheek"], scale=(1, 0.45, 0.7), segs=10)
-    if o.get("mouth"):
-        p.sphere(0.02, (0, -0.145, head_z - 0.065), o["mouth"], scale=(1.3, 0.5, 0.6), segs=10)
+        p.cyl(0.055, 0.055, 0.1, (0, 0, sh_z + 0.07), o["skin"], segs=10)
+        draw_head(p, head_z)
 
     # 腕（肩から手まで）
     points = [Vector((x, y, sh_z + dz)) for x, y, dz in hands] if hands else hand_points(pose, point_side)
@@ -329,7 +341,7 @@ def person(root, name, loc, rot_z, outfit: dict, pose="stand", scale=1.0, point_
         shoulder = Vector((sx * 0.22, 0, sh_z - 0.02))
         elbow = shoulder + (hand - shoulder) * 0.32
         p.limb(shoulder, elbow, 0.062, 0.058, o["top"])
-        p.limb(elbow, hand, 0.048, 0.042, o["skin"])
+        p.limb(elbow, hand, 0.048, 0.042, o.get("sleeve", o["skin"]))
         p.sphere(0.048, tuple(hand), o["skin"], segs=10)
     if pose == "phone":
         p.box((0.09, 0.02, 0.16), (0, -0.28, sh_z - 0.17), o["eye"], rot=(0.5, 0, 0), bevel=0.01)

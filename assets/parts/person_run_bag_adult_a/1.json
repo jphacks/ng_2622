@@ -1,0 +1,30 @@
+{
+  "id": "person_run_bag_adult_a",
+  "version": 1,
+  "file": "parts/person_run_bag_adult_a/1.usdz",
+  "category": "person",
+  "words": [
+    {
+      "word": "man",
+      "pos": "noun"
+    },
+    {
+      "word": "run",
+      "pos": "verb"
+    },
+    {
+      "word": "bag",
+      "pos": "noun"
+    }
+  ],
+  "pose": "run_bag",
+  "size": [0.682, 1.675, 0.836],
+  "label": "男の人（かばんを持って走る）",
+  "holds": "bag",
+  "anchors": {
+    "hand_l": [-0.279, 0.98, 0.352],
+    "hand_r": [0.221, 0.86, 0.002],
+    "feet": [-0.059, 0.0, 0.052],
+    "head": [-0.059, 1.5, 0.052]
+  }
+}

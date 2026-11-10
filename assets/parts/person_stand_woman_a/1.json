@@ -1,0 +1,25 @@
+{
+  "id": "person_stand_woman_a",
+  "version": 1,
+  "file": "parts/person_stand_woman_a/1.usdz",
+  "category": "person",
+  "words": [
+    {
+      "word": "woman",
+      "pos": "noun"
+    },
+    {
+      "word": "stand",
+      "pos": "verb"
+    }
+  ],
+  "pose": "stand",
+  "size": [0.631, 1.695, 0.48],
+  "label": "女の人（立つ）",
+  "anchors": {
+    "hand_l": [-0.27, 0.78, 0.0],
+    "hand_r": [0.27, 0.78, 0.0],
+    "feet": [0.0, 0.0, 0.0],
+    "head": [0.0, 1.52, 0.0]
+  }
+}

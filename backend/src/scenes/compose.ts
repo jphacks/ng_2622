@@ -47,6 +47,8 @@ export const MIN_MOVE = 1.5;
 /** 出発点を引くときの刻み（m） */
 const MOVE_STEP = 0.1;
 const EPS = 1e-6;
+/** 木の中に置く物の高さ（木の高さに対する割合） */
+const IN_PLANT_HEIGHT = 0.6;
 
 /** 地面と同じ高さに置く、大きな物の区分（人の横などに置くとき、相手が机の上でも地面に置く） */
 const FLOOR_CATEGORIES = new Set([
@@ -230,6 +232,12 @@ const axisOf = (yaw: number): [number, number] => {
 };
 
 type Composer = {
+  /** 関係を満たせず、仕方なく置いた数（全体を解くときの点数に使う） */
+  misses: number;
+  /** 背景の壁に人を付けた場面。全体をずらすと壁から離れる */
+  pinned: boolean;
+  /** テーブルごとに使った席の数 */
+  seated: Map<string, number>;
   parts: Map<string, Part>;
   placed: Map<string, Placed>;
 };
@@ -304,6 +312,291 @@ const DIAGONALS: [number, number][] = [
 
 type Spot = { position: Vec3; surface: string; yaw?: number };
 
+/** relate の間合い（体の表面どうし、m）。人の距離の感覚に合わせる */
+const DISTANCE = {
+  touch: 0,
+  beside: 0.1,
+  talk: 0.45,
+  approach: 1.2,
+  far: 2.6,
+} as const;
+/** 横に並ぶ人を前後にずらす量（m） */
+const STAGGER = 0.55;
+/** 傘の中心から、入る人の足元までの距離（m） */
+const UNDER_OFFSET = 0.3;
+/** 人の体の半分の幅（m） */
+const BODY_RADIUS = 0.2;
+/** 手を伸ばす人が相手の縁から空ける距離（足元から、m） */
+const BODY_CLEARANCE = 0.2;
+/** 人が立てる範囲（m） */
+const STAND_LIMIT = 3.7;
+/** 投げた物の高さと、投げた人からの距離（m） */
+const THROWN_HEIGHT = 1.15;
+const THROWN_DISTANCE = 1.35;
+
+const LIVING_CATEGORIES = new Set(["person", "animal"]);
+const SOLID_CATEGORIES = new Set(["furniture", "vehicle", "building"]);
+
+const forwardOf = (yaw: number): [number, number] => [
+  Math.sin(rad(yaw)),
+  Math.cos(rad(yaw)),
+];
+
+/** 部品の足元（基準点が無ければ原点）の場面での位置 */
+const feetOf = (p: Placed): [number, number] => {
+  const f = rotate(p.part.anchors?.feet ?? [0, 0, 0], p.yaw);
+  return [p.position[0] + f[0], p.position[2] + f[2]];
+};
+
+/** 足元が (x, z) に来るように部品を置く */
+const standAt = (part: Part, x: number, z: number, yaw: number): Spot => {
+  const f = rotate(part.anchors?.feet ?? [0, 0, 0], yaw);
+  return { position: [x - f[0], 0, z - f[2]], surface: "ground", yaw };
+};
+
+/** 足元に立てるか。家具に埋まらず、ほかの人と重ならず、場面の中にある */
+const canStand = (c: Composer, x: number, z: number, skip: string[] = []) => {
+  if (Math.abs(x) > STAND_LIMIT || Math.abs(z) > STAND_LIMIT) return false;
+  for (const p of c.placed.values()) {
+    if (skip.includes(p.key)) continue;
+    if (LIVING_CATEGORIES.has(p.part.category)) {
+      const [fx, fz] = feetOf(p);
+      if (Math.hypot(fx - x, fz - z) < 0.5) return false;
+    } else if (SOLID_CATEGORIES.has(p.part.category) && !isBackdrop(p.part)) {
+      const dx = Math.abs(x - p.position[0]);
+      const dz = Math.abs(z - p.position[2]);
+      if (dx < p.hx + 0.15 && dz < p.hz + 0.15) return false;
+    }
+  }
+  return true;
+};
+
+/** 手が前に長く伸びているほうの手（部品の中の座標、足元からの差） */
+const reachingHand = (part: Part): Vec3 => {
+  const a = part.anchors;
+  const feet = a?.feet ?? [0, 0, 0];
+  const rel = (h: Vec3): Vec3 => [h[0] - feet[0], h[1], h[2] - feet[2]];
+  const r = rel(a?.hand_r ?? [0, 1, 0.3]);
+  const l = rel(a?.hand_l ?? [0, 1, 0.3]);
+  return r[2] >= l[2] ? r : l;
+};
+
+/** 上から見て、向き (ux, uz) に部品がどれだけ張り出すか */
+const extentToward = (part: Part, yaw: number, ux: number, uz: number) => {
+  const c = Math.cos(rad(yaw));
+  const n = Math.sin(rad(yaw));
+  return (
+    (Math.abs(ux * c - uz * n) * part.size[0] +
+      Math.abs(ux * n + uz * c) * part.size[2]) /
+    2
+  );
+};
+
+const isLiving = (part: Part) => LIVING_CATEGORIES.has(part.category);
+
+/** side を向きの候補にする。相手に正面があれば相手の体が基準、無ければカメラから見た向き */
+const sideDirs = (
+  target: Placed,
+  side: PlanItem["place"]["side"],
+  flip: boolean,
+): [number, number][] => {
+  // 背景の壁の前には手前からしか立てない
+  if (isBackdrop(target.part)) return [[0, 1]];
+  const framed =
+    isLiving(target.part) ||
+    !!target.part.anchors?.spots ||
+    !!target.part.anchors?.seat;
+  const [fx, fz] = framed ? forwardOf(target.yaw) : [0, 1];
+  const named: Record<string, [number, number]> = {
+    front: [fx, fz],
+    back: [-fx, -fz],
+    right: framed ? [fz, -fx] : [1, 0],
+    left: framed ? [-fz, fx] : [-1, 0],
+  };
+  // 正面の無い物には前後左右の意味が無いので、計算に任せる。前後の指定は希望で、計算が選んだときは左右へ逃がす
+  if (framed && side && side !== "any") {
+    const wish = named[side];
+    if (!flip || side === "left" || side === "right") return [wish];
+  }
+  // 左右を先に試す（カメラ側から近づくと背中を見せる）
+  const across: [number, number][] = flip
+    ? [
+        [-1, 0],
+        [1, 0],
+      ]
+    : [
+        [1, 0],
+        [-1, 0],
+      ];
+  return [...across, [0, -1], [0, 1]];
+};
+
+/** 手が相手に届く位置に立たせる。スポット付きの家具は正面から */
+const placeHand = (
+  c: Composer,
+  part: Part,
+  target: Placed,
+  place: PlanItem["place"],
+  flip: boolean,
+): Spot => {
+  // surface の "ground" と "air" は面の種類で、部品の key ではない（床の key が ground のこともある）
+  const onItem = target.surface !== "ground" && target.surface !== "air";
+  const support = (onItem && c.placed.get(target.surface)) || target;
+  if (isBackdrop(target.part)) c.pinned = true;
+  // 場所を持つ家具で指定が無ければ、最初の場所（コンロ・レジなど、その家具の主な場所）に手を届かせる
+  const spots = target.part.anchors?.spots;
+  const local = spots
+    ? (spots[place.spot ?? ""] ?? Object.values(spots)[0])
+    : undefined;
+  const w = local ? rotate(local, target.yaw) : undefined;
+  const point: [number, number] = w
+    ? [target.position[0] + w[0], target.position[2] + w[2]]
+    : [target.position[0], target.position[2]];
+  const frontOnly = !!support.part.anchors?.spots;
+  const dirs = frontOnly
+    ? [forwardOf(support.yaw)]
+    : sideDirs(support, place.side, flip);
+  const hand = reachingHand(part);
+  let first: Spot | undefined;
+  for (const [ux, uz] of dirs) {
+    const fromCenter =
+      (point[0] - support.position[0]) * ux +
+      (point[1] - support.position[2]) * uz;
+    const edge = Math.max(
+      0,
+      extentToward(support.part, support.yaw, ux, uz) - fromCenter,
+    );
+    const yaw = yawToward(-ux, -uz);
+    const h = rotate(hand, yaw);
+    const forwardReach = -(h[0] * ux + h[2] * uz);
+    const back = Math.max(forwardReach, edge + BODY_CLEARANCE);
+    // 手が相手の真上に来るよう、横のずれを足元で打ち消す
+    const side = [h[0] + forwardReach * ux, h[2] + forwardReach * uz];
+    const x = point[0] + ux * back - side[0];
+    const z = point[1] + uz * back - side[1];
+    const candidate = standAt(part, x, z, yaw);
+    first ??= candidate;
+    if (canStand(c, x, z, [target.key, support.key])) return candidate;
+  }
+  c.misses++;
+  return first as Spot;
+};
+
+/** relate の under: 相手が持つ傘の下に、相手を向いて立つ。傘の中心を挟んで相手の反対側 */
+const placeUnder = (c: Composer, part: Part, target: Placed): Spot => {
+  const canopy = target.part.anchors?.canopy;
+  const [tx, tz] = feetOf(target);
+  const w = canopy ? rotate(canopy, target.yaw) : [0, 0, 0];
+  const cx = target.position[0] + w[0];
+  const cz = target.position[2] + w[2];
+  const d = Math.hypot(cx - tx, cz - tz) || 1;
+  const x = cx + ((cx - tx) / d) * UNDER_OFFSET;
+  const z = cz + ((cz - tz) / d) * UNDER_OFFSET;
+  if (!canStand(c, x, z, [target.key])) c.misses++;
+  return standAt(part, x, z, yawToward(tx - x, tz - z));
+};
+
+/** 距離の指定を保ったまま空きを探すときの、間合いのずらし方（m）。近い間合いは意味が変わるのでずらさない */
+const STRETCH = [0, -0.5, 0.5, -1, 1];
+/** 背景の壁の前で、先に立つ人を避けて横へずらす量（m） */
+const BACKDROP_LANES = [1.2, -1.2, 2.4, -2.4, 0];
+
+/** relate の body: 相手の side の側に、distance の間合いで、turn の向きに立つ */
+const placeBody = (
+  c: Composer,
+  part: Part,
+  target: Placed,
+  place: PlanItem["place"],
+  flip: boolean,
+): Spot => {
+  const living = isLiving(target.part);
+  const backdrop = isBackdrop(target.part);
+  if (backdrop) c.pinned = true;
+  const [ox, oz] = living
+    ? feetOf(target)
+    : [target.position[0], target.position[2]];
+  // どちらも離れてやり取りするポーズなら、動作が間合いと向きを決める
+  const range = part.range && target.part.range ? part.range : undefined;
+  const distance = range ?? place.distance ?? "talk";
+  const gap = DISTANCE[distance];
+  const side = range ? "front" : place.side;
+  const stretches =
+    distance === "far" || distance === "approach" ? STRETCH : [0];
+  const lanes = backdrop ? BACKDROP_LANES.map((l) => (flip ? -l : l)) : [0];
+  const spots = sideDirs(target, side, flip && !range).flatMap(([ux, uz]) => {
+    const own = isLiving(part)
+      ? BODY_RADIUS
+      : extentToward(part, target.yaw, ux, uz);
+    const base =
+      (living ? BODY_RADIUS : extentToward(target.part, target.yaw, ux, uz)) +
+      own;
+    const toward = yawToward(-ux, -uz);
+    // 横に並ぶ関係は、真横だとカメラから重なることがある。計算が選んだときは相手の後ろへ少しずらす
+    const [fx, fz] = forwardOf(target.yaw);
+    const stagger =
+      flip && (place.side === "left" || place.side === "right") ? STAGGER : 0;
+    return stretches.flatMap((d) =>
+      lanes.map((lane) => {
+        const reach = base + Math.max(gap + d, 0.3);
+        const x = ox + ux * reach - fx * stagger + lane;
+        const z = oz + uz * reach - fz * stagger;
+        const facing = backdrop ? yawToward(ox - x, oz - z) : toward;
+        const yaw =
+          place.turn === "same"
+            ? target.yaw
+            : place.turn === "away"
+              ? normalizeYaw(facing + 180)
+              : facing;
+        return { x, z, yaw };
+      }),
+    );
+  });
+  const open = spots.find((p) => canStand(c, p.x, p.z, [target.key]));
+  if (!open) c.misses++;
+  const p = open ?? spots[0];
+  return standAt(part, p.x, p.z, p.yaw);
+};
+
+/** 奥の席、短い辺の席、手前の席の順。手前の席は奥の席の人を隠すので最後に使う */
+const seatRank = (name: string) =>
+  name.includes("back") ? 0 : name.includes("end") ? 1 : 2;
+
+/** テーブルの席を埋める順。カメラに顔が見える奥の席の真ん中から */
+const seatOrder = (seats: Record<string, Vec3>) =>
+  Object.entries(seats).sort(
+    ([an, a], [bn, b]) =>
+      seatRank(an) - seatRank(bn) || Math.abs(a[0]) - Math.abs(b[0]),
+  );
+
+/** seat_at: テーブルの次の空いた席に、テーブルを向いて置く */
+const placeSeat = (c: Composer, target: Placed): Spot | undefined => {
+  const seats = target.part.anchors?.seats;
+  if (!seats) return undefined;
+  const used = c.seated.get(target.key) ?? 0;
+  const seat = seatOrder(seats)[used];
+  if (!seat) {
+    c.misses++;
+    return undefined;
+  }
+  c.seated.set(target.key, used + 1);
+  const [name, local] = seat;
+  const w = rotate(local, target.yaw);
+  return {
+    position: [target.position[0] + w[0], 0, target.position[2] + w[2]],
+    surface: "ground",
+    yaw: normalizeYaw(
+      target.yaw +
+        (name.includes("front")
+          ? 180
+          : name.includes("end")
+            ? local[0] < 0
+              ? 90
+              : -90
+            : 0),
+    ),
+  };
+};
+
 /** 1 つの部品の位置を、関係から決める */
 const placeItem = (
   c: Composer,
@@ -311,6 +604,7 @@ const placeItem = (
   part: Part,
   yaw: number,
   sitters: Map<string, string[]>,
+  flip = false,
 ): Spot => {
   const { hx, hz } = footprint(part.size, yaw);
   const target = item.place.target
@@ -333,7 +627,12 @@ const placeItem = (
   if (isGroundPart(part)) {
     const [zx, zz] = zoneCenter(item.place.zone);
     const [x, z] = clampXZ(zx, zz, hx, hz);
-    return { position: [x, 0, z], surface: "ground" };
+    // 2 枚目の地面（歩道の上の道路）は少し上に敷く
+    // 芝の板は薄いので road_patch をそのまま重ねられる（parts.py の ROAD_THICK）
+    const second = [...c.placed.values()].some(
+      (p) => isGroundPart(p.part) && p.part.id !== "grass_patch",
+    );
+    return { position: [x, second ? 0.01 : 0, z], surface: "ground" };
   }
 
   // 背景の壁は表（+Z）をカメラに向け、裏が場面の奥の端に付くよう置く。
@@ -341,6 +640,11 @@ const placeItem = (
   if (isBackdrop(part)) {
     const depth = (c.parts.get(item.part) ?? part).size[2];
     return { position: [0, 0, -HALF + depth / 2], surface: "ground", yaw: 0 };
+  }
+
+  // 場面全体に重ねる部品（雨）は真ん中に置き、ほかの物を避けない
+  if (part.category === "thing" && part.size[0] >= HALF * 1.5) {
+    return { position: [0, 0, 0], surface: "air" };
   }
 
   const [zx, zz] = zoneCenter(item.place.zone);
@@ -374,7 +678,52 @@ const placeItem = (
   };
 
   switch (relation) {
+    case "relate":
+      if (item.place.link === "under") return placeUnder(c, part, target);
+      return item.place.link === "hand"
+        ? placeHand(c, part, target, item.place, flip)
+        : placeBody(c, part, target, item.place, flip);
+    case "seat_at":
+      return placeSeat(c, target) ?? beside([[0, -1], ...RIGHT_LEFT]);
+    case "thrown_by": {
+      const [tx2, tz2] = feetOf(target);
+      // 受ける人がいれば、2 人の間を飛ぶ
+      const catcher = [...c.placed.values()].find(
+        (p) => p.key !== target.key && p.part.range && target.part.range,
+      );
+      if (catcher) {
+        const [cx, cz] = feetOf(catcher);
+        return {
+          position: [
+            tx2 + (cx - tx2) * 0.6,
+            THROWN_HEIGHT,
+            tz2 + (cz - tz2) * 0.6,
+          ],
+          surface: "air",
+        };
+      }
+      const [ux, uz] = forwardOf(target.yaw);
+      return {
+        position: [
+          tx2 + ux * THROWN_DISTANCE,
+          THROWN_HEIGHT,
+          tz2 + uz * THROWN_DISTANCE,
+        ],
+        surface: "air",
+      };
+    }
     case "on": {
+      // 名前付きの場所があれば、そこに置く
+      const named = item.place.spot
+        ? target.part.anchors?.spots?.[item.place.spot]
+        : undefined;
+      if (named) {
+        const w = rotate(named, target.yaw);
+        return {
+          position: [tx + w[0], ty + w[1], tz + w[2]],
+          surface: target.key,
+        };
+      }
       // top があればその面、無くて seat があれば座面（x・z も seat の点）、どちらも無ければ部品の高さ
       const anchors = target.part.anchors;
       const seat =
@@ -388,6 +737,17 @@ const placeItem = (
       return { position: [x, ty + top, z], surface: target.key };
     }
     case "in":
+      // 木の中は葉の高さの手前。幹の根元に置くと見えない
+      if (target.part.category === "plant") {
+        return {
+          position: [
+            tx,
+            ty + target.part.size[1] * IN_PLANT_HEIGHT,
+            tz + target.hz * 0.6,
+          ],
+          surface: "air",
+        };
+      }
       return { position: [tx, ty, tz], surface: "air" };
     case "under": {
       // 木の下は幹を避けて手前に置く。机などの下は真ん中
@@ -689,20 +1049,26 @@ const placementOrder = (items: PlanItem[]) => {
   return order;
 };
 
-/**
- * Claude が書いた関係（plan）を、配置の JSON（scenenglish.scene/1）にする。
- * 一覧に無い部品は飛ばす。items は 40 個まで。配点は合計 90、extraMax は 10 にする
- */
-export const composeLayout = (
-  plan: ScenePlan,
-  partList: Part[],
-  meta: { id: string; difficulty: Difficulty },
-): SceneLayout => {
-  const parts = new Map(partList.map((p) => [p.id, p]));
-  const known = plan.items.filter((i) => parts.has(i.part)).slice(0, MAX_ITEMS);
-  const keys = uniqueNames(known, (i) => i.key);
-  const items = known.map((i, n) => ({ ...i, key: keys[n] }));
-  const c: Composer = { parts, placed: new Map() };
+/** 全体を解くときに試す向き（度）。真横を先に、隠れるなら斜めへ */
+const STAGE_YAWS = [90, -90, 65, -65, 40, -40, 0];
+/** 試す組み合わせの上限（Worker の CPU に収める） */
+const MAX_TRIALS = 100;
+
+type Choice = { yaw: number | null; flips: Set<string> };
+
+/** 全部の部品を順に置く。choice は全体を解くときに試す向きと左右 */
+const placeAll = (
+  items: PlanItem[],
+  parts: Map<string, Part>,
+  choice: Choice,
+) => {
+  const c: Composer = {
+    parts,
+    placed: new Map(),
+    misses: 0,
+    pinned: false,
+    seated: new Map(),
+  };
 
   // 同じ相手に座る人の並び（席を左右に分ける）
   const sitters = new Map<string, string[]>();
@@ -718,13 +1084,17 @@ export const composeLayout = (
   const deferredFacing: PlanItem[] = [];
   for (const item of placementOrder(items)) {
     const part = parts.get(item.part) as Part;
+    const facing = item.facing === "auto" ? undefined : item.facing;
+    // 向きを計算に任せる部品（facing: auto）は、試している向きにする
+    const autoYaw = item.facing === "auto" ? (choice.yaw ?? 0) : undefined;
     // 相手を向くときは、向きが決まるまで回しても収まる大きさで場所を探す
     const preYaw =
-      item.facing === undefined
+      autoYaw ??
+      (facing === undefined
         ? 0
-        : item.facing in FACING_YAW
-          ? FACING_YAW[item.facing]
-          : null;
+        : facing in FACING_YAW
+          ? FACING_YAW[facing]
+          : null);
     const searchSize: Vec3 =
       preYaw === null
         ? [
@@ -739,10 +1109,11 @@ export const composeLayout = (
       { ...part, size: searchSize },
       preYaw ?? 0,
       sitters,
+      choice.flips.has(item.key),
     );
     let yaw = spot.yaw ?? preYaw ?? 0;
     if (spot.yaw === undefined && preYaw === null) {
-      const y = facingYaw(c, item.facing, spot.position, item.key);
+      const y = facingYaw(c, facing, spot.position, item.key);
       if (y === null) deferredFacing.push(item);
       else yaw = y;
     }
@@ -759,6 +1130,181 @@ export const composeLayout = (
     const p = c.placed.get(item.key) as Placed;
     p.yaw = facingYaw(c, item.facing, p.position, item.key) ?? 0;
   }
+  return c;
+};
+
+const rangedPairs = (people: Placed[]) => {
+  const ranged = people.filter((p) => p.part.range).map(feetOf);
+  return ranged.flatMap((a, i) =>
+    ranged.slice(i + 1).map((b) => [a, b] as const),
+  );
+};
+
+/** 点 (x, z) と線分 a-b の距離（線分の外なら無限大） */
+const betweenLine = (
+  x: number,
+  z: number,
+  [ax, az]: [number, number],
+  [bx, bz]: [number, number],
+) => {
+  const dx = bx - ax;
+  const dz = bz - az;
+  const t = ((x - ax) * dx + (z - az) * dz) / (dx * dx + dz * dz || 1);
+  if (t < 0 || t > 1) return Number.POSITIVE_INFINITY;
+  return Math.hypot(x - (ax + t * dx), z - (az + t * dz));
+};
+
+/** カメラから見た読みにくさの点数。小さいほどよい。隠れる・背中を見せる・埋まるを重く見る */
+const stageCost = (c: Composer) => {
+  const people = [...c.placed.values()].filter((p) => isLiving(p.part));
+  let cost = c.misses * 15;
+  const CAMERA = 11;
+  people.forEach((p, i) => {
+    const [x, z] = feetOf(p);
+    const y = Math.abs(normalizeYaw(p.yaw));
+    if (y > 135) cost += 10;
+    cost += 1 - Math.abs(Math.sin(rad(y))); // 横顔に近いほどよい
+    if (Math.abs(x) > STAND_LIMIT || Math.abs(z) > STAND_LIMIT) cost += 20;
+    for (const o of people.slice(i + 1)) {
+      const [ox, oz] = feetOf(o);
+      const [nx, nz, fx, fz] = z > oz ? [x, z, ox, oz] : [ox, oz, x, z];
+      const apparent = Math.abs(nx - fx * ((CAMERA - nz) / (CAMERA - fz)));
+      if (apparent < 0.5) cost += 20;
+    }
+    // 離れてやり取りする 2 人の間に、ほかの人や動物を立たせない
+    if (!p.part.range) {
+      for (const [a, b] of rangedPairs(people)) {
+        if (betweenLine(x, z, a, b) < 0.6) cost += 20;
+      }
+    }
+  });
+  return cost;
+};
+
+/** 人の真ん中が場面の真ん中に来るよう、全体をずらす。電車と道路の場面は線路や道に合わせてあるのでずらさない */
+const centerStage = (c: Composer) => {
+  const all = [...c.placed.values()];
+  if (
+    c.pinned ||
+    all.some((p) => p.part.category === "vehicle" || p.part.id === "road_patch")
+  )
+    return;
+  // 人と、人が関わる物をひとまとまりとして真ん中に寄せる
+  const people = all
+    .filter(
+      (p) =>
+        !isGroundPart(p.part) &&
+        !isBackdrop(p.part) &&
+        p.part.size[0] < HALF * 1.5,
+    )
+    .map(feetOf);
+  if (people.length === 0) return;
+  const mid = (v: number[]) => (Math.min(...v) + Math.max(...v)) / 2;
+  const movable = all.filter(
+    (p) =>
+      !isGroundPart(p.part) &&
+      !isBackdrop(p.part) &&
+      p.part.size[0] < HALF * 1.5,
+  );
+  const within = (axis: 0 | 2, shift: number) => {
+    const half = (p: Placed) => (axis === 0 ? p.hx : p.hz);
+    const lo = Math.max(
+      ...movable.map((p) => -3.7 + half(p) - p.position[axis]),
+    );
+    const hi = Math.min(
+      ...movable.map((p) => 3.7 - half(p) - p.position[axis]),
+    );
+    return lo > hi ? 0 : clamp(shift, lo, hi);
+  };
+  const dx = within(0, -mid(people.map((f) => f[0])));
+  const dz = within(2, 0.3 - mid(people.map((f) => f[1])));
+  for (const p of movable) {
+    p.position = [p.position[0] + dx, p.position[1], p.position[2] + dz];
+  }
+};
+
+/** 全体を解く: 向きと左右の候補を試し、読みにくさが最小の置き方を選ぶ。relate も auto も無ければ 1 回だけ置く */
+const solve = (planned: PlanItem[], parts: Map<string, Part>) => {
+  const solving = planned.some(
+    (i) => i.place.relation === "relate" || i.facing === "auto",
+  );
+  if (!solving)
+    return placeAll(planned, parts, { yaw: null, flips: new Set() });
+  // 見え方は計算の担当。関係の起点になる人と座る物は、向きの指定が無ければ計算で決める
+  const rooted = new Set(planned.map((i) => i.place.target));
+  const items = planned.map((i) => {
+    const part = parts.get(i.part) as Part;
+    const root =
+      i.place.relation === "ground" &&
+      (isLiving(part) || (!!part.anchors?.seat && rooted.has(i.key)));
+    // 人が手を伸ばす家具は、人が横から見えるよう、指定にかかわらず計算で回す
+    const station = i.place.relation === "ground" && !!part.anchors?.spots;
+    return station ||
+      (root && (i.facing === undefined || i.facing === "camera"))
+      ? { ...i, facing: "auto" }
+      : i;
+  });
+  const free = items
+    .filter(
+      (i) =>
+        i.place.relation === "relate" &&
+        (i.place.side ?? "any") !== "front" &&
+        (i.place.side ?? "any") !== "back",
+    )
+    .map((i) => i.key)
+    .slice(0, 3);
+  const yaws = items.some((i) => i.facing === "auto") ? STAGE_YAWS : [0];
+  let best: Composer | undefined;
+  let bestCost = Number.POSITIVE_INFINITY;
+  let trials = 0;
+  for (const yaw of yaws) {
+    for (let bits = 0; bits < 1 << free.length && trials < MAX_TRIALS; bits++) {
+      trials++;
+      const flips = new Set(free.filter((_, n) => bits & (1 << n)));
+      const c = placeAll(items, parts, { yaw, flips });
+      const cost = stageCost(c);
+      if (cost < bestCost) {
+        best = c;
+        bestCost = cost;
+      }
+    }
+  }
+  const c = best as Composer;
+  centerStage(c);
+  return c;
+};
+
+/** 顔を横へ向けた部品は、いちばん近い人のいる側を向くほうを使う */
+const gazePart = (c: Composer, p: Placed) => {
+  const { gaze, mirror } = p.part;
+  if (!gaze || !mirror) return p.part.id;
+  const [x, z] = feetOf(p);
+  const near = [...c.placed.values()]
+    .filter((o) => o.key !== p.key && isLiving(o.part))
+    .map(feetOf)
+    .sort(
+      (a, b) => Math.hypot(a[0] - x, a[1] - z) - Math.hypot(b[0] - x, b[1] - z),
+    )[0];
+  if (!near) return p.part.id;
+  const side = rotate([1, 0, 0], p.yaw);
+  const right = (near[0] - x) * side[0] + (near[1] - z) * side[2] >= 0;
+  return right === (gaze === "r") ? p.part.id : mirror;
+};
+
+/**
+ * Claude が書いた関係（plan）を、配置の JSON（scenenglish.scene/1）にする。
+ * 一覧に無い部品は飛ばす。items は 40 個まで。配点は合計 90、extraMax は 10 にする
+ */
+export const composeLayout = (
+  plan: ScenePlan,
+  partList: Part[],
+  meta: { id: string; difficulty: Difficulty },
+): SceneLayout => {
+  const parts = new Map(partList.map((p) => [p.id, p]));
+  const known = plan.items.filter((i) => parts.has(i.part)).slice(0, MAX_ITEMS);
+  const keys = uniqueNames(known, (i) => i.key);
+  const items = known.map((i, n) => ({ ...i, key: keys[n] }));
+  const c = solve(items, parts);
 
   const layoutItems: LayoutItem[] = items.map((item) => {
     const p = c.placed.get(item.key) as Placed;
@@ -767,7 +1313,7 @@ export const composeLayout = (
     const yaw = round(normalizeYaw(moved?.yaw ?? p.yaw), 1);
     const out: LayoutItem = {
       key: item.key,
-      part: item.part,
+      part: gazePart(c, p),
       position: position.map((n) => round(n)) as Vec3,
     };
     if (yaw !== 0) out.yaw = yaw;

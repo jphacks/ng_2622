@@ -1,0 +1,31 @@
+{
+  "id": "table_party",
+  "version": 1,
+  "file": "parts/table_party/1.usdz",
+  "category": "furniture",
+  "words": [
+    {
+      "word": "table",
+      "pos": "noun"
+    }
+  ],
+  "size": [3.6, 0.72, 1.0],
+  "label": "8 人以上の大きなテーブル",
+  "anchors": {
+    "top": 0.72,
+    "seats": {
+      "seat_front_1": [-1.44, 0.0, 0.72],
+      "seat_front_2": [-0.72, 0.0, 0.72],
+      "seat_front_3": [0.0, 0.0, 0.72],
+      "seat_front_4": [0.72, 0.0, 0.72],
+      "seat_front_5": [1.44, 0.0, 0.72],
+      "seat_back_1": [-1.44, 0.0, -0.72],
+      "seat_back_2": [-0.72, 0.0, -0.72],
+      "seat_back_3": [0.0, 0.0, -0.72],
+      "seat_back_4": [0.72, 0.0, -0.72],
+      "seat_back_5": [1.44, 0.0, -0.72],
+      "seat_end_1": [-2.02, 0.0, 0.0],
+      "seat_end_2": [2.02, 0.0, 0.0]
+    }
+  }
+}

@@ -1,0 +1,27 @@
+{
+  "id": "table_long",
+  "version": 1,
+  "file": "parts/table_long/1.usdz",
+  "category": "furniture",
+  "words": [
+    {
+      "word": "table",
+      "pos": "noun"
+    }
+  ],
+  "size": [2.1, 0.72, 0.9],
+  "label": "3〜6 人用の長いテーブル",
+  "anchors": {
+    "top": 0.72,
+    "seats": {
+      "seat_front_1": [-0.7, 0.0, 0.67],
+      "seat_front_2": [0.0, 0.0, 0.67],
+      "seat_front_3": [0.7, 0.0, 0.67],
+      "seat_back_1": [-0.7, 0.0, -0.67],
+      "seat_back_2": [0.0, 0.0, -0.67],
+      "seat_back_3": [0.7, 0.0, -0.67],
+      "seat_end_1": [-1.27, 0.0, 0.0],
+      "seat_end_2": [1.27, 0.0, 0.0]
+    }
+  }
+}

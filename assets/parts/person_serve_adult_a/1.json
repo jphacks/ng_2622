@@ -1,0 +1,30 @@
+{
+  "id": "person_serve_adult_a",
+  "version": 1,
+  "file": "parts/person_serve_adult_a/1.usdz",
+  "category": "person",
+  "words": [
+    {
+      "word": "man",
+      "pos": "noun"
+    },
+    {
+      "word": "bring",
+      "pos": "verb"
+    },
+    {
+      "word": "cup",
+      "pos": "noun"
+    }
+  ],
+  "pose": "serve",
+  "size": [0.676, 1.695, 0.846],
+  "label": "男の人（お盆で運ぶ）",
+  "holds": "tray",
+  "anchors": {
+    "hand_l": [-0.292, 0.8, 0.003],
+    "hand_r": [0.168, 1.1, 0.253],
+    "feet": [-0.032, 0.0, -0.167],
+    "head": [-0.032, 1.52, -0.167]
+  }
+}

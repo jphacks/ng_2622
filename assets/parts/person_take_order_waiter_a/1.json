@@ -1,0 +1,31 @@
+{
+  "id": "person_take_order_waiter_a",
+  "version": 1,
+  "file": "parts/person_take_order_waiter_a/1.usdz",
+  "category": "person",
+  "words": [
+    {
+      "word": "waiter",
+      "pos": "noun"
+    },
+    {
+      "word": "take",
+      "pos": "verb"
+    },
+    {
+      "word": "order",
+      "pos": "noun"
+    }
+  ],
+  "pose": "take_order",
+  "size": [0.556, 1.695, 0.64],
+  "label": "店員（注文を取る）",
+  "holds": "notepad",
+  "uses": ["table"],
+  "anchors": {
+    "hand_l": [-0.1, 1.18, 0.224],
+    "hand_r": [0.08, 1.22, 0.244],
+    "feet": [0.0, 0.0, -0.116],
+    "head": [0.0, 1.52, -0.116]
+  }
+}
