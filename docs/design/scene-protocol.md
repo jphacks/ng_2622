@@ -229,15 +229,20 @@ v1 の基本は止まった場面で、動作は人物のポーズで表す。�
 - `accept` が `description` に含まれる。
 - 落ちたら、作り置きは理由を指示に足して 2 回まで作り直す。部屋での生成は作り置きに切り替える。
 
-### Claude に書かせる形（`/2`）
+### Claude に書かせる形（`/2`、2 段）
 
 ```
-{ name, description,                                         ← {a} 英文の部分（先に書く）
-  checklist: [{ id, kind, label, accept, refs }],
-  items: [{ key, part, place, facing?, motion? }] }          ← {b} 場面の部分（後に書く。/1 と同じ）
+1 回目（部品の一覧は渡さない）
+  { name, description, checklist: [{ id, kind, label, accept, refs }] }   ← refs は英小文字の短い呼び名（man・bench）
+     ↓ description を 1〜3 文ずつ
+部品の候補 candidates(description)   ← 今は全部の部品を返す。後でベクトル検索（種類ごとに上位 k 個の要素 → 部品）に差し替える
+     ↓ コードが refs の呼び名を集める
+2 回目（1 回目の出力の全部・候補の部品・呼び名の一覧を渡す）
+  { items: [{ key, part, place, facing?, motion? }] }                    ← 呼び名を全部 key に使う。/1 と同じ形
 ```
 
-2 段に分けるときは、{a} と {b} を別の呼び出しで書かせ、2 回目には {a} を全部渡す。そのとき `cast`（登場する物の呼び名と、動作を含む句）を {a} に足す。
+- 呼び名の一覧（`cast`）は作らない。検索の問い合わせは、検索のモデルの学習と同じ形（場面の英文 1〜3 文）にする（[ADR](../adr/20261110-write-grade-sentences-before-scene-parts.md)）。
+- Award Day（2026-11-15）の当日は、部屋での生成を止める（`SCENE_GENERATION` を `off`）。
 
 ## 崩れの扱い
 
