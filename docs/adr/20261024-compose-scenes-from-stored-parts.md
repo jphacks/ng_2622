@@ -3,6 +3,7 @@
 ## Status
 - accepted
 - 部分 supersede: AI の場面を待合でホストの一言からその場で作る前提（Consequences の「待合でホストが一言入れれば、数秒で新しい場面を遊べる」）は、[20261025-pre-generate-ai-scenes-and-pick-by-difficulty](./20261025-pre-generate-ai-scenes-and-pick-by-difficulty.md) で「遊ぶ前に作り置き、Worker に同梱し、待合では難易度だけを選ぶ」に置き換えた。部品と配置の JSON で場面を作ること、プロトコル、部品を R2 に置くことは存続する。
+- 部分 supersede: 配置の JSON に採点の情報として `description`・`elements`・`extraMax` を入れること（Decision の 1 項目め）は、[20261110-adopt-scene-protocol-v2-with-checklist](./20261110-adopt-scene-protocol-v2-with-checklist.md) で「`scenenglish.scene/2` にし、`elements`・`extraMax` を `checklist` に置き換え、`description` を見本の答えにする」に置き換えた。部品と配置の JSON で場面を作ることは存続する。
 
 ## Situation
 - Hack Day の 1 日目の終わり。Code Freeze は 10/25 15:00 で、審査されるのは Hack Day 中に作ったものだけ。
