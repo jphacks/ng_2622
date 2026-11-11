@@ -38,7 +38,8 @@ test("作り置きの場面も選べるシーンで、名前は JSON の name", 
   const id = index["eiken-3"].scenes[0];
   assert.ok(isSceneId(id));
   assert.equal(sceneName(id), findPoolScene(id)?.name);
-  assert.ok(isSceneId("park"));
+  // 手作りの場面は外した
+  assert.ok(!isSceneId("park"));
   assert.ok(!isSceneId("gen-xxxxxxxxxx"));
 });
 
@@ -113,7 +114,7 @@ test("sceneId と difficulty の両方を送ると invalid_message", () => {
   const { state, hostId } = lobbyWithHost();
   const r = startRound(state, {
     playerId: hostId,
-    sceneId: "park",
+    sceneId: index["eiken-3"].scenes[0],
     difficulty: "eiken-3",
     now: 0,
     connectedIds: new Set([hostId]),
@@ -122,7 +123,7 @@ test("sceneId と difficulty の両方を送ると invalid_message", () => {
   assert.equal(r.error.code, "invalid_message");
 });
 
-test("どちらも送らなければ手作りの場面のおまかせ、sceneId だけならその場面", () => {
+test("どちらも送らなければ全部の級の作り置きからのおまかせ、sceneId だけならその場面。外した手作りの場面は unknown_scene", () => {
   const { state, hostId } = lobbyWithHost();
   const random = startRound(state, {
     playerId: hostId,
@@ -130,15 +131,25 @@ test("どちらも送らなければ手作りの場面のおまかせ、sceneId 
     connectedIds: new Set([hostId]),
   });
   assert.ok(random.ok);
-  assert.equal(findPoolScene(random.value.round.sceneId), undefined);
+  const all = Object.values(index).flatMap((entry) => entry.scenes);
+  assert.ok(all.includes(random.value.round.sceneId));
+  const id = index["eiken-2"].scenes[0];
   const chosen = startRound(state, {
+    playerId: hostId,
+    sceneId: id,
+    now: 0,
+    connectedIds: new Set([hostId]),
+  });
+  assert.ok(chosen.ok);
+  assert.equal(chosen.value.round.sceneId, id);
+  const gone = startRound(state, {
     playerId: hostId,
     sceneId: "park",
     now: 0,
     connectedIds: new Set([hostId]),
   });
-  assert.ok(chosen.ok);
-  assert.equal(chosen.value.round.sceneId, "park");
+  assert.ok(!gone.ok);
+  assert.equal(gone.error.code, "unknown_scene");
 });
 
 test("start の difficulty は級の値だけ受け付け、古い値（easy・normal・hard）は断る", () => {

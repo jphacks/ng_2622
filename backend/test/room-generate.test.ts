@@ -173,9 +173,10 @@ test("生成が off なら今までどおり作り置きの場面ですぐ始め
 test("sceneId を指定したスタートは生成しない", async () => {
   const calls = sceneClaude();
   const { room, host, others } = await openRoom(ON);
-  await send(room, host, { type: "start", sceneId: "park" });
+  const sceneId = poolCandidates("eiken-2")[0];
+  await send(room, host, { type: "start", sceneId });
   assert.equal(calls.length, 0);
-  assert.equal(received(others[0], "round")[0].sceneId, "park");
+  assert.equal(received(others[0], "round")[0].sceneId, sceneId);
 });
 
 test("その部屋で 20 回試したら、それ以降は作り置きの場面から選ぶ", async () => {
@@ -374,7 +375,7 @@ test("AI で作った場面は、beginGrading が返す部屋の配置で採点�
         RecognitionStatus: "Success",
         NBest: [
           {
-            Display: "A man is walking in the park",
+            Display: "A girl is holding an umbrella",
             AccuracyScore: 90,
             FluencyScore: 80,
             ProsodyScore: 80,
@@ -385,10 +386,18 @@ test("AI で作った場面は、beginGrading が返す部屋の配置で採点�
     }
     bodies.push(String(init?.body));
     return claudeMessage("end_turn", {
-      content: 70,
+      claims: [
+        {
+          quote: "A girl is holding an umbrella",
+          verdict: "correct",
+          item: "girl_umbrella",
+          level: "full",
+          note: null,
+        },
+      ],
+      expressionBasis: "Correct present continuous.",
       expression: 60,
-      strength: { quote: "walking", text: "動作を言えた" },
-      nextStep: { kind: "content", text: "ボールも足そう" },
+      nextStep: { kind: "content", text: "男の子も足そう", item: "boy_run" },
       rewrite: null,
     });
   }) as typeof fetch;
@@ -401,13 +410,18 @@ test("AI で作った場面は、beginGrading が返す部屋の配置で採点�
     },
     wav(),
     sceneId,
-    "A man is walking in the park",
+    "A girl is holding an umbrella",
     layout,
   );
   assert.ok(live.ok, JSON.stringify(live));
-  assert.equal(live.content, 70);
+  // 部屋の配置の checklist で採点する（中心 1 つ = 2 / 10、正しさ 1 / 1）
+  assert.deepEqual(live.breakdown.recall, { earned: 2, max: 10 });
+  assert.equal(live.content, 33);
+  assert.equal(live.feedback.nextStep.item, "boy_run");
   const user = JSON.parse(bodies[0]).messages[0].content as string;
   assert.ok(user.includes(SENTENCES.description));
+  assert.ok(user.includes("Grade: eiken-pre2"));
+  assert.ok(user.includes("- girl_umbrella [center]"));
 });
 
 test("部屋の結果発表には AI で作った場面の名前を出す", async () => {

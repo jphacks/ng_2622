@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { GRADE_IDS } from "../scenes/types";
+import { CHECKLIST_KINDS, GRADE_IDS } from "../scenes/types";
 
 // HTTP と WebSocket の両方で使う型。`.meta({ ref })` を付けたものは OpenAPI の components.schemas に名前付きで出る
 
@@ -40,7 +40,7 @@ export const PlayerColor = z.int().min(0).max(0xffffff).meta({
 export const SceneId = z.string().min(1).meta({
   ref: "SceneId",
   description: "シーンの ID（シーンの JSON の id）",
-  example: "park",
+  example: "gen-7k2m9q4x3a",
 });
 
 // 値は scenes/types.ts の GRADE_IDS の 1 か所で決める（場面の difficulty・作り置きの一覧のキーと同じ）
@@ -48,6 +48,12 @@ export const Difficulty = z.enum(GRADE_IDS).meta({
   ref: "Difficulty",
   description:
     "場面の難易度（級）。eiken-3: かんたん・eiken-pre2: ふつう・eiken-2: むずかしい。古い値（easy・normal・hard）は受け付けない",
+});
+
+export const ChecklistKind = z.enum(CHECKLIST_KINDS).meta({
+  ref: "ChecklistKind",
+  description:
+    "チェックリストの項目の種類。center: 中心（誰が何をしているか）・reason: 理由・link: つながり（原因 → 行動 → 結果や目的）・detail: 細部（位置など）",
 });
 
 export const RoomPhase = z

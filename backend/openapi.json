@@ -427,23 +427,168 @@
         "additionalProperties": false,
         "description": "点数（各 0〜100 の整数）"
       },
-      "FeedbackStrength": {
+      "ContentClaim": {
         "type": "object",
         "properties": {
           "quote": {
             "type": "string",
-            "description": "根拠にした本人の発話（文字起こしから引用）。無ければ空"
+            "description": "発話からの引用。文字起こし（transcript）に書かれているとおりの文字列。前の描写が終わった位置から先を、そのままの文字列で探すと下線を引ける（1 つの文が 2 つの項目に当たるときは、引用が重なることがある）"
           },
-          "text": {
-            "type": "string"
+          "verdict": {
+            "type": "string",
+            "enum": [
+              "correct",
+              "contradiction",
+              "absent",
+              "offtopic"
+            ],
+            "description": "correct: 場面と合う・contradiction: 場面と矛盾する・absent: 場面に無い物や人・offtopic: 場面と関係が無い。数えない描写（推測やつなぎの言葉）は送らない"
+          },
+          "item": {
+            "description": "当たったチェックリストの項目の id（items の id）。correct で null なら、一覧に無い正しい描写（その他）。correct 以外は null",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "level": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "enum": [
+              "full",
+              "partial"
+            ],
+            "description": "項目に当たったときの達成（full: 言えた・partial: 一部）。item が null なら null"
+          },
+          "note": {
+            "description": "間違いの理由（日本語）。correct のときは null",
+            "type": [
+              "string",
+              "null"
+            ]
           }
         },
         "required": [
           "quote",
-          "text"
+          "verdict",
+          "item",
+          "level",
+          "note"
         ],
         "additionalProperties": false,
-        "description": "できたこと"
+        "description": "発話を事実 1 つずつに分けた描写と、その判定"
+      },
+      "ContentItem": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "kind": {
+            "$ref": "#/components/schemas/ChecklistKind"
+          },
+          "label": {
+            "type": "string",
+            "description": "振り返りに出す日本語"
+          },
+          "level": {
+            "type": "string",
+            "enum": [
+              "full",
+              "partial",
+              "none"
+            ],
+            "description": "full: 言えた・partial: 一部・none: 言えていない"
+          }
+        },
+        "required": [
+          "id",
+          "kind",
+          "label",
+          "level"
+        ],
+        "additionalProperties": false,
+        "description": "チェックリストの項目ごとの達成"
+      },
+      "PlayerContent": {
+        "type": "object",
+        "properties": {
+          "claims": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ContentClaim"
+            },
+            "description": "話した順。数えない描写は入らない"
+          },
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ContentItem"
+            },
+            "description": "場面のチェックリストの順"
+          },
+          "others": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991,
+            "description": "その他（一覧に無い正しい描写）として数えた件数。2 件まで"
+          },
+          "recall": {
+            "type": "object",
+            "properties": {
+              "earned": {
+                "type": "number",
+                "minimum": 0,
+                "description": "言えた重み（中心・理由・つながり 2、細部 1、一部は半分、その他 1 件 0.5。max で頭打ち）"
+              },
+              "max": {
+                "type": "number",
+                "minimum": 0,
+                "description": "満点の重み（項目だけの合計）"
+              }
+            },
+            "required": [
+              "earned",
+              "max"
+            ],
+            "additionalProperties": false,
+            "description": "言えた（再現率）の分子と分母"
+          },
+          "precision": {
+            "type": "object",
+            "properties": {
+              "correct": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 9007199254740991,
+                "description": "正しい描写の数"
+              },
+              "said": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 9007199254740991,
+                "description": "言った描写の数（claims の数と同じ）"
+              }
+            },
+            "required": [
+              "correct",
+              "said"
+            ],
+            "additionalProperties": false,
+            "description": "正しさ（適合率）の分子と分母"
+          }
+        },
+        "required": [
+          "claims",
+          "items",
+          "others",
+          "recall",
+          "precision"
+        ],
+        "additionalProperties": false,
+        "description": "内容の点の内訳。内容 = 100 × 2PR / (P + R)、R = recall.earned ÷ recall.max、P = precision.correct ÷ precision.said（どちらも分母が 0 なら 0）"
       },
       "FeedbackNextStep": {
         "type": "object",
@@ -456,6 +601,16 @@
               "speech"
             ]
           },
+          "text": {
+            "type": "string"
+          },
+          "item": {
+            "description": "kind が content のとき、勧めるチェックリストの項目の id（content.items の id）。項目を全部言えているとき・短すぎる発話のとき・content 以外は null",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
           "gain": {
             "type": [
               "integer",
@@ -463,19 +618,17 @@
             ],
             "minimum": -9007199254740991,
             "maximum": 9007199254740991,
-            "description": "足すと合計点が何点伸びるか。内容の要素のときだけ"
-          },
-          "text": {
-            "type": "string"
+            "description": "その項目を言えたら、合計の点（score.total）が何点伸びるか。item が null のときは null"
           }
         },
         "required": [
           "kind",
-          "gain",
-          "text"
+          "text",
+          "item",
+          "gain"
         ],
         "additionalProperties": false,
-        "description": "次に伸ばす一つ。言えなかった要素のうち配点が最も高いもの"
+        "description": "次に伸ばす一つ。内容・表現・話し方のどれを勧めるかは採点の Claude が選ぶ"
       },
       "Rewrite": {
         "type": "object",
@@ -526,9 +679,6 @@
       "Feedback": {
         "type": "object",
         "properties": {
-          "strength": {
-            "$ref": "#/components/schemas/FeedbackStrength"
-          },
           "nextStep": {
             "$ref": "#/components/schemas/FeedbackNextStep"
           },
@@ -549,7 +699,6 @@
           }
         },
         "required": [
-          "strength",
           "nextStep",
           "rewrite",
           "speechTip"
@@ -594,9 +743,17 @@
             "type": "string",
             "description": "文字起こし。採点できなかった人は空"
           },
-          "comment": {
-            "type": "string",
-            "description": "講評の一言（できたこと。feedback.strength.text と同じ）。採点できなかった人は空"
+          "content": {
+            "type": [
+              "object",
+              "null"
+            ],
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/PlayerContent"
+              }
+            ],
+            "description": "内容の点の内訳（描写の一覧・項目ごとの達成・言えたと正しさ）。全員分が届く。採点できなかった人は null"
           },
           "feedback": {
             "type": [
@@ -618,7 +775,7 @@
           "rank",
           "score",
           "transcript",
-          "comment",
+          "content",
           "feedback"
         ],
         "additionalProperties": false
@@ -640,7 +797,7 @@
           },
           "sceneName": {
             "type": "string",
-            "example": "公園"
+            "example": "雨のバス停"
           },
           "players": {
             "type": "array",
@@ -838,16 +995,6 @@
         "format": "uuid",
         "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$",
         "description": "部屋の中での参加者の ID"
-      },
-      "ChecklistKind": {
-        "type": "string",
-        "enum": [
-          "center",
-          "reason",
-          "link",
-          "detail"
-        ],
-        "description": "チェックリストの項目の種類。center: 中心（誰が何をしているか）・reason: 理由・link: つながり（原因 → 行動 → 結果や目的）・detail: 細部（位置など）"
       },
       "SceneChecklistItem": {
         "type": "object",
@@ -1270,7 +1417,7 @@
         "type": "string",
         "minLength": 1,
         "description": "シーンの ID（シーンの JSON の id）",
-        "example": "park"
+        "example": "gen-7k2m9q4x3a"
       },
       "SubmitReviewResponse": {
         "type": "object",
@@ -1339,44 +1486,8 @@
       "ContentFeedback": {
         "type": "object",
         "properties": {
-          "strength": {
-            "type": "object",
-            "properties": {
-              "quote": {
-                "type": "string",
-                "description": "根拠にした本人の発話（文字起こしから引用）。無ければ空"
-              },
-              "text": {
-                "type": "string"
-              }
-            },
-            "required": [
-              "quote",
-              "text"
-            ],
-            "additionalProperties": false
-          },
           "nextStep": {
-            "type": "object",
-            "properties": {
-              "kind": {
-                "type": "string",
-                "enum": [
-                  "content",
-                  "expression",
-                  "speech"
-                ],
-                "description": "speech は話し方の点を送ったときだけ"
-              },
-              "text": {
-                "type": "string"
-              }
-            },
-            "required": [
-              "kind",
-              "text"
-            ],
-            "additionalProperties": false
+            "$ref": "#/components/schemas/FeedbackNextStep"
           },
           "rewrite": {
             "type": [
@@ -1392,12 +1503,11 @@
           }
         },
         "required": [
-          "strength",
           "nextStep",
           "rewrite"
         ],
         "additionalProperties": false,
-        "description": "講評。次に伸ばす一つは Claude が選ぶ"
+        "description": "講評（話し方のコツは無い）"
       },
       "ScoreResponse": {
         "type": "object",
@@ -1406,16 +1516,19 @@
             "type": "integer",
             "minimum": 0,
             "maximum": 100,
-            "description": "内容（0〜100）。採点基準の段階で付ける"
+            "description": "内容（0〜100）。チェックリストの達成（言えた）と、言ったことの正しさの F1"
           },
           "expression": {
             "type": "integer",
             "minimum": 0,
             "maximum": 100,
-            "description": "表現（0〜100）。採点基準の段階で付ける"
+            "description": "表現（0〜100）。級の文法の一覧に照らした段階で付ける"
           },
           "transcript": {
             "type": "string"
+          },
+          "breakdown": {
+            "$ref": "#/components/schemas/PlayerContent"
           },
           "feedback": {
             "$ref": "#/components/schemas/ContentFeedback"
@@ -1438,20 +1551,73 @@
           "content",
           "expression",
           "transcript",
+          "breakdown",
           "feedback",
           "mode",
           "elapsedMs"
         ],
         "additionalProperties": false,
-        "description": "配置と文字起こしから採点した、内容と表現の点と講評"
+        "description": "配置と文字起こしから採点した、内容と表現の点・内容の内訳・講評。nextStep.gain は、話し方の点を変えないとしたときの合計の伸び"
+      },
+      "ChecklistKind": {
+        "type": "string",
+        "enum": [
+          "center",
+          "reason",
+          "link",
+          "detail"
+        ],
+        "description": "チェックリストの項目の種類。center: 中心（誰が何をしているか）・reason: 理由・link: つながり（原因 → 行動 → 結果や目的）・detail: 細部（位置など）"
       },
       "ScoringLayout": {
         "type": "object",
         "properties": {
+          "difficulty": {
+            "$ref": "#/components/schemas/Difficulty"
+          },
           "description": {
-            "description": "場面の説明文（英語）。作り置きのときに書いて人が確かめたもの。採点の補足として Claude に渡す",
+            "description": "級の見本の答え（英語）。採点の補足として Claude に渡す",
             "type": "string",
             "maxLength": 2000
+          },
+          "checklist": {
+            "minItems": 1,
+            "maxItems": 20,
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string",
+                  "description": "場面の中で重ならない ID"
+                },
+                "kind": {
+                  "$ref": "#/components/schemas/ChecklistKind"
+                },
+                "label": {
+                  "type": "string",
+                  "description": "振り返りに出す日本語"
+                },
+                "accept": {
+                  "type": "string",
+                  "description": "「言えた」とする英語の言い方。採点の Claude が基準にする。\" / \" で別の言い方を並べることがある"
+                },
+                "refs": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  },
+                  "description": "項目が指す items の key"
+                }
+              },
+              "required": [
+                "id",
+                "kind",
+                "label",
+                "accept",
+                "refs"
+              ]
+            }
           },
           "items": {
             "minItems": 1,
@@ -1468,6 +1634,97 @@
                   "type": "string",
                   "minLength": 1,
                   "description": "部品の ID（assets/parts/index.json）。版を書くときは apple@1"
+                },
+                "place": {
+                  "type": "object",
+                  "properties": {
+                    "relation": {
+                      "type": "string",
+                      "enum": [
+                        "ground",
+                        "on",
+                        "in",
+                        "under",
+                        "above",
+                        "next_to",
+                        "in_front_of",
+                        "behind",
+                        "near",
+                        "between",
+                        "sit_on",
+                        "seat_at",
+                        "relate",
+                        "thrown_by"
+                      ]
+                    },
+                    "target": {
+                      "description": "相手の key",
+                      "type": "string"
+                    },
+                    "target2": {
+                      "description": "between の 2 つ目",
+                      "type": "string"
+                    },
+                    "zone": {
+                      "type": "string",
+                      "enum": [
+                        "back_left",
+                        "back",
+                        "back_right",
+                        "left",
+                        "center",
+                        "right",
+                        "front_left",
+                        "front",
+                        "front_right"
+                      ]
+                    },
+                    "spot": {
+                      "type": "string"
+                    },
+                    "link": {
+                      "type": "string",
+                      "enum": [
+                        "hand",
+                        "body",
+                        "under"
+                      ]
+                    },
+                    "side": {
+                      "type": "string",
+                      "enum": [
+                        "any",
+                        "front",
+                        "back",
+                        "left",
+                        "right"
+                      ]
+                    },
+                    "distance": {
+                      "type": "string",
+                      "enum": [
+                        "touch",
+                        "beside",
+                        "talk",
+                        "approach",
+                        "far"
+                      ]
+                    },
+                    "turn": {
+                      "type": "string",
+                      "enum": [
+                        "toward",
+                        "away",
+                        "same"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "relation"
+                  ]
+                },
+                "facing": {
+                  "type": "string"
                 },
                 "position": {
                   "minItems": 3,
@@ -1502,6 +1759,16 @@
                       "items": {
                         "type": "number"
                       }
+                    },
+                    "toward": {
+                      "type": "string"
+                    },
+                    "path": {
+                      "type": "string",
+                      "enum": [
+                        "across",
+                        "along"
+                      ]
                     }
                   },
                   "required": [
@@ -1518,9 +1785,11 @@
           }
         },
         "required": [
+          "difficulty",
+          "checklist",
           "items"
         ],
-        "description": "配置の JSON（scenenglish.scene/1）のうち、採点に使う項目。ほかの項目（name・elements など）は送っても無視する。座標や動きの細かい項目（duration など）も読まない"
+        "description": "配置の JSON（scenenglish.scene/2）のうち、採点に使う項目。ほかの項目（id・name など）は送っても無視する。動きの細かい項目（duration など）も読まない"
       },
       "ScoreRequest": {
         "type": "object",
@@ -2276,7 +2545,7 @@
           "scoring"
         ],
         "summary": "配置と文字起こしから採点する",
-        "description": "場面の配置の JSON（items と description）と発話の文字起こしを送る。部品のメタデータ（名前・words・大きさ）と配置（座標・向き・動き）、説明文を Claude に渡し、内容と表現を採点基準の段階（0・20・40・60・80・100）で付けて講評を返す。画像は使わず、話し方（発音）の点も付けない。",
+        "description": "場面の配置の JSON（scenenglish.scene/2 のうち difficulty・description・checklist・items）と発話の文字起こしを送る。部屋の採点と同じチェックリストの採点で、内容（チェックリストの達成と正しさの F1）と表現（級の文法の一覧に照らした段階）を付け、内容の内訳と講評を返す。音声は受けず、話し方（発音）の点は付けない。",
         "responses": {
           "200": {
             "description": "採点した",

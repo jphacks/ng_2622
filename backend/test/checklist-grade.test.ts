@@ -14,7 +14,6 @@ import {
 } from "../src/scoring/checklistGrade";
 import { ClaudeError } from "../src/scoring/claude";
 import {
-  describeLayout,
   describeLayoutWithRelations,
   type RelationItem,
 } from "../src/scoring/layout";
@@ -115,7 +114,7 @@ test("describeLayoutWithRelations は、座標の行に place・facing・動き�
   assert.match(text, /place: ground \(zone back_right\)/);
 });
 
-test("関係の無い items では、describeLayout の行をそのまま含む（describeLayout は変えていない）", () => {
+test("関係の無い items は、座標の行だけになる", () => {
   const items = [
     {
       key: "grass",
@@ -129,12 +128,10 @@ test("関係の無い items では、describeLayout の行をそのまま含む�
       yaw: 90,
     },
   ];
-  const plain = describeLayout(items);
-  const withRelations = describeLayoutWithRelations(items);
-  assert.ok(plain && withRelations);
-  assert.doesNotMatch(plain, /Relations:/);
-  const things = (s: string) => s.slice(s.indexOf("Things ("));
-  assert.equal(things(withRelations), things(plain));
+  const text = describeLayoutWithRelations(items);
+  assert.ok(text);
+  assert.match(text, /- dog: [\s\S]*position: \[1, 0, 2\]\n {2}yaw: 90$/);
+  assert.doesNotMatch(text, /place:|facing:|moves toward:/);
   // 地面だけ・知らない部品だけなら null
   assert.equal(describeLayoutWithRelations([items[0]]), null);
   assert.equal(
@@ -215,7 +212,6 @@ const JUDGED: ChecklistJudgment = {
   ],
   expressionBasis: "Uses the present continuous and because correctly.",
   expression: 78.4,
-  strength: { quote: "because juice is on it", text: "理由を言えた" },
   nextStep: { kind: "content", text: "店員も足そう", item: "woman_wipe" },
   rewrite: null,
 };
@@ -280,8 +276,7 @@ test("gradeWithChecklist: 偽の応答から、内容の点・内訳・次の一
     r.nextStep.text,
     "次は「店員がカップを運んでいる」を足してみよう。",
   );
-  assert.equal(r.nextStep.gain, 75 - 60); // R = 7/10、P = 4/5 → 75
-  assert.deepEqual(r.strength, JUDGED.strength);
+  assert.equal(r.nextStep.contentIfSaid, 75); // R = 7/10、P = 4/5 → 75
   assert.equal(r.rewrite, null);
 });
 
@@ -326,7 +321,6 @@ test("gradeWithChecklist: Claude に渡す本文と schema", async () => {
     "claims",
     "expressionBasis",
     "expression",
-    "strength",
     "nextStep",
     "rewrite",
   ]);
@@ -364,7 +358,7 @@ test("話し方の点が無ければ、本文に入れず speech も選ばせな
   ]);
 });
 
-test("表現の点は 0〜100 に丸める。表現を勧めたときは項目も gain も無い", async () => {
+test("表現の点は 0〜100 に丸める。表現を勧めたときは項目も、言えたときの内容の点も無い", async () => {
   const r = await gradeWithChecklist({}, inputFor(), {
     create: fake({
       ...JUDGED,
@@ -377,7 +371,7 @@ test("表現の点は 0〜100 に丸める。表現を勧めたときは項目�
     kind: "expression",
     text: "because を使おう",
     item: null,
-    gain: null,
+    contentIfSaid: null,
   });
 });
 
@@ -706,11 +700,12 @@ const GOOD = {
   ...JUDGED,
   expression: 80,
   expressionBasis: "Correct present continuous.",
-  strength: { quote: "A boy is sitting", text: "良い応答" },
+  nextStep: { kind: "expression" as const, text: "良い応答", item: null },
 };
+// どの応答が使われたかを、次の一つの文で見分ける
 const tagged = (judged: typeof ZERO, text: string) => ({
   ...judged,
-  strength: { quote: "", text },
+  nextStep: { kind: "expression" as const, text, item: null },
 });
 const retry = async (responses: unknown[], transcript?: string) => {
   const calls: Parameters<CreateMessage>[0][] = [];
@@ -727,7 +722,7 @@ test("3 語以上の発話に表現 0 点が返ったら、同じ入力で呼び
   assert.equal(r.expression, 80);
   assert.equal(r.expressionRetries, 1);
   assert.equal(r.expressionBasis, "Correct present continuous.");
-  assert.equal(r.strength.text, "良い応答");
+  assert.equal(r.nextStep.text, "良い応答");
 });
 
 test("根拠が空（空白だけも含む）なら、点が 0 でなくても呼び直す", async () => {
@@ -738,7 +733,7 @@ test("根拠が空（空白だけも含む）なら、点が 0 でなくても�
     ]);
     assert.equal(calls.length, 2);
     assert.equal(r.expression, 80);
-    assert.equal(r.strength.text, "良い応答");
+    assert.equal(r.nextStep.text, "良い応答");
   }
 });
 
@@ -759,7 +754,7 @@ test("どれも不完全なら、根拠が空でない応答を優先し、同�
   assert.equal(a.calls.length, 3);
   assert.equal(a.r.expression, 0);
   assert.equal(a.r.expressionRetries, 2);
-  assert.equal(a.r.strength.text, "根拠つきの 0");
+  assert.equal(a.r.nextStep.text, "根拠つきの 0");
 
   // 全部が空で埋めた応答なら、初めの応答のまま
   const b = await retry([
@@ -768,7 +763,7 @@ test("どれも不完全なら、根拠が空でない応答を優先し、同�
     tagged(ZERO, "3 回目"),
   ]);
   assert.equal(b.calls.length, 3);
-  assert.equal(b.r.strength.text, "1 回目");
+  assert.equal(b.r.nextStep.text, "1 回目");
   assert.equal(b.r.content, 60);
 
   // 根拠がどれも空なら、点のある応答を使う
@@ -778,7 +773,7 @@ test("どれも不完全なら、根拠が空でない応答を優先し、同�
     tagged(ZERO, "3 回目"),
   ]);
   assert.equal(c.r.expression, 70);
-  assert.equal(c.r.strength.text, "点だけある");
+  assert.equal(c.r.nextStep.text, "点だけある");
 });
 
 test("呼び直しが失敗したら、そこでやめて、それまでの応答を使う", async () => {
@@ -790,7 +785,7 @@ test("呼び直しが失敗したら、そこでやめて、それまでの応�
   assert.equal(calls.length, 2);
   assert.equal(r.expression, 0);
   assert.equal(r.expressionRetries, 1);
-  assert.equal(r.strength.text, "1 回目");
+  assert.equal(r.nextStep.text, "1 回目");
 });
 
 test("3 語未満の発話は呼び直さない。根拠があり 0 点でなければ呼び直さない", async () => {

@@ -1,25 +1,27 @@
 import { findPoolScene, poolCandidates } from "../scenes/pool";
-import type { GradeId } from "../scenes/types";
-import scenes from "../scoring/scenes.json";
+import { GRADE_IDS, type GradeId } from "../scenes/types";
 
-// 手作りのシーンの一覧は採点と同じ scoring/scenes.json を使う。作り置きの場面は scenes/pool.ts
-const SCENE_IDS = scenes.map((s) => s.id);
+// 遊べる場面は、作り置きの場面（scenes/pool.ts）と、部屋が AI で作った場面（部屋の保存領域）。
+// 手作りの場面は外した（docs/adr/20261111-score-only-with-checklist-and-drop-handmade-scenes.md）
 
-/** 結果発表に出すシーンの名前（例: 公園）。作り置きの場面は JSON の name */
-export const sceneName = (id: string) =>
-  findPoolScene(id)?.name ?? scenes.find((s) => s.id === id)?.name ?? id;
+/** 結果発表に出すシーンの名前。作り置きの場面は JSON の name（部屋が作った場面の名前は Round が持つ） */
+export const sceneName = (id: string) => findPoolScene(id)?.name ?? id;
 
-/** 選べるシーンか（手作りの場面と、index.json に載っている作り置きの場面） */
-export const isSceneId = (id: string) =>
-  SCENE_IDS.includes(id) || findPoolScene(id) !== undefined;
+/** 選べるシーンか（index.json に載っている作り置きの場面） */
+export const isSceneId = (id: string) => findPoolScene(id) !== undefined;
 
-/** 選べるシーンの一覧。kind は今はバニラ（最初から入っているシーン）だけ。作り置きの場面は名前を見せないので出さない */
-export const listScenes = () =>
-  scenes.map((s) => ({ id: s.id, name: s.name, kind: "vanilla" as const }));
+/** 一覧に出すシーン。作り置きの場面は出題まで名前を見せないので、今は 1 つも出さない */
+export const listScenes = (): {
+  id: string;
+  name: string;
+  kind: "vanilla";
+}[] => [];
 
-/** おまかせのときのシーン（手作りの場面から） */
-export const pickRandomSceneId = () =>
-  SCENE_IDS[Math.floor(Math.random() * SCENE_IDS.length)];
+/** おまかせ（sceneId も difficulty も無いスタート）のときのシーン。全部の級の出題の候補から選ぶ */
+export const pickRandomSceneId = (random: () => number = Math.random) => {
+  const all = GRADE_IDS.flatMap((g) => poolCandidates(g));
+  return all[Math.floor(random() * all.length)];
+};
 
 /**
  * 難易度から作り置きの場面を選ぶ。その部屋でまだ出ていないものからランダムに 1 つ。

@@ -12,7 +12,7 @@ test("GET /scenes/{sceneId}/layout は作り置きの場面の JSON をそのま
   }
 });
 
-test("無い場面と手作りの場面は 404 unknown_scene", async () => {
+test("無い場面（外した手作りの場面も）は 404 unknown_scene", async () => {
   for (const id of ["gen-xxxxxxxxxx", "park"]) {
     const res = await app.request(`/scenes/${id}/layout`);
     assert.equal(res.status, 404);

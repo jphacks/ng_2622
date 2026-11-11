@@ -2,6 +2,7 @@ import type { z } from "zod";
 import type { PlayerStatus } from "../schemas/common";
 import type { PlayerResult, ResultsMessage } from "../schemas/ws";
 import type { Feedback } from "../scoring";
+import type { SentContent } from "../scoring/checklist";
 import { AVATAR_COLORS } from "./player";
 import { fail, ok, type Result } from "./result";
 import type { RoomState } from "./room";
@@ -23,6 +24,8 @@ export type Grade =
       status: "done";
       score: Score;
       transcript: string;
+      /** 内容の内訳（描写の一覧・項目ごとの達成・言えたと正しさ） */
+      content: SentContent;
       feedback: Feedback;
     }
   | { status: "failed" };
@@ -30,7 +33,7 @@ export type Grade =
 export type Round = {
   round: number;
   sceneId: string;
-  /** AI で作った場面の名前（結果発表に出す）。作り置き・手作りの場面は sceneId から引くので無い */
+  /** AI で作った場面の名前（結果発表に出す）。作り置きの場面は sceneId から引くので無い */
   sceneName?: string;
   /** 回転を始める時刻（UNIX 時刻のミリ秒） */
   startAt: number;
@@ -159,7 +162,7 @@ export const roundResults = (
       color: p.color ?? AVATAR_COLORS[0],
       score: done ? roundScore(done.score) : null,
       transcript: done?.transcript ?? "",
-      comment: done?.feedback.strength.text ?? "",
+      content: done?.content ?? null,
       feedback: done?.feedback ?? null,
     };
   });

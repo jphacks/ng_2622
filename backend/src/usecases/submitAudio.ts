@@ -24,6 +24,7 @@ const toGrade = (result: ScoreResult): Grade =>
           total: result.total,
         },
         transcript: result.transcript,
+        content: result.breakdown,
         feedback: result.feedback,
       }
     : { status: "failed" };
