@@ -1300,74 +1300,6 @@
           "difficulty"
         ]
       },
-      "RatingSummary": {
-        "type": "object",
-        "properties": {
-          "average": {
-            "description": "★の平均（小数第 1 位まで）。評価が無ければ null",
-            "example": 4.2,
-            "type": [
-              "number",
-              "null"
-            ]
-          },
-          "count": {
-            "type": "integer",
-            "minimum": 0,
-            "maximum": 9007199254740991,
-            "description": "評価した人数"
-          }
-        },
-        "required": [
-          "average",
-          "count"
-        ],
-        "additionalProperties": false
-      },
-      "SceneSummary": {
-        "type": "object",
-        "properties": {
-          "id": {
-            "$ref": "#/components/schemas/SceneId"
-          },
-          "name": {
-            "type": "string",
-            "example": "公園"
-          },
-          "kind": {
-            "type": "string",
-            "enum": [
-              "vanilla"
-            ],
-            "description": "vanilla: 最初から入っているシーン（今後、ユーザーが作るシーンを足す）"
-          },
-          "rating": {
-            "$ref": "#/components/schemas/RatingSummary"
-          }
-        },
-        "required": [
-          "id",
-          "name",
-          "kind",
-          "rating"
-        ],
-        "additionalProperties": false
-      },
-      "ListScenesResponse": {
-        "type": "object",
-        "properties": {
-          "scenes": {
-            "type": "array",
-            "items": {
-              "$ref": "#/components/schemas/SceneSummary"
-            }
-          }
-        },
-        "required": [
-          "scenes"
-        ],
-        "additionalProperties": false
-      },
       "SceneReview": {
         "type": "object",
         "properties": {
@@ -2323,28 +2255,6 @@
             "application/json": {
               "schema": {
                 "$ref": "#/components/schemas/GenerateSceneRequest"
-              }
-            }
-          }
-        }
-      }
-    },
-    "/scenes": {
-      "get": {
-        "operationId": "listScenes",
-        "tags": [
-          "scenes"
-        ],
-        "summary": "シーンの一覧と★の平均",
-        "description": "選べるシーンと、それぞれの★の平均と評価した人数を返す。",
-        "responses": {
-          "200": {
-            "description": "一覧",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ListScenesResponse"
-                }
               }
             }
           }

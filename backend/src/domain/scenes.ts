@@ -10,13 +10,6 @@ export const sceneName = (id: string) => findPoolScene(id)?.name ?? id;
 /** 選べるシーンか（index.json に載っている作り置きの場面） */
 export const isSceneId = (id: string) => findPoolScene(id) !== undefined;
 
-/** 一覧に出すシーン。作り置きの場面は出題まで名前を見せないので、今は 1 つも出さない */
-export const listScenes = (): {
-  id: string;
-  name: string;
-  kind: "vanilla";
-}[] => [];
-
 /** おまかせ（sceneId も difficulty も無いスタート）のときのシーン。全部の級の出題の候補から選ぶ */
 export const pickRandomSceneId = (random: () => number = Math.random) => {
   const all = GRADE_IDS.flatMap((g) => poolCandidates(g));

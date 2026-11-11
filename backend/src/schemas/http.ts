@@ -80,32 +80,6 @@ export const Rating = z.int().min(1).max(5).meta({
   example: 4,
 });
 
-export const RatingSummary = z
-  .object({
-    average: z.number().nullable().meta({
-      description: "★の平均（小数第 1 位まで）。評価が無ければ null",
-      example: 4.2,
-    }),
-    count: z.int().min(0).meta({ description: "評価した人数" }),
-  })
-  .meta({ ref: "RatingSummary" });
-
-export const SceneSummary = z
-  .object({
-    id: SceneId,
-    name: z.string().meta({ example: "公園" }),
-    kind: z.enum(["vanilla"]).meta({
-      description:
-        "vanilla: 最初から入っているシーン（今後、ユーザーが作るシーンを足す）",
-    }),
-    rating: RatingSummary,
-  })
-  .meta({ ref: "SceneSummary" });
-
-export const ListScenesResponse = z
-  .object({ scenes: z.array(SceneSummary) })
-  .meta({ ref: "ListScenesResponse" });
-
 export const SceneIdParam = z.object({ sceneId: SceneId });
 
 export const SceneLayoutQuery = z.object({

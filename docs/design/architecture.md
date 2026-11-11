@@ -65,7 +65,6 @@ sequenceDiagram
 | `GET /rooms/:id` | HTTP | 部屋があるか、満員でないかを返す（部屋に入る画面で使う） |
 | `GET /rooms/:id/ws` | WebSocket | 部屋に入る。最初に `join`（名前とアバターの色。ホストと復帰する人は参加者 ID と合言葉も）を送る。以後、部屋の状態・開始・進み具合・結果を受け取る |
 | `POST /rooms/:id/rounds/:n/audio` | HTTP | 自分の音声（WAV、最長 20 秒、約 0.6 MB）を本文にそのまま載せて送る。参加者 ID と合言葉をヘッダーに付ける。すぐ 202 を返し、採点は裏で続ける |
-| `GET /scenes` | HTTP | シーンの一覧と、それぞれの★の平均・評価した人数。手作りの場面を外したので（2026-11-11）、今は空の一覧を返す |
 | `GET /scenes/:id/layout` | HTTP | 作り置きの場面の配置の JSON（`scenenglish.scene/2`）を、`backend/src/scenes/pool/` の JSON のまま返す。round で届いた場面を組み立てるのに使う。部屋が AI で作った場面は `?room=<部屋のコード>` を付けて取る。無い場面は 404 `unknown_scene` |
 | `GET /scenes/:id/reviews` | HTTP | シーンの評価（★とコメント）を新しい順に返す |
 | `GET /parts` | HTTP | 部品のメタデータの一覧（Worker に同梱した一覧） |

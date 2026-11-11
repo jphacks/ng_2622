@@ -297,7 +297,7 @@ v1 の基本は止まった場面で、動作は人物のポーズで表す。�
 
 ## API
 
-今の `/scenes`（シーンの一覧と評価、[ADR](../adr/20261024-store-scene-reviews-in-a-global-durable-object.md)）を広げる。部品と、`POST /scenes` で保存したシーンの JSON は R2 に置く。作り置きの場面は R2 ではなく、Worker に同梱する（下の「AI で場面を作り置く」）。
+今の `/scenes`（シーンの評価、[ADR](../adr/20261024-store-scene-reviews-in-a-global-durable-object.md)。シーンの一覧 `GET /scenes` は 2026-11-11 に消した）を広げる。部品と、`POST /scenes` で保存したシーンの JSON は R2 に置く。作り置きの場面は R2 ではなく、Worker に同梱する（下の「AI で場面を作り置く」）。
 
 | メソッドとパス | だれが使う | 中身 |
 | --- | --- | --- |
