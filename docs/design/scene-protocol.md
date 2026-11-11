@@ -225,6 +225,8 @@ render_layout.py で PNG に描く ──▶ 人が目で確かめる ──▶ 
 
 ### 難易度の中身（推測）
 
+2026-11-10 に、難易度の値を `eiken-3`・`eiken-pre2`・`eiken-2` に変えると決めた（[ADR](../adr/20261110-align-scoring-with-eiken-speaking-viewpoints.md)）。画面の名前は変えず、古い値は受け付けない。切り替えるのは、30 場面を作り直すとき。級ごとのチェックリストの数は [`usecase.md`](./usecase.md) の採点。
+
 [`research/scene-levels-emotions.md`](./research/scene-levels-emotions.md) の A・B・C の段階に合わせる案。
 
 | 難易度 | 段階 | 動詞 | 説明文の文の数 | 部品の数の目安 |

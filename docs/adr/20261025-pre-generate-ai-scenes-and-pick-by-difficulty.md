@@ -3,6 +3,7 @@
 ## Status
 - accepted
 - 部分 supersede: 「待合でその場では作らない」「本番では場面を作らない」こと（Decision の 1・2 項目め）は、[20261026-generate-scenes-in-room-on-start](./20261026-generate-scenes-in-room-on-start.md) で「ホストがスタートを押したら部屋が作り、だめなら作り置きに切り替える」に置き換えた。作り置きの場面（同梱・難易度ごと）、待合で難易度だけを選ぶこと、ホストの一言を入れないことは存続する。
+- 部分 supersede: 難易度の値（`easy`・`normal`・`hard`）は、[20261110-align-scoring-with-eiken-speaking-viewpoints](./20261110-align-scoring-with-eiken-speaking-viewpoints.md) で `eiken-3`・`eiken-pre2`・`eiken-2` に置き換えた。画面の名前は変えない。
 
 ## Situation
 - Hack Day の 2 日目。Code Freeze は 10/25 15:00。
