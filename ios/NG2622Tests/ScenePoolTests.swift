@@ -9,19 +9,19 @@ struct ScenePoolTests {
   let hard = ["gen-hard-a", "gen-hard-b", "gen-hard-c"]
 
   func pool() -> ScenePool {
-    ScenePool(scenes: [.easy: easy, .normal: [], .hard: hard])
+    ScenePool(scenes: [.eiken3: easy, .eikenPre2: [], .eiken2: hard])
   }
 
   /// その難易度の場面だけから選ぶ。場面の無い難易度は nil で、difficulties にも入らない
   @Test func drawsOnlyThatDifficulty() {
     var pool = pool()
     for _ in 0..<30 {
-      let drawn = pool.draw(.hard)
+      let drawn = pool.draw(.eiken2)
       #expect(hard.contains(drawn ?? ""))
     }
-    let none = pool.draw(.normal)
+    let none = pool.draw(.eikenPre2)
     #expect(none == nil)
-    #expect(pool.difficulties == [.easy, .hard])
+    #expect(pool.difficulties == [.eiken3, .eiken2])
     #expect(pool.played.isDisjoint(with: easy))
   }
 
@@ -29,7 +29,7 @@ struct ScenePoolTests {
   @Test func avoidsPlayed() {
     for _ in 0..<20 {
       var pool = pool()
-      let drawn = (0..<hard.count).compactMap { _ in pool.draw(.hard) }
+      let drawn = (0..<hard.count).compactMap { _ in pool.draw(.eiken2) }
       #expect(Set(drawn) == Set(hard))
       #expect(pool.played == Set(hard))
     }
@@ -39,11 +39,11 @@ struct ScenePoolTests {
   @Test func wrapsAroundAfterAllPlayed() throws {
     for _ in 0..<20 {
       var pool = pool()
-      let firstEasyDrawn = pool.draw(.easy)
+      let firstEasyDrawn = pool.draw(.eiken3)
       let firstEasy = try #require(firstEasyDrawn)
-      let round = hard.compactMap { _ in pool.draw(.hard) }
+      let round = hard.compactMap { _ in pool.draw(.eiken2) }
       #expect(Set(round) == Set(hard))
-      let nextDrawn = pool.draw(.hard)
+      let nextDrawn = pool.draw(.eiken2)
       let next = try #require(nextDrawn)
       #expect(next != round.last)
       #expect(pool.played.intersection(hard) == [next])
@@ -56,18 +56,18 @@ struct ScenePoolTests {
   @Test func noRepeatAcrossWrap() throws {
     for _ in 0..<20 {
       var pool = pool()
-      let firstDrawn = pool.draw(.easy)
+      let firstDrawn = pool.draw(.eiken3)
       let first = try #require(firstDrawn)
-      let secondDrawn = pool.draw(.easy)
+      let secondDrawn = pool.draw(.eiken3)
       let second = try #require(secondDrawn)
       #expect(first != second)
-      let third = pool.draw(.easy)
+      let third = pool.draw(.eiken3)
       #expect(third == first)
     }
     // 1 つしか無ければ、続けて同じ場面が出る
-    var single = ScenePool(scenes: [.normal: ["gen-only"]])
-    let once = single.draw(.normal)
-    let twice = single.draw(.normal)
+    var single = ScenePool(scenes: [.eikenPre2: ["gen-only"]])
+    let once = single.draw(.eikenPre2)
+    let twice = single.draw(.eikenPre2)
     #expect(once == "gen-only")
     #expect(twice == "gen-only")
   }
@@ -75,15 +75,15 @@ struct ScenePoolTests {
   /// 例の場面（待合でホストに見せる）は出題しない。例しか無い難易度は選べない
   @Test func exampleIsNeverDrawn() {
     var pool = ScenePool(
-      scenes: [.easy: easy, .normal: ["gen-normal-example"], .hard: hard],
-      examples: [.easy: "gen-easy-a", .normal: "gen-normal-example", .hard: "gen-hard-b"])
-    #expect(pool.example(of: .easy) == "gen-easy-a")
-    #expect(pool.candidates(of: .hard) == ["gen-hard-a", "gen-hard-c"])
-    #expect(pool.difficulties == [.easy, .hard])
+      scenes: [.eiken3: easy, .eikenPre2: ["gen-normal-example"], .eiken2: hard],
+      examples: [.eiken3: "gen-easy-a", .eikenPre2: "gen-normal-example", .eiken2: "gen-hard-b"])
+    #expect(pool.example(of: .eiken3) == "gen-easy-a")
+    #expect(pool.candidates(of: .eiken2) == ["gen-hard-a", "gen-hard-c"])
+    #expect(pool.difficulties == [.eiken3, .eiken2])
     for _ in 0..<30 {
-      let e = pool.draw(.easy)
-      let h = pool.draw(.hard)
-      let n = pool.draw(.normal)
+      let e = pool.draw(.eiken3)
+      let h = pool.draw(.eiken2)
+      let n = pool.draw(.eikenPre2)
       #expect(e == "gen-easy-b")
       #expect(h != "gen-hard-b")
       #expect(n == nil)
@@ -91,52 +91,53 @@ struct ScenePoolTests {
     #expect(!pool.played.contains("gen-easy-a"))
     #expect(!pool.played.contains("gen-hard-b"))
     // 場面に無い ID を例にしても、例は出さない
-    let broken = ScenePool(scenes: [.easy: easy], examples: [.easy: "gen-nothing"])
-    #expect(broken.example(of: .easy) == nil)
+    let broken = ScenePool(scenes: [.eiken3: easy], examples: [.eiken3: "gen-nothing"])
+    #expect(broken.example(of: .eiken3) == nil)
   }
 
   /// index.json の例は scenes に無くても場面に入り、出題はしない。知らない難易度と、JSON の無い場面は入れない
   @Test func readsIndex() throws {
     let json = #"""
       {
-        "easy": { "example": "gen-easy-a", "scenes": ["gen-easy-b", "gen-easy-c"] },
-        "hard": { "scenes": ["gen-hard-a", "gen-missing"] },
+        "eiken-3": { "example": "gen-easy-a", "scenes": ["gen-easy-b", "gen-easy-c"] },
+        "eiken-2": { "scenes": ["gen-hard-a", "gen-missing"] },
         "extreme": { "example": "gen-x", "scenes": ["gen-y"] }
       }
       """#
     let pool = try ScenePool(index: Data(json.utf8), exists: { $0 != "gen-missing" })
-    #expect(pool.scenes[.easy] == ["gen-easy-a", "gen-easy-b", "gen-easy-c"])
-    #expect(pool.example(of: .easy) == "gen-easy-a")
-    #expect(pool.candidates(of: .easy) == ["gen-easy-b", "gen-easy-c"])
-    #expect(pool.example(of: .hard) == nil)
-    #expect(pool.candidates(of: .hard) == ["gen-hard-a"])
-    #expect(pool.difficulties == [.easy, .hard])
+    #expect(pool.scenes[.eiken3] == ["gen-easy-a", "gen-easy-b", "gen-easy-c"])
+    #expect(pool.example(of: .eiken3) == "gen-easy-a")
+    #expect(pool.candidates(of: .eiken3) == ["gen-easy-b", "gen-easy-c"])
+    #expect(pool.example(of: .eiken2) == nil)
+    #expect(pool.candidates(of: .eiken2) == ["gen-hard-a"])
+    #expect(pool.difficulties == [.eiken3, .eiken2])
     #expect(throws: (any Error).self) { try ScenePool(index: Data("[]".utf8)) }
   }
 
-  /// 同梱の作り置きの場面（pool/index.json）は、難易度ごとに 10（例 1 つと出題 9）あり、配置の JSON の difficulty と合っている
+  /// 同梱の作り置きの場面（pool/index.json）は、どの難易度にも例と出題が 1 つ以上あり、配置の JSON の difficulty と合っている。
+  /// 場面の数と名前は差し替わるので見ない
   @Test func bundledPool() async throws {
     let pool = ScenePool.bundled
     #expect(pool.difficulties == SceneDifficulty.allCases)
     let client = MockSceneLayoutClient()
     for difficulty in SceneDifficulty.allCases {
       let ids = pool.scenes[difficulty] ?? []
-      #expect(ids.count == 10)
       let example = try #require(pool.example(of: difficulty))
       #expect(ids.contains(example))
+      #expect(!pool.candidates(of: difficulty).isEmpty)
       #expect(pool.candidates(of: difficulty) == ids.filter { $0 != example })
       for id in ids {
-        #expect(try await client.layout(sceneID: id).difficulty == difficulty.rawValue)
+        let layout = try await client.layout(sceneID: id)
+        #expect(layout.difficulty == difficulty)
+        #expect(!layout.checklist.isEmpty, "\(id) にチェックリストが無い")
+        #expect(pool.contains(id))
       }
     }
+    #expect(!pool.contains("park"))
     // pool/ の JSON はどれも index.json に載っている（載っていない場面は使われない）
     let files = (Bundle.main.urls(forResourcesWithExtension: "json", subdirectory: ScenePool.directory) ?? [])
       .map { $0.deletingPathExtension().lastPathComponent }.filter { $0 != "index" }
     #expect(Set(files) == Set(SceneDifficulty.allCases.flatMap { pool.scenes[$0] ?? [] }))
-    // 例: かんたん＝公園のベンチで本を読む、ふつう＝校庭で遊ぶ子どもたち、むずかしい＝にぎやかな教室
-    #expect(try await client.layout(sceneID: pool.example(of: .easy) ?? "").name == "公園のベンチで本を読む")
-    #expect(try await client.layout(sceneID: pool.example(of: .normal) ?? "").name == "校庭で遊ぶ子どもたち")
-    #expect(try await client.layout(sceneID: pool.example(of: .hard) ?? "").name == "にぎやかな教室")
   }
 
   /// Mock のホストが難易度でスタートすると、その難易度の作り置きの場面（例でないもの）でラウンドが始まる
@@ -144,7 +145,7 @@ struct ScenePoolTests {
   @Test func mockStartsWithDifficulty() async throws {
     let client = MockGameClient(options: .init(otherPlayers: 0, generatingDuration: 0.05), pool: .bundled)
     _ = try await client.createRoom(as: PlayerProfile(name: "たろう", color: 0x5B5BE6))
-    try await client.startRound(difficulty: .hard)
+    try await client.startRound(difficulty: .eiken2)
     var sceneID: String?
     var generated = false
     for await event in client.events {
@@ -156,16 +157,16 @@ struct ScenePoolTests {
     }
     client.leaveRoom()
     #expect(generated)
-    #expect(ScenePool.bundled.candidates(of: .hard).contains(sceneID ?? ""))
-    #expect(sceneID != ScenePool.bundled.example(of: .hard))
+    #expect(ScenePool.bundled.candidates(of: .eiken2).contains(sceneID ?? ""))
+    #expect(sceneID != ScenePool.bundled.example(of: .eiken2))
   }
 
   /// Live の配置の口: 同梱の pool にある場面は通信せずに返し、無い場面だけ remote（GET /scenes/{sceneId}/layout）に取りに行く
   @Test func bundledFirstLayout() async throws {
     let remote = RecordingLayoutClient()
     let client = BundledFirstSceneLayoutClient(bundled: MockSceneLayoutClient(), remote: remote)
-    let bundledID = try #require(ScenePool.bundled.candidates(of: .normal).first)
-    #expect(try await client.layout(sceneID: bundledID).difficulty == "normal")
+    let bundledID = try #require(ScenePool.bundled.candidates(of: .eikenPre2).first)
+    #expect(try await client.layout(sceneID: bundledID).difficulty == .eikenPre2)
     #expect(remote.requested.isEmpty)
     #expect(try await client.layout(sceneID: "gen-notbundled").name == "遠くの場面")
     #expect(remote.requested == ["gen-notbundled"])
@@ -183,6 +184,6 @@ private final class RecordingLayoutClient: SceneLayoutClient {
   func layout(sceneID: String, room: String?) async throws -> SceneLayout {
     requested.append(sceneID)
     rooms.append(room)
-    return try SceneLayout.decode(Data(#"{"protocol":"scenenglish.scene/1","name":"遠くの場面","items":[]}"#.utf8))
+    return try SceneLayout.decode(Data(#"{"protocol":"scenenglish.scene/2","name":"遠くの場面","items":[]}"#.utf8))
   }
 }

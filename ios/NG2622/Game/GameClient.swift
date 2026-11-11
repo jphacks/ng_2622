@@ -13,9 +13,10 @@ protocol GameClient: AnyObject {
   /// 部屋から抜ける。以後 events は届かない
   func leaveRoom()
 
-  /// ホストがラウンドを始める（start）。sceneID が nil なら「おまかせ」で、部屋の側がランダムに選ぶ
+  /// ホストが作り置きの場面を指してラウンドを始める（start の sceneId）。nil なら「おまかせ」で、部屋の側がランダムに選ぶ。
+  /// 画面からは使わない（待合は難易度だけを選ぶ）。結合テストが使う
   func startRound(sceneID: String?) async throws
-  /// ホストが難易度だけを選んでラウンドを始める（SCENE_PICK = difficulty）。場面は、その部屋でまだ出ていない
+  /// ホストが難易度だけを選んでラウンドを始める。場面は、その部屋でまだ出ていない
   /// 作り置きの場面からランダムに選ぶ（ScenePool）。Mock はアプリの中で選び、Live は start で難易度を送って部屋が選ぶ
   func startRound(difficulty: SceneDifficulty) async throws
   /// 自分が話し終えた。録音した音声と端末での文字起こしを送る（POST /rooms/:id/rounds/:n/audio）。録れなかったときは nil

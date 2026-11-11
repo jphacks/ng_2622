@@ -29,7 +29,7 @@ extension RoundResults {
     // 点数の高い順。採点できなかった人は最後
     graded.sort { ($0.score?.total ?? 0) > ($1.score?.total ?? 0) }
     return RoundResults(
-      sceneID: sceneID, sceneName: SceneCatalog.name(of: sceneID), players: graded + ungraded, myReview: myReview)
+      sceneID: sceneID, sceneName: SceneLayouts.store.name(of: sceneID) ?? sceneID, players: graded + ungraded, myReview: myReview)
   }
 }
 

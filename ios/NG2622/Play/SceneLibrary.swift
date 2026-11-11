@@ -2,11 +2,11 @@ import Foundation
 import RealityKit
 
 /// 3D シーンを読み込んでおく所。同じシーンは 1 度だけ読み（組み立て）、使うたびに複製して渡す。
-/// 同梱のシーンは焼き込んだ <id>.usdz、AI で作った場面（gen-）は配置の JSON を取って部品を並べる
+/// どの場面も配置の JSON（作り置きは同梱、部屋がその場で作った場面はバックエンド）を取って部品を並べる
 final class SceneLibrary {
   static let shared = SceneLibrary()
 
-  /// 地面の 1 辺の長さ（m）。箱で組んでいた公園と同じ広さにそろえる
+  /// 地面の 1 辺の長さ（m）
   private static let footprint: Float = 2.3
   /// 組み立てた場面を縮めるときの、横幅の下限（m）。小物だけの場面が大きくなりすぎないようにする
   private static let minComposedSpan: Float = 3
@@ -37,7 +37,7 @@ final class SceneLibrary {
   private func load(_ id: String, room: String?) -> Task<SceneComposer.Composed?, Never> {
     if let task = loads[id] { return task }
     let task = Task { () -> SceneComposer.Composed? in
-      let scene = GeneratedScene.isGenerated(id) ? await Self.compose(id, room: room) : await Self.baked(id)
+      let scene = await Self.compose(id, room: room)
       if scene != nil { loaded.insert(id) }
       return scene
     }
@@ -47,13 +47,6 @@ final class SceneLibrary {
       if await task.value == nil { loads[id] = nil }
     }
     return task
-  }
-
-  /// 焼き込んだ USDZ。見た目の範囲に合わせて縮める
-  private static func baked(_ id: String) async -> SceneComposer.Composed? {
-    guard let model = try? await Entity(named: id, in: .main) else { return nil }
-    let bounds = model.visualBounds(relativeTo: nil)
-    return SceneComposer.Composed(root: fit(model, bounds: bounds, minSpan: 0.001), moving: [])
   }
 
   /// 配置の JSON から部品を並べる。範囲は初めの位置と、move の行き先で測る

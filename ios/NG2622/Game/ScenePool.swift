@@ -1,28 +1,25 @@
 import Foundation
 
-/// 作り置きの場面の難しさ。docs/design/scene-protocol.md の「難易度の中身」。配置の JSON の difficulty と同じ値
+/// 作り置きの場面の難しさ（英検の級）。docs/design/scene-protocol.md の「難易度の中身」。
+/// 配置の JSON の difficulty、start の difficulty、pool/index.json のキーと同じ値
 enum SceneDifficulty: String, CaseIterable, Identifiable, Sendable {
-  case easy
-  case normal
-  case hard
+  /// 3 級。お題は「誰が何をしている？」
+  case eiken3 = "eiken-3"
+  /// 準 2 級。お題は「誰が何をしている？ → なぜ？」
+  case eikenPre2 = "eiken-pre2"
+  /// 2 級。お題は「誰が何をしている？ → なぜ？ → つなげよう」
+  case eiken2 = "eiken-2"
 
   var id: String { rawValue }
 
+  /// 画面に出す名前（級の名前は出さない）
   var label: String {
     switch self {
-    case .easy: "かんたん"
-    case .normal: "ふつう"
-    case .hard: "むずかしい"
+    case .eiken3: "かんたん"
+    case .eikenPre2: "ふつう"
+    case .eiken2: "むずかしい"
     }
   }
-}
-
-/// 待合でホストがシーンを選ぶ形。Config/*.xcconfig の SCENE_PICK（Mock も Live も difficulty）
-enum ScenePick: String, Sendable {
-  /// 難易度だけを選ぶ。場面は作り置きの中から選ばれ、名前もサムネイルもスタートまで見せない
-  case difficulty
-  /// 手作りのシーンの一覧（サムネイルと名前）から選ぶ
-  case list
 }
 
 /// 作り置きの場面から、難易度で 1 つ選ぶ。その部屋でまだ出ていないものからランダムに選び、全部出たら最初に戻る。
@@ -55,9 +52,19 @@ struct ScenePool {
     examples[difficulty].flatMap { (scenes[difficulty] ?? []).contains($0) ? $0 : nil }
   }
 
+  /// 作り置きの場面か（例も入る）。部屋がその場で AI で作った場面は入らない
+  func contains(_ sceneID: String) -> Bool {
+    scenes.values.contains { $0.contains(sceneID) }
+  }
+
   /// 出題の候補。例は外す
   func candidates(of difficulty: SceneDifficulty) -> [String] {
     (scenes[difficulty] ?? []).filter { $0 != examples[difficulty] }
+  }
+
+  /// 「おまかせ」のときの場面。全部の難易度の出題の候補から選ぶ（バックエンドの pickRandomSceneId と同じ）。無ければ nil
+  func randomCandidate() -> String? {
+    SceneDifficulty.allCases.flatMap { candidates(of: $0) }.randomElement()
   }
 
   /// その難易度の場面を 1 つ選び、出たことにする。出題できる場面が無ければ nil
@@ -84,7 +91,7 @@ struct ScenePool {
   /// アプリの中で作り置きの場面を置くフォルダ。ビルドのときに backend/src/scenes/pool から写す（project.yml の Copy scene pool）
   static let directory = "pool"
 
-  /// アプリに同梱した作り置きの場面（pool/index.json と pool/<sceneId>.json）。Mock の出題と、待合の例に使う
+  /// アプリに同梱した作り置きの場面（pool/index.json と pool/<sceneId>.json）。Mock の出題と、待合の例、シーンの評価を出すかに使う
   static let bundled = ScenePool(bundle: .main)
 
   /// 作り置きの場面の一覧（backend/src/scenes/pool/index.json）の、1 つの難易度の分。

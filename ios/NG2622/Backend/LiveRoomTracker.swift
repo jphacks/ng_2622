@@ -170,7 +170,7 @@ extension RoundResults {
 
     self.init(
       sceneID: message.sceneId,
-      sceneName: message.sceneName.isEmpty ? SceneCatalog.name(of: message.sceneId) : message.sceneName,
+      sceneName: message.sceneName.isEmpty ? (SceneLayouts.store.name(of: message.sceneId) ?? message.sceneId) : message.sceneName,
       players: (graded + ungraded).map(\.result),
       myReview: me?.review)
   }

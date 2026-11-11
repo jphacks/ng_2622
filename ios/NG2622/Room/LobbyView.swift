@@ -1,20 +1,16 @@
 import SwiftUI
 
-/// 待合。部屋のコードと QR、参加者を見せる。ホストだけがシーン（または難易度）を選び、「スタート」を押せる。
+/// 待合。部屋のコードと QR、参加者を見せる。ホストだけが難易度を選び、「スタート」を押せる。
 /// 選んだシーンは参加者には見せない（ラウンドが始まると全員の画面に出る）。
 /// スタートのあと部屋が場面を AI で作っている間は、全員の画面で選ぶ所が走る人に替わる。退出はそのまま押せる
 struct LobbyView: View {
   let session: RoomSession
   let onLeave: () -> Void
-  /// シーンの選び方（SCENE_PICK）。difficulty なら難易度だけを選ぶ
-  var pick: ScenePick = AppConfig.current.scenePick
   /// 難易度ごとの例の場面（出題はしない）。Mock も Live も同梱の作り置きの一覧から出す（バックエンドは呼ばない）
   var example: (SceneDifficulty) -> String? = { ScenePool.bundled.example(of: $0) }
 
-  /// ホストが選んだシーンの ID。nil は「おまかせ」
-  @State private var sceneID: String?
-  /// ホストが選んだ難易度（pick が difficulty のとき）
-  @State private var difficulty = SceneDifficulty.easy
+  /// ホストが選んだ難易度
+  @State private var difficulty = SceneDifficulty.eiken3
 
   var body: some View {
     VStack(spacing: 0) {
@@ -36,14 +32,8 @@ struct LobbyView: View {
               .padding(.top, 16)
               .transition(.opacity)
           } else if session.isHost {
-            switch pick {
-            case .difficulty:
-              DifficultyPicker(selected: $difficulty, example: example(difficulty))
-                .padding(.top, 16)
-            case .list:
-              ScenePicker(selected: $sceneID)
-                .padding(.top, 16)
-            }
+            DifficultyPicker(selected: $difficulty, example: example(difficulty))
+              .padding(.top, 16)
           }
         }
         .animation(.easeInOut(duration: 0.3), value: session.isGenerating)
@@ -57,7 +47,7 @@ struct LobbyView: View {
 
       if session.isHost {
         // 場面を作っている間は押せない（2 度押さないように）
-        Button("スタート", action: start)
+        Button("スタート") { session.start(difficulty: difficulty) }
           .buttonStyle(BigButtonStyle(kind: .primary))
           .disabled(session.isGenerating)
           .padding(.bottom, 30)
@@ -69,13 +59,6 @@ struct LobbyView: View {
     }
     .frame(width: 346)
     .frame(maxWidth: .infinity)
-  }
-
-  private func start() {
-    switch pick {
-    case .difficulty: session.start(difficulty: difficulty)
-    case .list: session.start(sceneID: sceneID)
-    }
   }
 
   /// 部屋のコードと QR
@@ -132,83 +115,7 @@ struct LobbyView: View {
   }
 }
 
-/// シーンの一覧（ホストだけ）。既定は「おまかせ」。選ぶときに迷わせないよう、評価の星は出さない（評価は結果の画面で付ける）
-private struct ScenePicker: View {
-  /// nil は「おまかせ」
-  @Binding var selected: String?
-
-  var body: some View {
-    VStack(alignment: .leading, spacing: 10) {
-      HStack {
-        Text("シーン")
-          .font(Theme.font(16, .heavy))
-        Spacer()
-        randomButton
-      }
-      HStack(spacing: 8) {
-        ForEach(SceneCatalog.all) { scene in
-          tile(scene)
-        }
-      }
-    }
-    .padding(14)
-    .background(CardBackground())
-    .animation(.easeOut(duration: 0.2), value: selected)
-  }
-
-  /// 「おまかせ」。選ぶとスタートのときにランダムに決まる
-  private var randomButton: some View {
-    let on = selected == nil
-    return Button {
-      selected = nil
-    } label: {
-      HStack(spacing: 5) {
-        Image(systemName: "dice.fill")
-          .font(.system(size: 13, weight: .bold))
-        Text("おまかせ")
-          .font(Theme.font(14, .heavy))
-      }
-      .foregroundStyle(on ? .white : Theme.accent)
-      .padding(.horizontal, 14)
-      .frame(height: 32)
-      .background(on ? Theme.accent : Theme.accentSoft, in: Capsule())
-    }
-    .accessibilityAddTraits(on ? .isSelected : [])
-  }
-
-  private func tile(_ scene: SceneInfo) -> some View {
-    let on = selected == scene.id
-    return Button {
-      selected = scene.id
-    } label: {
-      VStack(spacing: 5) {
-        Color.clear
-          .aspectRatio(1.4, contentMode: .fit)
-          .overlay {
-            if let image = SceneCatalog.thumbnail(scene.id) {
-              Image(uiImage: image)
-                .resizable()
-                .scaledToFill()
-            }
-          }
-          .clipShape(RoundedRectangle(cornerRadius: 12))
-          .overlay {
-            RoundedRectangle(cornerRadius: 12)
-              .strokeBorder(on ? Theme.accent : Theme.line, lineWidth: on ? 3 : 1.5)
-          }
-        Text(scene.name)
-          .font(Theme.font(14, .heavy))
-          .foregroundStyle(on ? Theme.accent : Theme.ink)
-      }
-      .frame(maxWidth: .infinity)
-    }
-    .buttonStyle(.plain)
-    .accessibilityLabel(scene.name)
-    .accessibilityAddTraits(on ? .isSelected : [])
-  }
-}
-
-/// 難易度の選択（ホストだけ、SCENE_PICK = difficulty）。出題の場面は名前もサムネイルもスタートまで見せない。
+/// 難易度の選択（ホストだけ）。出題の場面は名前もサムネイルもスタートまで見せない。
 /// 場面は、その部屋でまだ出ていない作り置きの場面からランダムに出る（docs/design/ui/screens/lobby.md）。
 /// 下には、選んでいる難易度の例の場面を絵だけ出す（例は出題しない）
 private struct DifficultyPicker: View {

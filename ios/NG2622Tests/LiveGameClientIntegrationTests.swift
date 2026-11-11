@@ -51,10 +51,12 @@ struct LiveGameClientIntegrationTests {
     _ = try await next(&hostEvents) { if case .room(let r) = $0 { r.members.last?.status == .offline } else { false } }
     _ = try await next(&hostEvents) { if case .room(let r) = $0 { r.members.last?.status == .connected } else { false } }
 
-    try await host.startRound(sceneID: "park")
+    // 手作りの場面（park など）は外したので、同梱の作り置きの場面を指す
+    let sceneID = try #require(ScenePool.bundled.randomCandidate())
+    try await host.startRound(sceneID: sceneID)
     let started = try await next(&guestEvents) { if case .roundStarted = $0 { true } else { false } }
     guard case .roundStarted(let info) = started else { return }
-    #expect(info.sceneID == "park")
+    #expect(info.sceneID == sceneID)
 
     // ホストは WAV を送り（POST の音声）、参加者は録れなかったことにする（skip）
     try await host.finishSpeaking(audio: try silentWAV())

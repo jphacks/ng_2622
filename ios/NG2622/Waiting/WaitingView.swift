@@ -8,6 +8,8 @@ struct WaitingView: View {
   let enteredAt: Date
 
   @State private var confirming = false
+  /// 場面の見本の答え（配置の JSON の description）。取れるまで出さない
+  @State private var answer: String?
 
   var body: some View {
     VStack(spacing: 0) {
@@ -15,7 +17,7 @@ struct WaitingView: View {
         VStack(spacing: 16) {
           if let round {
             WaitingScene(round: round, enteredAt: enteredAt)
-            if let answer = SceneCatalog.description(of: round.sceneID) {
+            if let answer {
               ModelAnswer(text: answer, startsAt: enteredAt)
             }
           }
@@ -48,6 +50,11 @@ struct WaitingView: View {
       } onCancel: {
         confirming = false
       }
+    }
+    .task(id: round?.sceneID) {
+      guard let round else { return }
+      // 3D を出すときに取ってあるので、ふつうは通信しない
+      answer = try? await SceneLayouts.store.layout(of: round.sceneID, room: round.room).description
     }
     .onChange(of: session.isRoundOver) { _, over in
       if over { confirming = false }
