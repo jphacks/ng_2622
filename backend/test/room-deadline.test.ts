@@ -66,14 +66,14 @@ const resultsOf = (ws: Parameters<typeof received>[0]) =>
     players: { id: string; rank: number | null; score: unknown }[];
   }[];
 
-test("締め切りの時刻は、録音が終わるはずの時刻（開始 + 回転 3 秒 + 録音 20 秒）から音声 10 秒・採点 30 秒", () => {
+test("締め切りの時刻は、録音が終わるはずの時刻（開始 + 回転 3 秒 + 録音 20 秒）から音声 15 秒・採点 30 秒", () => {
   assert.equal(INTRO_MS, 3000);
   assert.equal(RECORDING_MS, 20000);
-  assert.equal(AUDIO_GRACE_MS, 10000);
+  assert.equal(AUDIO_GRACE_MS, 15000);
   assert.equal(GRADING_GRACE_MS, 30000);
   assert.deepEqual(roundDeadlines({ startAt: 1000 }), {
     recordingEnd: 24000,
-    audio: 34000,
+    audio: 39000,
     grading: 54000,
   });
 });
