@@ -15,6 +15,9 @@ export type Part = {
   label: string;
   /** 離れて相手とやり取りするポーズの間合い。両方が持つときは、この距離で向かい合う */
   range?: "far";
+  /** 手に持っている物（英語。別の部品として置かなくてよい）と、その動作に要るほかの部品の id */
+  holds?: string;
+  uses?: string[];
   /** 顔を向けている側（r は hand_r の側）と、反対側を向く部品の id */
   gaze?: "r" | "l";
   mirror?: string;
@@ -160,4 +163,70 @@ export type SceneLayout = {
   elements: SceneElementInput[];
   extraMax: number;
   items: LayoutItem[];
+};
+
+// ここから scenenglish.scene/2（英文を先に書く 2 段の生成）。
+// 形の正本は docs/design/scene-protocol.md の「配置の JSON v2」
+
+/** 級。/2 の difficulty の値 */
+export const GRADE_IDS = ["eiken-3", "eiken-pre2", "eiken-2"] as const;
+export type GradeId = (typeof GRADE_IDS)[number];
+
+export const CHECKLIST_KINDS = ["center", "reason", "link", "detail"] as const;
+export type ChecklistKind = (typeof CHECKLIST_KINDS)[number];
+
+/** チェックリストの 1 項目。形は採点（backend/src/scoring/）と同じ。重みは保存しない */
+export type ChecklistItem = {
+  id: string;
+  kind: ChecklistKind;
+  /** 振り返りに出す日本語 */
+  label: string;
+  /** 「言えた」とする英語の言い方。description に含める */
+  accept: string;
+  /** 項目が指す items の key。reason・link は原因と行動の 2 つ以上 */
+  refs: string[];
+};
+
+/** 1 回目に Claude が書く英文の部分（部品の一覧は見ない。refs は呼び名） */
+export type SceneSentences = {
+  name: string;
+  description: string;
+  checklist: ChecklistItem[];
+};
+
+/** 2 段で Claude が書いた場面（座標なし）。1 回目の英文の部分と、2 回目の items */
+export type ScenePlanV2 = SceneSentences & { items: PlanItem[] };
+
+/**
+ * /2 の動き。座標の動き（/1 と同じ欄）に、Claude が書いた動きの関係（toward・path）を並べる。
+ * 1 つの部品に動きは 1 つなので、欄を分けると type と duration が二重になる。
+ * /1 の Motion を読む側は、知らない欄（toward・path）を読み飛ばせば動く
+ */
+export type MotionV2 = Motion & {
+  /** 行き先の key か区画（Claude が書いた関係） */
+  toward?: string;
+  path?: (typeof PATHS)[number];
+};
+
+/** /2 の置く部品。Claude が書いた関係（place・facing）と、計算した座標（position・yaw）の両方を持つ */
+export type LayoutItemV2 = {
+  key: string;
+  part: string;
+  place: PlanItem["place"];
+  facing?: string;
+  position: Vec3;
+  yaw?: number;
+  scale?: number;
+  motion?: MotionV2;
+};
+
+/** 配置の JSON（protocol scenenglish.scene/2） */
+export type SceneLayoutV2 = {
+  protocol: "scenenglish.scene/2";
+  id: string;
+  name: string;
+  difficulty: GradeId;
+  description: string;
+  checklist: ChecklistItem[];
+  items: LayoutItemV2[];
 };
