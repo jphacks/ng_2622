@@ -10,6 +10,7 @@ data_shown = ["前回入力した名前（端末に保存。推測）"]
 entry_points = [
   { from = "(起動)", how = "最初の画面", trigger = "アプリを開く" },
   { from = "ranking", how = "戻る", trigger = "退出する" },
+  { from = "lobby", how = "戻る", trigger = "× で部屋を出る" },
 ]
 exits = [
   { to = "lobby", how = "push", trigger = "部屋を作る" },
