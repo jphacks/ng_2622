@@ -46,5 +46,6 @@
 | 2026-10-25 | [内容と表現の点は、場面の配置の情報を渡し、採点基準の段階で付ける](./20261025-score-content-with-layout-and-rubric-bands.md) | accepted |
 | 2026-10-25 | [採点の基準は、配置の JSON と部品のメタデータから作る](./20261025-grade-from-layout-and-part-metadata.md) | superseded |
 | 2026-10-26 | [部屋がスタートのたびに AI で場面を作り、だめなら作り置きに切り替える](./20261026-generate-scenes-in-room-on-start.md) | accepted |
+| 2026-11-01 | [App Store には専用のビルド構成で、高橋の個人チームから出す](./20261101-ship-ios-app-from-a-dedicated-store-config.md) | accepted |
 | 2026-11-10 | [場面の生成は、級の規則で英文とチェックリストを先に書き、その英文に合う部品と関係を後に書く](./20261110-write-grade-sentences-before-scene-parts.md) | accepted |
 | 2026-11-10 | [場面の形を scenenglish.scene/2 にし、要素をチェックリストに置き換え、説明文を見本の答えにする](./20261110-adopt-scene-protocol-v2-with-checklist.md) | accepted |
