@@ -100,6 +100,10 @@ python3 scripts/scene/make_pool.py --url http://localhost:8799 --out <出力先>
 
 `<出力先>/<difficulty>/<id>.json`・`.png`（`render_layout.py` で描く。要 Blender）、難易度ごとの `contact_sheet.png`（要 ffmpeg）、所要時間の表 `times.md` ができる。テーマは難易度ごとにずらして一覧を回す（`--theme` で固定、`--no-theme` で Claude に選ばせる）。終わったら wrangler dev を止め、`.dev.vars.scene` を消す。
 
+### 英文を先に書く 2 段の生成（`scenenglish.scene/2`）
+
+級（`eiken-3`・`eiken-pre2`・`eiken-2`）に合った場面を作る新しい生成の関数を、今の生成と並べて置いてある（[ADR](../docs/adr/20261110-write-grade-sentences-before-scene-parts.md)）。部屋にも `POST /scenes/generate` にもまだつないでいない。`generate-v2.ts` が、1 回目に部品の一覧を見せずに英文とチェックリストを書かせ（`generateSentences`）、`candidates()` が 2 回目に渡す部品を選び（今は全部を返す。後でベクトル検索に差し替える）、2 回目に部品と関係を書かせる（`generateItems`）。級の規則は `grades.ts` の `GRADES`、ポーズで言える動詞と CEFR-J の段階は `pose-verbs.ts` にあり、指示の表も裏取りの数もここから作る。裏取り（`verify.ts`）は、チェックリストの数・`refs` の呼び名が `items` にあるか・`accept` が `description` にあるか・中心の項目の動詞が部品のポーズと級の段階に合うかを確かめ、落ちた理由を文で返す。作り置きを作るときは `generateVerifiedScene` を使う（落ちた理由を指示に足して 2 回まで作り直し、通らなければ `SceneVerificationError`）。座標に直して `/2` の配置の JSON にするのは `compose-v2.ts` の `composeLayoutV2`。時間は `CLAUDE_API_KEY=... pnpm tsx scripts/measure-scene-generation-v2.ts [1 級あたりの回数（既定 20）] [結果の JSON の書き出し先]` で測る。級ごとに、各回の時間（1 回目・2 回目・合計）と裏取りの結果を出し、最後に第 3 四分位数の表を出す（各段を 1 回だけ呼び、作り直さない。Claude を実際に呼ぶので費用がかかる）。合計の第 3 四分位数が 10 秒を超えていたら、部屋での生成を動かす前に扱いを決める。
+
 ## デプロイ
 
 main に `backend/` の変更が入ると、GitHub Actions（`.github/workflows/deploy-backend.yml`）が自動でデプロイする。手で出すときは `pnpm run deploy`（要 `pnpm exec wrangler login`）。
