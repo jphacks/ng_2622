@@ -48,7 +48,8 @@
 | 2026-10-26 | [部屋がスタートのたびに AI で場面を作り、だめなら作り置きに切り替える](./20261026-generate-scenes-in-room-on-start.md) | accepted |
 | 2026-11-01 | [App Store には専用のビルド構成で、高橋の個人チームから出す](./20261101-ship-ios-app-from-a-dedicated-store-config.md) | accepted |
 | 2026-11-10 | [採点は英検の二次試験の評価の観点と課題の形に沿わせる](./20261110-align-scoring-with-eiken-speaking-viewpoints.md) | accepted |
-| 2026-11-10 | [内容の点は、場面ごとのチェックリストと言ったことの正しさの F1 で付ける](./20261110-score-content-with-checklist-f1.md) | accepted |
+| 2026-11-10 | [内容の点は、場面ごとのチェックリストと言ったことの正しさの F1 で付ける](./20261110-score-content-with-checklist-f1.md) | accepted（その他を満点の重みに含める条項のみ 2026-11-11 に部分 supersede） |
 | 2026-11-10 | [チェックリストは場面を作るときに Claude が作り、コードが場面と照らして確かめる](./20261110-make-checklist-at-scene-generation.md) | accepted |
 | 2026-11-10 | [場面の生成は、級の規則で英文とチェックリストを先に書き、その英文に合う部品と関係を後に書く](./20261110-write-grade-sentences-before-scene-parts.md) | accepted |
 | 2026-11-10 | [場面の形を scenenglish.scene/2 にし、要素をチェックリストに置き換え、説明文を見本の答えにする](./20261110-adopt-scene-protocol-v2-with-checklist.md) | accepted |
+| 2026-11-11 | [その他の描写は満点に含めないおまけにし、名前だけでは中心・理由・つながりの項目に当てない](./20261111-count-other-claims-as-bonus-and-require-actions-for-items.md) | accepted |

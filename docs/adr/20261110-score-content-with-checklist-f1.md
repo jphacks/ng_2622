@@ -2,6 +2,7 @@
 
 ## Status
 - accepted
+- 部分 supersede: 満点の重みにその他 2 件分を含めること、級ごとの満点の重みの表（6・11・15）、Consequences の計算の例は、[20261111-count-other-claims-as-bonus-and-require-actions-for-items](./20261111-count-other-claims-as-bonus-and-require-actions-for-items.md) で「満点は項目だけ（5・10・14）。その他は言えた重みに足すおまけで、満点で頭打ち。名前だけでは中心・理由・つながりに当てない」に置き換えた。F1 で付けること、重みの値、正しさの数え方は存続する。
 
 ## Situation
 - 採点を英検の二次試験の評価の観点に沿わせると決めた（[20261110-align-scoring-with-eiken-speaking-viewpoints](./20261110-align-scoring-with-eiken-speaking-viewpoints.md)）。内容は「応答内容・情報量」にあたる。

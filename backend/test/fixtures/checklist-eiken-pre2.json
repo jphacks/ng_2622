@@ -1,0 +1,143 @@
+{
+  "protocol": "scenenglish.scene/2",
+  "id": "test-eiken-pre2-cafe",
+  "name": "カフェでこぼれたジュース",
+  "difficulty": "eiken-pre2",
+  "description": "There is spilled juice on the table. A woman is wiping the table because of the juice. A waiter is bringing a cup. A boy is sitting on a chair. There is a plant next to the boy.",
+  "checklist": [
+    {
+      "id": "woman_wipe",
+      "kind": "center",
+      "label": "女の人がテーブルを拭いている",
+      "accept": "a woman is wiping the table",
+      "refs": ["woman", "table"]
+    },
+    {
+      "id": "waiter_bring",
+      "kind": "center",
+      "label": "店員がカップを運んでいる",
+      "accept": "a waiter is bringing a cup",
+      "refs": ["waiter"]
+    },
+    {
+      "id": "boy_sit",
+      "kind": "center",
+      "label": "男の子が座っている",
+      "accept": "a boy is sitting",
+      "refs": ["boy"]
+    },
+    {
+      "id": "why_wipe",
+      "kind": "reason",
+      "label": "女の人がテーブルを拭いている理由",
+      "accept": "a woman is wiping the table because of the juice",
+      "refs": ["juice", "woman"]
+    },
+    {
+      "id": "juice",
+      "kind": "detail",
+      "label": "テーブルにジュースがこぼれている",
+      "accept": "there is spilled juice on the table",
+      "refs": ["juice", "table"]
+    },
+    {
+      "id": "plant",
+      "kind": "detail",
+      "label": "男の子の横に植物がある",
+      "accept": "there is a plant next to the boy",
+      "refs": ["plant", "boy"]
+    }
+  ],
+  "items": [
+    {
+      "key": "floor",
+      "part": "floor_wood",
+      "place": {
+        "relation": "ground"
+      },
+      "position": [0, 0, 0]
+    },
+    {
+      "key": "wall",
+      "part": "wall_cafe",
+      "place": {
+        "relation": "ground"
+      },
+      "position": [0, 0, -3.57]
+    },
+    {
+      "key": "table",
+      "part": "table",
+      "place": {
+        "relation": "ground",
+        "zone": "center"
+      },
+      "position": [0, 0, 0]
+    },
+    {
+      "key": "juice",
+      "part": "spilled_juice",
+      "place": {
+        "relation": "on",
+        "target": "table"
+      },
+      "position": [0.1, 0.72, 0.05]
+    },
+    {
+      "key": "woman",
+      "part": "person_wipe_woman_a",
+      "place": {
+        "relation": "relate",
+        "target": "table",
+        "link": "hand",
+        "side": "back",
+        "distance": "touch",
+        "turn": "toward"
+      },
+      "position": [0, 0, -0.95]
+    },
+    {
+      "key": "waiter",
+      "part": "person_serve_waiter_a",
+      "place": {
+        "relation": "ground",
+        "zone": "left"
+      },
+      "position": [-3, 0, 0.4],
+      "yaw": 90,
+      "motion": {
+        "type": "move",
+        "toward": "table",
+        "to": [-1.4, 0, 0.4],
+        "duration": 5
+      }
+    },
+    {
+      "key": "chair",
+      "part": "chair",
+      "place": {
+        "relation": "ground",
+        "zone": "right"
+      },
+      "position": [2.4, 0, 0.3]
+    },
+    {
+      "key": "boy",
+      "part": "person_sit_boy_a",
+      "place": {
+        "relation": "sit_on",
+        "target": "chair"
+      },
+      "position": [2.4, 0.46, 0.3]
+    },
+    {
+      "key": "plant",
+      "part": "plant_pot",
+      "place": {
+        "relation": "next_to",
+        "target": "chair"
+      },
+      "position": [3.3, 0, 0.3]
+    }
+  ]
+}
