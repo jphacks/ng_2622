@@ -132,8 +132,8 @@ private struct DifficultyPicker: View {
           tile(difficulty, level: i + 1)
         }
       }
-      if let example {
-        ExampleScene(sceneID: example)
+      if let example, let image = ExampleScene.image(example) {
+        ExampleScene(image: image)
       }
     }
     .padding(14)
@@ -175,30 +175,32 @@ private struct DifficultyPicker: View {
   }
 }
 
-/// 例の場面の絵。止めた絵（<id>.png）がアプリにあればそれを、無ければ 3D で出す。触れない。
-/// png を置くときは、下の 3D と同じ向き・同じ枠（318×170pt を 3 倍）でアプリの画面から切り出す。
-/// 今の作り置きの例には png を置いていない（3D で出る）
+/// 例の場面の止めた絵（Room/Examples/<sceneID>.png）。触れない。
+/// png は、待機の画面の 3D と同じ向きで組んだ場面を、318×170pt（3 倍）の枠でアプリの画面から切り出したもの。
+/// 待合では 3D（RealityView）を出さない。待合で 3D を出しておくと、スタート後の回転中と録音中の 3D が
+/// 出なくなる・ずれることがある（シミュレータで確かめた）ため。png の無い例は絵を出さない
+/// （作り置きの例を差し替えたら、png も作り直す）
 private struct ExampleScene: View {
-  let sceneID: String
+  let image: UIImage
+
+  static func image(_ sceneID: String) -> UIImage? {
+    guard let image = UIImage(named: sceneID) else {
+      sceneLog.notice("待合の例の絵（Room/Examples/\(sceneID, privacy: .public).png）がありません")
+      return nil
+    }
+    return image
+  }
 
   var body: some View {
-    Group {
-      if let image = UIImage(named: sceneID) {
-        Image(uiImage: image)
-          .resizable()
-          .scaledToFill()
-      } else {
-        // 枠が低いので、カメラを近づけて場面を枠いっぱいに出す。難易度を変えたら作り直す（読み込みの状態も新しくする）
-        DioramaView(sceneID: sceneID, yaw: -20, tilt: SceneOrbit.defaultTilt, distance: 4.6)
-          .id(sceneID)
-      }
-    }
-    .frame(maxWidth: .infinity)
-    .frame(height: 170)
-    .background(Theme.background)
-    .clipShape(RoundedRectangle(cornerRadius: 14))
-    .allowsHitTesting(false)
-    .accessibilityHidden(true)
+    Image(uiImage: image)
+      .resizable()
+      .scaledToFill()
+      .frame(maxWidth: .infinity)
+      .frame(height: 170)
+      .background(Theme.background)
+      .clipShape(RoundedRectangle(cornerRadius: 14))
+      .allowsHitTesting(false)
+      .accessibilityHidden(true)
   }
 }
 

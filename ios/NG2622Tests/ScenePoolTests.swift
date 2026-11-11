@@ -1,5 +1,6 @@
 import Foundation
 import Testing
+import UIKit
 
 @testable import NG2622
 
@@ -124,6 +125,8 @@ struct ScenePoolTests {
       let ids = pool.scenes[difficulty] ?? []
       let example = try #require(pool.example(of: difficulty))
       #expect(ids.contains(example))
+      // 待合の例は 3D でなく止めた絵で出すので、絵を同梱している（Room/Examples/<id>.png）
+      #expect(UIImage(named: example) != nil, "\(example) の例の絵が無い")
       #expect(!pool.candidates(of: difficulty).isEmpty)
       #expect(pool.candidates(of: difficulty) == ids.filter { $0 != example })
       for id in ids {
