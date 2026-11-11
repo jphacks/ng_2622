@@ -175,9 +175,9 @@ private struct DifficultyPicker: View {
   }
 }
 
-/// 例の場面の絵。待合では動かさないので、3D を組み立てずに止めた絵（Room/Examples/<id>.png）を出す。触れない。
-/// png は、下の 3D と同じ向き・同じ枠（318×170pt を 3 倍）でアプリの画面から切り出したもの。
-/// index.json の例を変えて png が無いときは、これまでどおり 3D で出す
+/// 例の場面の絵。止めた絵（<id>.png）がアプリにあればそれを、無ければ 3D で出す。触れない。
+/// png を置くときは、下の 3D と同じ向き・同じ枠（318×170pt を 3 倍）でアプリの画面から切り出す。
+/// 今の作り置きの例には png を置いていない（3D で出る）
 private struct ExampleScene: View {
   let sceneID: String
 
