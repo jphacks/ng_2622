@@ -12,6 +12,7 @@ import {
   buildItemsSystem,
   buildSentenceSystem,
   candidates,
+  EXAMPLE_ANSWER,
   EXAMPLE_ITEMS,
   EXAMPLE_SENTENCES,
   generateItems,
@@ -22,16 +23,24 @@ import {
   itemsMessage,
   itemsOnlySchema,
   MAX_REMAKES,
+  type SceneAnswer,
   SceneResponseError,
   SceneVerificationError,
   sentenceMessage,
   sentenceSchema,
+  toSceneSentences,
   verbLimits,
 } from "../src/scenes/generate-v2";
 import { GRADES } from "../src/scenes/grades";
 import { PARTS } from "../src/scenes/parts";
-import { GRADE_IDS, type Part } from "../src/scenes/types";
+import {
+  GRADE_IDS,
+  type GradeId,
+  type Part,
+  type SceneSentences,
+} from "../src/scenes/types";
 import { reasonSeeds, summarizeScene } from "../src/scenes/variety";
+import { verifySentences } from "../src/scenes/verify";
 
 const ENV = { CLAUDE_API_KEY: "test" };
 const USAGE = { input_tokens: 1, output_tokens: 1 };
@@ -45,7 +54,7 @@ const message = (body: unknown, stop_reason = "end_turn") => ({
   ],
   usage: USAGE,
 });
-const SENTENCES = () => message(EXAMPLE_SENTENCES);
+const SENTENCES = () => message(EXAMPLE_ANSWER);
 const ITEMS = () => message({ items: EXAMPLE_ITEMS });
 
 /** 決めた順に応答（か例外）を返す create。渡された引数を覚える */
@@ -79,6 +88,8 @@ const stageOf = (c: { params: Anthropic.MessageCreateParamsNonStreaming }) => {
   return format.schema.required.includes("items") ? "items" : "sentences";
 };
 const INPUT = { grade: "eiken-pre2", theme: "バス停" } as const;
+const verifySentencesCodes = (grade: GradeId, s: SceneSentences) =>
+  verifySentences(grade, s, PARTS).map((p) => p.code);
 
 test("級の規則の表は級の定数から作る（人の数・文の数・checklist の数・文法）", () => {
   const rules = gradeRules();
@@ -115,9 +126,9 @@ test("1 回目の指示: 級の表・語彙・テーマ・例があり、部品�
   for (const t of THEMES) assert.ok(system.includes(t), `${t} が無い`);
   assert.ok(system.includes("- run | run A1"));
   assert.ok(system.includes("rain (雨)"));
-  assert.ok(system.includes(JSON.stringify(EXAMPLE_SENTENCES)));
+  assert.ok(system.includes(JSON.stringify(EXAMPLE_ANSWER)));
   // 決定のとおりの決まり
-  assert.ok(system.includes("Every accept must be found in the description"));
+  assert.ok(system.includes("copied letter for letter from the sentence"));
   assert.ok(system.includes("The cause must be visible in the scene"));
   // 実測で見つかった崩れへの決まり
   assert.ok(system.includes("Never return an empty or shorter checklist"));
@@ -134,7 +145,7 @@ test("1 回目の指示: 級の表・語彙・テーマ・例があり、部品�
   // 絵で見つかった崩れへの決まり
   assert.ok(system.includes("only a woman or a man can drink"));
   assert.ok(system.includes("Rain only falls in outdoor scenes"));
-  assert.ok(system.includes("never he, she, it or they"));
+  assert.ok(system.includes("Never start a sentence with He, She, They"));
   assert.ok(system.includes("never a piece of a sentence"));
   assert.ok(system.includes("Do not write it as a second, separate thing"));
   assert.ok(system.includes("eiken-3 uses only verbs marked A1"));
@@ -173,15 +184,24 @@ test("指示の例は実在の部品だけで組み、例の級は eiken-pre2 �
   assert.ok(buildSentenceSystem(PARTS).includes("Request: 級: eiken-pre2"));
 });
 
-test("書かせる形: 1 回目は name・description・checklist、kind は級に出る種類だけ", () => {
+test("書かせる形: 1 回目は name・文の配列・checklist（文の番号つき）、kind は級に出る種類だけ", () => {
   const schema = sentenceSchema("eiken-3");
   assert.deepEqual(Object.keys(schema.properties), [
     "name",
-    "description",
+    "sentences",
     "checklist",
   ]);
+  assert.deepEqual(schema.required, ["name", "sentences", "checklist"]);
   const item = schema.properties.checklist.items;
-  assert.deepEqual(item.required, ["id", "kind", "label", "accept", "refs"]);
+  assert.deepEqual(item.required, [
+    "id",
+    "kind",
+    "label",
+    "sentence",
+    "accept",
+    "refs",
+  ]);
+  assert.equal(item.properties.sentence.type, "integer");
   assert.deepEqual(item.properties.kind.enum, ["center", "detail"]);
   assert.deepEqual(
     sentenceSchema("eiken-2").properties.checklist.items.properties.kind.enum,
@@ -211,9 +231,21 @@ test("user の文: 1 回目は級とテーマ、2 回目は 1 回目の出力の
     itemsMessage(INPUT, EXAMPLE_SENTENCES),
     `級: eiken-pre2\nScene: ${JSON.stringify(EXAMPLE_SENTENCES)}\nKeys: girl, boy, man, rain, bench`,
   );
-  const again = sentenceMessage(INPUT, ["理由 1", "理由 2"]);
+  // 作り直しのときは、前の答えと理由を足す。直す所だけを直させる
+  const again = sentenceMessage(INPUT, {
+    problems: ["理由 1", "理由 2"],
+    previous: { name: "前の答え" },
+  });
   assert.ok(again.startsWith(`${sentenceMessage(INPUT)}\n\n`));
-  assert.ok(again.endsWith("- 理由 1\n- 理由 2"));
+  assert.ok(again.includes('Your last answer:\n{"name":"前の答え"}\n'));
+  assert.ok(again.includes("\n- 理由 1\n- 理由 2\n"));
+  assert.ok(again.endsWith("keep the rest as it was."));
+  // 前の答えが無い（形が違って読めなかった）ときは、理由だけ
+  assert.ok(
+    !sentenceMessage(INPUT, { problems: ["理由 1"] }).includes(
+      "Your last answer:",
+    ),
+  );
 });
 
 test("部品の候補は、今は全部の部品を返す", async () => {
@@ -309,8 +341,8 @@ test("形が違う応答は、その段だけ 1 回やり直す", async () => {
 
 test("kind が知らない値の応答は形が違う扱い。生の本文の先頭を持つ", async () => {
   const body = {
-    ...EXAMPLE_SENTENCES,
-    checklist: [{ ...EXAMPLE_SENTENCES.checklist[0], kind: "main" }],
+    ...EXAMPLE_ANSWER,
+    checklist: [{ ...EXAMPLE_ANSWER.checklist[0], kind: "main" }],
   };
   const f = fake([() => message(body), () => message(body)]);
   await assert.rejects(
@@ -336,7 +368,7 @@ test("kind が知らない値の応答は形が違う扱い。生の本文の先
 });
 
 test("checklist が空の応答は受け取り、裏取りが数の違いとして落とす", async () => {
-  const empty = () => message({ ...EXAMPLE_SENTENCES, checklist: [] });
+  const empty = () => message({ ...EXAMPLE_ANSWER, checklist: [] });
   const f = fake([empty, ITEMS]);
   const result = await generateSceneV2(ENV, PARTS, INPUT, { create: f.create });
   assert.deepEqual(
@@ -437,7 +469,13 @@ test("作り置き: 部品だけで落ちたら、同じ英文のまま 2 回目
   const again = userOf(f.calls[2]);
   assert.ok(again.startsWith(itemsMessage(INPUT, EXAMPLE_SENTENCES)));
   assert.ok(
-    again.endsWith("- refs の bench（項目 man_sit）が items の key に無い"),
+    again.includes("- refs の bench（項目 man_sit）が items の key に無い\n"),
+  );
+  // 落ちた前の部品を見せる
+  assert.ok(
+    again.includes(
+      `Your last answer:\n${JSON.stringify({ items: EXAMPLE_ITEMS.filter((i) => i.key !== "bench") })}\n`,
+    ),
   );
   // 最初の回の指示には理由が無い
   assert.equal(userOf(f.calls[1]), itemsMessage(INPUT, EXAMPLE_SENTENCES));
@@ -446,8 +484,8 @@ test("作り置き: 部品だけで落ちたら、同じ英文のまま 2 回目
 test("作り置き: 英文で落ちたら 2 回目を呼ばず、理由つきで 1 回目から作り直す", async () => {
   const bad = () =>
     message({
-      ...EXAMPLE_SENTENCES,
-      checklist: EXAMPLE_SENTENCES.checklist.slice(0, 5),
+      ...EXAMPLE_ANSWER,
+      checklist: EXAMPLE_ANSWER.checklist.slice(0, 5),
     });
   const f = fake([bad, SENTENCES, ITEMS]);
   const result = await generateVerifiedScene(ENV, PARTS, INPUT, {
@@ -456,8 +494,8 @@ test("作り置き: 英文で落ちたら 2 回目を呼ばず、理由つきで
   assert.deepEqual(f.calls.map(stageOf), ["sentences", "sentences", "items"]);
   assert.equal(result.remakes, 1);
   assert.ok(
-    userOf(f.calls[1]).endsWith(
-      "- checklist の detail が 1 個ある。eiken-pre2 は 2 個",
+    userOf(f.calls[1]).includes(
+      "- checklist の detail が 1 個ある。eiken-pre2 は 2 個\n",
     ),
   );
   // 英文を書き直した後の 2 回目には、前の理由を渡さない
@@ -468,18 +506,20 @@ test("作り置き: 動詞が級を超えたら（英文の理由）、1 回目�
   // 3級として作ると、hold（A2）は中心に使えない
   const easy = {
     name: "雨",
-    description:
-      "A girl is holding an umbrella. A boy is running. It is raining.",
+    sentences: [
+      "A girl is holding an umbrella.",
+      "A boy is running.",
+      "It is raining.",
+    ],
     checklist: [
-      { ...EXAMPLE_SENTENCES.checklist[0] },
-      { ...EXAMPLE_SENTENCES.checklist[1], accept: "a boy is running" },
-      { ...EXAMPLE_SENTENCES.checklist[4] },
+      { ...EXAMPLE_ANSWER.checklist[0], sentence: 1 },
+      { ...EXAMPLE_ANSWER.checklist[1], sentence: 2 },
+      { ...EXAMPLE_ANSWER.checklist[4], sentence: 3 },
     ],
   };
   const fixed = {
     ...easy,
-    description:
-      "A girl is sharing an umbrella. A boy is running. It is raining.",
+    sentences: ["A girl is sharing an umbrella.", ...easy.sentences.slice(1)],
     checklist: [
       { ...easy.checklist[0], accept: "a girl is sharing an umbrella" },
       easy.checklist[1],
@@ -512,7 +552,11 @@ test("作り置き: 動詞が級を超えたら（英文の理由）、1 回目�
   assert.equal(result.remakes, 1);
   assert.equal(result.rejected[0][0].code, "verb_level");
   assert.ok(userOf(f.calls[2]).includes("hold は A2"));
-  assert.equal(result.plan.description, fixed.description);
+  assert.equal(result.plan.description, fixed.sentences.join(" "));
+  // 落ちた前の英文を見せる
+  assert.ok(
+    userOf(f.calls[2]).includes(`Your last answer:\n${JSON.stringify(easy)}\n`),
+  );
 });
 
 test("作り置き: 同じ英文で部品が 2 回落ちたら、1 回目から作り直す", async () => {
@@ -537,8 +581,8 @@ test("作り置き: 2 回作り直しても通らなければ、最後の理由�
   assert.equal(MAX_REMAKES, 2);
   const bad = () =>
     message({
-      ...EXAMPLE_SENTENCES,
-      checklist: EXAMPLE_SENTENCES.checklist.slice(0, 5),
+      ...EXAMPLE_ANSWER,
+      checklist: EXAMPLE_ANSWER.checklist.slice(0, 5),
     });
   const f = fake([bad, bad, bad]);
   await assert.rejects(
@@ -581,7 +625,7 @@ test("作り置き: 部品の候補は、英文が決まるたびに選び直す
 });
 
 test("作り置き: checklist が空なら、2 回目を呼ばずに理由つきで 1 回目から作り直す", async () => {
-  const empty = () => message({ ...EXAMPLE_SENTENCES, checklist: [] });
+  const empty = () => message({ ...EXAMPLE_ANSWER, checklist: [] });
   const f = fake([empty, SENTENCES, ITEMS]);
   const result = await generateVerifiedScene(ENV, PARTS, INPUT, {
     create: f.create,
@@ -668,8 +712,8 @@ test("すでに作った場面の要約を渡すと、1 回目に「これらと
   // 作り置きの道でも 1 回目に渡り、作り直しの理由はその後ろに付く。2 回目には渡さない
   const bad = () =>
     message({
-      ...EXAMPLE_SENTENCES,
-      checklist: EXAMPLE_SENTENCES.checklist.slice(0, 5),
+      ...EXAMPLE_ANSWER,
+      checklist: EXAMPLE_ANSWER.checklist.slice(0, 5),
     });
   const f = fake([bad, SENTENCES, ITEMS]);
   await generateVerifiedScene(
@@ -686,9 +730,11 @@ test("すでに作った場面の要約を渡すと、1 回目に「これらと
 
 test("作り置き: その人にできない動作は、2 回目を呼ばずに 1 回目から作り直す", async () => {
   const girl = {
-    ...EXAMPLE_SENTENCES,
-    description: `A girl is drinking from a cup. ${EXAMPLE_SENTENCES.description}`,
-    checklist: EXAMPLE_SENTENCES.checklist.map((c) =>
+    ...EXAMPLE_ANSWER,
+    sentences: EXAMPLE_ANSWER.sentences.map((t, n) =>
+      n === 1 ? "A girl is drinking from a cup." : t,
+    ),
+    checklist: EXAMPLE_ANSWER.checklist.map((c) =>
       c.id === "girl_umbrella"
         ? { ...c, accept: "a girl is drinking from a cup" }
         : c,
@@ -715,13 +761,17 @@ test("2 回目の指示: 持っている物を別に置かない・雨は屋外�
 test("作り置き: 場所の食い違い（座標に直して分かる）は、同じ英文のまま 2 回目だけ作り直す", async () => {
   const street = {
     name: "道",
-    description:
-      "A woman is sitting on the sidewalk. A girl is waiting. There is a bicycle next to the woman.",
+    sentences: [
+      "A woman is sitting on the sidewalk.",
+      "A girl is waiting.",
+      "There is a bicycle next to the woman.",
+    ],
     checklist: [
       {
         id: "fall",
         kind: "center",
         label: "転んだ",
+        sentence: 1,
         accept: "a woman is sitting on the sidewalk",
         refs: ["woman", "sidewalk"],
       },
@@ -729,6 +779,7 @@ test("作り置き: 場所の食い違い（座標に直して分かる）は、
         id: "wait",
         kind: "center",
         label: "待つ",
+        sentence: 2,
         accept: "a girl is waiting",
         refs: ["girl"],
       },
@@ -736,6 +787,7 @@ test("作り置き: 場所の食い違い（座標に直して分かる）は、
         id: "bike",
         kind: "detail",
         label: "自転車",
+        sentence: 3,
         accept: "there is a bicycle next to the woman",
         refs: ["bicycle", "woman"],
       },
@@ -787,7 +839,6 @@ test("指示: 写した accept・壁の物・場所・detail の決まり", () =
   const first = buildSentenceSystem(PARTS);
   assert.ok(first.includes("letter for letter"));
   assert.ok(first.includes("Nothing can hang on a wall"));
-  assert.ok(first.includes("Never start an accept with he, she or they"));
   assert.ok(
     first.includes("never repeat the accept of a center item as a detail"),
   );
@@ -795,4 +846,235 @@ test("指示: 写した accept・壁の物・場所・detail の決まり", () =
   const second = buildItemsSystem(PARTS);
   assert.ok(second.includes("do not use clock"));
   assert.ok(second.includes("people on the sidewalk go in a front zone"));
+});
+
+// ここから、書かせる形（文の配列と文の番号）を保存する形に直す所。
+// 2級で多かった落ち方（accept が description と違う文・detail が center と同じ文・link の主語が代名詞）の実例
+
+const answer2 = (over: Partial<SceneAnswer> = {}): SceneAnswer => ({
+  name: "図書館の高い棚",
+  sentences: [
+    "A girl is pointing at a book on a high shelf, so a tall boy is taking it to give it to her.",
+    "A boy is carrying a box because a woman is putting books on the table.",
+    "A girl is pointing at a book.",
+    "A woman is putting books on the table.",
+    "There is a chair next to the table.",
+    "The box is big.",
+  ],
+  checklist: [
+    {
+      id: "boy_take",
+      kind: "center",
+      label: "本を取る",
+      sentence: 1,
+      accept: "a tall boy is taking it",
+      refs: ["tall_boy"],
+    },
+    {
+      id: "boy_box",
+      kind: "center",
+      label: "箱を運ぶ",
+      sentence: 2,
+      accept: "a boy is carrying a box",
+      refs: ["boy"],
+    },
+    {
+      id: "girl_point",
+      kind: "center",
+      label: "指さす",
+      sentence: 3,
+      accept: "a girl is pointing at a book",
+      refs: ["girl"],
+    },
+    {
+      id: "woman_put",
+      kind: "center",
+      label: "本を置く",
+      sentence: 4,
+      accept: "a woman is putting books on the table",
+      refs: ["woman"],
+    },
+    {
+      id: "why_box",
+      kind: "reason",
+      label: "運ぶ理由",
+      sentence: 2,
+      accept: "",
+      refs: ["boy", "woman"],
+    },
+    {
+      id: "link_take",
+      kind: "link",
+      label: "取ってあげる",
+      sentence: 1,
+      accept: "",
+      refs: ["tall_boy", "girl"],
+    },
+    {
+      id: "chair",
+      kind: "detail",
+      label: "椅子",
+      sentence: 5,
+      accept: "there is a chair next to the table",
+      refs: ["chair", "table"],
+    },
+    {
+      id: "box",
+      kind: "detail",
+      label: "箱",
+      sentence: 6,
+      accept: "the box is big",
+      refs: ["boy"],
+    },
+  ],
+  ...over,
+});
+const acceptOf = (s: ReturnType<typeof toSceneSentences>, id: string) =>
+  s.sentences.checklist.find((c) => c.id === id)?.accept;
+
+test("保存する形に直す: description は文をつなげ、欄は scenenglish.scene/2 のまま", () => {
+  const { sentences, problems } = toSceneSentences("eiken-2", answer2());
+  assert.deepEqual(problems, []);
+  assert.equal(sentences.description, answer2().sentences.join(" "));
+  assert.deepEqual(Object.keys(sentences), [
+    "name",
+    "description",
+    "checklist",
+  ]);
+  for (const c of sentences.checklist) {
+    assert.deepEqual(Object.keys(c), ["id", "kind", "label", "refs", "accept"]);
+  }
+  // 例も同じ直し方で作る
+  assert.deepEqual(
+    toSceneSentences("eiken-pre2", EXAMPLE_ANSWER).sentences,
+    EXAMPLE_SENTENCES,
+  );
+});
+
+test("保存する形に直す: reason・link の accept は番号の文の全部（主語が名詞の文になる）", () => {
+  const s = toSceneSentences("eiken-2", answer2());
+  assert.equal(
+    acceptOf(s, "why_box"),
+    "a boy is carrying a box because a woman is putting books on the table",
+  );
+  assert.equal(
+    acceptOf(s, "link_take"),
+    "a girl is pointing at a book on a high shelf, so a tall boy is taking it to give it to her",
+  );
+  // 実例: link の accept を「he is taking it to give it to her」と代名詞で書いても、文の全部が先に来る
+  const other = answer2();
+  other.checklist[5].accept = "he is taking it to give it to her";
+  assert.equal(
+    acceptOf(toSceneSentences("eiken-2", other), "link_take"),
+    "a girl is pointing at a book on a high shelf, so a tall boy is taking it to give it to her / he is taking it to give it to her",
+  );
+  // 文と同じ言い方を書いても重ねない
+  other.checklist[4].accept =
+    "A boy is carrying a box because a woman is putting books on the table.";
+  assert.equal(
+    acceptOf(toSceneSentences("eiken-2", other), "why_box"),
+    "a boy is carrying a box because a woman is putting books on the table",
+  );
+});
+
+test("保存する形に直す: center・detail の accept が番号の文に無ければ、文から取り直す", () => {
+  // 実例: 「a girl is asking for something」は description に無かった
+  const a = answer2();
+  a.checklist[2].accept = "a girl is asking for something";
+  // center は行動の節（because・so より前）
+  a.checklist[1].accept = "the boy carries a big box";
+  // detail は文の全部。空でも同じ
+  a.checklist[6].accept = "";
+  const s = toSceneSentences("eiken-2", a);
+  assert.deepEqual(s.problems, []);
+  assert.equal(acceptOf(s, "girl_point"), "a girl is pointing at a book");
+  assert.equal(acceptOf(s, "boy_box"), "a boy is carrying a box");
+  assert.equal(acceptOf(s, "chair"), "there is a chair next to the table");
+  // 文にある言い方はそのまま（大文字小文字と句読点の違いは無視）
+  assert.equal(acceptOf(s, "boy_take"), "a tall boy is taking it");
+  // どの accept も description にある
+  assert.deepEqual(
+    verifySentencesCodes("eiken-2", s.sentences).filter(
+      (c) => c === "accept_not_in_description",
+    ),
+    [],
+  );
+});
+
+test("保存する形に直す: center と detail が同じ文を使うと落ちる（どの項目とどの文かを言う）", () => {
+  // 実例: detail「a girl is carrying a box」が center の accept と同じ文だった
+  const a = answer2();
+  a.checklist[7] = {
+    ...a.checklist[7],
+    sentence: 2,
+    accept: "a boy is carrying a box",
+  };
+  const { problems } = toSceneSentences("eiken-2", a);
+  assert.deepEqual(
+    problems.map((p) => [p.code, p.stage, p.message]),
+    [
+      [
+        "sentence_shared",
+        "sentences",
+        "detail の項目 box と項目 boy_box が、同じ文 2「A boy is carrying a box because a woman is putting books on the table.」を使っている。center と detail は 1 文に 1 つ。box の事実は別の文に書く",
+      ],
+    ],
+  );
+  // reason・link が center の文を使うのは決まりどおり
+  assert.deepEqual(toSceneSentences("eiken-2", answer2()).problems, []);
+});
+
+test("保存する形に直す: 文の数が級と違う・番号の文が無いと落ちる", () => {
+  const short = answer2({ sentences: answer2().sentences.slice(0, 5) });
+  assert.deepEqual(
+    toSceneSentences("eiken-2", short).problems.map((p) => p.message),
+    [
+      "sentences が 5 文ある。eiken-2 は 6 文（center と detail の項目 1 つにつき 1 文）",
+      "項目 box の sentence 6 にあたる文が無い（文は 1 から 5 まで）",
+    ],
+  );
+  const zero = answer2();
+  zero.checklist[0].sentence = 0;
+  assert.deepEqual(
+    toSceneSentences("eiken-2", zero).problems.map((p) => p.code),
+    ["sentence_number"],
+  );
+});
+
+test("作り置き: 形の決まりの違反（同じ文を 2 つの項目に）も、前の答えを見せて 1 回目から作り直す", async () => {
+  const shared = {
+    ...EXAMPLE_ANSWER,
+    checklist: EXAMPLE_ANSWER.checklist.map((c) =>
+      c.id === "man_sit"
+        ? { ...c, sentence: 4, accept: "a man is reading a book" }
+        : c,
+    ),
+  };
+  const f = fake([() => message(shared), SENTENCES, ITEMS]);
+  const result = await generateVerifiedScene(ENV, PARTS, INPUT, {
+    create: f.create,
+  });
+  assert.deepEqual(f.calls.map(stageOf), ["sentences", "sentences", "items"]);
+  assert.ok(result.rejected[0].some((p) => p.code === "sentence_shared"));
+  const again = userOf(f.calls[1]);
+  assert.ok(again.includes(`Your last answer:\n${JSON.stringify(shared)}\n`));
+  assert.ok(
+    again.includes("detail の項目 man_sit と項目 man_read が、同じ文 4"),
+  );
+});
+
+test("作り直しても通らなかった例外は、回ごとの理由を持つ", async () => {
+  const bad = () =>
+    message({
+      ...EXAMPLE_ANSWER,
+      checklist: EXAMPLE_ANSWER.checklist.slice(0, 5),
+    });
+  const f = fake([bad, bad, bad]);
+  await assert.rejects(
+    generateVerifiedScene(ENV, PARTS, INPUT, { create: f.create }),
+    (e) =>
+      e instanceof SceneVerificationError &&
+      e.rejected.length === 3 &&
+      e.problems === e.rejected[2],
+  );
 });

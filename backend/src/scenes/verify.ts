@@ -32,6 +32,9 @@ import {
 export type Problem = {
   code:
     | "kind_count"
+    | "sentence_count"
+    | "sentence_number"
+    | "sentence_shared"
     | "duplicate_id"
     | "no_refs"
     | "ref_name"

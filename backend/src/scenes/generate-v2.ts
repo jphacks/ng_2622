@@ -32,6 +32,7 @@ import {
 } from "./pose-verbs";
 import {
   CHECKLIST_KINDS,
+  type ChecklistKind,
   type GradeId,
   type Part,
   type PlanItem,
@@ -40,6 +41,8 @@ import {
 } from "./types";
 import { reasonSeeds } from "./variety";
 import {
+  acceptInDescription,
+  normalizeText,
   type Problem,
   refNames,
   verifyItems,
@@ -66,19 +69,126 @@ export type GenerateV2Input = {
   avoid?: string[];
 };
 
+/**
+ * 1 回目に Claude が書く形。description を文の配列で書かせ、項目ごとに「どの文の事実か」を番号で書かせる。
+ * 2級は項目が 8 つ・見本が 6 文で、accept を description と違う文で書く・同じ文を 2 つの項目に使う、が多かった。
+ * 文と項目の対応を形にして、accept が description にあることをコードで保証する（toSceneSentences）。
+ * 保存する場面の形（scenenglish.scene/2 の description と checklist）は変えない
+ */
+export type SceneAnswer = {
+  name: string;
+  /** 見本の答えの文（級の数だけ）。つなげたものが description になる */
+  sentences: string[];
+  checklist: {
+    id: string;
+    kind: ChecklistKind;
+    label: string;
+    /** その項目の事実が書いてある文の番号（1 から） */
+    sentence: number;
+    /** center・detail は、その文から写した言い方。reason・link は別の言い方（無ければ空） */
+    accept: string;
+    refs: string[];
+  }[];
+};
+
+/** 文の全部を accept にするときの形（文末の句読点を取り、先頭を小文字にする） */
+const wholeSentence = (text: string) => {
+  const t = text.trim().replace(/[.!?]+$/, "");
+  return t.charAt(0).toLowerCase() + t.slice(1);
+};
+
+/** 行動の節（because・so that・, so より前）。center の accept を文から取り直すときに使う */
+const actionClause = (text: string) =>
+  wholeSentence(text.split(/,?\s+(?:because|so that|so)\b/i)[0]);
+
+/**
+ * Claude が書いた形（文の配列と文の番号）を、保存する形（description と accept）に直す。
+ * - description は文をつなげたもの
+ * - reason・link の accept は、番号の文の全部（Claude が別の言い方を書いていれば " / " で後ろに足す）
+ * - center・detail の accept は、Claude が書いた言い方が番号の文にあればそれ、無ければ文から取り直す
+ *   （center は行動の節、detail は文の全部）。これで accept は必ず description にある
+ * problems は形の決まりの違反: 文の数が級と違う、番号の文が無い、center・detail が同じ文を使っている
+ */
+export function toSceneSentences(
+  gradeId: GradeId,
+  answer: SceneAnswer,
+): { sentences: SceneSentences; problems: Problem[] } {
+  const grade = GRADES[gradeId];
+  const texts = answer.sentences.map((t) => t.trim()).filter((t) => t.length);
+  const problems: Problem[] = [];
+  const add = (code: Problem["code"], message: string) =>
+    problems.push({ code, stage: "sentences", message });
+  if (texts.length !== grade.sentences) {
+    add(
+      "sentence_count",
+      `sentences が ${texts.length} 文ある。${gradeId} は ${grade.sentences} 文（center と detail の項目 1 つにつき 1 文）`,
+    );
+  }
+  const used = new Map<number, string>();
+  const checklist = answer.checklist.map((c) => {
+    const text = texts[c.sentence - 1];
+    const refs = c.refs.filter((r) => r.length > 0);
+    const base = { id: c.id, kind: c.kind, label: c.label, refs };
+    if (text === undefined) {
+      add(
+        "sentence_number",
+        `項目 ${c.id} の sentence ${c.sentence} にあたる文が無い（文は 1 から ${texts.length} まで）`,
+      );
+      return { ...base, accept: c.accept };
+    }
+    if (c.kind === "reason" || c.kind === "link") {
+      const whole = wholeSentence(text);
+      const other = c.accept.trim();
+      const same = !other || normalizeText(other) === normalizeText(whole);
+      return { ...base, accept: same ? whole : `${whole} / ${other}` };
+    }
+    const before = used.get(c.sentence);
+    if (before) {
+      add(
+        "sentence_shared",
+        `${c.kind} の項目 ${c.id} と項目 ${before} が、同じ文 ${c.sentence}「${text}」を使っている。center と detail は 1 文に 1 つ。${c.id} の事実は別の文に書く`,
+      );
+    } else {
+      used.set(c.sentence, c.id);
+    }
+    const written = c.accept.trim();
+    const copied = written.length > 0 && acceptInDescription(written, text);
+    const accept = copied
+      ? written
+      : c.kind === "center"
+        ? actionClause(text)
+        : wholeSentence(text);
+    return { ...base, accept };
+  });
+  return {
+    sentences: {
+      name: answer.name,
+      description: texts.join(" "),
+      checklist,
+    },
+    problems,
+  };
+}
+
 // 指示の例は /2 の形で eiken-pre2 の 1 つだけ（例に似た場面ばかりになるのを防ぐ）。
 // docs/design/scene-protocol.md の雨のバス停を、実在の部品で組めるよう直したもの
 export const EXAMPLE_GRADE: GradeId = "eiken-pre2";
 export const EXAMPLE_THEME = "バス停（bus stop）";
-export const EXAMPLE_SENTENCES: SceneSentences = {
+export const EXAMPLE_ANSWER: SceneAnswer = {
   name: "雨のバス停",
-  description:
-    "It is raining at the bus stop. A girl is holding an umbrella. A boy is running to the bus stop because it is raining. A man is reading a book. The man is sitting on the bench.",
+  sentences: [
+    "It is raining at the bus stop.",
+    "A girl is holding an umbrella.",
+    "A boy is running to the bus stop because it is raining.",
+    "A man is reading a book.",
+    "The man is sitting on the bench.",
+  ],
   checklist: [
     {
       id: "girl_umbrella",
       kind: "center",
       label: "女の子が傘をさしている",
+      sentence: 2,
       accept: "a girl is holding an umbrella",
       refs: ["girl"],
     },
@@ -86,6 +196,7 @@ export const EXAMPLE_SENTENCES: SceneSentences = {
       id: "boy_run",
       kind: "center",
       label: "男の子が走っている",
+      sentence: 3,
       accept: "a boy is running",
       refs: ["boy"],
     },
@@ -93,6 +204,7 @@ export const EXAMPLE_SENTENCES: SceneSentences = {
       id: "man_read",
       kind: "center",
       label: "男の人が本を読んでいる",
+      sentence: 4,
       accept: "a man is reading a book",
       refs: ["man"],
     },
@@ -100,14 +212,15 @@ export const EXAMPLE_SENTENCES: SceneSentences = {
       id: "why_run",
       kind: "reason",
       label: "男の子が走っている理由",
-      accept:
-        "a boy is running to the bus stop because it is raining / because he has no umbrella",
+      sentence: 3,
+      accept: "",
       refs: ["boy", "rain"],
     },
     {
       id: "rain",
       kind: "detail",
       label: "雨が降っている",
+      sentence: 1,
       accept: "it is raining",
       refs: ["rain"],
     },
@@ -115,11 +228,17 @@ export const EXAMPLE_SENTENCES: SceneSentences = {
       id: "man_sit",
       kind: "detail",
       label: "男の人はベンチに座っている",
+      sentence: 5,
       accept: "the man is sitting on the bench",
       refs: ["man", "bench"],
     },
   ],
 };
+/** 例を、保存する形（description と accept）に直したもの */
+export const EXAMPLE_SENTENCES: SceneSentences = toSceneSentences(
+  EXAMPLE_GRADE,
+  EXAMPLE_ANSWER,
+).sentences;
 export const EXAMPLE_ITEMS: PlanItem[] = [
   { key: "ground", part: "sidewalk_stone", place: { relation: "ground" } },
   { key: "rain", part: "rain", place: { relation: "ground" } },
@@ -170,7 +289,11 @@ export const gradeRules = (): string =>
   GRADE_LIST.map(
     (g) => `## ${g.id} (CEFR ${g.cefr})
 - People: ${range(g.people.min, g.people.max)} people or animals in the whole scene (an animal counts as one), ${g.people.note}.
-- description: exactly ${g.sentences} sentences, about ${g.words} words in total.
+- sentences: exactly ${g.sentences} sentences, about ${g.words} words in total: one sentence for each center item (${g.checklist.center}) and one for each detail item (${g.checklist.detail}).${
+      g.checklist.reason + g.checklist.link > 0
+        ? ` The ${g.checklist.link > 0 ? "reason and the link are" : "reason is"} not ${g.checklist.link > 0 ? "sentences" : "a sentence"} of ${g.checklist.link > 0 ? "their" : "its"} own: ${g.checklist.link > 0 ? "each is" : "it is"} added to the sentence of a center item${g.checklist.link > 0 ? " (two different center sentences)" : ""}.`
+        : ""
+    }
 - checklist: exactly ${checklistSize(g.id)} items: ${checklistCounts(g.id)}.
 - Verbs of the center items: only verbs marked ${levelsUpTo(g.id)} in the list of actions.
 - Grammar you may use: ${grammarUpTo(g.id).join("; ")}.`,
@@ -188,7 +311,7 @@ export const buildSentenceSystem = (
   parts: Part[],
 ) => `You write the English side of small 3D scenes for an English speaking game for Japanese learners. The game follows the grades of the Eiken speaking test.
 Players look at a 3D scene and describe it aloud in English. Their answer is scored with a checklist: which items they said, and whether what they said is true in the scene.
-You get a grade and a theme. If no theme is given, choose one from the theme list. Write the name, the model answer (description) and the checklist of one scene.
+You get a grade and a theme. If no theme is given, choose one from the theme list. Write the name, the model answer (as a list of sentences) and the checklist of one scene.
 You do not choose 3D parts. A second step builds the scene from your text with a fixed set of parts, so write only what those parts can show (see "What the scene can show").
 
 # Grades
@@ -196,8 +319,11 @@ ${gradeRules()}
 
 Grammar and verbs of a lower grade may be used in a higher grade, but never use grammar above the grade. Keep the other words at the CEFR level of the grade too; most nouns come from the list of things below.
 
-# description (the model answer)
-- Write what a good player of that grade would say about the scene: plain sentences, one fact or action per sentence or clause.
+# sentences (the model answer)
+- Write what a good player of that grade would say about the scene, as a list of plain sentences. Joined together they are the description that the player sees.
+- Plan the sentences from the checklist: every center item has its own sentence, and every detail item has its own sentence. No sentence carries two of them. That gives exactly the number of sentences of the grade.
+- The reason is written into the sentence of the center item it explains: "<noun> is <action> because <visible cause>." The link (eiken-2) is written into the sentence of another center item: "<visible cause>, so <noun> is <action> to <purpose>." or "<noun> is <action> so that <result>."
+- Start every sentence with a noun (A girl, The boy, The dog), with "There is / There are", or, for the weather only, with "It is". Never start a sentence with He, She, They or It for a person, an animal or a thing.
 - Every sentence must be visible in a still 3D scene with simple motion. Do not write names, feelings, thoughts, speech, sounds, or anything that happened before and left nothing to see.
 - One person, one action: every person and animal does exactly one action from the list of actions below. Never give the same person a second action (not "a woman is cooking" and later "the woman is wiping the table"). A second fact about the same person can only be where they are (a detail); it is never another action ("she is drinking from a cup" about a woman who is sitting is a second action).
 - Only a person listed for an action can do it. Read the last column of the action's line: "drink from a cup | ... | woman, man" means only a woman or a man can drink; a girl or a boy cannot. "have fallen down | ... | woman" means only a woman can have fallen down. A program checks the subject of every center item against this column.
@@ -208,7 +334,7 @@ Grammar and verbs of a lower grade may be used in a higher grade, but never use 
 - When you say that someone is on the sidewalk, on the road or on the grass, the second step must be able to put them exactly there; in a street scene say clearly who is on the road and who is on the sidewalk, and do not say it for both.
 - Rain only falls in outdoor scenes (a park, a street, a bus stop, a playground, a beach). Indoors (a store, a cafe, a kitchen, a classroom, a room, a library) and on a station platform there is no rain: do not write "it is raining outside" and do not use rain as a reason there.
 - Count the people and animals: the whole scene has exactly the number of the grade, and all of them are in the description.
-- Write the description before the checklist.
+- Write the sentences before the checklist.
 
 # checklist
 - Always write the whole checklist, with exactly the number of items of each kind for the grade. Never return an empty or shorter checklist. A program counts the items.
@@ -216,7 +342,7 @@ Grammar and verbs of a lower grade may be used in a higher grade, but never use 
 - The verb of a center accept must be one of the verbs on the line of that person's action, and its level must be within the grade: eiken-3 uses only verbs marked A1, eiken-pre2 verbs marked A1 or A2, eiken-2 verbs marked A1, A2 or B1. A program checks this against the 3D part. When the usual verb of an action is above the grade, say the action with another verb of the same line (in eiken-3 the boy of "throw a ball" "is playing with a ball", a person who stands "is waiting" or "is looking at" something, the woman of "wipe a table" "is cleaning the table"), or choose another action. Verbs from the list that a center accept must not use:
 ${verbLimits(parts)}
 - detail: a position, a number, a thing or the weather. It must be a fact that no other item already says: never repeat the accept of a center item as a detail, and never make a detail from a second action of a person.
-- reason (eiken-pre2 and eiken-2): why a person does their action. The cause must be visible in the scene as a thing, the weather, or what another person or animal is doing. Choose it from "Visible events that can be a reason" below, or build another one from the lists in the same way. A feeling, a wish or a plan is not a cause (she wants it, he is in a hurry, he is late, she wants to go home), and neither is a thing that is not in the list of things. Say the reason in the description.
+- reason (eiken-pre2 and eiken-2): why a person does their action. The cause must be visible in the scene as a thing, the weather, or what another person or animal is doing. Choose it from "Visible events that can be a reason" below, or build another one from the lists in the same way. A feeling, a wish or a plan is not a cause (she wants it, he is in a hurry, he is late, she wants to go home), and neither is a thing that is not in the list of things. 
 - link (eiken-2 only): one sentence with two steps: because of a visible cause, a person does the action, and the action has a purpose or result that the player can see coming (the dog runs to get the ball). Not a plan you invent, and not two facts that only stand next to each other.
 - Do not make every scene about the same cause. Rain and a person who has fallen down are only two of many causes; prefer a cause that belongs to the theme, and when you can, let the cause be a thing or another person's action rather than a repeat of a center item.
 - Bad reasons and links (never write these):
@@ -225,11 +351,11 @@ ${verbLimits(parts)}
   - "The man is hurrying so that he can leave." (no visible cause, and the purpose is invented)
   - "A bag is on the ground so the boy is running past it." (the bag does not make him run, and running past it has no purpose)
 - id: short snake_case, unique. label: short Japanese shown to the player after the round.
-- accept: the English wording that counts as "said". One item, one fact, written as a small sentence with a subject and a verb ("a man is reading a book", "there is a ball under the bench"); never a piece of a sentence ("to the train", "waiting with a basket").
-- For a center item, accept is who is doing what, without the place and without a second fact joined by "and" ("a woman is waiting", not "a woman is waiting with a shopping basket in the store"; "a girl is holding a plate", not "a girl is standing next to her and she is holding a plate"). Put the place into accept only when the item is a detail about the place.
-- The subject of a center, reason or link accept is a noun (a girl, the dog), never he, she, it or they. So in the description, write those sentences with the noun too. A detail also starts with a noun or with "there is"; only the weather may use it ("it is raining"). Never start an accept with he, she or they.
-- A reason accept is one whole sentence of the description: "<noun> is <the action of that person's center item> because <the visible cause>" ("a boy is running because it is raining"). The action before "because" is the same action as in that person's center item, never a new one. Write this sentence into the description first, then copy it.
-- Copy accept word for word from the description (one clause is enough; lower case and no final period are fine), so write the description in a way that each fact is a clause of its own. Every accept must be found in the description. Do not reword it: before you answer, check for every item that its accept (the first wording) stands in the description letter for letter. A reason or link accept that is a rewording of the description is rejected. For reason and link you may add other correct wordings after " / ", but only after the copied one.
+- sentence: the number of the sentence that says this item (1 is the first sentence). Each center and each detail has a different number. The reason has the number of the center sentence that contains its "because"; the link has the number of the center sentence that contains its "so" or "so that". The reason and the link have different numbers.
+- accept for a center or detail item: the English wording that counts as "said", copied letter for letter from the sentence with that number (lower case and no final period are fine). One item, one fact, with a subject and a verb ("a man is reading a book", "there is a ball under the bench"); never a piece of a sentence ("to the train", "waiting with a basket").
+- For a center item, accept is who is doing what: the part of its sentence before "because" or "so", without the place and without a second fact joined by "and" ("a woman is waiting", not "a woman is waiting with a shopping basket in the store"). Put the place into accept only when the item is a detail about the place.
+- accept for a reason or link item: leave it empty (""). The program uses the whole sentence with that number as accept, so that sentence must start with a noun and say the action and its cause. Only if another wording of the same reason is also correct, write that wording into accept.
+- The action before "because" or "so" is the same action as in that person's center item, never a new one.
 - refs: the people and things the item is about, as short lower-case English names (man, bench, rain; letters, digits and _ only). Put the person or animal who acts first. Use one name for one person or thing in the whole checklist (two boys: boy and tall_boy). The second step puts one part in the scene for every name, so name only things that stand in the scene as their own part: people, animals, furniture, things, rain. Do not name the place itself (park), a body part, or a thing that a person holds as part of the action (the book of a person reading, the box of a person carrying): name the person instead.
 - reason and link items need two or more refs: the person who acts, and the cause (a thing or another person).
 
@@ -250,9 +376,9 @@ ${THEMES.map((t) => `- ${t}`).join("\n")}
 For eiken-pre2 and eiken-2, do not choose a theme where you cannot place a visible cause. If the given theme cannot be made with these parts, write the closest everyday scene you can.
 
 # Example
-This example only shows the form of the answer. Do not reuse its scene, its sentences, its people or its cause (rain) in your answer; even for a bus stop, write a different scene.
+This example only shows the form of the answer (sentence 3 carries both the center item boy_run and the reason why_run). Do not reuse its scene, its sentences, its people or its cause (rain) in your answer; even for a bus stop, write a different scene.
 Request: 級: ${EXAMPLE_GRADE} / テーマ: ${EXAMPLE_THEME}
-${JSON.stringify(EXAMPLE_SENTENCES)}`;
+${JSON.stringify(EXAMPLE_ANSWER)}`;
 
 const isLivingPart = (p: Part) =>
   p.category === "person" || p.category === "animal";
@@ -334,7 +460,8 @@ export const sentenceSchema = (grade: GradeId) => ({
   type: "object",
   properties: {
     name: { type: "string" },
-    description: { type: "string" },
+    // description は文の配列で先に書かせる（つなげるのはコード）
+    sentences: { type: "array", minItems: 1, items: { type: "string" } },
     checklist: {
       type: "array",
       // structured outputs が受け付ける minItems は 0 と 1 だけなので、級の数までは指定できない
@@ -345,15 +472,19 @@ export const sentenceSchema = (grade: GradeId) => ({
           id: { type: "string" },
           kind: { type: "string", enum: kindsOf(grade) },
           label: { type: "string" },
+          sentence: {
+            type: "integer",
+            description: "the number of the sentence that says this item",
+          },
           accept: { type: "string" },
           refs: { type: "array", minItems: 1, items: { type: "string" } },
         },
-        required: ["id", "kind", "label", "accept", "refs"],
+        required: ["id", "kind", "label", "sentence", "accept", "refs"],
         additionalProperties: false,
       },
     },
   },
-  required: ["name", "description", "checklist"],
+  required: ["name", "sentences", "checklist"],
   additionalProperties: false,
 });
 
@@ -365,26 +496,41 @@ export const itemsOnlySchema = (parts: Part[]) => ({
   additionalProperties: false,
 });
 
-const Sentences = z.object({
+const Answer = z.object({
   name: z.string().trim().min(1),
-  description: z.string().trim().min(1),
+  sentences: z.array(z.string()).min(1),
   // 空でも受け取り、裏取り（数が合わない）で落とす。理由を付けて作り直せるようにするため
   checklist: z.array(
     z.object({
       id: z.string().trim().min(1),
       kind: z.enum(CHECKLIST_KINDS),
       label: z.string().trim().min(1),
-      accept: z.string().trim().min(1),
+      sentence: z.number().int(),
+      accept: z.string(),
       refs: z.array(z.string().trim()),
     }),
   ),
 });
 const ItemsOnly = z.object({ items: PlanItems });
 
-// 裏取りで落ちた理由を、作り直しの指示に足す
-const feedbackText = (feedback: string[] | undefined) =>
-  feedback?.length
-    ? `\n\nYour last answer was rejected by the checking program. Write a new answer that fixes all of these:\n${feedback.map((f) => `- ${f}`).join("\n")}`
+/**
+ * 作り直しのときに渡すもの。problems は裏取りで落ちた理由（どの項目かを id で名指しした文）、
+ * previous は落ちた前の答え。前の答えを見せないと、理由がどこを指すのかが Claude に分からない
+ */
+export type Retry = { problems: string[]; previous?: unknown };
+
+// 落ちた前の答えと理由を、作り直しの指示に足す。直す所だけを直させる
+const feedbackText = (retry: Retry | undefined) =>
+  retry?.problems.length
+    ? `\n\nYour last answer was rejected by the checking program.${
+        retry.previous === undefined
+          ? ""
+          : `\nYour last answer:\n${JSON.stringify(retry.previous)}`
+      }\nProblems (each one names the id of the item or the number of the sentence to fix):\n${retry.problems
+        .map((f) => `- ${f}`)
+        .join(
+          "\n",
+        )}\nWrite the whole answer again. Change what the problems name and whatever must change with it; keep the rest as it was.`
     : "";
 
 // すでに作った場面の要約を渡し、違う場面を書かせる
@@ -394,14 +540,14 @@ const avoidText = (avoid: string[] | undefined) =>
     : "";
 
 /** 1 回目の user の文 */
-export const sentenceMessage = (input: GenerateV2Input, feedback?: string[]) =>
+export const sentenceMessage = (input: GenerateV2Input, feedback?: Retry) =>
   `級: ${input.grade}\nテーマ: ${input.theme ?? "一覧から選ぶ"}\nchecklist: ${checklistCounts(input.grade)}（計 ${checklistSize(input.grade)} 個）${avoidText(input.avoid)}${feedbackText(feedback)}`;
 
 /** 2 回目の user の文。1 回目の出力の全部と、コードが refs から集めた呼び名の一覧 */
 export function itemsMessage(
   input: Pick<GenerateV2Input, "grade">,
   sentences: SceneSentences,
-  feedback?: string[],
+  feedback?: Retry,
 ) {
   return `級: ${input.grade}\nScene: ${JSON.stringify(sentences)}\nKeys: ${refNames(sentences.checklist).join(", ")}${feedbackText(feedback)}`;
 }
@@ -549,24 +695,23 @@ const callJson = async <T>(
   throw last as SceneGenerationError;
 };
 
-const cleanSentences = (s: z.infer<typeof Sentences>): SceneSentences => ({
-  name: s.name,
-  description: s.description,
-  checklist: s.checklist.map((c) => ({
-    ...c,
-    refs: c.refs.filter((r) => r.length > 0),
-  })),
-});
-
-/** 1 回目: 級（とテーマ）から英文の部分を書かせる。feedback は裏取りで落ちた理由（作り直しのとき） */
+/**
+ * 1 回目: 級（とテーマ）から英文の部分を書かせる。feedback は作り直しのときの、前の答えと落ちた理由。
+ * answer は Claude が書いたままの形、sentences は保存する形に直したもの、problems は形の決まりの違反
+ */
 export async function generateSentences(
   env: GenerateEnv,
   parts: Part[],
   input: GenerateV2Input,
   deps: GenerateV2Deps = {},
   options: GenerateOptions = {},
-  feedback?: string[],
-): Promise<{ sentences: SceneSentences; usage: Anthropic.Usage }> {
+  feedback?: Retry,
+): Promise<{
+  sentences: SceneSentences;
+  problems: Problem[];
+  answer: SceneAnswer;
+  usage: Anthropic.Usage;
+}> {
   const result = await callJson(
     prepare(env, deps, options),
     "1 回目・英文",
@@ -574,11 +719,15 @@ export async function generateSentences(
     sentenceSchema(input.grade),
     sentenceMessage(input, feedback),
     (json) => {
-      const parsed = Sentences.safeParse(json);
-      return parsed.success ? cleanSentences(parsed.data) : undefined;
+      const parsed = Answer.safeParse(json);
+      return parsed.success ? (parsed.data as SceneAnswer) : undefined;
     },
   );
-  return { sentences: result.value, usage: result.usage };
+  return {
+    ...toSceneSentences(input.grade, result.value),
+    answer: result.value,
+    usage: result.usage,
+  };
 }
 
 /** 2 回目: 英文の部分と候補の部品から、部品と関係（items）を書かせる */
@@ -589,7 +738,7 @@ export async function generateItems(
   sentences: SceneSentences,
   deps: GenerateV2Deps = {},
   options: GenerateOptions = {},
-  feedback?: string[],
+  feedback?: Retry,
 ): Promise<{ items: PlanItem[]; usage: Anthropic.Usage }> {
   const result = await callJson(
     prepare(env, deps, options),
@@ -648,7 +797,7 @@ export async function generateSceneV2(
   const plan = { ...first.sentences, items: second.items };
   return {
     plan,
-    problems: verifyScene(input.grade, plan, parts),
+    problems: [...first.problems, ...verifyScene(input.grade, plan, parts)],
     model: env.CLAUDE_SCENE_MODEL || DEFAULT_SCENE_MODEL,
     ms: {
       sentences: t1 - t0,
@@ -663,13 +812,16 @@ export async function generateSceneV2(
 /** 作り置きで、裏取りに落ちたときに作り直す回数の上限（最初の 1 回とは別に 2 回まで） */
 export const MAX_REMAKES = 2;
 
-/** 作り直しても裏取りを通らなかった。problems は最後の回で落ちた理由 */
+/** 作り直しても裏取りを通らなかった。problems は最後の回で落ちた理由、rejected は回ごとの理由 */
 export class SceneVerificationError extends SceneGenerationError {
-  constructor(readonly problems: Problem[]) {
+  readonly problems: Problem[];
+  constructor(readonly rejected: Problem[][]) {
+    const problems = rejected[rejected.length - 1] ?? [];
     super(
       "invalid",
       `裏取りを通らなかった: ${problems.map((p) => p.message).join(" / ")}`,
     );
+    this.problems = problems;
   }
 }
 
@@ -716,8 +868,10 @@ export async function generateVerifiedScene(
   const rejected: Problem[][] = [];
   let sentences: SceneSentences | undefined;
   let found: Part[] = parts;
-  let feedback: string[] | undefined;
+  let feedback: Retry | undefined;
   let itemsRejected = 0;
+  /** 1 回目の前の答え（Claude が書いたままの形）。作り直しのときに見せる */
+  let lastAnswer: SceneAnswer | undefined;
   for (let round = 0; round <= MAX_REMAKES; round++) {
     if (!sentences) {
       let written: SceneSentences | undefined;
@@ -733,13 +887,21 @@ export async function generateVerifiedScene(
         );
         usage.push(first.usage);
         written = first.sentences;
-        problems = verifySentences(input.grade, written, parts);
+        lastAnswer = first.answer;
+        problems = [
+          ...first.problems,
+          ...verifySentences(input.grade, written, parts),
+        ];
       } catch (e) {
         problems = [invalidResponse(e, "sentences")];
+        lastAnswer = undefined;
       }
       if (problems.length > 0 || !written) {
         rejected.push(problems);
-        feedback = problems.map((p) => p.message);
+        feedback = {
+          problems: problems.map((p) => p.message),
+          previous: lastAnswer,
+        };
         continue;
       }
       sentences = written;
@@ -777,13 +939,19 @@ export async function generateVerifiedScene(
       };
     }
     rejected.push(problems);
-    feedback = problems.map((p) => p.message);
     itemsRejected++;
     // 英文を書き直さないと直らない理由があるか、同じ英文で部品が 2 回落ちたら、1 回目から作り直す
-    if (problems.some((p) => p.stage === "sentences") || itemsRejected >= 2) {
+    const rewrite =
+      problems.some((p) => p.stage === "sentences") || itemsRejected >= 2;
+    feedback = {
+      problems: problems.map((p) => p.message),
+      // 1 回目からなら前の英文、2 回目だけなら前の部品を見せる
+      previous: rewrite ? lastAnswer : items ? { items } : undefined,
+    };
+    if (rewrite) {
       sentences = undefined;
       itemsRejected = 0;
     }
   }
-  throw new SceneVerificationError(rejected[rejected.length - 1]);
+  throw new SceneVerificationError(rejected);
 }
