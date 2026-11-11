@@ -22,9 +22,9 @@
     {
       "id": "boy_sit",
       "kind": "center",
-      "label": "男の子が椅子に座っている",
-      "accept": "a boy is sitting on a chair",
-      "refs": ["boy", "chair"]
+      "label": "男の子が座っている",
+      "accept": "a boy is sitting",
+      "refs": ["boy"]
     },
     {
       "id": "why_wipe",
@@ -52,25 +52,35 @@
     {
       "key": "floor",
       "part": "floor_wood",
-      "place": { "relation": "ground" },
+      "place": {
+        "relation": "ground"
+      },
       "position": [0, 0, 0]
     },
     {
       "key": "wall",
       "part": "wall_cafe",
-      "place": { "relation": "ground" },
+      "place": {
+        "relation": "ground"
+      },
       "position": [0, 0, -3.57]
     },
     {
       "key": "table",
       "part": "table",
-      "place": { "relation": "ground", "zone": "center" },
+      "place": {
+        "relation": "ground",
+        "zone": "center"
+      },
       "position": [0, 0, 0]
     },
     {
       "key": "juice",
       "part": "spilled_juice",
-      "place": { "relation": "on", "target": "table" },
+      "place": {
+        "relation": "on",
+        "target": "table"
+      },
       "position": [0.1, 0.72, 0.05]
     },
     {
@@ -89,7 +99,10 @@
     {
       "key": "waiter",
       "part": "person_serve_waiter_a",
-      "place": { "relation": "ground", "zone": "left" },
+      "place": {
+        "relation": "ground",
+        "zone": "left"
+      },
       "position": [-3, 0, 0.4],
       "yaw": 90,
       "motion": {
@@ -102,19 +115,28 @@
     {
       "key": "chair",
       "part": "chair",
-      "place": { "relation": "ground", "zone": "right" },
+      "place": {
+        "relation": "ground",
+        "zone": "right"
+      },
       "position": [2.4, 0, 0.3]
     },
     {
       "key": "boy",
       "part": "person_sit_boy_a",
-      "place": { "relation": "sit_on", "target": "chair" },
+      "place": {
+        "relation": "sit_on",
+        "target": "chair"
+      },
       "position": [2.4, 0.46, 0.3]
     },
     {
       "key": "plant",
       "part": "plant_pot",
-      "place": { "relation": "next_to", "target": "chair" },
+      "place": {
+        "relation": "next_to",
+        "target": "chair"
+      },
       "position": [3.3, 0, 0.3]
     }
   ]

@@ -8,15 +8,15 @@
     {
       "id": "girl_sit",
       "kind": "center",
-      "label": "女の子がベンチに座っている",
-      "accept": "a girl is sitting on a bench",
-      "refs": ["girl", "bench"]
+      "label": "女の子が座っている",
+      "accept": "a girl is sitting",
+      "refs": ["girl"]
     },
     {
       "id": "dog_run",
       "kind": "center",
-      "label": "犬が芝生を走っている",
-      "accept": "a dog is running on the grass",
+      "label": "犬が走っている",
+      "accept": "a dog is running",
       "refs": ["dog"]
     },
     {
@@ -31,31 +31,45 @@
     {
       "key": "ground",
       "part": "grass_patch",
-      "place": { "relation": "ground" },
+      "place": {
+        "relation": "ground"
+      },
       "position": [0, 0, 0]
     },
     {
       "key": "bench",
       "part": "bench",
-      "place": { "relation": "ground", "zone": "center" },
+      "place": {
+        "relation": "ground",
+        "zone": "center"
+      },
       "position": [0, 0, -0.5]
     },
     {
       "key": "girl",
       "part": "person_sit_girl_a",
-      "place": { "relation": "sit_on", "target": "bench" },
+      "place": {
+        "relation": "sit_on",
+        "target": "bench"
+      },
       "position": [0, 0.48, -0.42]
     },
     {
       "key": "bicycle",
       "part": "bicycle",
-      "place": { "relation": "next_to", "target": "bench" },
+      "place": {
+        "relation": "next_to",
+        "target": "bench"
+      },
       "position": [1.4, 0, -0.5]
     },
     {
       "key": "dog",
       "part": "animal_run_dog_a",
-      "place": { "relation": "ground", "zone": "front_left" },
+      "place": {
+        "relation": "ground",
+        "zone": "front_left"
+      },
       "position": [-2.5, 0, 2],
       "yaw": 90,
       "motion": {

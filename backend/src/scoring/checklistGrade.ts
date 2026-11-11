@@ -47,6 +47,7 @@ You also get the checklist of the scene. Each item has an id, a kind (center: wh
 # Claims
 Split what the player said into claims and judge each one. Do not give a content score; the program computes it from your claims.
 - One claim is one fact. Always put an action (who is doing what) and a position (a preposition phrase: where it is or where it happens) into separate claims. "A man is reading a book next to the table." is two claims: "A man is reading a book" and "next to the table". Naming a person or thing ("there is a dog", or each noun of "woman, table, cup") is a claim too. If the player repeats the same fact, list it once.
+- Split even when the verb and the position are stuck together: "A woman is wiping under the table." is "A woman is wiping" and "under the table"; "There is a bicycle next to the bench." is "There is a bicycle" and "next to the bench".
 - Judge each claim on its own. A wrong position does not make the action wrong. For a scene where a girl is sitting on a bench, "A girl is sitting under a bench." gives "A girl is sitting" (correct; it hits the item about the girl sitting) and "under a bench" (contradiction). For a scene where a dog is running on the grass, "A dog is running on the bench." gives "A dog is running" (correct) and "on the bench" (contradiction).
 - When one stretch of speech says what two checklist items ask (an action and its reason, or an action inside a chain), make one claim for each item; their quotes may overlap or even be the same words. "A woman is wiping the table because of the juice." gives "A woman is wiping the table" (the center item about wiping) and "A woman is wiping the table because of the juice" (the reason item). Do the same for a long sentence that contains both a center item and a link item.
 - quote: the words of the claim, copied exactly from the transcript as one continuous run of words. Do not fix, reorder or join words. List the claims in the order they were spoken.
@@ -58,16 +59,23 @@ Split what the player said into claims and judge each one. Do not give a content
   - "ignored": not counted either way. Use it for a reason or a guess that follows naturally from the scene and does not contradict it but cannot be checked ("maybe he is tired", "I think she is late"), for fillers and connecting words ("I think", "um", "in this picture"), and for a claim that is only about a color the scene data does not give.
   A reason that contradicts the scene, or that depends on something not in the scene, is "contradiction" or "absent".
 - item: for a "correct" claim, the id of the checklist item it says, or null when it is true but not on the checklist. For every other verdict, null. Judge meaning, not exact words; grammar mistakes do not matter here ("Woman wipe table" says the same as "a woman is wiping the table").
-  - center, reason and link items are about actions, relations and reasons. A claim that only names a person or thing ("a girl", "there is a dog", a list of nouns) never hits them, even when the item is about that person or thing: give it item null. It is still "correct" when the thing is in the scene.
-  - A detail item can be hit by the name alone only when its accept asks for nothing more than the thing being there.
-- level: for a claim with an item, compare it with the item's accept. "full": it says what accept says, or a clear paraphrase. "partial": it says the action or relation of the item but leaves out, or gets wrong, an important part of accept (who does it, the object of the action, or the place when accept names one). Null when item is null.
-  - reason item: any reason that does not contradict the scene is "full", even if it differs from accept. Saying the action without any reason does not hit the reason item.
-  - link item: "full" when two steps are connected: a cause, the action, and its result or purpose (e.g. "The boy threw a ball, so the dog is running across the grass to get it."). "partial" when only one step is connected (a single "because" or "so").
+- level: "full" or "partial" for a claim with an item; null when item is null. Decide item and level by the kind of the item, with these rules only:
+  - center item (who is doing what):
+    - "full": the claim says the action of accept about that person or animal. Another verb with the same meaning counts. A place or other small words are not needed: for accept "a boy is sitting", "A boy is sitting" is full, with or without a place after it.
+    - "partial": the claim says the action, but who does it or the object of the action is wrong or missing (for accept "a woman is wiping the table": "A woman is wiping", or "Someone is wiping the table").
+    - A claim that only names the person or animal ("a girl", "there is a dog", a noun in a list) does not hit a center item: item null. It is still "correct" when the thing is in the scene.
+  - detail item (a fact such as where a thing is or what state it is in):
+    - "full": the claim says the fact of accept.
+    - "partial": the claim says in a sentence that the thing is there, but leaves out the position or state accept asks for (for accept "there is a plant next to the boy": "There is a plant").
+    - A bare name ("juice", "plant" in a list of nouns) does not hit a detail item whose accept asks for a position or a state: item null. It hits the item (full) only when accept asks for nothing more than the thing being there.
+  - A claim that is only a position ("near the bench", "next to the boy"): when a detail item asks about that position, it hits that item (full when the position matches accept). Otherwise item null. A position claim never hits a center item.
+  - reason item: any reason that does not contradict the scene is "full", even if it differs from accept. Saying the action without any reason does not hit the reason item. Naming things does not hit it.
+  - link item: "full" when two steps are connected: a cause, the action, and its result or purpose (e.g. "The boy threw a ball, so the dog is running across the grass to get it."). "partial" when only one step is connected (a single "because" or "so"). Naming things does not hit it.
   - A reason or a chain that hits a reason or link item is "correct" with that item, not "ignored".
 - note: for "contradiction", "absent" and "offtopic", one short sentence in Japanese saying what is wrong. Otherwise null.
 
 # Expression
-Give expression a score from 0 to 100 using the bands below. Pick the band that fits best; scores between bands are fine.
+First write expressionBasis: one English sentence saying which forms the player used correctly and what errors there are. Then give expression a score from 0 to 100 that follows from it, using the bands below. Pick the band that fits best; scores between bands are fine.
 
 ${EXPRESSION_BANDS}
 
@@ -111,6 +119,12 @@ const schemaFor = (checklist: ChecklistItem[], withSpeech: boolean) => {
           additionalProperties: false,
         },
       },
+      // 点の前に根拠を書かせる（根拠なしに数字を書かせると、正しい英文に 0 が返る回があった）
+      expressionBasis: {
+        type: "string",
+        description:
+          "One English sentence: which forms the player used correctly, and what errors there are",
+      },
       expression: {
         type: "integer",
         description:
@@ -148,7 +162,14 @@ const schemaFor = (checklist: ChecklistItem[], withSpeech: boolean) => {
         additionalProperties: false,
       }),
     },
-    required: ["claims", "expression", "strength", "nextStep", "rewrite"],
+    required: [
+      "claims",
+      "expressionBasis",
+      "expression",
+      "strength",
+      "nextStep",
+      "rewrite",
+    ],
     additionalProperties: false,
   };
 };
@@ -156,6 +177,8 @@ const schemaFor = (checklist: ChecklistItem[], withSpeech: boolean) => {
 /** Claude が返す形（内容の点は入らない） */
 export type ChecklistJudgment = {
   claims: Claim[];
+  // 表現の点の根拠（英語で 1 文）。記録用で、アプリには送らない
+  expressionBasis: string;
   expression: number;
   strength: ContentFeedback["strength"];
   nextStep: RawNextStep;
@@ -180,6 +203,10 @@ export type ChecklistInput = {
 export type ChecklistScore = {
   content: number;
   expression: number;
+  // 表現の点の根拠（記録用。アプリには送らない）
+  expressionBasis: string;
+  // 表現が 0 点で返ったために Claude を呼び直した回数（0 か 1）
+  expressionRetries: number;
   // 描写の一覧・項目ごとの達成・言えたと正しさの内訳
   breakdown: ContentBreakdown;
   strength: ContentFeedback["strength"];
@@ -235,7 +262,7 @@ export const checklistPrompt = (input: ChecklistInput) => {
 export const scoreJudgment = (
   input: Pick<ChecklistInput, "checklist" | "transcript">,
   judged: ChecklistJudgment,
-): ChecklistScore => {
+): Omit<ChecklistScore, "expressionRetries"> => {
   const { content, ...breakdown } = scoreContent(
     input.checklist,
     input.transcript,
@@ -244,6 +271,7 @@ export const scoreJudgment = (
   return {
     content,
     expression: clamp(judged.expression),
+    expressionBasis: judged.expressionBasis ?? "",
     breakdown,
     strength: judged.strength,
     nextStep: checkNextStep({ content, ...breakdown }, judged.nextStep),
@@ -251,8 +279,13 @@ export const scoreJudgment = (
   };
 };
 
+// これより短い発話は、表現が 0 点でも呼び直さない（index.ts の MIN_WORDS と同じ。3 語未満は呼ぶ側が Claude を呼ばずに 0 点にする）
+const RETRY_MIN_WORDS = 3;
+
 /**
  * チェックリストで採点する。create を渡すと Claude の呼び出しを差し替えられる（そのとき CLAUDE_API_KEY は要らない）。
+ * 3 語以上の発話に表現 0 点が返ったら、同じ入力で 1 回だけ呼び直す（正しい英文に 0 が返る回があるため）。
+ * 呼び直しが 0 点でなければ、その応答の全部（描写・講評も）を使う。呼び直しも 0 点か失敗なら、初めの応答のまま。
  * 3 語未満の発話を 0 点にするのと、strength・rewrite の引用の確かめ（feedback.ts の checkedNotes）は、呼ぶ側で行う
  */
 export async function gradeWithChecklist(
@@ -268,7 +301,7 @@ export async function gradeWithChecklist(
     const client = new Anthropic({ apiKey: env.CLAUDE_API_KEY });
     create = (params) => client.messages.create(params);
   }
-  const response = await create({
+  const params: CreateParams = {
     model: env.CLAUDE_MODEL || DEFAULT_MODEL,
     max_tokens: 4000,
     output_config: {
@@ -280,7 +313,30 @@ export async function gradeWithChecklist(
     },
     system: SYSTEM,
     messages: [{ role: "user", content: checklistPrompt(input) }],
-  });
+  };
+  const first = scoreJudgment(input, await judge(create, params));
+  const words = input.transcript.split(/\s+/).filter(Boolean).length;
+  if (first.expression > 0 || words < RETRY_MIN_WORDS) {
+    return { ...first, expressionRetries: 0 };
+  }
+  try {
+    const second = scoreJudgment(input, await judge(create, params));
+    return {
+      ...(second.expression > 0 ? second : first),
+      expressionRetries: 1,
+    };
+  } catch (e) {
+    // 呼び直しの失敗で採点を落とさない
+    console.error("表現 0 点の呼び直しに失敗", e);
+    return { ...first, expressionRetries: 1 };
+  }
+}
+
+const judge = async (
+  create: CreateMessage,
+  params: CreateParams,
+): Promise<ChecklistJudgment> => {
+  const response = await create(params);
   if (response.stop_reason !== "end_turn") {
     throw new ClaudeError(`Claude が途中で止まった: ${response.stop_reason}`);
   }
@@ -288,5 +344,5 @@ export async function gradeWithChecklist(
   if (text?.type !== "text") {
     throw new ClaudeError("Claude の応答に本文が無い");
   }
-  return scoreJudgment(input, JSON.parse(text.text) as ChecklistJudgment);
-}
+  return JSON.parse(text.text) as ChecklistJudgment;
+};

@@ -213,6 +213,7 @@ const JUDGED: ChecklistJudgment = {
       note: null,
     },
   ],
+  expressionBasis: "Uses the present continuous and because correctly.",
   expression: 78.4,
   strength: { quote: "because juice is on it", text: "理由を言えた" },
   nextStep: { kind: "content", text: "店員も足そう", item: "woman_wipe" },
@@ -255,6 +256,8 @@ test("gradeWithChecklist: 偽の応答から、内容の点・内訳・次の一
   assert.deepEqual(r.breakdown.precision, { value: 0.75, correct: 3, said: 4 });
   assert.equal(r.content, 60); // 2 × 0.75 × 0.5 / 1.25 = 0.6
   assert.equal(r.expression, 78);
+  assert.equal(r.expressionBasis, JUDGED.expressionBasis);
+  assert.equal(r.expressionRetries, 0);
   assert.deepEqual(
     r.breakdown.claims.map((c) => c.quote),
     [
@@ -321,10 +324,17 @@ test("gradeWithChecklist: Claude に渡す本文と schema", async () => {
   assert.equal(format.type, "json_schema");
   assert.deepEqual(format.schema.required, [
     "claims",
+    "expressionBasis",
     "expression",
     "strength",
     "nextStep",
     "rewrite",
+  ]);
+  // 根拠の欄は、表現の点の直前に書かせる
+  assert.deepEqual(Object.keys(format.schema.properties).slice(0, 3), [
+    "claims",
+    "expressionBasis",
+    "expression",
   ]);
   assert.ok(!("content" in format.schema.properties));
   const ids = eikenPre2.checklist.map((c) => c.id);
@@ -524,6 +534,233 @@ test("問題 4: 1 つの文が 2 つの項目に当たるとき、重なる引�
   assert.deepEqual(r.breakdown.precision, { value: 1, correct: 2, said: 2 });
 });
 
+// ---- 2026-11-11 の測り直しで幅が出た 3 つの答え（分けた形でも分けない形でも、計算が壊れない） ----
+
+const gradeScene = (
+  scene: Fixture,
+  transcript: string,
+  claims: ChecklistJudgment["claims"],
+) =>
+  gradeWithChecklist(
+    {},
+    {
+      grade: scene.difficulty,
+      checklist: scene.checklist,
+      sceneData: describeLayoutWithRelations(scene.items) as string,
+      grammar: GRAMMAR,
+      transcript,
+    },
+    {
+      create: fake({
+        ...JUDGED,
+        claims,
+        nextStep: { kind: "expression", text: "t", item: null },
+      }),
+    },
+  );
+const PRE2 = eikenPre2 as unknown as Fixture;
+const GRADE2 = eiken2 as unknown as Fixture;
+const levels = (r: { breakdown: { items: { id: string; level: string }[] } }) =>
+  Object.fromEntries(r.breakdown.items.map((i) => [i.id, i.level]));
+
+test("eiken-pre2 前置詞の誤り: 動作と位置を分けた形は動作が残り、分けない形は文ごと間違いになる", async () => {
+  const transcript =
+    "A woman is wiping under the table. A waiter is bringing a cup. A boy is sitting on the table. There is a plant on the chair.";
+  const split = await gradeScene(PRE2, transcript, [
+    ok("A woman is wiping", "woman_wipe", "partial"),
+    wrong("under the table"),
+    ok("A waiter is bringing a cup", "waiter_bring"),
+    ok("A boy is sitting", "boy_sit"),
+    wrong("on the table"),
+    ok("There is a plant", "plant", "partial"),
+    wrong("on the chair"),
+  ]);
+  assert.equal(split.breakdown.claims.length, 7);
+  assert.deepEqual(levels(split), {
+    woman_wipe: "partial",
+    waiter_bring: "full",
+    boy_sit: "full",
+    why_wipe: "none",
+    juice: "none",
+    plant: "partial",
+  });
+  // R = (1 + 2 + 2 + 0.5) / 10、P = 4 / 7
+  assert.deepEqual(split.breakdown.recall, {
+    value: 0.55,
+    earned: 5.5,
+    max: 10,
+  });
+  assert.deepEqual(split.breakdown.precision, {
+    value: 4 / 7,
+    correct: 4,
+    said: 7,
+  });
+  assert.equal(split.content, 56);
+
+  const whole = await gradeScene(PRE2, transcript, [
+    wrong("A woman is wiping under the table"),
+    ok("A waiter is bringing a cup", "waiter_bring"),
+    wrong("A boy is sitting on the table"),
+    wrong("There is a plant on the chair"),
+  ]);
+  assert.deepEqual(whole.breakdown.recall, { value: 0.2, earned: 2, max: 10 });
+  assert.deepEqual(whole.breakdown.precision, {
+    value: 0.25,
+    correct: 1,
+    said: 4,
+  });
+  assert.equal(whole.content, 22);
+});
+
+test("eiken-pre2 名前だけ: 全部その他なら 18 点。juice を細部の一部にした回は 26 点", async () => {
+  const transcript = "Woman, waiter, boy, table, juice, cup, chair, plant.";
+  const names = transcript.replace(".", "").split(", ");
+  const none = await gradeScene(
+    PRE2,
+    transcript,
+    names.map((n) => ok(n)),
+  );
+  assert.equal(none.breakdown.claims.length, 8);
+  assert.equal(none.breakdown.others, 2);
+  assert.deepEqual(none.breakdown.recall, { value: 0.1, earned: 1, max: 10 });
+  assert.deepEqual(none.breakdown.precision, { value: 1, correct: 8, said: 8 });
+  assert.equal(none.content, 18);
+
+  const juice = await gradeScene(
+    PRE2,
+    transcript,
+    names.map((n) => (n === "juice" ? ok(n, "juice", "partial") : ok(n))),
+  );
+  assert.equal(juice.breakdown.recall.earned, 1.5);
+  assert.equal(juice.content, 26);
+});
+
+test("eiken-2 理由が 1 段だけ: 動作と位置・動作と理由を分けた形と、文ごとの形", async () => {
+  const transcript =
+    "A woman has fallen on the street. A man is helping her. A girl is running because she saw the accident. An old man is standing near the bench.";
+  const split = await gradeScene(GRADE2, transcript, [
+    ok("A woman has fallen", "woman_fall"),
+    ok("on the street"),
+    ok("A man is helping her", "man_help"),
+    ok("A girl is running", "girl_run"),
+    // 動作と理由は、重なる引用で 2 つの項目に当てる。because の 1 段だけなのでつながりは一部
+    ok(
+      "A girl is running because she saw the accident",
+      "girl_call",
+      "partial",
+    ),
+    ok("An old man is standing", "oldman_stand"),
+    // 位置を問う細部が無いので、その他
+    ok("near the bench"),
+  ]);
+  assert.deepEqual(levels(split), {
+    woman_fall: "full",
+    man_help: "full",
+    girl_run: "full",
+    oldman_stand: "full",
+    why_fall: "none",
+    girl_call: "partial",
+    bicycle: "none",
+    bag: "none",
+  });
+  // R = (2 × 4 + 1 + その他 2 件の 1) / 14、P = 7 / 7
+  assert.deepEqual(split.breakdown.recall, {
+    value: 10 / 14,
+    earned: 10,
+    max: 14,
+  });
+  assert.equal(split.content, 83);
+
+  const whole = await gradeScene(GRADE2, transcript, [
+    ok("A woman has fallen on the street", "woman_fall"),
+    ok("A man is helping her", "man_help"),
+    ok(
+      "A girl is running because she saw the accident",
+      "girl_call",
+      "partial",
+    ),
+    ok("An old man is standing near the bench", "oldman_stand"),
+  ]);
+  assert.deepEqual(whole.breakdown.recall, { value: 0.5, earned: 7, max: 14 });
+  assert.equal(whole.content, 67);
+});
+
+// ---- 表現が 0 点で返ったときの呼び直し ----
+
+const fakeSeq = (
+  responses: unknown[],
+  calls: Parameters<CreateMessage>[0][] = [],
+): CreateMessage =>
+  (async (params) => {
+    const judged = responses[calls.length];
+    calls.push(params);
+    if (judged instanceof Error) throw judged;
+    return {
+      stop_reason: "end_turn",
+      content: [{ type: "text", text: JSON.stringify(judged) }],
+    };
+  }) as CreateMessage;
+const ZERO = { ...JUDGED, expression: 0, expressionBasis: "" };
+
+test("3 語以上の発話に表現 0 点が返ったら、同じ入力で 1 回だけ呼び直し、その応答を使う", async () => {
+  const calls: Parameters<CreateMessage>[0][] = [];
+  const second = {
+    ...JUDGED,
+    expression: 80,
+    expressionBasis: "Correct present continuous.",
+    strength: { quote: "A boy is sitting", text: "2 回目" },
+  };
+  const r = await gradeWithChecklist({}, inputFor(), {
+    create: fakeSeq([ZERO, second], calls),
+  });
+  assert.equal(calls.length, 2);
+  assert.deepEqual(calls[1], calls[0]);
+  assert.equal(r.expression, 80);
+  assert.equal(r.expressionRetries, 1);
+  assert.equal(r.expressionBasis, "Correct present continuous.");
+  assert.equal(r.strength.text, "2 回目");
+});
+
+test("呼び直しも 0 点・失敗なら、初めの応答のまま 0 点（3 回目は呼ばない）", async () => {
+  const calls: Parameters<CreateMessage>[0][] = [];
+  const first = { ...ZERO, strength: { quote: "", text: "1 回目" } };
+  const r = await gradeWithChecklist({}, inputFor(), {
+    create: fakeSeq(
+      [first, { ...ZERO, strength: { quote: "", text: "2 回目" } }, JUDGED],
+      calls,
+    ),
+  });
+  assert.equal(calls.length, 2);
+  assert.equal(r.expression, 0);
+  assert.equal(r.expressionRetries, 1);
+  assert.equal(r.strength.text, "1 回目");
+  assert.equal(r.content, 60);
+
+  const failed = await gradeWithChecklist({}, inputFor(), {
+    create: fakeSeq([first, new Error("API が落ちた")]),
+  });
+  assert.equal(failed.expression, 0);
+  assert.equal(failed.expressionRetries, 1);
+  assert.equal(failed.strength.text, "1 回目");
+});
+
+test("3 語未満の発話は、表現が 0 点でも呼び直さない。0 点でなければ呼び直さない", async () => {
+  const calls: Parameters<CreateMessage>[0][] = [];
+  const short = await gradeWithChecklist({}, inputFor("A dog"), {
+    create: fakeSeq([ZERO, JUDGED], calls),
+  });
+  assert.equal(calls.length, 1);
+  assert.equal(short.expression, 0);
+  assert.equal(short.expressionRetries, 0);
+
+  const calls2: Parameters<CreateMessage>[0][] = [];
+  const low = await gradeWithChecklist({}, inputFor(), {
+    create: fakeSeq([{ ...JUDGED, expression: 20 }, JUDGED], calls2),
+  });
+  assert.equal(calls2.length, 1);
+  assert.equal(low.expression, 20);
+});
+
 test("指示に、描写の分け方・名前だけの扱い・accept の区切り・表現の見方が書いてある", async () => {
   const calls: Parameters<CreateMessage>[0][] = [];
   await gradeWithChecklist({}, inputFor(), { create: fake(JUDGED, calls) });
@@ -533,7 +770,10 @@ test("指示に、描写の分け方・名前だけの扱い・accept の区切�
     "A wrong position does not make the action wrong",
     "make one claim for each item; their quotes may overlap",
     'separated by " / ", saying any one of them is enough',
-    "never hits them",
+    "does not hit a center item",
+    '"A woman is wiping under the table." is "A woman is wiping" and "under the table"',
+    "A position claim never hits a center item",
+    "First write expressionBasis",
     "Judge the English of the whole transcript",
     "0: Only when the transcript has no English words to judge.",
   ]) {
