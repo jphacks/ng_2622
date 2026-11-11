@@ -13,7 +13,7 @@ final class MockGameClient: GameClient {
     /// 難易度でスタートしてから、場面を作り終えてラウンドが始まるまで（秒）。本物は部屋が AI で場面を作る
     var generatingDuration: TimeInterval = 3
     /// 録音が終わるはずの時刻から、音声を送っていない人を「採点できませんでした」にするまで（秒）。
-    /// 本物の部屋は 10 秒。Mock は短くする
+    /// 本物の部屋は 15 秒。Mock は短くする
     var submitGrace: TimeInterval = 3
     /// 録音が終わるはずの時刻から、採点がそろっていなくても結果を出すまで（秒）。本物の部屋は 30 秒。Mock は短くする
     var gradingGrace: TimeInterval = 8

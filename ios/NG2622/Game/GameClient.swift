@@ -36,7 +36,7 @@ enum GameEvent: Sendable, Equatable {
   /// ラウンド中の各自の状態が変わった（progress）
   case participantsChanged([Participant])
   /// ラウンドが終わり、結果がそろった（results）。全員の採点がそろったか、部屋が時間で締め切った
-  /// （録音が終わるはずの時刻から 10 秒で音声の無い人を、30 秒で採点の終わらない人を「採点できませんでした」にする）
+  /// （録音が終わるはずの時刻から 15 秒で音声の無い人を、30 秒で採点の終わらない人を「採点できませんでした」にする）
   case results(RoundResults)
   /// ホストが「もう一度」を選び、待合に戻った（again を受けた部屋が送る room）
   case returnedToLobby(RoomState)
