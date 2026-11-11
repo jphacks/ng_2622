@@ -1,11 +1,15 @@
 import SwiftUI
 
-/// 振り返り。自分の合計と順位、3 項目の内訳、講評（できたこと・次はこれ・言い換え・話し方のコツ）
+/// 振り返り。上から、難易度・合計・順位、3 つの軸の棒、あなたの描写（下線）、場面のチェック、場面と合わない描写、
+/// 次の一つ、見本の答え、言い直してみよう、話し方の一言
 struct ReviewView: View {
   let results: RoundResults
   /// このラウンドで録った自分の声。あれば「あなたの描写」から聞き直せる
   var recording: RecordedAudio?
   let onBack: () -> Void
+
+  /// 遊んだ場面の配置の JSON（難易度・見本の答え・チェックリスト）。取れるまでは、それを使う所を出さない
+  @State private var layout: SceneLayout?
 
   var body: some View {
     VStack(spacing: 0) {
@@ -27,11 +31,18 @@ struct ReviewView: View {
         Spacer()
       }
     }
+    .task(id: results.sceneID) {
+      // 3D を出すときに取ってあるので、ふつうは通信しない
+      layout = try? await SceneLayouts.store.layout(of: results.sceneID, room: results.room)
+    }
   }
 
   private func content(me: PlayerResult, score: PlayerResult.Score, review: RoundResults.Review) -> some View {
     VStack(spacing: 16) {
-      VStack(spacing: 2) {
+      VStack(spacing: 4) {
+        if let difficulty = layout?.difficulty {
+          DifficultyChip(difficulty: difficulty)
+        }
         PointsText(total: score.total, size: 64)
           .foregroundStyle(Theme.accent)
         if let place = results.place(of: me) {
@@ -50,53 +61,35 @@ struct ReviewView: View {
       .padding(20)
       .resultCard()
 
-      // 自分が話した英文。下の講評の引用と見比べる
       if !me.transcript.isEmpty {
-        TranscriptCard(transcript: me.transcript, recording: recording)
+        TranscriptCard(transcript: me.transcript, claims: me.content?.claims ?? [], recording: recording)
       }
 
-      ReviewCard(title: "できたこと") {
-        VStack(alignment: .leading, spacing: 8) {
-          if !review.strengthQuote.isEmpty {
-            Text("“\(review.strengthQuote)”")
-              .font(Theme.font(17, .heavy))
-              .foregroundStyle(Theme.accent)
-          }
-          bodyText(review.strength)
+      if let content = me.content {
+        ChecklistCard(content: content)
+        if content.mismatchCount > 0 {
+          MismatchCard(content: content)
         }
       }
 
-      ReviewCard(title: "次はこれ", badge: review.nextStepBadge) {
-        bodyText(review.nextStep)
+      NextStepCard(step: review.nextStep)
+
+      if let layout, let description = layout.description, !description.isEmpty {
+        ModelAnswerCard(
+          lines: ModelAnswerLines.lines(
+            description: description, checklist: layout.checklist, items: me.content?.items ?? []))
       }
 
       if let rewrite = review.rewrite {
-        ReviewCard(title: "こう言い換える") {
-          VStack(alignment: .leading, spacing: 8) {
-            Text(rewrite.before)
-              .font(Theme.font(15, .bold))
-              .strikethrough()
-              .foregroundStyle(Theme.muted)
-            Text(rewrite.after)
-              .font(Theme.font(19, .heavy))
-              .foregroundStyle(Theme.accent)
-            Text(rewrite.reason)
-              .font(Theme.font(14, .bold))
-              .foregroundStyle(Theme.muted)
-          }
-        }
+        RewriteCard(rewrite: rewrite)
       }
 
-      ReviewCard(title: "話し方のコツ") {
-        bodyText(review.speechTip)
+      ReviewCard(title: "話し方の一言", chip: review.speechTip.aspect.label) {
+        Text(review.speechTip.text)
+          .font(Theme.font(18, .heavy))
+          .lineSpacing(3)
       }
     }
-  }
-
-  private func bodyText(_ text: String) -> some View {
-    Text(text)
-      .font(Theme.font(16, .bold))
-      .lineSpacing(3)
   }
 }
 
@@ -131,9 +124,11 @@ private struct ScoreBar: View {
   }
 }
 
-/// あなたの描写。録音があれば、見出しの右のボタンで聞き直せる（再生中はカードの地を薄い紫にする）
+/// あなたの描写。描写ごとに下線を引く（チェックに当たった・一部・おまけ・場面と合わない）。
+/// 録音があれば、見出しの右のボタンで聞き直せる（再生中はカードの地を薄い紫にする）
 private struct TranscriptCard: View {
   let transcript: String
+  let claims: [ContentBreakdown.Claim]
   let recording: RecordedAudio?
   @State private var player = VoicePlayer()
 
@@ -144,22 +139,26 @@ private struct TranscriptCard: View {
   }
 
   var body: some View {
-    VStack(alignment: .leading, spacing: 10) {
+    let marks = TranscriptMarks.marks(transcript: transcript, claims: claims)
+    VStack(alignment: .leading, spacing: 12) {
       HStack {
-        Text("あなたの描写")
-          .font(Theme.font(13, .heavy))
-          .foregroundStyle(Theme.muted)
+        CardTitle("あなたの描写")
         Spacer()
         if let playable {
           speakerButton(playable)
         }
       }
       .frame(minHeight: 22)
-      Text(transcript)
+      markedText(transcript, marks: marks)
+        .textRenderer(MarkedTextRenderer())
         .font(Theme.font(17, .bold))
-        .lineSpacing(5)
+        .lineSpacing(9)
         .foregroundStyle(Theme.ink)
         .fixedSize(horizontal: false, vertical: true)
+      if !marks.isEmpty {
+        Legend(kinds: [.hit, .partial, .bonus, .mismatch].filter { kind in marks.contains { $0.mark == kind } })
+          .padding(.top, 2)
+      }
     }
     .padding(20)
     .frame(maxWidth: .infinity, alignment: .leading)
@@ -185,27 +184,339 @@ private struct TranscriptCard: View {
   }
 }
 
+/// 下線の凡例
+private struct Legend: View {
+  let kinds: [TextMark]
+
+  var body: some View {
+    // 4 つ並ぶとカードの幅を超えるので、収まらない分は次の行へ折り返す
+    FlowLayout(spacing: 12, lineSpacing: 6) {
+      ForEach(kinds, id: \.self) { kind in
+        HStack(spacing: 5) {
+          Canvas { ctx, size in
+            draw(kind, in: &ctx, size: size)
+          }
+          .frame(width: 20, height: 8)
+          Text(label(kind))
+            .font(Theme.font(11, .bold))
+            .foregroundStyle(Theme.muted)
+            .fixedSize()
+        }
+      }
+    }
+    .accessibilityElement(children: .combine)
+  }
+
+  private func label(_ kind: TextMark) -> String {
+    switch kind {
+    case .hit: "チェックに当たった"
+    case .partial: "一部"
+    case .bonus: "おまけ"
+    case .mismatch: "場面と合わない"
+    case .highlight: ""
+    }
+  }
+
+  private func draw(_ kind: TextMark, in ctx: inout GraphicsContext, size: CGSize) {
+    let y = size.height / 2
+    var line = Path()
+    line.move(to: CGPoint(x: 1, y: y))
+    line.addLine(to: CGPoint(x: size.width - 1, y: y))
+    switch kind {
+    case .hit:
+      ctx.stroke(line, with: .color(Theme.accent), style: StrokeStyle(lineWidth: 2.4, lineCap: .round))
+    case .partial:
+      ctx.stroke(line, with: .color(Theme.accent), style: StrokeStyle(lineWidth: 2.4, lineCap: .round, dash: [5, 3.5]))
+    case .bonus:
+      ctx.stroke(line, with: .color(Theme.gray), style: StrokeStyle(lineWidth: 1.3, lineCap: .round))
+    case .mismatch:
+      ctx.stroke(
+        MarkedTextRenderer.wave(from: 1, to: size.width - 1, y: y), with: .color(Theme.red),
+        style: StrokeStyle(lineWidth: 1.6, lineCap: .round))
+    case .highlight:
+      break
+    }
+  }
+}
+
+/// 場面のチェック。言えた項目は札で、言えていない・一部の項目は「あと少し」に並べる
+private struct ChecklistCard: View {
+  let content: ContentBreakdown
+
+  var body: some View {
+    let done = content.items.filter { $0.level == .full }
+    let rest = content.items.filter { $0.level != .full }
+    VStack(alignment: .leading, spacing: 12) {
+      HStack(alignment: .firstTextBaseline) {
+        CardTitle("場面のチェック")
+        Spacer()
+        CardNote(
+          "言えた \(ContentBreakdown.number(content.recall.earned)) / \(ContentBreakdown.number(content.recall.max))")
+      }
+      if !done.isEmpty {
+        FlowLayout(spacing: 6, lineSpacing: 6) {
+          ForEach(done) { item in
+            HStack(spacing: 5) {
+              Image(systemName: "checkmark")
+                .font(.system(size: 12, weight: .black))
+                .foregroundStyle(Theme.accent)
+              Text(item.label)
+                .font(Theme.font(14, .heavy))
+                .foregroundStyle(Theme.ink)
+            }
+            .padding(.horizontal, 10)
+            .padding(.vertical, 5)
+            .background(Theme.accentSoft, in: Capsule())
+          }
+        }
+      }
+      if !rest.isEmpty {
+        if !done.isEmpty {
+          Rectangle().fill(Theme.line).frame(height: 1.5)
+        }
+        Text("あと少し")
+          .font(Theme.font(13, .heavy))
+          .foregroundStyle(Theme.muted)
+        VStack(alignment: .leading, spacing: 10) {
+          ForEach(rest) { item in
+            HStack(spacing: 10) {
+              LevelIcon(level: item.level)
+              KindChip(kind: item.kind)
+              Text(item.label)
+                .font(Theme.font(15, .bold))
+                .fixedSize(horizontal: false, vertical: true)
+            }
+            .accessibilityElement(children: .combine)
+          }
+        }
+      }
+    }
+    .padding(20)
+    .frame(maxWidth: .infinity, alignment: .leading)
+    .resultCard()
+  }
+}
+
+/// 項目の達成の印。full は塗りのチェック、partial は半分塗りの丸、none は空の丸
+struct LevelIcon: View {
+  let level: ContentBreakdown.Level
+  var size: CGFloat = 22
+
+  var body: some View {
+    ZStack {
+      switch level {
+      case .full:
+        Circle().fill(Theme.accent)
+        Image(systemName: "checkmark")
+          .font(.system(size: size * 0.5, weight: .black))
+          .foregroundStyle(.white)
+      case .partial:
+        Circle().fill(Theme.card)
+        Circle()
+          .fill(Theme.accent)
+          .mask(alignment: .leading) { Rectangle().frame(width: size / 2) }
+        Circle().strokeBorder(Theme.accent, lineWidth: 2)
+      case .none:
+        Circle().strokeBorder(Theme.gray, lineWidth: 2)
+      }
+    }
+    .frame(width: size, height: size)
+    .accessibilityLabel(level == .full ? "言えた" : level == .partial ? "一部" : "まだ")
+  }
+}
+
+/// 項目の種類の札（中心・理由・つながり・細部）
+private struct KindChip: View {
+  let kind: ChecklistKind
+
+  var body: some View {
+    Text(kind.label)
+      .font(Theme.font(13, .heavy))
+      .foregroundStyle(Theme.accent)
+      .padding(.horizontal, 8)
+      .padding(.vertical, 3)
+      .background(Theme.accentSoft, in: RoundedRectangle(cornerRadius: 8))
+      .fixedSize()
+  }
+}
+
+/// 場面と合わない描写（矛盾・場面に無い・関係が無い）
+private struct MismatchCard: View {
+  let content: ContentBreakdown
+
+  var body: some View {
+    VStack(alignment: .leading, spacing: 12) {
+      HStack(alignment: .firstTextBaseline) {
+        CardTitle("場面と合わない描写")
+        Spacer()
+        CardNote("正しさ \(content.precision.correct) / \(content.precision.said)")
+      }
+      ForEach(Array(content.claims.filter(\.isMismatch).enumerated()), id: \.offset) { _, claim in
+        HStack(alignment: .firstTextBaseline, spacing: 10) {
+          Image(systemName: "xmark")
+            .font(.system(size: 15, weight: .black))
+            .foregroundStyle(Theme.red)
+          VStack(alignment: .leading, spacing: 4) {
+            Text(claim.quote)
+              .font(Theme.font(17, .heavy))
+            if let note = claim.note, !note.isEmpty {
+              Text(note)
+                .font(Theme.font(14, .bold))
+                .foregroundStyle(Theme.muted)
+            }
+          }
+          .fixedSize(horizontal: false, vertical: true)
+        }
+        .accessibilityElement(children: .combine)
+      }
+    }
+    .padding(20)
+    .frame(maxWidth: .infinity, alignment: .leading)
+    .resultCard()
+  }
+}
+
+/// 次の一つ。薄い紫の地で目立たせ、伸びる点があれば右に「+N 点」
+private struct NextStepCard: View {
+  let step: RoundResults.Review.NextStep
+
+  var body: some View {
+    VStack(alignment: .leading, spacing: 8) {
+      CardTitle("次の一つ")
+      HStack(spacing: 12) {
+        Text(step.text)
+          .font(Theme.font(17, .heavy))
+          .lineSpacing(3)
+          .fixedSize(horizontal: false, vertical: true)
+          .frame(maxWidth: .infinity, alignment: .leading)
+        if let badge = step.badge {
+          Text(badge)
+            .font(Theme.font(17, .heavy))
+            .foregroundStyle(.white)
+            .padding(.horizontal, 14)
+            .padding(.vertical, 8)
+            .background(Theme.accent, in: Capsule())
+            .fixedSize()
+        }
+      }
+    }
+    .padding(20)
+    .frame(maxWidth: .infinity, alignment: .leading)
+    .background(Theme.accentSoft.opacity(0.75), in: RoundedRectangle(cornerRadius: 22))
+    .overlay {
+      RoundedRectangle(cornerRadius: 22).strokeBorder(Theme.accent.opacity(0.18), lineWidth: 1.5)
+    }
+    .shadow(color: Theme.ink.opacity(0.07), radius: 10, y: 6)
+    .accessibilityElement(children: .combine)
+  }
+}
+
+/// 見本の答え。1 文ずつ、その文に結んだ項目の達成の印を左に付け、まだ言えていない所を薄い紫の地にする
+private struct ModelAnswerCard: View {
+  let lines: [ModelAnswerLines.Line]
+
+  var body: some View {
+    VStack(alignment: .leading, spacing: 0) {
+      CardTitle("見本の答え")
+        .padding(.bottom, 8)
+      ForEach(lines) { line in
+        if line.id > 0 {
+          Rectangle().fill(Theme.line).frame(height: 1.5)
+        }
+        HStack(alignment: .center, spacing: 12) {
+          Group {
+            if let level = line.level {
+              LevelIcon(level: level, size: 24)
+            } else {
+              Color.clear
+            }
+          }
+          .frame(width: 24, height: 24)
+          markedText(line.text, marks: line.marks)
+            .textRenderer(MarkedTextRenderer())
+            .font(Theme.font(17, .heavy))
+            .lineSpacing(6)
+            .fixedSize(horizontal: false, vertical: true)
+            .frame(maxWidth: .infinity, alignment: .leading)
+        }
+        .padding(.vertical, 10)
+        .accessibilityElement(children: .combine)
+      }
+      if lines.contains(where: { $0.level != nil }) {
+        HStack(spacing: 18) {
+          HStack(spacing: 5) {
+            Image(systemName: "checkmark")
+              .font(.system(size: 12, weight: .black))
+              .foregroundStyle(Theme.accent)
+            Text("言えた")
+          }
+          if lines.contains(where: { !$0.marks.isEmpty }) {
+            HStack(spacing: 5) {
+              RoundedRectangle(cornerRadius: 4).fill(Theme.accentSoft).frame(width: 18, height: 12)
+              Text("次に言ってみよう")
+            }
+          }
+        }
+        .font(Theme.font(12, .bold))
+        .foregroundStyle(Theme.muted)
+        .frame(maxWidth: .infinity)
+        .padding(.top, 8)
+      }
+    }
+    .padding(20)
+    .frame(maxWidth: .infinity, alignment: .leading)
+    .resultCard()
+  }
+}
+
+/// 言い直してみよう。自分の一文（小さく灰色）→ 直した文（太字）→ 理由
+private struct RewriteCard: View {
+  let rewrite: RoundResults.Review.Rewrite
+
+  var body: some View {
+    VStack(alignment: .leading, spacing: 10) {
+      CardTitle("言い直してみよう")
+      Text(rewrite.before)
+        .font(Theme.font(15, .bold))
+        .foregroundStyle(Theme.muted)
+      Image(systemName: "arrow.down")
+        .font(.system(size: 18, weight: .heavy))
+        .foregroundStyle(Theme.accent)
+        .frame(maxWidth: .infinity)
+        .accessibilityHidden(true)
+      Text(rewrite.after)
+        .font(Theme.font(21, .heavy))
+        .foregroundStyle(Theme.ink)
+      Text(rewrite.reason)
+        .font(Theme.font(14, .bold))
+        .foregroundStyle(Theme.muted)
+    }
+    .fixedSize(horizontal: false, vertical: true)
+    .padding(20)
+    .frame(maxWidth: .infinity, alignment: .leading)
+    .resultCard()
+  }
+}
+
 private struct ReviewCard<Content: View>: View {
   let title: String
-  /// 見出しの右に出す小さな札（例: +10 点）
-  var badge: String? = nil
+  /// 見出しの右に出す小さな札（例: 流ちょうさ）
+  var chip: String? = nil
   @ViewBuilder let content: Content
 
   var body: some View {
     VStack(alignment: .leading, spacing: 10) {
-      HStack {
-        Text(title)
-          .font(Theme.font(13, .heavy))
-          .foregroundStyle(Theme.muted)
-        Spacer()
-        if let badge {
-          Text(badge)
+      HStack(spacing: 10) {
+        CardTitle(title)
+        if let chip {
+          Text(chip)
             .font(Theme.font(13, .heavy))
             .foregroundStyle(Theme.accent)
             .padding(.horizontal, 10)
             .padding(.vertical, 3)
             .background(Theme.accentSoft, in: Capsule())
         }
+        Spacer()
       }
       content
         .fixedSize(horizontal: false, vertical: true)
@@ -213,6 +524,31 @@ private struct ReviewCard<Content: View>: View {
     .padding(20)
     .frame(maxWidth: .infinity, alignment: .leading)
     .resultCard()
+  }
+}
+
+/// カードの見出し
+private struct CardTitle: View {
+  let text: String
+  init(_ text: String) { self.text = text }
+
+  var body: some View {
+    Text(text)
+      .font(Theme.font(14, .heavy))
+      .foregroundStyle(Theme.muted)
+  }
+}
+
+/// カードの右上の小さな数（言えた・正しさ）
+private struct CardNote: View {
+  let text: String
+  init(_ text: String) { self.text = text }
+
+  var body: some View {
+    Text(text)
+      .font(Theme.font(13, .heavy))
+      .foregroundStyle(Theme.muted)
+      .monospacedDigit()
   }
 }
 

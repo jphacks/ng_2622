@@ -98,34 +98,55 @@ struct LiveRoomTrackerTests {
     #expect(tracker.apply(try message(#"{"type":"progress","round":1,"players":[]}"#)) == [])
   }
 
-  /// 順位の順に並べ、採点できなかった人は score を nil にして最後に置く。自分の講評は myReview に入る
+  static let content =
+    #"{"claims":[{"quote":"A dog is sleeping.","verdict":"correct","item":"dog_sleep","level":"full","note":null},"#
+    + #"{"quote":"A cat.","verdict":"absent","item":null,"level":null,"note":"猫はいません"},"#
+    + #"{"quote":"It is sunny.","verdict":"correct","item":null,"level":null,"note":null}],"#
+    + #""items":[{"id":"dog_sleep","kind":"center","label":"犬が寝ている","level":"full"},"#
+    + #"{"id":"why","kind":"reason","label":"理由","level":"partial"},{"id":"ball","kind":"detail","label":"ボール","level":"none"}],"#
+    + #""others":1,"recall":{"earned":2.5,"max":5},"precision":{"correct":2,"said":3}}"#
+
+  /// 順位の順に並べ、採点できなかった人は score を nil にして最後に置く。自分の講評は myReview に入り、内容の内訳は全員の分を持つ
   @Test func results() throws {
     var tracker = try joined()
-    _ = tracker.apply(try message(#"{"type":"round","round":1,"sceneId":"park","startAt":0}"#))
+    _ = tracker.apply(try message(#"{"type":"round","round":1,"sceneId":"temp-eiken-3-park","startAt":0}"#))
     let json =
-      #"{"type":"results","round":1,"sceneId":"park","sceneName":"公園","players":["#
-      + #"{"id":"\#(other)","name":"けん","color":3124891,"rank":null,"score":null,"transcript":"","comment":"","feedback":null},"#
-      + #"{"id":"\#(me)","name":"たろう","color":5987302,"rank":2,"score":{"content":60,"expression":50,"speech":70,"total":60},"transcript":"A dog.","comment":"短い","feedback":{"strength":{"quote":"A dog.","text":"短い"},"nextStep":{"kind":"content","gain":10,"text":"ボールのことも言ってみよう"},"rewrite":{"before":"A dog.","after":"A dog is sleeping.","reason":"動きを足すと伝わる"},"speechTip":{"aspect":"fluency","text":"止まらずに言ってみよう"}}},"#
-      + #"{"id":"\#(host)","name":"はなこ","color":15760040,"rank":1,"score":{"content":90,"expression":80,"speech":85,"total":86},"transcript":"A dog sleeps.","comment":"よい","feedback":{"strength":{"quote":"A dog sleeps.","text":"よい"},"nextStep":{"kind":"expression","gain":null,"text":"場所も足そう"},"rewrite":null,"speechTip":{"aspect":"prosody","text":"抑揚をつけよう"}}}]}"#
+      #"{"type":"results","round":1,"sceneId":"temp-eiken-3-park","sceneName":"公園","players":["#
+      + #"{"id":"\#(other)","name":"けん","color":3124891,"rank":null,"score":null,"transcript":"","content":null,"feedback":null},"#
+      + #"{"id":"\#(me)","name":"たろう","color":5987302,"rank":2,"score":{"content":60,"expression":50,"speech":70,"total":60},"transcript":"A dog is sleeping. A cat. It is sunny.","content":\#(Self.content),"feedback":{"nextStep":{"kind":"content","text":"ボールのことも言ってみよう","item":"ball","gain":10},"rewrite":{"before":"A cat.","after":"A dog is sleeping.","reason":"場面にいる物を言おう"},"speechTip":{"aspect":"fluency","text":"止まらずに言ってみよう"}}},"#
+      + #"{"id":"\#(host)","name":"はなこ","color":15760040,"rank":1,"score":{"content":90,"expression":80,"speech":85,"total":86},"transcript":"A dog sleeps.","content":\#(Self.content),"feedback":{"nextStep":{"kind":"expression","text":"場所も足そう","item":null,"gain":null},"rewrite":null,"speechTip":{"aspect":"prosody","text":"抑揚をつけよう"}}}]}"#
     let updates = tracker.apply(try message(json))
     guard case .event(.results(let results)) = updates.first, updates.count == 1 else {
       Issue.record("results でない: \(updates)")
       return
     }
-    #expect(results.sceneID == "park")
+    #expect(results.sceneID == "temp-eiken-3-park")
     #expect(results.room == "0427")
     #expect(results.sceneName == "公園")
     #expect(results.players.map(\.id) == [host, me, other])
     #expect(results.players[1].isSelf)
     #expect(results.players[1].score == PlayerResult.Score(content: 60, expression: 50, speaking: 70, total: 60))
     #expect(results.players[2].score == nil)
+    #expect(results.players[2].content == nil)
+    // 他の人の内訳も持つ
+    #expect(results.players[0].content != nil)
+    let content = try #require(results.players[1].content)
+    #expect(content.claims.map(\.verdict) == [.correct, .absent, .correct])
+    #expect(content.claims[0] == .init(quote: "A dog is sleeping.", verdict: .correct, item: "dog_sleep", level: .full, note: nil))
+    #expect(content.claims[1].note == "猫はいません")
+    #expect(content.items.map(\.level) == [.full, .partial, .none])
+    #expect(content.items.map(\.kind) == [.center, .reason, .detail])
+    #expect(content.others == 1)
+    #expect(content.recall == .init(earned: 2.5, max: 5))
+    #expect(content.precision == .init(correct: 2, said: 3))
+    #expect([content.fullCount, content.partialCount, content.mismatchCount] == [Int](repeating: 1, count: 3))
     #expect(
       results.myReview
         == RoundResults.Review(
-          strengthQuote: "A dog.", strength: "短い", nextStep: "ボールのことも言ってみよう", nextStepGain: 10,
-          rewrite: .init(before: "A dog.", after: "A dog is sleeping.", reason: "動きを足すと伝わる"),
-          speechTip: "止まらずに言ってみよう"))
-    #expect(results.myReview?.nextStepBadge == "+10 点")
+          nextStep: .init(kind: .content, text: "ボールのことも言ってみよう", item: "ball", gain: 10),
+          rewrite: .init(before: "A cat.", after: "A dog is sleeping.", reason: "場面にいる物を言おう"),
+          speechTip: .init(aspect: .fluency, text: "止まらずに言ってみよう")))
+    #expect(results.myReview?.nextStep.badge == "+10 点")
     // つなぎ直したときに送り直される同じ results は渡さない
     #expect(tracker.apply(try message(json)) == [])
   }
@@ -135,7 +156,7 @@ struct LiveRoomTrackerTests {
     var tracker = try joined()
     let updates = tracker.apply(
       try message(
-        #"{"type":"results","round":1,"sceneId":"park","sceneName":"","players":[{"id":"\#(me)","name":"たろう","color":5987302,"rank":1,"score":null,"transcript":"","comment":"","feedback":null}]}"#
+        #"{"type":"results","round":1,"sceneId":"temp-eiken-3-park","sceneName":"","players":[{"id":"\#(me)","name":"たろう","color":5987302,"rank":1,"score":null,"transcript":"","content":null,"feedback":null}]}"#
       ))
     guard case .event(.results(let results)) = updates.first else {
       Issue.record("results でない: \(updates)")
@@ -145,25 +166,29 @@ struct LiveRoomTrackerTests {
     #expect(results.myReview == nil)
   }
 
-  /// 結果発表のあとに待合の room が届いたら、待合に戻る
-  /// 作り置きの場面の採点: gain が null・引用が空・言い換えが無くても読め、「+N 点」は出さない
-  @Test func resultsWithoutGain() throws {
+  /// 3 語未満の発話: 項目は全部 none・描写は空、次の一つは item も gain も null で、「+N 点」は出さない
+  @Test func resultsTooShort() throws {
     var tracker = try joined()
+    let short =
+      #"{"claims":[],"items":[{"id":"a","kind":"center","label":"犬","level":"none"}],"others":0,"recall":{"earned":0,"max":2},"precision":{"correct":0,"said":0}}"#
     let updates = tracker.apply(
       try message(
-        #"{"type":"results","round":1,"sceneId":"gen-abc","sceneName":"公園","players":[{"id":"\#(me)","name":"たろう","color":5987302,"rank":1,"score":{"content":40,"expression":50,"speech":60,"total":48},"transcript":"A man.","comment":"よい","feedback":{"strength":{"quote":"","text":"よい"},"nextStep":{"kind":"content","gain":null,"text":"犬のことも言ってみよう"},"rewrite":null,"speechTip":{"aspect":"fluency","text":"止まらずに"}}}]}"#
+        #"{"type":"results","round":1,"sceneId":"temp-eiken-3-park","sceneName":"公園","players":[{"id":"\#(me)","name":"たろう","color":5987302,"rank":1,"score":{"content":0,"expression":10,"speech":20,"total":8},"transcript":"A dog.","content":\#(short),"feedback":{"nextStep":{"kind":"content","text":"もっと話そう","item":null,"gain":null},"rewrite":null,"speechTip":{"aspect":"accuracy","text":"はっきり"}}}]}"#
       ))
     guard case .event(.results(let results)) = updates.first else {
       Issue.record("results でない: \(updates)")
       return
     }
     let review = try #require(results.myReview)
-    #expect(review.nextStepGain == nil)
-    #expect(review.nextStepBadge == nil)
-    #expect(review.nextStep == "犬のことも言ってみよう")
+    #expect(review.nextStep.item == nil)
+    #expect(review.nextStep.badge == nil)
     #expect(review.rewrite == nil)
+    #expect(review.speechTip.aspect.label == "正確さ")
+    #expect(results.players.first?.content?.claims.isEmpty == true)
+    #expect(results.players.first?.content?.items.map(\.level) == [ContentBreakdown.Level.none])
   }
 
+  /// 結果発表のあとに待合の room が届いたら、待合に戻る
   @Test func returnedToLobby() throws {
     var tracker = try joined()
     _ = tracker.apply(try message(room("playing")))
@@ -224,17 +249,17 @@ struct LiveRoomTrackerTranscriptTests {
     {"type":"room","roomId":"4101","phase":"lobby","hostId":"7c93bda4-cedd-4265-90cf-099bf79291c3","maxPlayers":5,"players":[{"id":"7c93bda4-cedd-4265-90cf-099bf79291c3","name":"はなこ","color":15760040,"isHost":true,"connected":true},{"id":"2a17275a-de46-44f1-8ddb-a09a5cf691fc","name":"たろう","color":5987302,"isHost":false,"connected":true}]}
     {"type":"error","code":"not_host","message":"スタートできるのはホストだけ"}
     {"type":"room","roomId":"4101","phase":"playing","hostId":"7c93bda4-cedd-4265-90cf-099bf79291c3","maxPlayers":5,"players":[{"id":"7c93bda4-cedd-4265-90cf-099bf79291c3","name":"はなこ","color":15760040,"isHost":true,"connected":true},{"id":"2a17275a-de46-44f1-8ddb-a09a5cf691fc","name":"たろう","color":5987302,"isHost":false,"connected":true}]}
-    {"type":"round","round":1,"sceneId":"park","startAt":1792832005826}
+    {"type":"round","round":1,"sceneId":"temp-eiken-3-park","startAt":1792832005826}
     {"type":"progress","round":1,"players":[{"id":"7c93bda4-cedd-4265-90cf-099bf79291c3","status":"talking"},{"id":"2a17275a-de46-44f1-8ddb-a09a5cf691fc","status":"talking"}]}
     {"type":"room","roomId":"4101","phase":"playing","hostId":"7c93bda4-cedd-4265-90cf-099bf79291c3","maxPlayers":5,"players":[{"id":"7c93bda4-cedd-4265-90cf-099bf79291c3","name":"はなこ","color":15760040,"isHost":true,"connected":true},{"id":"2a17275a-de46-44f1-8ddb-a09a5cf691fc","name":"たろう","color":5987302,"isHost":false,"connected":true}]}
     {"type":"progress","round":1,"players":[{"id":"7c93bda4-cedd-4265-90cf-099bf79291c3","status":"talking"},{"id":"2a17275a-de46-44f1-8ddb-a09a5cf691fc","status":"grading"}]}
     {"type":"room","roomId":"4101","phase":"playing","hostId":"7c93bda4-cedd-4265-90cf-099bf79291c3","maxPlayers":5,"players":[{"id":"7c93bda4-cedd-4265-90cf-099bf79291c3","name":"はなこ","color":15760040,"isHost":true,"connected":true},{"id":"2a17275a-de46-44f1-8ddb-a09a5cf691fc","name":"たろう","color":5987302,"isHost":false,"connected":true}]}
     {"type":"progress","round":1,"players":[{"id":"7c93bda4-cedd-4265-90cf-099bf79291c3","status":"talking"},{"id":"2a17275a-de46-44f1-8ddb-a09a5cf691fc","status":"done"}]}
     {"type":"room","roomId":"4101","phase":"results","hostId":"7c93bda4-cedd-4265-90cf-099bf79291c3","maxPlayers":5,"players":[{"id":"7c93bda4-cedd-4265-90cf-099bf79291c3","name":"はなこ","color":15760040,"isHost":true,"connected":true},{"id":"2a17275a-de46-44f1-8ddb-a09a5cf691fc","name":"たろう","color":5987302,"isHost":false,"connected":true}]}
-    {"type":"results","round":1,"sceneId":"park","sceneName":"公園","players":[{"id":"2a17275a-de46-44f1-8ddb-a09a5cf691fc","name":"たろう","color":5987302,"score":{"content":60,"expression":60,"speech":60,"total":60},"transcript":"(固定の点数のモードのため、文字起こしはありません)","comment":"固定の点数を返しています。","feedback":{"strength":{"quote":"","text":"固定の点数を返しています。"},"nextStep":{"kind":"content","gain":null,"text":"もう少し長く話してみよう。"},"rewrite":null,"speechTip":{"aspect":"accuracy","text":"はっきり発音しよう"}},"rank":1},{"id":"7c93bda4-cedd-4265-90cf-099bf79291c3","name":"はなこ","color":15760040,"score":null,"transcript":"","comment":"","feedback":null,"rank":null}]}
+    {"type":"results","round":1,"sceneId":"temp-eiken-3-park","sceneName":"公園","players":[{"id":"2a17275a-de46-44f1-8ddb-a09a5cf691fc","name":"たろう","color":5987302,"score":{"content":60,"expression":60,"speech":60,"total":60},"transcript":"(固定の点数のモードのため、文字起こしはありません)","content":{"claims":[],"items":[],"others":0,"recall":{"earned":0,"max":0},"precision":{"correct":0,"said":0}},"feedback":{"nextStep":{"kind":"content","text":"もう少し長く話してみよう。","item":null,"gain":null},"rewrite":null,"speechTip":{"aspect":"accuracy","text":"はっきり発音しよう"}},"rank":1},{"id":"7c93bda4-cedd-4265-90cf-099bf79291c3","name":"はなこ","color":15760040,"score":null,"transcript":"","content":null,"feedback":null,"rank":null}]}
     {"type":"welcome","playerId":"2a17275a-de46-44f1-8ddb-a09a5cf691fc","token":"<redacted>","isHost":false}
     {"type":"room","roomId":"4101","phase":"results","hostId":"7c93bda4-cedd-4265-90cf-099bf79291c3","maxPlayers":5,"players":[{"id":"7c93bda4-cedd-4265-90cf-099bf79291c3","name":"はなこ","color":15760040,"isHost":true,"connected":true},{"id":"2a17275a-de46-44f1-8ddb-a09a5cf691fc","name":"たろう","color":5987302,"isHost":false,"connected":true}]}
-    {"type":"results","round":1,"sceneId":"park","sceneName":"公園","players":[{"id":"2a17275a-de46-44f1-8ddb-a09a5cf691fc","name":"たろう","color":5987302,"score":{"content":60,"expression":60,"speech":60,"total":60},"transcript":"(固定の点数のモードのため、文字起こしはありません)","comment":"固定の点数を返しています。","feedback":{"strength":{"quote":"","text":"固定の点数を返しています。"},"nextStep":{"kind":"content","gain":null,"text":"もう少し長く話してみよう。"},"rewrite":null,"speechTip":{"aspect":"accuracy","text":"はっきり発音しよう"}},"rank":1},{"id":"7c93bda4-cedd-4265-90cf-099bf79291c3","name":"はなこ","color":15760040,"score":null,"transcript":"","comment":"","feedback":null,"rank":null}]}
+    {"type":"results","round":1,"sceneId":"temp-eiken-3-park","sceneName":"公園","players":[{"id":"2a17275a-de46-44f1-8ddb-a09a5cf691fc","name":"たろう","color":5987302,"score":{"content":60,"expression":60,"speech":60,"total":60},"transcript":"(固定の点数のモードのため、文字起こしはありません)","content":{"claims":[],"items":[],"others":0,"recall":{"earned":0,"max":0},"precision":{"correct":0,"said":0}},"feedback":{"nextStep":{"kind":"content","text":"もう少し長く話してみよう。","item":null,"gain":null},"rewrite":null,"speechTip":{"aspect":"accuracy","text":"はっきり発音しよう"}},"rank":1},{"id":"7c93bda4-cedd-4265-90cf-099bf79291c3","name":"はなこ","color":15760040,"score":null,"transcript":"","content":null,"feedback":null,"rank":null}]}
     {"type":"room","roomId":"4101","phase":"lobby","hostId":"7c93bda4-cedd-4265-90cf-099bf79291c3","maxPlayers":5,"players":[{"id":"7c93bda4-cedd-4265-90cf-099bf79291c3","name":"はなこ","color":15760040,"isHost":true,"connected":true},{"id":"2a17275a-de46-44f1-8ddb-a09a5cf691fc","name":"たろう","color":5987302,"isHost":false,"connected":true}]}
     """#
 
@@ -254,7 +279,7 @@ struct LiveRoomTrackerTranscriptTests {
         case .event(.results(let results)):
           kinds.append("results:" + results.players.map { $0.score.map { "\($0.total)" } ?? "-" }.joined(separator: ","))
           #expect(results.players.first?.isSelf == true)
-          #expect(results.myReview?.strength == "固定の点数を返しています。")
+          #expect(results.myReview?.nextStep.text == "もう少し長く話してみよう。")
         case .event(.returnedToLobby): kinds.append("lobby")
         case .event(.hostChanged(let isSelf)): kinds.append("host:\(isSelf)")
         }

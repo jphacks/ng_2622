@@ -145,7 +145,7 @@ struct LiveRoomTracker {
 
 extension RoundResults {
   /// results を結果の画面の形にする。順位の順に並べ、採点できなかった人（rank か score が null）は最後に置く。
-  /// 自分（selfID）の講評（feedback）は myReview に入れる
+  /// 自分（selfID）の講評（feedback）は myReview に入れる。内容の内訳（content）は全員の分を持つ
   init(_ message: Components.Schemas.ResultsMessage, selfID: String?) {
     let rows = message.players.map { p in
       let score = p.rank == nil ? nil : p.score?.value1
@@ -156,7 +156,8 @@ extension RoundResults {
           score: score.map {
             PlayerResult.Score(content: $0.content, expression: $0.expression, speaking: $0.speech, total: $0.total)
           },
-          transcript: p.transcript, comment: p.comment),
+          transcript: p.transcript,
+          content: score == nil ? nil : p.content.map { ContentBreakdown($0.value1) }),
         review: p.feedback.map { RoundResults.Review($0.value1) }
       )
     }
@@ -170,7 +171,8 @@ extension RoundResults {
 
     self.init(
       sceneID: message.sceneId,
-      sceneName: message.sceneName.isEmpty ? (SceneLayouts.store.name(of: message.sceneId) ?? message.sceneId) : message.sceneName,
+      sceneName: message.sceneName.isEmpty
+        ? (SceneLayouts.store.name(of: message.sceneId) ?? message.sceneId) : message.sceneName,
       players: (graded + ungraded).map(\.result),
       myReview: me?.review)
   }
@@ -178,12 +180,35 @@ extension RoundResults {
 
 extension RoundResults.Review {
   init(_ feedback: Components.Schemas.Feedback) {
+    let next = feedback.nextStep
     self.init(
-      strengthQuote: feedback.strength.quote,
-      strength: feedback.strength.text,
-      nextStep: feedback.nextStep.text,
-      nextStepGain: feedback.nextStep.gain,
+      nextStep: NextStep(
+        kind: NextStep.Kind(rawValue: next.kind.rawValue) ?? .content, text: next.text, item: next.item,
+        gain: next.gain),
       rewrite: feedback.rewrite.map { Rewrite(before: $0.value1.before, after: $0.value1.after, reason: $0.value1.reason) },
-      speechTip: feedback.speechTip.text)
+      speechTip: SpeechTip(
+        aspect: SpeechTip.Aspect(rawValue: feedback.speechTip.aspect.rawValue) ?? .fluency,
+        text: feedback.speechTip.text))
+  }
+}
+
+extension ContentBreakdown {
+  /// 型は openapi.json から作った値なので、知らない値はここまで来ない（来れば results ごと読めない）。念のため、読み替えられない描写や項目は飛ばす
+  init(_ content: Components.Schemas.PlayerContent) {
+    self.init(
+      claims: content.claims.compactMap { c in
+        guard let verdict = Claim.Verdict(rawValue: c.verdict.rawValue) else { return nil }
+        return Claim(
+          quote: c.quote, verdict: verdict, item: c.item, level: c.level.flatMap { Level(rawValue: $0.rawValue) },
+          note: c.note)
+      },
+      items: content.items.compactMap { i in
+        guard let kind = ChecklistKind(rawValue: i.kind.rawValue), let level = Level(rawValue: i.level.rawValue)
+        else { return nil }
+        return Item(id: i.id, kind: kind, label: i.label, level: level)
+      },
+      others: content.others,
+      recall: Recall(earned: content.recall.earned, max: content.recall.max),
+      precision: Precision(correct: content.precision.correct, said: content.precision.said))
   }
 }

@@ -151,6 +151,11 @@ final class MockSceneLayoutClient: SceneLayoutClient {
   }
 
   func layout(sceneID: String, room: String?) async throws -> SceneLayout {
+    try Self.read(sceneID, bundle: bundle)
+  }
+
+  /// 同梱の配置をその場で読む（Mock の結果を作るときに使う）
+  static func read(_ sceneID: String, bundle: Bundle = .main) throws -> SceneLayout {
     guard let url = bundle.url(forResource: sceneID, withExtension: "json", subdirectory: ScenePool.directory) else {
       throw SceneLayoutError.notFound
     }
