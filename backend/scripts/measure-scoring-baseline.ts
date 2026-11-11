@@ -1,7 +1,7 @@
 // チェックリストの採点（gradeWithChecklist）を、試験用の 3 場面と用意した答えで何度も通し、点のぶれを測る。
 // 合格は、同じ答えを 5 回採点した内容の点の幅（最大 − 最小）が、どの答えでも 5 点以内
 // （ADR 20261110-score-content-with-checklist-f1 の安定の条件）。
-// 表現の点の幅と、表現が 0 点になった回数も出すが、参考で合否には入れない。
+// 表現の点の幅と、表現が 0 点になった回数・0 点で呼び直した回数も出すが、参考で合否には入れない。
 // 手書きの文字起こしを渡す。Azure は呼ばず、話し方の 3 つの点は 75 に固定する。Claude を実際に呼ぶので費用がかかる。
 //   CLAUDE_API_KEY=... pnpm tsx scripts/measure-scoring-baseline.ts <結果の JSON> [1 答えあたりの回数（既定 5）] [費用の上限ドル（既定 2.5）]
 import { writeFile } from "node:fs/promises";
@@ -155,7 +155,7 @@ const SCENES: { scene: Fixture; cases: Case[] }[] = [
     cases: [
       {
         kind: "見本どおり",
-        text: "A woman has fallen on the street because her bicycle fell over. A man is holding out his hand to help her stand up. A girl saw the accident, so she is running with her smartphone to call for help. An old man is standing near the bench. The bicycle is lying next to the woman. There is a bag on the bench.",
+        text: "A woman has fallen on the street because her bicycle fell over. A man is helping her stand up. A girl saw the accident, so she is running with her smartphone to call for help. An old man is standing near the bench. The bicycle is lying next to the woman. There is a bag on the bench.",
       },
       {
         kind: "複文で全部",
@@ -222,6 +222,9 @@ type Row = {
   | {
       content: number;
       expression: number;
+      // 表現の点の根拠と、表現 0 点で呼び直した回数
+      expressionBasis: string;
+      expressionRetries: number;
       recall: string;
       precision: string;
       items: Record<string, string>;
@@ -259,6 +262,8 @@ const summarize = () =>
         contentRange: done.length ? range(content) : null,
         expression,
         expressionRange: done.length ? range(expression) : null,
+        // 表現 0 点で呼び直した回数（その分 Claude を 2 回呼んでいて、時間も 2 回分）
+        retries: done.reduce((n, r) => n + r.expressionRetries, 0),
         meanMs: done.length
           ? Math.round(done.reduce((s, r) => s + r.ms, 0) / done.length)
           : null,
@@ -282,6 +287,7 @@ const save = () => {
           0,
           ...summary.map((s) => s.expressionRange ?? 0),
         ),
+        expressionRetries: summary.reduce((n, s) => n + s.retries, 0),
         expressionZeros: summary.reduce(
           (n, s) => n + s.expression.filter((e) => e === 0).length,
           0,
@@ -329,6 +335,8 @@ await Promise.all(
           ms: Math.round(performance.now() - started),
           content: g.content,
           expression: g.expression,
+          expressionBasis: g.expressionBasis,
+          expressionRetries: g.expressionRetries,
           recall: `${recall.earned}/${recall.max}`,
           precision: `${precision.correct}/${precision.said}`,
           items: Object.fromEntries(items.map((i) => [i.id, i.level])),
@@ -360,6 +368,7 @@ console.table(
     range: s.contentRange,
     expression: s.expression.join(" "),
     "expressionRange（参考）": s.expressionRange,
+    呼び直し: s.retries,
     ms: s.meanMs,
     pass: s.pass,
   })),
@@ -377,6 +386,6 @@ console.log(
     zeros.length === 0
       ? "なし"
       : zeros.map((s) => `${s.grade}「${s.kind}」`).join("、")
-  }`,
+  }。表現 0 点で呼び直した回数: ${summary.reduce((n, s) => n + s.retries, 0)}`,
 );
 if (failed.length > 0) process.exitCode = 1;
