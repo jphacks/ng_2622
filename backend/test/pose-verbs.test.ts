@@ -223,7 +223,7 @@ test("1 回目に渡す語彙: 動作ごとに動詞・段階・できる人が�
   );
 });
 
-test("姿勢: 座るポーズは腰の基準点を持つ人、立つポーズは走る・歩く・座り込む・ひざをつく以外の人", () => {
+test("姿勢: 座るポーズは腰の基準点を持つ人、立つポーズは走る・歩く・倒れる・ひざをつく以外の人", () => {
   const poses = (posture: "sit" | "stand" | null) =>
     [
       ...new Set(
@@ -286,7 +286,7 @@ test("姿勢の動詞（stand・sit）は、表に書いていなくても言え
   ]) {
     assert.ok(!verbs(id).includes("stand"), id);
   }
-  // 転んだ人はうつ伏せに倒れている: lie で言え、sit（座り込む）とは言わない
+  // 転んだ人はうつ伏せに倒れている: lie で言え、sit とは言わない
   assert.ok(verbs("person_fallen_woman_a").includes("lie"));
   assert.ok(!verbs("person_fallen_woman_a").includes("sit"));
   assert.match(POSE_VERBS.fallen.phrase, /lying/);
