@@ -28,8 +28,8 @@ import {
   roundResults,
   skipAudio,
 } from "../domain/round";
-import { type Difficulty, findPoolScene } from "../scenes/pool";
-import type { SceneLayout } from "../scenes/types";
+import { findPoolScene } from "../scenes/pool";
+import type { GradeId, SceneLayoutV2 } from "../scenes/types";
 import { MAX_PLAYERS } from "../schemas/common";
 import { ClientMessage, type ServerMessage } from "../schemas/ws";
 import {
@@ -82,7 +82,7 @@ export class Room extends DurableObject<CloudflareBindings> {
     playerId: string;
     token: string;
     round: number;
-  }): Promise<Result<{ sceneId: string; layout?: SceneLayout }>> {
+  }): Promise<Result<{ sceneId: string; layout?: SceneLayoutV2 }>> {
     const state = await this.load();
     if (!state) return fail("room_not_found", "部屋が無い");
     const player = authenticate(state, input.playerId, input.token);
@@ -97,10 +97,10 @@ export class Room extends DurableObject<CloudflareBindings> {
   }
 
   /** この部屋で AI が作った場面の配置。無ければ null（作り置きの場面は置かない） */
-  async sceneLayout(sceneId: string): Promise<SceneLayout | null> {
+  async sceneLayout(sceneId: string): Promise<SceneLayoutV2 | null> {
     if (findPoolScene(sceneId)) return null;
     return (
-      (await this.ctx.storage.get<SceneLayout>(layoutKey(sceneId))) ?? null
+      (await this.ctx.storage.get<SceneLayoutV2>(layoutKey(sceneId))) ?? null
     );
   }
 
@@ -244,7 +244,7 @@ export class Room extends DurableObject<CloudflareBindings> {
     ws: WebSocket,
     state: RoomState,
     playerId: string,
-    input: { sceneId?: string; difficulty?: Difficulty },
+    input: { sceneId?: string; difficulty?: GradeId },
   ) {
     const env = this.env as CloudflareBindings & SceneGenerationEnv;
     if (
@@ -268,13 +268,13 @@ export class Room extends DurableObject<CloudflareBindings> {
   /**
    * AI で場面を作ってからラウンドを始める。作っている間も他のメッセージは届くので、
    * generating を保存してから待ち、終わったら同じ生成のままかを finishGeneration で確かめる。
-   * タイムアウト・失敗・断られたときは、黙って作り置きの場面にする
+   * タイムアウト・失敗・断られた・裏取りで落ちたときは、黙って作り置きの場面にする
    */
   private async generate(
     ws: WebSocket,
     state: RoomState,
     playerId: string,
-    difficulty: Difficulty,
+    difficulty: GradeId,
   ) {
     const generationId = crypto.randomUUID();
     const begun = beginGeneration(state, {
@@ -289,15 +289,19 @@ export class Room extends DurableObject<CloudflareBindings> {
 
     try {
       let scene: GeneratedScene | null = null;
-      let layout: SceneLayout | null = null;
+      let layout: SceneLayoutV2 | null = null;
       try {
         layout = await generateScene(
           this.env as CloudflareBindings & SceneGenerationEnv,
-          { difficulty },
+          { grade: difficulty },
           {
+            // 2 段（Claude を 2 回呼ぶ）の合計で 10 秒まで。各段はやり直さず、裏取りで落ちても作り直さない
             timeoutMs: GENERATION_TIMEOUT_MS,
             maxAttempts: 1,
-            signal: controller.signal,
+            signal: AbortSignal.any([
+              controller.signal,
+              AbortSignal.timeout(GENERATION_TIMEOUT_MS),
+            ]),
           },
         );
         scene = { sceneId: layout.id, name: layout.name };

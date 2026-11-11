@@ -1,5 +1,16 @@
 import { z } from "zod";
 import {
+  CHECKLIST_KINDS,
+  DISTANCES,
+  LINKS,
+  PATHS,
+  RELATIONS,
+  SIDES,
+  TURNS,
+  ZONES,
+} from "../scenes/types";
+import {
+  Difficulty,
   ErrorCode,
   MAX_PLAYERS,
   PlayerId,
@@ -318,15 +329,27 @@ export const ListPartsResponse = z
   .object({ parts: z.array(PartMeta) })
   .meta({ ref: "ListPartsResponse" });
 
-export const SceneLayoutElement = z
+export const ChecklistKind = z.enum(CHECKLIST_KINDS).meta({
+  ref: "ChecklistKind",
+  description:
+    "チェックリストの項目の種類。center: 中心（誰が何をしているか）・reason: 理由・link: つながり（原因 → 行動 → 結果や目的）・detail: 細部（位置など）",
+});
+
+export const SceneChecklistItem = z
   .object({
-    id: z.string(),
-    label: z.string(),
-    points: z.int(),
-    accept: z.string(),
-    partial: z.string().optional(),
+    id: z.string().meta({ description: "場面の中で重ならない ID" }),
+    kind: ChecklistKind,
+    label: z.string().meta({ description: "振り返りに出す日本語" }),
+    accept: z.string().meta({
+      description:
+        '「言えた」とする英語の言い方。採点の Claude が基準にする。" / " で別の言い方を並べることがある',
+    }),
+    refs: z.array(z.string()).meta({ description: "項目が指す items の key" }),
   })
-  .meta({ ref: "SceneLayoutElement", description: "描写してほしい要素" });
+  .meta({
+    ref: "SceneChecklistItem",
+    description: "採点のチェックリストの項目",
+  });
 
 export const SceneMotion = z
   .object({
@@ -339,10 +362,33 @@ export const SceneMotion = z
     duration: z.number().meta({ description: "秒" }),
     delay: z.number().optional().meta({ description: "秒（既定 0）" }),
     loop: z.boolean().optional().meta({ description: "既定 true" }),
+    toward: z.string().optional().meta({
+      description:
+        "生成で Claude が書いた行き先（相手の key か区画）。アプリは to を使えば足りる",
+    }),
+    path: z.enum(PATHS).optional(),
   })
   .meta({
     ref: "SceneMotion",
     description: "簡単な動き。時刻は round の startAt から数える",
+  });
+
+export const ScenePlace = z
+  .object({
+    relation: z.enum(RELATIONS),
+    target: z.string().optional().meta({ description: "相手の key" }),
+    target2: z.string().optional().meta({ description: "between の 2 つ目" }),
+    zone: z.enum(ZONES).optional(),
+    spot: z.string().optional(),
+    link: z.enum(LINKS).optional(),
+    side: z.enum(SIDES).optional(),
+    distance: z.enum(DISTANCES).optional(),
+    turn: z.enum(TURNS).optional(),
+  })
+  .meta({
+    ref: "ScenePlace",
+    description:
+      "生成で Claude が書いた置き方の関係。アプリは position を使えば足りる（採点と裏取りが読む）",
   });
 
 export const SceneLayoutItem = z
@@ -351,6 +397,11 @@ export const SceneLayoutItem = z
     part: z.string().meta({
       description: "部品の ID。版を固定するときは apple_red@1",
       example: "apple_red",
+    }),
+    place: ScenePlace,
+    facing: z.string().optional().meta({
+      description:
+        "生成で Claude が書いた向き（camera・left・right・away か、向く相手の key）",
     }),
     position: Vec3.meta({ description: "部品の原点（底面の中心）の位置（m）" }),
     yaw: z
@@ -364,25 +415,25 @@ export const SceneLayoutItem = z
 
 export const SceneLayout = z
   .object({
-    protocol: z.literal("scenenglish.scene/1"),
+    protocol: z.literal("scenenglish.scene/2"),
     id: z.string().meta({ example: "gen-7k2m9q4x3a" }),
-    name: z.string().meta({ example: "リンゴが落ちる公園" }),
-    difficulty: z.enum(["easy", "normal", "hard"]),
-    description: z.string(),
-    elements: z.array(SceneLayoutElement),
-    extraMax: z.int(),
+    name: z.string().meta({ example: "雨のバス停" }),
+    difficulty: Difficulty,
+    description: z.string().meta({
+      description:
+        "級の見本の答え（英語）。録音を待つ画面の正答例、振り返りの見本、採点の補足に使う",
+    }),
+    checklist: z.array(SceneChecklistItem),
     items: z.array(SceneLayoutItem),
   })
   .meta({
     ref: "SceneLayout",
-    description: "配置の JSON（scenenglish.scene/1）",
+    description: "配置の JSON（scenenglish.scene/2）",
   });
 
 export const GenerateSceneRequest = z
   .object({
-    difficulty: z
-      .enum(["easy", "normal", "hard"])
-      .meta({ description: "難しさ" }),
+    difficulty: Difficulty,
     theme: z.string().trim().min(1).max(50).optional().meta({
       description:
         "場面のテーマ（1〜50 文字、任意）。省けば、指示の中のテーマの一覧（公園・カフェ・店・駅・部屋など）から Claude が選ぶ",

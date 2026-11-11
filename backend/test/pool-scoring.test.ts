@@ -74,7 +74,7 @@ const stubFetch = (claudeBodies: string[]) => {
 test("作り置きの場面は bands（Claude 1 回）で内容・表現を付け、話し方は Azure", async () => {
   const bodies: string[] = [];
   stubFetch(bodies);
-  const sceneId = index.easy.scenes[0];
+  const sceneId = index["eiken-3"].scenes[0];
   const r = await score(env, wav(), sceneId);
   assert.ok(r.ok, JSON.stringify(r));
   assert.equal(bodies.length, 1);
@@ -99,7 +99,7 @@ test("作り置きの場面でも、端末の文字起こしがあれば Claude 
   const bodies: string[] = [];
   stubFetch(bodies);
   const device = "A man is reading a book and a woman is drinking coffee";
-  const r = await score(env, wav(), index.easy.scenes[0], device);
+  const r = await score(env, wav(), index["eiken-3"].scenes[0], device);
   assert.ok(r.ok, JSON.stringify(r));
   const user = JSON.parse(bodies[0]).messages[0].content as string;
   assert.match(user, new RegExp(`Transcript: ${device}`));
@@ -113,7 +113,7 @@ test("SCORING_MODE=fixed では作り置きの場面でも Claude を呼ばず�
   const r = await score(
     { ...env, SCORING_MODE: "fixed" },
     wav(),
-    index.hard.scenes[0],
+    index["eiken-2"].scenes[0],
   );
   assert.ok(r.ok);
   assert.equal(r.mode, "fixed");

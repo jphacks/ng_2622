@@ -1,5 +1,5 @@
 import type { z } from "zod";
-import type { Difficulty } from "../scenes/pool";
+import type { GradeId } from "../scenes/types";
 import {
   MAX_PLAYERS,
   type Player as PlayerView,
@@ -34,7 +34,7 @@ export type RoomState = {
   generationCount?: number;
 };
 
-export type Generation = { id: string; difficulty: Difficulty };
+export type Generation = { id: string; difficulty: GradeId };
 
 /** AI で作った場面。名前は結果発表に出す */
 export type GeneratedScene = { sceneId: string; name: string };
@@ -136,7 +136,7 @@ export const startRound = (
   input: {
     playerId: string;
     sceneId?: string;
-    difficulty?: Difficulty;
+    difficulty?: GradeId;
     now: number;
     connectedIds: ReadonlySet<string>;
   },
@@ -168,7 +168,7 @@ export const canGenerate = (state: RoomState, enabled: boolean) =>
  */
 export const beginGeneration = (
   state: RoomState,
-  input: { playerId: string; difficulty: Difficulty; generationId: string },
+  input: { playerId: string; difficulty: GradeId; generationId: string },
 ): Result<RoomState> => {
   const checked = checkStart(state, input);
   if (!checked.ok) return checked;
@@ -220,7 +220,7 @@ export const finishGeneration = (
 /** スタートを受け付けるか。ホストだけ、待合のときだけ、シーンと難易度はどちらか一方 */
 const checkStart = (
   state: RoomState,
-  input: { playerId: string; sceneId?: string; difficulty?: Difficulty },
+  input: { playerId: string; sceneId?: string; difficulty?: GradeId },
 ): Result<null> => {
   if (input.playerId !== state.hostId) {
     return fail("not_host", "スタートできるのはホストだけ");
@@ -244,7 +244,7 @@ const checkStart = (
 const startPoolRound = (
   state: RoomState,
   input: {
-    difficulty: Difficulty;
+    difficulty: GradeId;
     now: number;
     connectedIds: ReadonlySet<string>;
   },

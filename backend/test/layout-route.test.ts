@@ -5,7 +5,7 @@ import { findPoolScene } from "../src/scenes/pool";
 import index from "../src/scenes/pool/index.json";
 
 test("GET /scenes/{sceneId}/layout は作り置きの場面の JSON をそのまま返す", async () => {
-  for (const id of [index.hard.scenes[0], index.easy.example]) {
+  for (const id of [index["eiken-2"].scenes[0], index["eiken-3"].example]) {
     const res = await app.request(`/scenes/${id}/layout`);
     assert.equal(res.status, 200);
     assert.deepEqual(await res.json(), findPoolScene(id));

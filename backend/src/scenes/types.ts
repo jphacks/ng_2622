@@ -36,9 +36,6 @@ export type Part = {
   };
 };
 
-export const DIFFICULTIES = ["easy", "normal", "hard"] as const;
-export type Difficulty = (typeof DIFFICULTIES)[number];
-
 /** 9 区画。front はカメラ側（+Z）、back は奥（-Z）、left は -X */
 export const ZONES = [
   "back_left",
@@ -93,14 +90,6 @@ export const FACINGS = ["camera", "left", "right", "away"] as const;
 export const MOTIONS = ["fall", "move", "rotate", "sway"] as const;
 export const PATHS = ["across", "along"] as const;
 
-/** Claude が書く場面（座標なし。部品どうしの関係だけ） */
-export type ScenePlan = {
-  name: string;
-  description: string;
-  items: PlanItem[];
-  elements: SceneElementInput[];
-};
-
 export type PlanItem = {
   key: string;
   part: string;
@@ -127,14 +116,6 @@ export type PlanItem = {
   };
 };
 
-export type SceneElementInput = {
-  id: string;
-  label: string;
-  points: number;
-  accept: string;
-  partial?: string;
-};
-
 export type Motion = {
   type: (typeof MOTIONS)[number];
   to?: Vec3;
@@ -153,22 +134,10 @@ export type LayoutItem = {
   motion?: Motion;
 };
 
-/** 配置の JSON（protocol scenenglish.scene/1） */
-export type SceneLayout = {
-  protocol: "scenenglish.scene/1";
-  id: string;
-  name: string;
-  difficulty: Difficulty;
-  description: string;
-  elements: SceneElementInput[];
-  extraMax: number;
-  items: LayoutItem[];
-};
-
-// ここから scenenglish.scene/2（英文を先に書く 2 段の生成）。
+// 配置の JSON（scenenglish.scene/2。英文を先に書く 2 段の生成で作る）。
 // 形の正本は docs/design/scene-protocol.md の「配置の JSON v2」
 
-/** 級。/2 の difficulty の値 */
+/** 級。難易度の値（start の difficulty・場面の difficulty・作り置きの一覧のキー）は、ここ 1 か所で決める */
 export const GRADE_IDS = ["eiken-3", "eiken-pre2", "eiken-2"] as const;
 export type GradeId = (typeof GRADE_IDS)[number];
 
@@ -198,9 +167,8 @@ export type SceneSentences = {
 export type ScenePlanV2 = SceneSentences & { items: PlanItem[] };
 
 /**
- * /2 の動き。座標の動き（/1 と同じ欄）に、Claude が書いた動きの関係（toward・path）を並べる。
- * 1 つの部品に動きは 1 つなので、欄を分けると type と duration が二重になる。
- * /1 の Motion を読む側は、知らない欄（toward・path）を読み飛ばせば動く
+ * 配置の動き。座標の動きに、Claude が書いた動きの関係（toward・path）を並べる。
+ * 1 つの部品に動きは 1 つなので、欄を分けると type と duration が二重になる
  */
 export type MotionV2 = Motion & {
   /** 行き先の key か区画（Claude が書いた関係） */
@@ -208,7 +176,7 @@ export type MotionV2 = Motion & {
   path?: (typeof PATHS)[number];
 };
 
-/** /2 の置く部品。Claude が書いた関係（place・facing）と、計算した座標（position・yaw）の両方を持つ */
+/** 置く部品。Claude が書いた関係（place・facing）と、計算した座標（position・yaw）の両方を持つ */
 export type LayoutItemV2 = {
   key: string;
   part: string;

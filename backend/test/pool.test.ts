@@ -9,16 +9,19 @@ import {
 import { isSceneId, sceneName } from "../src/domain/scenes";
 import { findPoolScene, importedPoolIds } from "../src/scenes/pool";
 import index from "../src/scenes/pool/index.json";
+import { GRADE_IDS } from "../src/scenes/types";
 import { ClientMessage } from "../src/schemas/ws";
 
 const poolDir = new URL("../src/scenes/pool/", import.meta.url);
 
 test("pool/ の JSON を全部 import し、index.json の場面がそろっている", () => {
   const files = readdirSync(poolDir)
-    .filter((f) => f.startsWith("gen-") && f.endsWith(".json"))
+    .filter((f) => f.endsWith(".json") && f !== "index.json")
     .map((f) => f.slice(0, -5))
     .sort();
   assert.deepEqual([...importedPoolIds()].sort(), files);
+  // 一覧のキーは級の値（GRADE_IDS）と同じ
+  assert.deepEqual(Object.keys(index), [...GRADE_IDS]);
   for (const [difficulty, entry] of Object.entries(index)) {
     assert.ok(!entry.scenes.includes(entry.example), "例は候補に入れない");
     for (const id of [entry.example, ...entry.scenes]) {
@@ -26,12 +29,13 @@ test("pool/ の JSON を全部 import し、index.json の場面がそろって�
       assert.ok(scene, id);
       assert.equal(scene.id, id);
       assert.equal(scene.difficulty, difficulty);
+      assert.equal(scene.protocol, "scenenglish.scene/2");
     }
   }
 });
 
 test("作り置きの場面も選べるシーンで、名前は JSON の name", () => {
-  const id = index.easy.scenes[0];
+  const id = index["eiken-3"].scenes[0];
   assert.ok(isSceneId(id));
   assert.equal(sceneName(id), findPoolScene(id)?.name);
   assert.ok(isSceneId("park"));
@@ -52,12 +56,12 @@ const backToLobby = (state: RoomState): RoomState => ({
 
 test("difficulty を送ると、その難易度の候補から部屋で重ならずに選び、全部出たら最初に戻る", () => {
   let { state, hostId } = lobbyWithHost();
-  const candidates = index.normal.scenes;
+  const candidates = index["eiken-pre2"].scenes;
   const seen: string[] = [];
   for (let i = 0; i < candidates.length; i++) {
     const r = startRound(state, {
       playerId: hostId,
-      difficulty: "normal",
+      difficulty: "eiken-pre2",
       now: 0,
       connectedIds: new Set([hostId]),
     });
@@ -70,7 +74,7 @@ test("difficulty を送ると、その難易度の候補から部屋で重なら
   assert.equal(seen.length, candidates.length);
   const again = startRound(state, {
     playerId: hostId,
-    difficulty: "normal",
+    difficulty: "eiken-pre2",
     now: 0,
     connectedIds: new Set([hostId]),
   });
@@ -85,7 +89,7 @@ test("難易度ごとに履歴を分けて覚える", () => {
   let { state, hostId } = lobbyWithHost();
   const easy = startRound(state, {
     playerId: hostId,
-    difficulty: "easy",
+    difficulty: "eiken-3",
     now: 0,
     connectedIds: new Set([hostId]),
   });
@@ -93,12 +97,12 @@ test("難易度ごとに履歴を分けて覚える", () => {
   state = backToLobby(easy.value.state);
   const hard = startRound(state, {
     playerId: hostId,
-    difficulty: "hard",
+    difficulty: "eiken-2",
     now: 0,
     connectedIds: new Set([hostId]),
   });
   assert.ok(hard.ok);
-  assert.ok(index.hard.scenes.includes(hard.value.round.sceneId));
+  assert.ok(index["eiken-2"].scenes.includes(hard.value.round.sceneId));
   assert.deepEqual(hard.value.state.playedSceneIds, [
     easy.value.round.sceneId,
     hard.value.round.sceneId,
@@ -110,7 +114,7 @@ test("sceneId と difficulty の両方を送ると invalid_message", () => {
   const r = startRound(state, {
     playerId: hostId,
     sceneId: "park",
-    difficulty: "easy",
+    difficulty: "eiken-3",
     now: 0,
     connectedIds: new Set([hostId]),
   });
@@ -126,7 +130,7 @@ test("どちらも送らなければ手作りの場面のおまかせ、sceneId 
     connectedIds: new Set([hostId]),
   });
   assert.ok(random.ok);
-  assert.ok(!random.value.round.sceneId.startsWith("gen-"));
+  assert.equal(findPoolScene(random.value.round.sceneId), undefined);
   const chosen = startRound(state, {
     playerId: hostId,
     sceneId: "park",
@@ -137,11 +141,11 @@ test("どちらも送らなければ手作りの場面のおまかせ、sceneId 
   assert.equal(chosen.value.round.sceneId, "park");
 });
 
-test("start の difficulty は easy・normal・hard だけ受け付ける", () => {
+test("start の difficulty は級の値だけ受け付け、古い値（easy・normal・hard）は断る", () => {
   assert.ok(
-    ClientMessage.safeParse({ type: "start", difficulty: "hard" }).success,
+    ClientMessage.safeParse({ type: "start", difficulty: "eiken-2" }).success,
   );
-  assert.ok(
-    !ClientMessage.safeParse({ type: "start", difficulty: "expert" }).success,
-  );
+  for (const difficulty of ["expert", "easy", "normal", "hard"]) {
+    assert.ok(!ClientMessage.safeParse({ type: "start", difficulty }).success);
+  }
 });

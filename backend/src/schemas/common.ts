@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { GRADE_IDS } from "../scenes/types";
 
 // HTTP と WebSocket の両方で使う型。`.meta({ ref })` を付けたものは OpenAPI の components.schemas に名前付きで出る
 
@@ -42,10 +43,11 @@ export const SceneId = z.string().min(1).meta({
   example: "park",
 });
 
-export const Difficulty = z.enum(["easy", "normal", "hard"]).meta({
+// 値は scenes/types.ts の GRADE_IDS の 1 か所で決める（場面の difficulty・作り置きの一覧のキーと同じ）
+export const Difficulty = z.enum(GRADE_IDS).meta({
   ref: "Difficulty",
   description:
-    "作り置きの場面の難易度（easy: かんたん・normal: ふつう・hard: むずかしい）",
+    "場面の難易度（級）。eiken-3: かんたん・eiken-pre2: ふつう・eiken-2: むずかしい。古い値（easy・normal・hard）は受け付けない",
 });
 
 export const RoomPhase = z
@@ -92,7 +94,7 @@ export const ErrorCode = z
       "not_in_results: 結果発表のときにしかできない操作",
       "scoring_failed: 採点の途中で失敗した（Claude の呼び出しなど）",
       "generation_refused: Claude が断った",
-      "generation_failed: Claude の応答が途中で止まった、または形が違った（やり直しても失敗した）",
+      "generation_failed: Claude の応答が途中で止まった・形が違った・作り直しても裏取りを通らなかった",
       "generation_unavailable: Claude を呼べない（タイムアウト・API の失敗・止めてある）",
     ].join("\n"),
   });

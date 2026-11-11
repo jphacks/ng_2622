@@ -77,22 +77,22 @@ test("生成を始めると generating になり、試した回数を 1 つ増�
   const { state, hostId, bId } = lobbyOfThree();
   const r = beginGeneration(
     { ...state, generationCount: 3 },
-    { playerId: hostId, difficulty: "hard", generationId: "g1" },
+    { playerId: hostId, difficulty: "eiken-2", generationId: "g1" },
   );
   assert.ok(r.ok);
   assert.equal(r.value.phase, "generating");
-  assert.deepEqual(r.value.generating, { id: "g1", difficulty: "hard" });
+  assert.deepEqual(r.value.generating, { id: "g1", difficulty: "eiken-2" });
   assert.equal(r.value.generationCount, 4);
 
   const notHost = beginGeneration(state, {
     playerId: bId,
-    difficulty: "easy",
+    difficulty: "eiken-3",
     generationId: "g2",
   });
   assert.ok(!notHost.ok && notHost.error.code === "not_host");
   const twice = beginGeneration(r.value, {
     playerId: hostId,
-    difficulty: "easy",
+    difficulty: "eiken-3",
     generationId: "g2",
   });
   assert.ok(!twice.ok && twice.error.code === "not_in_lobby");
@@ -110,7 +110,7 @@ const generating = () => {
   const room = lobbyOfThree();
   const r = beginGeneration(room.state, {
     playerId: room.hostId,
-    difficulty: "normal",
+    difficulty: "eiken-pre2",
     generationId: "g1",
   });
   assert.ok(r.ok);
@@ -149,7 +149,7 @@ test("作れなかったら、同じ難易度の作り置きの場面で始め�
     connectedIds: new Set([hostId]),
   });
   assert.ok(done?.round);
-  assert.ok(poolCandidates("normal").includes(done.round.sceneId));
+  assert.ok(poolCandidates("eiken-pre2").includes(done.round.sceneId));
   assert.deepEqual(done.state.playedSceneIds, [done.round.sceneId]);
   assert.equal(done.round.sceneName, undefined);
 });

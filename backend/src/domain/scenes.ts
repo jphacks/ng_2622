@@ -1,4 +1,5 @@
-import { type Difficulty, findPoolScene, poolCandidates } from "../scenes/pool";
+import { findPoolScene, poolCandidates } from "../scenes/pool";
+import type { GradeId } from "../scenes/types";
 import scenes from "../scoring/scenes.json";
 
 // 手作りのシーンの一覧は採点と同じ scoring/scenes.json を使う。作り置きの場面は scenes/pool.ts
@@ -25,7 +26,7 @@ export const pickRandomSceneId = () =>
  * その難易度を全部出したら、その難易度の分の履歴を消して最初に戻る。選んだ場面を足した履歴も返す
  */
 export const pickPoolSceneId = (
-  difficulty: Difficulty,
+  difficulty: GradeId,
   played: readonly string[],
   random: () => number = Math.random,
 ): { sceneId: string; played: string[] } => {
