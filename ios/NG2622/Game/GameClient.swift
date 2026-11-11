@@ -21,8 +21,6 @@ protocol GameClient: AnyObject {
   func startRound(difficulty: SceneDifficulty) async throws
   /// 自分が話し終えた。録音した音声と端末での文字起こしを送る（POST /rooms/:id/rounds/:n/audio）。録れなかったときは nil
   func finishSpeaking(audio: RecordedAudio?) async throws
-  /// ホストが締め切って発表する（close）
-  func closeRound() async throws
   /// ホストが同じ顔ぶれでもう一度遊ぶ（again）
   func playAgain() async throws
 }
@@ -37,7 +35,8 @@ enum GameEvent: Sendable, Equatable {
   case roundStarted(RoundInfo)
   /// ラウンド中の各自の状態が変わった（progress）
   case participantsChanged([Participant])
-  /// ラウンドが終わり、結果がそろった（results）。全員の採点がそろったか、ホストが締め切った
+  /// ラウンドが終わり、結果がそろった（results）。全員の採点がそろったか、部屋が時間で締め切った
+  /// （録音が終わるはずの時刻から 10 秒で音声の無い人を、30 秒で採点の終わらない人を「採点できませんでした」にする）
   case results(RoundResults)
   /// ホストが「もう一度」を選び、待合に戻った（again を受けた部屋が送る room）
   case returnedToLobby(RoomState)
@@ -108,8 +107,6 @@ enum RoundTiming {
   static let intro: TimeInterval = 3
   /// 録音の最長
   static let recording: TimeInterval = 20
-  /// 待機に入ってから締め切りを押せない時間
-  static let closeLock: TimeInterval = 2
   /// 待機の画面で、正答例を少しずつ出して出し切るまでの時間（文の長さによらない）
   static let answerReveal: TimeInterval = 3
 }

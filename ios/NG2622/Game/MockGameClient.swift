@@ -12,6 +12,11 @@ final class MockGameClient: GameClient {
     var hostStartDelay: TimeInterval = 6
     /// 難易度でスタートしてから、場面を作り終えてラウンドが始まるまで（秒）。本物は部屋が AI で場面を作る
     var generatingDuration: TimeInterval = 3
+    /// 録音が終わるはずの時刻から、音声を送っていない人を「採点できませんでした」にするまで（秒）。
+    /// 本物の部屋は 10 秒。Mock は短くする
+    var submitGrace: TimeInterval = 3
+    /// 録音が終わるはずの時刻から、採点がそろっていなくても結果を出すまで（秒）。本物の部屋は 30 秒。Mock は短くする
+    var gradingGrace: TimeInterval = 8
   }
 
   /// このコードだけ「部屋が見つかりません」になる
@@ -218,11 +223,6 @@ final class MockGameClient: GameClient {
     publish()
   }
 
-  func closeRound() async throws {
-    guard isHost else { return }
-    finish()
-  }
-
   private func elapsed() -> TimeInterval? {
     roundStart.map { Date().timeIntervalSince($0) }
   }
@@ -247,8 +247,15 @@ final class MockGameClient: GameClient {
       lastSent = list
       continuation.yield(.participantsChanged(list))
     }
-    // 全員の採点がそろったら終わる。切断中の人がいるときは、ホストが締め切る
-    if list.allSatisfy({ $0.status == .done }) {
+    // 全員の採点がそろったら終わる。そろわないときは、部屋と同じ決まりで時間で締め切る:
+    // 録音が終わるはずの時刻から submitGrace たって、残りが音声を送っていない人（切断中）だけなら、
+    // gradingGrace たったら採点中の人がいても、結果を出す（採点が終わっていない人は「採点できませんでした」）
+    let deadline = RoundTiming.intro + RoundTiming.recording
+    let onlyUnsent = list.allSatisfy { $0.status == .done || $0.status == .offline }
+    if list.allSatisfy({ $0.status == .done })
+      || (r >= deadline + options.submitGrace && onlyUnsent)
+      || r >= deadline + options.gradingGrace
+    {
       finish()
     }
   }

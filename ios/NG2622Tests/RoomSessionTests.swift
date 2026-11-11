@@ -3,7 +3,7 @@ import Testing
 
 @testable import NG2622
 
-/// RoomSession がホストの交代に合わせて isHost を決め直すか（スタート・締め切り・もう一度のボタンが出るか）
+/// RoomSession がホストの交代に合わせて isHost を決め直すか（スタート・もう一度のボタンが出るか）
 struct RoomSessionTests {
   let me = PlayerProfile(name: "たろう", color: 0x5B5BE6)
 

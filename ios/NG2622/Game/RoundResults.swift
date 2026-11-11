@@ -1,6 +1,6 @@
 import Foundation
 
-/// 1 ラウンドの結果。全員の採点がそろうか、ホストが締め切ると届く。
+/// 1 ラウンドの結果。全員の採点がそろうか、部屋が時間で締め切ると届く。
 /// 結果の画面（結果発表・みんなの描写・振り返り）はこれだけを見る
 struct RoundResults: Sendable, Equatable {
   /// 遊んだシーンの ID（シーンの評価と、振り返りの見本の答えに使う）
@@ -76,7 +76,7 @@ struct PlayerResult: Identifiable, Sendable, Equatable {
   /// アバターの色（0xRRGGBB）。Participant.color と同じ
   let color: UInt32
   let isSelf: Bool
-  /// 点数。採点できなかった人（締め切られた・切断した）は nil
+  /// 点数。採点できなかった人（時間で締め切られた・切断した）は nil
   let score: Score?
   /// 文字起こし。採点できなかった人は空
   let transcript: String

@@ -158,10 +158,6 @@ final class LiveGameClient: GameClient {
     }
   }
 
-  func closeRound() async throws {
-    try await send(.close(.init(_type: .close)))
-  }
-
   func playAgain() async throws {
     try await send(.again(.init(_type: .again)))
   }

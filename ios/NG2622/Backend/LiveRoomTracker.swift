@@ -48,7 +48,7 @@ struct LiveRoomTracker {
       players = room.players
       hostID = room.hostId
       // ラウンド中と結果発表の room は、参加者の名前と色を覚えるだけ（状態は続けて届く progress で渡す）。
-      // ただしホストが抜けて替わったら、新しいホストがスタート・締め切り・もう一度を押せるよう知らせる
+      // ただしホストが抜けて替わったら、新しいホストがスタート・もう一度を押せるよう知らせる
       guard Self.inLobby(room.phase) else {
         guard let previousHost, previousHost != room.hostId else { return [] }
         return [.event(.hostChanged(isSelf: room.hostId == selfID))]

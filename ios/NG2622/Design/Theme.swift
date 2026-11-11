@@ -31,7 +31,7 @@ extension Color {
   }
 }
 
-/// 横いっぱいの大きなボタン（「話し終えた」「締め切って発表する」など）
+/// 横いっぱいの大きなボタン（「話し終えた」「スタート」など）
 struct BigButtonStyle: ButtonStyle {
   enum Kind { case primary, outlined, plain }
   var kind: Kind = .primary
