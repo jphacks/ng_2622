@@ -1,6 +1,7 @@
 // チェックリストの採点（gradeWithChecklist）を、試験用の 3 場面と用意した答えで何度も通し、点のぶれを測る。
 // 合格は、同じ答えを 5 回採点した内容の点の幅（最大 − 最小）が、どの答えでも 5 点以内
 // （ADR 20261110-score-content-with-checklist-f1 の安定の条件）。
+// 表現の点の幅と、表現が 0 点になった回数も出すが、参考で合否には入れない。
 // 手書きの文字起こしを渡す。Azure は呼ばず、話し方の 3 つの点は 75 に固定する。Claude を実際に呼ぶので費用がかかる。
 //   CLAUDE_API_KEY=... pnpm tsx scripts/measure-scoring-baseline.ts <結果の JSON> [1 答えあたりの回数（既定 5）] [費用の上限ドル（既定 2.5）]
 import { writeFile } from "node:fs/promises";
@@ -27,25 +28,36 @@ const env = {
   CLAUDE_EFFORT: "low",
 };
 
-// 級の文法の一覧（仮）。生成の定数 GRADES（backend/src/scenes/grades.ts）が main に入ったら、そこから渡す形に替える
+// 級ごとに足される文法（仮）。生成の定数 GRADES（backend/src/scenes/grades.ts）が main に入ったら、そこから作る形に替える。
+// かっこの中の例は、試験用の場面の語に寄せない（その語だけが範囲だと読まれないように）
 const ADDED: Record<Grade, string[]> = {
   "eiken-3": [
-    "present continuous (is running)",
+    "be-verb and simple present (is, are, has, likes)",
+    "present continuous (is running, are sitting)",
     "there is / there are",
-    "prepositions of place (on, under, next to, near)",
+    "prepositions of place (in, on, under, next to, near, in front of)",
+    "and",
   ],
-  "eiken-pre2": ["because", "and / but / so", "past simple (spilled)"],
+  "eiken-pre2": [
+    "because",
+    "but / so",
+    "past simple (walked, dropped, went)",
+    "be going to / will",
+    "when",
+  ],
   "eiken-2": [
     "so that",
-    "to-infinitive of purpose (to call for help)",
+    "to-infinitive of purpose (to buy a ticket)",
     "relative pronouns (who, which, that)",
-    "present perfect (has fallen)",
+    "present perfect (has finished)",
+    "passive (was broken)",
   ],
 };
 const ORDER: Grade[] = ["eiken-3", "eiken-pre2", "eiken-2"];
-// 級の一覧は、下の級の分も含む
+// 採点に渡す一覧は、その級までの分を全部（下の級の文法も含める）
 const grammarOf = (grade: Grade) =>
   ORDER.slice(0, ORDER.indexOf(grade) + 1).flatMap((g) => ADDED[g]);
+// 一つ上の級で足される分。2級には無い
 const grammarAboveOf = (grade: Grade): string[] | undefined =>
   ADDED[ORDER[ORDER.indexOf(grade) + 1]];
 
@@ -265,6 +277,15 @@ const save = () => {
         usd,
         maxRange: MAX_RANGE,
         pass: summary.every((s) => s.pass),
+        // 参考（合否には入れない）: 表現の点の幅の最大と、表現が 0 点になった回数
+        expressionMaxRange: Math.max(
+          0,
+          ...summary.map((s) => s.expressionRange ?? 0),
+        ),
+        expressionZeros: summary.reduce(
+          (n, s) => n + s.expression.filter((e) => e === 0).length,
+          0,
+        ),
         summary,
         rows,
       },
@@ -338,6 +359,7 @@ console.table(
     content: s.content.join(" "),
     range: s.contentRange,
     expression: s.expression.join(" "),
+    "expressionRange（参考）": s.expressionRange,
     ms: s.meanMs,
     pass: s.pass,
   })),
@@ -347,5 +369,14 @@ console.log(
   failed.length === 0
     ? `合格: どの答えも内容の点の幅が ${MAX_RANGE} 点以内（${usd.toFixed(2)} USD）`
     : `不合格: ${failed.length} / ${summary.length} の答えで幅が ${MAX_RANGE} 点を超えたか、回数が足りない（${usd.toFixed(2)} USD）`,
+);
+// 参考: 表現の点（合否には入れない）
+const zeros = summary.filter((s) => s.expression.includes(0));
+console.log(
+  `表現の点の幅（参考）: 最大 ${Math.max(0, ...summary.map((s) => s.expressionRange ?? 0))} 点。表現が 0 点になった答え: ${
+    zeros.length === 0
+      ? "なし"
+      : zeros.map((s) => `${s.grade}「${s.kind}」`).join("、")
+  }`,
 );
 if (failed.length > 0) process.exitCode = 1;
