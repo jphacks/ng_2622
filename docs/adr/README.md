@@ -46,6 +46,7 @@
 | 2026-10-25 | [内容と表現の点は、場面の配置の情報を渡し、採点基準の段階で付ける](./20261025-score-content-with-layout-and-rubric-bands.md) | accepted（内容の段階・減点しない・要素を渡さない・表現の IELTS の条項のみ 2026-11-10 に部分 supersede） |
 | 2026-10-25 | [採点の基準は、配置の JSON と部品のメタデータから作る](./20261025-grade-from-layout-and-part-metadata.md) | superseded |
 | 2026-10-26 | [部屋がスタートのたびに AI で場面を作り、だめなら作り置きに切り替える](./20261026-generate-scenes-in-room-on-start.md) | accepted |
+| 2026-11-01 | [App Store には専用のビルド構成で、高橋の個人チームから出す](./20261101-ship-ios-app-from-a-dedicated-store-config.md) | accepted |
 | 2026-11-10 | [採点は英検の二次試験の評価の観点と課題の形に沿わせる](./20261110-align-scoring-with-eiken-speaking-viewpoints.md) | accepted |
 | 2026-11-10 | [内容の点は、場面ごとのチェックリストと言ったことの正しさの F1 で付ける](./20261110-score-content-with-checklist-f1.md) | accepted |
 | 2026-11-10 | [チェックリストは場面を作るときに Claude が作り、コードが場面と照らして確かめる](./20261110-make-checklist-at-scene-generation.md) | accepted |
