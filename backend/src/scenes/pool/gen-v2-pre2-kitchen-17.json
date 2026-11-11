@@ -1,0 +1,154 @@
+{
+  "protocol": "scenenglish.scene/2",
+  "id": "gen-v2-pre2-kitchen-17",
+  "name": "台所でこぼれたガラス",
+  "difficulty": "eiken-pre2",
+  "description": "A man is cleaning the floor because there is glass on it. A woman is cooking at the stove. A boy is carrying a box. There is a pan on the stove. There is a bottle on the table.",
+  "checklist": [
+    {
+      "id": "man_clean",
+      "kind": "center",
+      "label": "男の人が掃除をしている",
+      "accept": "a man is cleaning the floor",
+      "refs": ["man", "glass"]
+    },
+    {
+      "id": "woman_cook",
+      "kind": "center",
+      "label": "女の人が料理をしている",
+      "accept": "a woman is cooking at the stove",
+      "refs": ["woman"]
+    },
+    {
+      "id": "boy_carry",
+      "kind": "center",
+      "label": "男の子が箱を運んでいる",
+      "accept": "a boy is carrying a box",
+      "refs": ["boy"]
+    },
+    {
+      "id": "why_clean",
+      "kind": "reason",
+      "label": "男の人が掃除している理由",
+      "accept": "a man is cleaning the floor because there is glass on it",
+      "refs": ["man", "glass"]
+    },
+    {
+      "id": "pan",
+      "kind": "detail",
+      "label": "コンロの上にフライパンがある",
+      "accept": "there is a pan on the stove",
+      "refs": ["pan"]
+    },
+    {
+      "id": "table",
+      "kind": "detail",
+      "label": "テーブルの上にペットボトルがある",
+      "accept": "there is a bottle on the table",
+      "refs": ["bottle", "table"]
+    }
+  ],
+  "items": [
+    {
+      "key": "ground",
+      "part": "floor_tile",
+      "place": {
+        "relation": "ground"
+      },
+      "position": [0, 0, 0]
+    },
+    {
+      "key": "wall",
+      "part": "wall_kitchen_tile",
+      "place": {
+        "relation": "ground"
+      },
+      "position": [0, 0, -3.757]
+    },
+    {
+      "key": "counter",
+      "part": "kitchen_counter",
+      "place": {
+        "relation": "ground",
+        "zone": "back"
+      },
+      "position": [0, 0, -1.85],
+      "yaw": 90
+    },
+    {
+      "key": "pan",
+      "part": "pan",
+      "place": {
+        "relation": "on",
+        "target": "counter",
+        "spot": "stove"
+      },
+      "position": [0.025, 0.925, -2.35]
+    },
+    {
+      "key": "woman",
+      "part": "person_cook_mother_a",
+      "place": {
+        "relation": "relate",
+        "target": "counter",
+        "link": "hand",
+        "side": "front",
+        "distance": "touch",
+        "turn": "toward"
+      },
+      "position": [0.406, 0, -2.55],
+      "yaw": -90
+    },
+    {
+      "key": "table",
+      "part": "table",
+      "place": {
+        "relation": "ground",
+        "zone": "back_right"
+      },
+      "position": [2.75, 0, -2.35]
+    },
+    {
+      "key": "glass",
+      "part": "shards_glass",
+      "place": {
+        "relation": "ground",
+        "zone": "left"
+      },
+      "position": [-2.75, 0, 0.4]
+    },
+    {
+      "key": "man",
+      "part": "person_sweep_adult_a",
+      "place": {
+        "relation": "relate",
+        "target": "glass",
+        "side": "front",
+        "distance": "talk",
+        "turn": "toward"
+      },
+      "position": [-1.955, 0, 0.435],
+      "yaw": -90
+    },
+    {
+      "key": "boy",
+      "part": "person_carry_boy_a",
+      "place": {
+        "relation": "ground",
+        "zone": "front_right"
+      },
+      "facing": "camera",
+      "position": [2.75, 0, 3.15],
+      "yaw": 90
+    },
+    {
+      "key": "bottle",
+      "part": "bottle",
+      "place": {
+        "relation": "on",
+        "target": "table"
+      },
+      "position": [2.75, 0.72, -2.35]
+    }
+  ]
+}

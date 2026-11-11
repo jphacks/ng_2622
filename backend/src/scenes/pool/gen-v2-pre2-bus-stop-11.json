@@ -1,0 +1,113 @@
+{
+  "protocol": "scenenglish.scene/2",
+  "id": "gen-v2-pre2-bus-stop-11",
+  "name": "バス停の天気とバス",
+  "difficulty": "eiken-pre2",
+  "description": "It is raining at the bus stop. A man is running with a bag because it is raining. A woman is waiting with a shopping basket. A boy is sitting on the bench in the bus stop. The bus stop has a roof.",
+  "checklist": [
+    {
+      "id": "man_run",
+      "kind": "center",
+      "label": "男の人がかばんを持って走っている",
+      "accept": "a man is running",
+      "refs": ["man"]
+    },
+    {
+      "id": "woman_wait",
+      "kind": "center",
+      "label": "女の人が待っている",
+      "accept": "a woman is waiting",
+      "refs": ["woman"]
+    },
+    {
+      "id": "boy_sit",
+      "kind": "center",
+      "label": "男の子が座っている",
+      "accept": "a boy is sitting",
+      "refs": ["boy", "bus_stop"]
+    },
+    {
+      "id": "why_run",
+      "kind": "reason",
+      "label": "男の人が走っている理由",
+      "accept": "a man is running with a bag because it is raining",
+      "refs": ["man", "rain"]
+    },
+    {
+      "id": "rain",
+      "kind": "detail",
+      "label": "雨が降っている",
+      "accept": "it is raining",
+      "refs": ["rain"]
+    },
+    {
+      "id": "bus_stop_behind",
+      "kind": "detail",
+      "label": "バス停に屋根がある",
+      "accept": "the bus stop has a roof",
+      "refs": ["bus_stop"]
+    }
+  ],
+  "items": [
+    {
+      "key": "ground",
+      "part": "sidewalk_stone",
+      "place": {
+        "relation": "ground"
+      },
+      "position": [0, 0, 0]
+    },
+    {
+      "key": "rain",
+      "part": "rain",
+      "place": {
+        "relation": "ground"
+      },
+      "position": [0, 0, 0]
+    },
+    {
+      "key": "bus_stop",
+      "part": "bus_shelter",
+      "place": {
+        "relation": "ground",
+        "zone": "back"
+      },
+      "position": [0, 0, -2.75]
+    },
+    {
+      "key": "boy",
+      "part": "person_sit_boy_a",
+      "place": {
+        "relation": "sit_on",
+        "target": "bus_stop"
+      },
+      "position": [-0.245, 0.1, -2.97]
+    },
+    {
+      "key": "woman",
+      "part": "person_basket_woman_a",
+      "place": {
+        "relation": "ground",
+        "zone": "front_right"
+      },
+      "position": [2.75, 0, 2.75]
+    },
+    {
+      "key": "man",
+      "part": "person_run_bag_adult_a",
+      "place": {
+        "relation": "ground",
+        "zone": "front_left"
+      },
+      "facing": "right",
+      "position": [-2.75, 0, 2.75],
+      "yaw": 153.4,
+      "motion": {
+        "type": "move",
+        "to": [-0.967, 0, -0.815],
+        "duration": 5,
+        "toward": "bus_stop"
+      }
+    }
+  ]
+}

@@ -1,14 +1,44 @@
 {
   "eiken-3": {
-    "example": "temp-eiken-3-room",
-    "scenes": ["temp-eiken-3-park"]
+    "example": "gen-v2-eiken3-park-01",
+    "scenes": [
+      "gen-v2-eiken3-beach-09",
+      "gen-v2-eiken3-bus-stop-11",
+      "gen-v2-eiken3-cafe-02",
+      "gen-v2-eiken3-classroom-06",
+      "gen-v2-eiken3-kitchen-05",
+      "gen-v2-eiken3-library-08",
+      "gen-v2-eiken3-playground-12",
+      "gen-v2-eiken3-street-10",
+      "gen-v2-eiken3-train-station-04"
+    ]
   },
   "eiken-pre2": {
-    "example": "temp-eiken-pre2-bus-stop",
-    "scenes": ["temp-eiken-pre2-park"]
+    "example": "gen-v2-pre2-park-01",
+    "scenes": [
+      "gen-v2-pre2-beach-09",
+      "gen-v2-pre2-beach-21",
+      "gen-v2-pre2-bus-stop-11",
+      "gen-v2-pre2-cafe-02",
+      "gen-v2-pre2-kitchen-17",
+      "gen-v2-pre2-library-20",
+      "gen-v2-pre2-living-room-07",
+      "gen-v2-pre2-playground-24",
+      "gen-v2-pre2-train-station-16"
+    ]
   },
   "eiken-2": {
-    "example": "temp-eiken-2-rain",
-    "scenes": ["temp-eiken-2-street"]
+    "example": "gen-v2-eiken2-kitchen-05",
+    "scenes": [
+      "gen-v2-eiken2-beach-09",
+      "gen-v2-eiken2-bus-stop-11",
+      "gen-v2-eiken2-bus-stop-23",
+      "gen-v2-eiken2-cafe-02",
+      "gen-v2-eiken2-classroom-18",
+      "gen-v2-eiken2-living-room-07",
+      "gen-v2-eiken2-park-13",
+      "gen-v2-eiken2-playground-24",
+      "gen-v2-eiken2-train-station-04"
+    ]
   }
 }

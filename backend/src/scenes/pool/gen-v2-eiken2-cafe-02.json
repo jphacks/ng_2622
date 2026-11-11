@@ -1,0 +1,177 @@
+{
+  "protocol": "scenenglish.scene/2",
+  "id": "gen-v2-eiken2-cafe-02",
+  "name": "カフェでの注文とこぼれたジュース",
+  "difficulty": "eiken-2",
+  "description": "A woman is sitting at the table. A waiter is taking an order because the woman is sitting at the table. There is spilled juice next to the table, so a man is cleaning the floor to make it dry. A boy is sitting on the sofa. A boy is looking at the man. There are two chairs next to the table.",
+  "checklist": [
+    {
+      "id": "woman_sit",
+      "kind": "center",
+      "label": "女の人が座っている",
+      "accept": "a woman is sitting at the table",
+      "refs": ["woman", "table"]
+    },
+    {
+      "id": "waiter_order",
+      "kind": "center",
+      "label": "ウェイターが注文を取っている",
+      "accept": "a waiter is taking an order",
+      "refs": ["waiter"]
+    },
+    {
+      "id": "man_clean",
+      "kind": "center",
+      "label": "男の人が掃除している",
+      "accept": "a man is cleaning the floor",
+      "refs": ["man", "juice"]
+    },
+    {
+      "id": "boy_sit",
+      "kind": "center",
+      "label": "男の子がソファに座っている",
+      "accept": "a boy is sitting on the sofa",
+      "refs": ["boy", "sofa"]
+    },
+    {
+      "id": "why_order",
+      "kind": "reason",
+      "label": "ウェイターが注文を取る理由",
+      "accept": "a waiter is taking an order because the woman is sitting at the table",
+      "refs": ["waiter", "woman", "table"]
+    },
+    {
+      "id": "link_clean",
+      "kind": "link",
+      "label": "男の人が掃除する理由と目的",
+      "accept": "there is spilled juice next to the table, so a man is cleaning the floor to make it dry",
+      "refs": ["man", "juice"]
+    },
+    {
+      "id": "boy_look",
+      "kind": "detail",
+      "label": "男の子が男の人を見ている",
+      "accept": "a boy is looking at the man",
+      "refs": ["boy", "man"]
+    },
+    {
+      "id": "chairs",
+      "kind": "detail",
+      "label": "テーブルの横に椅子が2つある",
+      "accept": "there are two chairs next to the table",
+      "refs": ["chair", "table"]
+    }
+  ],
+  "items": [
+    {
+      "key": "ground",
+      "part": "floor_wood",
+      "place": {
+        "relation": "ground"
+      },
+      "position": [0, 0, 0]
+    },
+    {
+      "key": "wall",
+      "part": "wall_cafe",
+      "place": {
+        "relation": "ground"
+      },
+      "position": [0, 0, -3.57]
+    },
+    {
+      "key": "table",
+      "part": "table_small",
+      "place": {
+        "relation": "ground",
+        "zone": "center"
+      },
+      "position": [-1.115, 0, -0.818]
+    },
+    {
+      "key": "chair",
+      "part": "chair",
+      "place": {
+        "relation": "seat_at",
+        "target": "table"
+      },
+      "facing": "table",
+      "position": [-1.115, 0, -1.412]
+    },
+    {
+      "key": "chair2",
+      "part": "chair",
+      "place": {
+        "relation": "seat_at",
+        "target": "table"
+      },
+      "facing": "table",
+      "position": [-1.735, 0, -0.818],
+      "yaw": 90
+    },
+    {
+      "key": "woman",
+      "part": "person_sit_woman_a",
+      "place": {
+        "relation": "sit_on",
+        "target": "chair"
+      },
+      "position": [-1.115, -0.02, -1.237]
+    },
+    {
+      "key": "waiter",
+      "part": "person_take_order_waiter_a",
+      "place": {
+        "relation": "relate",
+        "target": "woman",
+        "link": "body",
+        "side": "right",
+        "distance": "talk",
+        "turn": "toward"
+      },
+      "position": [-0.381, 0, -1.412],
+      "yaw": -90
+    },
+    {
+      "key": "juice",
+      "part": "spilled_juice",
+      "place": {
+        "relation": "ground",
+        "zone": "front"
+      },
+      "position": [-1.115, 0, 1.932]
+    },
+    {
+      "key": "man",
+      "part": "person_sweep_adult_a",
+      "place": {
+        "relation": "relate",
+        "target": "juice",
+        "link": "hand",
+        "side": "any"
+      },
+      "position": [-1.245, 0, 1.977],
+      "yaw": 90
+    },
+    {
+      "key": "sofa",
+      "part": "sofa",
+      "place": {
+        "relation": "ground",
+        "zone": "right"
+      },
+      "position": [1.635, 0, -0.818],
+      "yaw": 90
+    },
+    {
+      "key": "boy",
+      "part": "person_sit_look_r_boy_a",
+      "place": {
+        "relation": "sit_on",
+        "target": "sofa"
+      },
+      "position": [1.885, 0.1, -0.818],
+      "yaw": 90
+    }
+  ]
+}

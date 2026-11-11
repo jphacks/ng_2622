@@ -30,7 +30,13 @@ const wav = () => {
 };
 
 // 作り置きの場面（eiken-3）。checklist は中心 2・細部 1（満点の重み 5）
-const SCENE_ID = poolCandidates("eiken-3")[0];
+// ベンチに座る人がいる 3級の場面（関係を渡すことを、place: sit_on bench で確かめる）
+const SCENE_ID =
+  poolCandidates("eiken-3").find((id) =>
+    findPoolScene(id)?.items.some(
+      (i) => i.place.relation === "sit_on" && i.place.target === "bench",
+    ),
+  ) ?? poolCandidates("eiken-3")[0];
 const SCENE = findPoolScene(SCENE_ID);
 if (!SCENE) throw new Error("作り置きの場面が無い");
 const [CENTER_1, CENTER_2, DETAIL] = SCENE.checklist;

@@ -1,0 +1,159 @@
+{
+  "protocol": "scenenglish.scene/2",
+  "id": "gen-v2-eiken2-bus-stop-11",
+  "name": "バス停の自動販売機と犬",
+  "difficulty": "eiken-2",
+  "description": "A woman is pressing a button on the vending machine so that she can buy a drink. A man is eating an apple. A dog is watching the man because he is eating an apple. A girl is looking far away. The bus stop has a blue roof. There is a trash can next to the bench.",
+  "checklist": [
+    {
+      "id": "woman_press",
+      "kind": "center",
+      "label": "女の人が自動販売機のボタンを押している",
+      "accept": "a woman is pressing a button",
+      "refs": ["woman", "vending_machine"]
+    },
+    {
+      "id": "man_eat",
+      "kind": "center",
+      "label": "男の人がリンゴを食べている",
+      "accept": "a man is eating an apple",
+      "refs": ["man"]
+    },
+    {
+      "id": "dog_watch",
+      "kind": "center",
+      "label": "犬が男の人を見ている",
+      "accept": "a dog is watching the man",
+      "refs": ["dog", "man"]
+    },
+    {
+      "id": "girl_look",
+      "kind": "center",
+      "label": "女の子が遠くを見ている",
+      "accept": "a girl is looking far away",
+      "refs": ["girl"]
+    },
+    {
+      "id": "why_watch",
+      "kind": "reason",
+      "label": "犬が男の人を見ている理由",
+      "accept": "a dog is watching the man because he is eating an apple",
+      "refs": ["dog", "man"]
+    },
+    {
+      "id": "link_press",
+      "kind": "link",
+      "label": "女の人がボタンを押す目的",
+      "accept": "a woman is pressing a button on the vending machine so that she can buy a drink",
+      "refs": ["woman", "vending_machine"]
+    },
+    {
+      "id": "stop_road",
+      "kind": "detail",
+      "label": "バス停の屋根は青い",
+      "accept": "the bus stop has a blue roof",
+      "refs": ["bus_stop"]
+    },
+    {
+      "id": "trash_bench",
+      "kind": "detail",
+      "label": "ごみ箱がベンチの横にある",
+      "accept": "there is a trash can next to the bench",
+      "refs": ["trash_can", "bench"]
+    }
+  ],
+  "items": [
+    {
+      "key": "ground",
+      "part": "sidewalk_stone",
+      "place": {
+        "relation": "ground"
+      },
+      "position": [0, 0, 0]
+    },
+    {
+      "key": "bus_stop",
+      "part": "bus_shelter",
+      "place": {
+        "relation": "ground",
+        "zone": "back"
+      },
+      "position": [-0.302, 0, -2.6]
+    },
+    {
+      "key": "vending_machine",
+      "part": "vending_machine",
+      "place": {
+        "relation": "ground",
+        "zone": "left"
+      },
+      "position": [-3.052, 0, 0.15]
+    },
+    {
+      "key": "woman",
+      "part": "person_press_woman_a",
+      "place": {
+        "relation": "relate",
+        "target": "vending_machine",
+        "link": "hand",
+        "side": "front",
+        "distance": "touch",
+        "turn": "toward"
+      },
+      "position": [-2.581, 0, 0.013],
+      "yaw": -90
+    },
+    {
+      "key": "bench",
+      "part": "bench",
+      "place": {
+        "relation": "ground",
+        "zone": "front_right"
+      },
+      "position": [2.448, 0, 2.9],
+      "yaw": 90
+    },
+    {
+      "key": "trash_can",
+      "part": "trash_bin",
+      "place": {
+        "relation": "next_to",
+        "target": "bench"
+      },
+      "position": [3.056, 0, 2.9]
+    },
+    {
+      "key": "man",
+      "part": "person_eat_adult_a",
+      "place": {
+        "relation": "ground",
+        "zone": "front"
+      },
+      "position": [-0.302, 0, 2.9],
+      "yaw": 90
+    },
+    {
+      "key": "dog",
+      "part": "animal_sit_dog_a",
+      "place": {
+        "relation": "relate",
+        "target": "man",
+        "side": "front",
+        "distance": "talk",
+        "turn": "toward"
+      },
+      "position": [0.501, 0, 2.878],
+      "yaw": -90
+    },
+    {
+      "key": "girl",
+      "part": "person_look_girl_a",
+      "place": {
+        "relation": "ground",
+        "zone": "front_left"
+      },
+      "position": [-3.052, 0, 2.9],
+      "yaw": 90
+    }
+  ]
+}

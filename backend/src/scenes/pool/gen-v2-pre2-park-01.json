@@ -1,9 +1,9 @@
 {
   "protocol": "scenenglish.scene/2",
-  "id": "temp-eiken-pre2-park",
-  "name": "公園でボールを投げる",
+  "id": "gen-v2-pre2-park-01",
+  "name": "公園でボール遊び",
   "difficulty": "eiken-pre2",
-  "description": "A boy is throwing a ball. A dog is running because the boy threw the ball. A woman is sitting on a bench. There is a tree behind the bench. There is a bicycle next to the bench.",
+  "description": "A boy is throwing a ball. A dog is running across the grass because the boy threw the ball. A woman is sitting on the bench. There is a tree behind the bench. There is a trash can next to the bench.",
   "checklist": [
     {
       "id": "boy_throw",
@@ -23,34 +23,34 @@
       "id": "woman_sit",
       "kind": "center",
       "label": "女の人が座っている",
-      "accept": "a woman is sitting",
-      "refs": ["woman"]
+      "accept": "a woman is sitting on the bench",
+      "refs": ["woman", "bench"]
     },
     {
       "id": "why_run",
       "kind": "reason",
       "label": "犬が走っている理由",
-      "accept": "a dog is running because the boy threw the ball",
-      "refs": ["ball", "dog"]
+      "accept": "a dog is running across the grass because the boy threw the ball",
+      "refs": ["dog", "boy", "ball"]
     },
     {
-      "id": "tree",
+      "id": "tree_behind",
       "kind": "detail",
       "label": "ベンチの後ろに木がある",
       "accept": "there is a tree behind the bench",
       "refs": ["tree", "bench"]
     },
     {
-      "id": "bicycle",
+      "id": "trash_next",
       "kind": "detail",
-      "label": "ベンチの横に自転車がある",
-      "accept": "there is a bicycle next to the bench",
-      "refs": ["bicycle", "bench"]
+      "label": "ベンチの隣にごみ箱がある",
+      "accept": "there is a trash can next to the bench",
+      "refs": ["trash_can", "bench"]
     }
   ],
   "items": [
     {
-      "key": "grass",
+      "key": "ground",
       "part": "grass_patch",
       "place": {
         "relation": "ground"
@@ -62,18 +62,9 @@
       "part": "bench",
       "place": {
         "relation": "ground",
-        "zone": "right"
+        "zone": "back"
       },
-      "position": [2.75, 0, 0]
-    },
-    {
-      "key": "tree",
-      "part": "tree",
-      "place": {
-        "relation": "behind",
-        "target": "bench"
-      },
-      "position": [2.734, 0, -1.592]
+      "position": [0, 0, -2.75]
     },
     {
       "key": "woman",
@@ -82,26 +73,36 @@
         "relation": "sit_on",
         "target": "bench"
       },
-      "position": [2.75, 0.002, 0.255]
+      "position": [0, 0.002, -2.495]
     },
     {
-      "key": "bicycle",
-      "part": "bicycle",
+      "key": "tree",
+      "part": "tree",
       "place": {
-        "relation": "next_to",
+        "relation": "behind",
         "target": "bench"
       },
-      "position": [3.75, 0, 1.76]
+      "position": [2.632, 0, -2.806]
+    },
+    {
+      "key": "trash_can",
+      "part": "trash_bin",
+      "place": {
+        "relation": "next_to",
+        "target": "bench",
+        "side": "right"
+      },
+      "position": [-1.11, 0, -2.75]
     },
     {
       "key": "boy",
       "part": "person_throw_boy_a",
       "place": {
         "relation": "ground",
-        "zone": "left"
+        "zone": "front_left"
       },
       "facing": "right",
-      "position": [-2.75, 0, 0],
+      "position": [-2.75, 0, 2.75],
       "yaw": 90
     },
     {
@@ -111,20 +112,21 @@
         "relation": "thrown_by",
         "target": "boy"
       },
-      "position": [-1.51, 1.15, -0.009]
+      "position": [-1.51, 1.15, 2.741]
     },
     {
       "key": "dog",
       "part": "animal_run_dog_a",
       "place": {
         "relation": "ground",
-        "zone": "front"
+        "zone": "front_right"
       },
-      "position": [0, 0, 2.75],
-      "yaw": -151.3,
+      "facing": "right",
+      "position": [2.75, 0, 2.75],
+      "yaw": -90.1,
       "motion": {
         "type": "move",
-        "to": [-1.116, 0, 0.711],
+        "to": [-0.69, 0, 2.743],
         "duration": 5,
         "toward": "ball"
       }

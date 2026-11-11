@@ -1,0 +1,136 @@
+{
+  "protocol": "scenenglish.scene/2",
+  "id": "gen-v2-pre2-train-station-16",
+  "name": "駅で切符を買う",
+  "difficulty": "eiken-pre2",
+  "description": "There is a ticket machine on the platform. A woman is using the ticket machine because a train is at the platform. A boy is sitting on a bench. A man is drinking from a cup. There is a sign on the platform.",
+  "checklist": [
+    {
+      "id": "woman_press",
+      "kind": "center",
+      "label": "女の人が券売機を使っている",
+      "accept": "a woman is using the ticket machine",
+      "refs": ["woman", "ticket_machine"]
+    },
+    {
+      "id": "boy_sit",
+      "kind": "center",
+      "label": "男の子がベンチに座っている",
+      "accept": "a boy is sitting on a bench",
+      "refs": ["boy", "bench"]
+    },
+    {
+      "id": "man_drink",
+      "kind": "center",
+      "label": "男の人がカップから飲んでいる",
+      "accept": "a man is drinking from a cup",
+      "refs": ["man"]
+    },
+    {
+      "id": "why_press",
+      "kind": "reason",
+      "label": "女の人が券売機を使っている理由",
+      "accept": "a woman is using the ticket machine because a train is at the platform",
+      "refs": ["woman", "train"]
+    },
+    {
+      "id": "machine",
+      "kind": "detail",
+      "label": "ホームに券売機がある",
+      "accept": "there is a ticket machine on the platform",
+      "refs": ["ticket_machine", "platform"]
+    },
+    {
+      "id": "sign",
+      "kind": "detail",
+      "label": "ホームに看板がある",
+      "accept": "there is a sign on the platform",
+      "refs": ["sign"]
+    }
+  ],
+  "items": [
+    {
+      "key": "platform",
+      "part": "platform_station",
+      "place": {
+        "relation": "ground"
+      },
+      "position": [0, 0, 0]
+    },
+    {
+      "key": "train",
+      "part": "train",
+      "place": {
+        "relation": "ground",
+        "zone": "back"
+      },
+      "position": [0, 0, -2.684]
+    },
+    {
+      "key": "ticket_machine",
+      "part": "ticket_machine",
+      "place": {
+        "relation": "ground",
+        "zone": "front_left"
+      },
+      "position": [-2.75, 0, 2.75],
+      "yaw": 90
+    },
+    {
+      "key": "woman",
+      "part": "person_press_woman_a",
+      "place": {
+        "relation": "relate",
+        "target": "ticket_machine",
+        "link": "hand",
+        "side": "front",
+        "distance": "touch",
+        "turn": "toward"
+      },
+      "position": [-2.129, 0, 2.613],
+      "yaw": -90
+    },
+    {
+      "key": "bench",
+      "part": "bench",
+      "place": {
+        "relation": "ground",
+        "zone": "front_right"
+      },
+      "facing": "camera",
+      "position": [2.75, 0, 2.75],
+      "yaw": 90
+    },
+    {
+      "key": "boy",
+      "part": "person_sit_boy_a",
+      "place": {
+        "relation": "sit_on",
+        "target": "bench"
+      },
+      "position": [2.98, 0.122, 2.75],
+      "yaw": 90
+    },
+    {
+      "key": "man",
+      "part": "person_drink_adult_a",
+      "place": {
+        "relation": "ground",
+        "zone": "front"
+      },
+      "facing": "camera",
+      "position": [0, 0, 2.75],
+      "yaw": 90
+    },
+    {
+      "key": "sign",
+      "part": "station_sign",
+      "place": {
+        "relation": "ground",
+        "zone": "center"
+      },
+      "facing": "camera",
+      "position": [0, 0, 0]
+    }
+  ]
+}

@@ -168,7 +168,7 @@ v1 の基本は止まった場面で、動作は人物のポーズで表す。�
 
 ## 配置の JSON v2（`scenenglish.scene/2`、2026-11-10 に決定。2026-11-11 にバックエンドをこの形だけに切り替えた）
 
-チェックリストで採点するため、形を `/2` に上げる（[ADR](../adr/20261110-adopt-scene-protocol-v2-with-checklist.md)）。生成の関数（`backend/src/scenes/generate-v2.ts`・`verify.ts`・`compose-v2.ts`・`grades.ts`・`pose-verbs.ts`）は 2026-11-11 に実装した。同じ日に、部屋での生成・`POST /scenes/generate`・作り置きの場面・採点をこの形につなぎ、`/1` と古い 1 回の生成を消した（まとめ用の branch。main に入るのは、アプリと通しで動いたとき）。`/1` と `/2` の両方を読む期間は作らない（[ADR](../adr/20261111-score-only-with-checklist-and-drop-handmade-scenes.md)）。作り置きの場面は、人が確かめた場面ができるまで仮の場面（`temp-…`）を置いている（`backend/src/scenes/pool/README.md`）。級の規則と生成の書かせ方は [ADR](../adr/20261110-write-grade-sentences-before-scene-parts.md)。
+チェックリストで採点するため、形を `/2` に上げる（[ADR](../adr/20261110-adopt-scene-protocol-v2-with-checklist.md)）。生成の関数（`backend/src/scenes/generate-v2.ts`・`verify.ts`・`compose-v2.ts`・`grades.ts`・`pose-verbs.ts`）は 2026-11-11 に実装した。同じ日に、部屋での生成・`POST /scenes/generate`・作り置きの場面・採点をこの形につなぎ、`/1` と古い 1 回の生成を消した（まとめ用の branch。main に入るのは、アプリと通しで動いたとき）。`/1` と `/2` の両方を読む期間は作らない（[ADR](../adr/20261111-score-only-with-checklist-and-drop-handmade-scenes.md)）。作り置きの場面は、2 段の生成で作って人が絵で選んだ 30 場面（`gen-v2-…`、級ごとに例 1 つ・出題 9 つ）を置いている（`backend/src/scenes/pool/README.md`）。級の規則と生成の書かせ方は [ADR](../adr/20261110-write-grade-sentences-before-scene-parts.md)。
 
 例（`eiken-pre2`、雨のバス停。部品の ID の一部は省略）:
 

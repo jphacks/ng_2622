@@ -37,7 +37,7 @@ pnpm openapi          # openapi.json を生成し直す
 
 ## 作り置きの場面（`src/scenes/pool/`）
 
-AI で作り置いた場面（配置の JSON、`scenenglish.scene/2`）と、級ごとの例と出題の候補を書いた `index.json`。今あるのは仮の場面（`temp-…`、級ごとに例 1 つ・出題 1 つ）で、人が確かめた場面ができたら差し替える。形と足し方は [`src/scenes/pool/README.md`](./src/scenes/pool/README.md)。iOS の Mock もビルドのときにここから写して使う。
+AI で作り置いた場面（配置の JSON、`scenenglish.scene/2`）と、級ごとの例と出題の候補を書いた `index.json`。今あるのは、2 段の生成で作って人が絵で選んだ 30 場面（`gen-v2-…`、級ごとに例 1 つ・出題 9 つ）。形と足し方は [`src/scenes/pool/README.md`](./src/scenes/pool/README.md)。iOS の Mock もビルドのときにここから写して使う。
 
 ### 手元で採点を試す
 
@@ -54,9 +54,9 @@ CLAUDE_API_KEY=...
 ```sh
 # 16 kHz・16 bit・モノラルの WAV を作って送る（1 回で Azure と Claude を 1 回ずつ呼ぶ）
 say -o test.wav --data-format=LEI16@16000 "A boy is running in the park and a dog is running to a red ball."
-curl -F audio=@test.wav -F sceneId=temp-eiken-pre2-park http://localhost:8787/dev/score
+curl -F audio=@test.wav -F sceneId=gen-v2-pre2-park-01 http://localhost:8787/dev/score
 # 端末の文字起こしの代わりに transcript も付けるとき
-curl -F audio=@test.wav -F sceneId=temp-eiken-pre2-park -F "transcript=A boy is throwing a ball." http://localhost:8787/dev/score
+curl -F audio=@test.wav -F sceneId=gen-v2-pre2-park-01 -F "transcript=A boy is throwing a ball." http://localhost:8787/dev/score
 ```
 
 `/dev/score` は `ENABLE_DEV_ROUTES=true` のときだけ開く（`pnpm dev` が自動で付ける）。デプロイ先には入れない。

@@ -1,0 +1,155 @@
+{
+  "protocol": "scenenglish.scene/2",
+  "id": "gen-v2-eiken2-park-13",
+  "name": "公園で手を見せる女の子",
+  "difficulty": "eiken-2",
+  "description": "A girl is showing her hand. The girl is showing her hand, so a woman is checking it to help her. A boy is running across the grass. A dog is watching the boy because the boy is running. There is a bench under the tree. There are flowers on the grass.",
+  "checklist": [
+    {
+      "id": "girl_show",
+      "kind": "center",
+      "label": "女の子が手を見せている",
+      "accept": "a girl is showing her hand",
+      "refs": ["girl"]
+    },
+    {
+      "id": "woman_check",
+      "kind": "center",
+      "label": "女の人が手を調べている",
+      "accept": "a woman is checking it",
+      "refs": ["woman", "girl"]
+    },
+    {
+      "id": "boy_run",
+      "kind": "center",
+      "label": "男の子が芝生を走っている",
+      "accept": "a boy is running across the grass",
+      "refs": ["boy", "grass"]
+    },
+    {
+      "id": "dog_watch",
+      "kind": "center",
+      "label": "犬が男の子を見ている",
+      "accept": "a dog is watching the boy",
+      "refs": ["dog", "boy"]
+    },
+    {
+      "id": "why_dog",
+      "kind": "reason",
+      "label": "犬が見ている理由",
+      "accept": "a dog is watching the boy because the boy is running",
+      "refs": ["dog", "boy"]
+    },
+    {
+      "id": "link_check",
+      "kind": "link",
+      "label": "女の子が手を見せるので女の人が調べる",
+      "accept": "the girl is showing her hand, so a woman is checking it to help her",
+      "refs": ["woman", "girl"]
+    },
+    {
+      "id": "bench_tree",
+      "kind": "detail",
+      "label": "ベンチが木の下にある",
+      "accept": "there is a bench under the tree",
+      "refs": ["bench", "tree"]
+    },
+    {
+      "id": "flowers",
+      "kind": "detail",
+      "label": "芝生に花がある",
+      "accept": "there are flowers on the grass",
+      "refs": ["flower", "grass"]
+    }
+  ],
+  "items": [
+    {
+      "key": "grass",
+      "part": "grass_patch",
+      "place": {
+        "relation": "ground"
+      },
+      "position": [0, 0, 0]
+    },
+    {
+      "key": "tree",
+      "part": "tree",
+      "place": {
+        "relation": "ground",
+        "zone": "back_right"
+      },
+      "position": [2.434, 0, -2.45]
+    },
+    {
+      "key": "bench",
+      "part": "bench",
+      "place": {
+        "relation": "under",
+        "target": "tree"
+      },
+      "facing": "camera",
+      "position": [2.434, 0, -1.455]
+    },
+    {
+      "key": "girl",
+      "part": "person_show_hand_girl_a",
+      "place": {
+        "relation": "ground",
+        "zone": "left"
+      },
+      "facing": "auto",
+      "position": [-3.05, 0, 0.3],
+      "yaw": 90
+    },
+    {
+      "key": "woman",
+      "part": "person_check_hand_mother_a",
+      "place": {
+        "relation": "relate",
+        "target": "girl",
+        "link": "body",
+        "side": "front",
+        "distance": "talk",
+        "turn": "toward"
+      },
+      "position": [-2.441, 0, 0.286],
+      "yaw": -90
+    },
+    {
+      "key": "boy",
+      "part": "person_run_boy_a",
+      "place": {
+        "relation": "ground",
+        "zone": "front_right"
+      },
+      "facing": "left",
+      "position": [2.45, 0, 3.05],
+      "yaw": -94.3,
+      "motion": {
+        "type": "move",
+        "to": [-2.667, 0, 2.667],
+        "duration": 6,
+        "toward": "front_left"
+      }
+    },
+    {
+      "key": "dog",
+      "part": "animal_sit_dog_a",
+      "place": {
+        "relation": "ground",
+        "zone": "right"
+      },
+      "facing": "boy",
+      "position": [2.45, 0, 0.3]
+    },
+    {
+      "key": "flower",
+      "part": "flower",
+      "place": {
+        "relation": "ground",
+        "zone": "front"
+      },
+      "position": [-0.3, 0, 3.05]
+    }
+  ]
+}

@@ -1,0 +1,151 @@
+{
+  "protocol": "scenenglish.scene/2",
+  "id": "gen-v2-pre2-cafe-02",
+  "name": "カフェでこぼれたジュース",
+  "difficulty": "eiken-pre2",
+  "description": "A woman is cleaning the table because the juice was spilled. A waiter is bringing drinks. A man is sitting on a chair. There is a cup on the table. There are two chairs next to the table.",
+  "checklist": [
+    {
+      "id": "woman_clean",
+      "kind": "center",
+      "label": "女の人がテーブルをきれいにしている",
+      "accept": "a woman is cleaning the table",
+      "refs": ["woman", "table"]
+    },
+    {
+      "id": "waiter_bring",
+      "kind": "center",
+      "label": "ウェイターが飲み物を運んでいる",
+      "accept": "a waiter is bringing drinks",
+      "refs": ["waiter"]
+    },
+    {
+      "id": "man_sit",
+      "kind": "center",
+      "label": "男の人が椅子に座っている",
+      "accept": "a man is sitting on a chair",
+      "refs": ["man", "chair"]
+    },
+    {
+      "id": "why_clean",
+      "kind": "reason",
+      "label": "女の人がテーブルを拭く理由",
+      "accept": "a woman is cleaning the table because the juice was spilled",
+      "refs": ["woman", "juice"]
+    },
+    {
+      "id": "cup_table",
+      "kind": "detail",
+      "label": "テーブルの上にカップがある",
+      "accept": "there is a cup on the table",
+      "refs": ["cup", "table"]
+    },
+    {
+      "id": "two_chairs",
+      "kind": "detail",
+      "label": "テーブルの横に椅子が2つある",
+      "accept": "there are two chairs next to the table",
+      "refs": ["chair", "table"]
+    }
+  ],
+  "items": [
+    {
+      "key": "ground",
+      "part": "floor_wood",
+      "place": {
+        "relation": "ground"
+      },
+      "position": [0, 0, 0]
+    },
+    {
+      "key": "wall",
+      "part": "wall_cafe",
+      "place": {
+        "relation": "ground"
+      },
+      "position": [0, 0, -3.57]
+    },
+    {
+      "key": "table",
+      "part": "table_small",
+      "place": {
+        "relation": "ground",
+        "zone": "center"
+      },
+      "position": [-0.981, 0, 0.581]
+    },
+    {
+      "key": "juice",
+      "part": "spilled_juice",
+      "place": {
+        "relation": "on",
+        "target": "table"
+      },
+      "position": [-0.981, 0.72, 0.581]
+    },
+    {
+      "key": "cup",
+      "part": "cup",
+      "place": {
+        "relation": "on",
+        "target": "table"
+      },
+      "position": [-0.981, 0.72, 0.281]
+    },
+    {
+      "key": "chair",
+      "part": "chair",
+      "place": {
+        "relation": "seat_at",
+        "target": "table"
+      },
+      "facing": "table",
+      "position": [-0.981, 0, -0.014]
+    },
+    {
+      "key": "chair2",
+      "part": "chair",
+      "place": {
+        "relation": "seat_at",
+        "target": "table"
+      },
+      "facing": "table",
+      "position": [-1.602, 0, 0.581],
+      "yaw": 90
+    },
+    {
+      "key": "man",
+      "part": "person_sit_adult_a",
+      "place": {
+        "relation": "sit_on",
+        "target": "chair"
+      },
+      "position": [-0.981, -0.02, 0.186]
+    },
+    {
+      "key": "woman",
+      "part": "person_wipe_woman_a",
+      "place": {
+        "relation": "relate",
+        "target": "table",
+        "link": "hand",
+        "side": "left",
+        "distance": "touch",
+        "turn": "toward"
+      },
+      "position": [-0.581, 0, 0.48],
+      "yaw": -90
+    },
+    {
+      "key": "waiter",
+      "part": "person_serve_waiter_a",
+      "place": {
+        "relation": "ground",
+        "zone": "right"
+      },
+      "facing": "camera",
+      "position": [1.769, 0, 0.581],
+      "yaw": 90
+    }
+  ]
+}

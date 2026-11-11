@@ -3,15 +3,16 @@
 AI で作り置いた場面（配置の JSON、`scenenglish.scene/2`）の置き場。1 場面 1 ファイルで、ファイルの名前は `<sceneId>.json` にし、中の `id` と同じにする。形は [`docs/design/scene-protocol.md`](../../../../docs/design/scene-protocol.md) の「配置の JSON v2」と「AI で場面を作り置く」。
 
 - Worker に同梱する（R2 には置かない）。iOS の Mock も、ビルドのときにここの `*.json` をアプリの `pool/` に写して使う（`ios/project.yml` の `Copy scene pool`）。写しは repo に置かない。
-- 人が画像（`scripts/scene/render_layout.py` で描いた PNG）で確かめたものだけを置く。ID は `gen-` ＋ 英小文字と数字 10 文字。
-- 作る手順は [`backend/README.md`](../../../README.md) の「作り置きの場面を作る」。
+- 人が画像（`scripts/scene/render_layout.py` で描いた PNG）で確かめたものだけを置く。
+- 作る手順は [`backend/README.md`](../../../README.md) の「`/2` の作り置きをまとめて作る」（`scripts/make-pool-v2.ts`）。
 
-## 今あるのは仮の場面（`temp-…`）
+## 今ある場面（2026-11-11）
 
-採点と場面の形を切り替えたときに、古い形（`scenenglish.scene/1`）の 30 場面を消した。今ある 6 個（級ごとに例 1 つ・出題 1 つ）は、切り替えを通しで動かすための**仮の場面**で、ID を `temp-` で始めている。
+2 段の生成（`generate-v2.ts`）で作った候補から、Award Day に出す 30 場面（級ごとに例 1 つ・出題 9 つ）を人が絵で選んだ。ID は `gen-v2-<級>-<テーマ>-<連番>`（例 `gen-v2-pre2-bus-stop-11`）。
 
-- 関係（`place` など）とチェックリストを手で書き、生成と同じ裏取り（`verifyScene`）と座標の計算（`composeLayoutV2`）を通して作った。画像では確かめていない。
-- 人が確かめた場面（`gen-…`）ができたら、`temp-…` の JSON を消し、`index.json` と `../pool.ts` の import を差し替える。
+- 11/11 のレビューで指摘のあった 15 場面は、関係（`place`・`facing`）と一部の英文を手で直してから、座標を計算し直した。指摘と直し方は [`docs/design/research/pool-v2-review-1111.md`](../../../../docs/design/research/pool-v2-review-1111.md)。
+- 人のポーズの部品（転んだ人・助け起こす人・座る人）を作り直したので、30 場面とも今の部品の寸法で座標を計算し直し（`composeLayoutV2`）、裏取り（`verifyScene`）を通して、絵で確かめた。
+- 例（`example`）は、待合で級の見本として見せるので、人の動作がはっきり見え、準2級と2級は理由も絵で分かる場面にした（`eiken-3` は公園の犬と男の子、`eiken-pre2` は投げたボールを犬が追う公園、`eiken-2` は 4 人が別々の動作をする台所）。
 
 ## `index.json`
 
