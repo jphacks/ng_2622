@@ -126,6 +126,16 @@ struct SceneComposerTests {
     #expect(layout.checklist.first?.kind == .reason)
     #expect(layout.checklist.first?.firstAccept == "because it is raining")
     #expect(layout.items.first?.motion?.to == [1, 0, 0])
+    // 壊れた項目（kind が知らない値・accept が無い・物でない）は飛ばし、ほかの項目は読む
+    let partly = #"""
+      {"protocol":"scenenglish.scene/2","name":"x","items":[],"checklist":[
+        {"id":"a","kind":"center","label":"A","accept":"a dog","refs":[]},
+        {"id":"b","kind":"weird","label":"B","accept":"b","refs":[]},
+        {"id":"c","kind":"detail","label":"C","refs":[]},
+        7,
+        {"id":"d","kind":"link","label":"D","accept":"so d","refs":[]}]}
+      """#
+    #expect(try SceneLayout.decode(Data(partly.utf8)).checklist.map(\.id) == ["a", "d"])
     let unknown = #"{"protocol":"scenenglish.scene/2","name":"x","difficulty":"easy","checklist":3,"items":[]}"#
     let broken = try SceneLayout.decode(Data(unknown.utf8))
     #expect(broken.difficulty == nil)

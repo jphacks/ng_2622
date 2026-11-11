@@ -15,7 +15,7 @@ nonisolated struct SceneLayout: Decodable, Sendable, Equatable {
   let difficulty: SceneDifficulty?
   /// 級の見本の答え（英語、3〜6 文）。待機の画面の正答例と、振り返りの見本の答えに出す
   let description: String?
-  /// 採点のチェックリスト。振り返りで、見本の答えの文と項目を accept で結ぶ。読めなければ空
+  /// 採点のチェックリスト。振り返りで、見本の答えの文と項目を accept で結ぶ。読めない項目は飛ばす
   let checklist: [ChecklistItem]
   /// 置く部品。上から順に置く。読めない item は飛ばす（1 件が壊れていても、ほかは置く）
   let items: [Item]
@@ -78,8 +78,23 @@ nonisolated struct SceneLayout: Decodable, Sendable, Equatable {
       difficulty: (try? c.decodeIfPresent(String.self, forKey: .difficulty)).flatMap { $0.flatMap(SceneDifficulty.init) },
       // 説明とチェックリストが読めなくても場面は出す
       description: try? c.decodeIfPresent(String.self, forKey: .description),
-      checklist: (try? c.decodeIfPresent([ChecklistItem].self, forKey: .checklist)) ?? [],
+      checklist: Self.checklist(in: c),
       items: items)
+  }
+
+  /// チェックリストを 1 項目ずつ読み、読めない項目は飛ばす（1 件が壊れていても、ほかの項目で見本の答えと結ぶ）。
+  /// 無い・配列でないときは空
+  private static func checklist(in c: KeyedDecodingContainer<CodingKeys>) -> [ChecklistItem] {
+    guard var list = try? c.nestedUnkeyedContainer(forKey: .checklist) else { return [] }
+    var result: [ChecklistItem] = []
+    while !list.isAtEnd {
+      if let item = try? list.decode(ChecklistItem.self) {
+        result.append(item)
+      } else if (try? list.decode(Skipped.self)) == nil {
+        break
+      }
+    }
+    return result
   }
 
   /// 読めなかった item を読み飛ばすための、どんな値も受け取る型
