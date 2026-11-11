@@ -273,6 +273,8 @@ v1 の基本は止まった場面で、動作は人物のポーズで表す。�
 
 ```
 1 回目（部品の一覧は渡さない）
+  { name, sentences: [文, …], checklist: [{ id, kind, label, sentence, accept, refs }] }
+     ↓ コードが保存する形に直す: description = 文をつなげたもの、accept = 番号（sentence）の文から取る
   { name, description, checklist: [{ id, kind, label, accept, refs }] }   ← refs は英小文字の短い呼び名（man・bench）
      ↓ description を 1〜3 文ずつ
 部品の候補 candidates(description)   ← 今は全部の部品を返す。後でベクトル検索（種類ごとに上位 k 個の要素 → 部品）に差し替える
@@ -281,9 +283,16 @@ v1 の基本は止まった場面で、動作は人物のポーズで表す。�
   { items: [{ key, part, place, facing?, motion? }] }                    ← 呼び名を全部 key に使う。/1 と同じ形
 ```
 
+- 1 回目は、見本の答えを文の配列（`sentences`）で先に書かせ、項目ごとに「どの文の事実か」を番号（`sentence`、1 から）で書かせる（2026-11-12）。2級は項目が 8 つ・見本が 6 文で、`accept` を `description` と違う文で書く、同じ文を 2 つの項目に使う、が多かったため。保存する形（`description`・`accept`）にはコードが直す（`toSceneSentences`）。
+  - `center` と `detail` は 1 文に 1 つ（文の数 = `center` の数 + `detail` の数。3・5・6 文）。`reason`・`link` は自分の文を持たず、`center` の文に because・so で書き足して、その文の番号を持つ。
+  - `reason`・`link` の `accept` は、番号の文の全部（文末の句読点を取り、先頭を小文字にする）。Claude が別の言い方を書いていれば ` / ` で後ろに足す。
+  - `center`・`detail` の `accept` は、Claude が書いた言い方が番号の文にあればそれ。無ければ文から取り直す（`center` は because・so より前の節、`detail` は文の全部）。これで `accept` は必ず `description` にある。
+  - 形の決まりの違反（文の数が級と違う、番号の文が無い、`center`・`detail` が同じ文を使っている）は、裏取りの理由と同じ扱いで 1 回目から作り直す。
+- 作り直しのときは、落ちた理由（どの項目かを id で名指しした文）と一緒に、落ちた前の答え（1 回目からなら前の英文、2 回目だけなら前の部品）を見せ、「名指しされた所を直し、ほかは残す」と指示する。
 - 1 回目に渡すのは、級の規則の表、今の部品で描ける動作の一覧（動作 | 言える動詞と段階 | できる人）、物の一覧、テーマの一覧、例 1 つ。部品の ID は見せない。user の文には級・テーマと、その級の `checklist` の数を書く。
 - 1 回目の schema は `checklist` と `refs` に `minItems: 1` を付ける（structured outputs が受け付ける `minItems` は 0 と 1 だけなので、級の数までは指定できない。数は裏取りで数える）。`kind` はその級に出る種類だけの enum。
 - 2 回目に渡す部品の一覧には、人と動物のポーズで言える動詞（`says`）を出し、`center` の `accept` の動詞が言える部品を選ばせる。場面・関係・向き・動きの決まりは `/1` の生成と同じ文を使い、`relate`・`seat_at`・`thrown_by`・`facing: "auto"`・`holds`・`uses` の説明を足す。
+- 作り置きをまとめて作るスクリプトは `backend/scripts/make-pool-v2.ts`。場面の ID は `gen-v2-<級>-<テーマ>-<連番 2 桁>`（例: `gen-v2-pre2-bus-stop-11`。級は `eiken3`・`pre2`・`eiken2`、連番は級の中の番号）。アプリが `gen-` で始まる ID を AI で作った場面とみるので先頭は `/1` の作り置き（`gen-` ＋ 10 文字）と同じにし、続く `v2-` で `/2` と分かるようにする。
 - 呼び名の一覧（`cast`）は作らない。検索の問い合わせは、検索のモデルの学習と同じ形（場面の英文 1〜3 文）にする（[ADR](../adr/20261110-write-grade-sentences-before-scene-parts.md)）。
 - Award Day（2026-11-15）の当日は、部屋での生成を止める（`SCENE_GENERATION` を `off`）。
 
