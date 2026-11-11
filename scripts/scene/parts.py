@@ -33,7 +33,7 @@ import bpy
 from mathutils import Euler, Matrix, Vector
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-from common import REPO, Part, _heights, export_usdz, hand_points, material, materials, person  # noqa: E402
+from common import REPO, Part, _heights, export_usdz, hand_points, lean_point, material, materials, person  # noqa: E402
 
 VERSION = 1
 
@@ -1524,10 +1524,20 @@ POSES = {
              "hands": [(-0.2, -0.42, 0.74 - SH_SIT), (0.2, -0.42, 0.74 - SH_SIT)]},
     "clap": {"base": "sit", "label": "座って拍手する", "words": [("clap", "verb")],
              "hands": [(-0.03, -0.34, -0.2), (0.05, -0.36, -0.16)]},
-    "fallen": {"base": "kneel", "label": "転んで地面に座り込む", "words": [("fall", "verb")], "head": {"pitch": 0.2},
-                   "hands": [(-0.28, 0.12, -0.85), (0.18, -0.42, -0.22)]},
-    "help_up": {"base": "stand", "label": "手を差しのべて助け起こす", "words": [("help", "verb")], "head": {"pitch": 0.4},
-                "hands": [(-0.27, 0.0, -0.52), (0.1, -0.55, -0.5)]},
+    # 漫画のように盛大に転ぶ: 立った形で作り、lie で頭を +X に向けてうつ伏せに寝かせる（顔は地面すれすれでカメラ側の -Y を向く）。
+    # 左手（カメラ側）は横へ、右手は頭の先へ投げ出し、右脚はひざから曲げて足を宙へはね上げる。
+    # 座標は寝かせる前の立った形のもの。寝かせると (x, y, z) が (z, x, y) に移る
+    "fallen": {"base": "stand", "label": "転んで地面に倒れる", "words": [("fall", "verb")], "lie": True,
+               "head": {"at": (0, -0.08, 1.49), "yaw": -1.1, "pitch": -0.2},
+               "hands": [(-0.68, -0.17, 0.16), (0.2, -0.17, 0.48)],
+               "legs": [((-0.12, -0.15, 0.42), (-0.16, -0.08, 0.07)), ((0.12, -0.15, 0.44), (0.15, 0.2, 0.3))]},
+    # 腰から前へ深くかがみ（lean）、ひざを少し曲げて、両手を前下へ差し伸べる。配置（relate の link hand）は前へ長く
+    # 伸びた手（左手）を相手の外接箱の真ん中の線に合わせ、相手の外接箱から離して立たせる。転んだ人（fallen）の頭の側に
+    # 置くと、左手が倒れた人の左肩に、右手が横へ投げ出した左の二の腕に来る
+    "help_up": {"base": "stand", "label": "手を差しのべて助け起こす", "words": [("help", "verb")], "lean": 1.3,
+                "head": {"pitch": -0.55},
+                "hands": [(-0.1, -0.72, -0.82), (0.12, -0.66, -0.82)],
+                "legs": [((-0.1, -0.1, 0.43), (-0.11, 0.02, 0.07)), ((0.1, -0.1, 0.43), (0.11, 0.02, 0.07))]},
     "sweep": {"base": "stand", "label": "ほうきで掃く", "words": [("sweep", "verb"), ("clean", "verb"), ("broom", "noun")],
               "hands": [(-0.06, -0.28, -0.1), (0.08, -0.46, -0.5)], "props": ("broom", props_sweep)},
 }
@@ -1588,7 +1598,8 @@ def person_builder(pose: str, look: str):
     spec, scale = POSES[pose], LOOKS[look]["scale"]
 
     def build(root):
-        person(root, "person", (0, 0), 0.0, outfits()[look], pose=spec["base"], scale=scale, hands=spec.get("hands"), head=spec.get("head"))
+        person(root, "person", (0, 0), 0.0, outfits()[look], pose=spec["base"], scale=scale, hands=spec.get("hands"), head=spec.get("head"),
+               legs=spec.get("legs"), lean=spec.get("lean", 0.0))
         if "props" in spec:   # 持たせる物も人と同じ倍率にする（手の位置は人の倍率をかける前の座標）
             name, fn = spec["props"]
             p = Part(name)
@@ -1602,8 +1613,11 @@ def person_builder(pose: str, look: str):
         sh = _heights(spec["base"])[1]
         given = spec.get("hands")
         points = [Vector((x, y, sh + dz)) for x, y, dz in given] if given else hand_points(spec["base"])
+        head = Vector(spec.get("head", {}).get("at", lean_point((0, 0, sh + 0.22), _heights(spec["base"])[0], spec.get("lean", 0.0))))
         anchors = {"hand_l": tuple(points[0] * scale), "hand_r": tuple(points[1] * scale),
-                   "feet": (0, 0, 0), "head": tuple(Vector(spec.get("head", {}).get("at", (0, 0, sh + 0.22))) * scale)}
+                   "feet": (0, 0, 0), "head": tuple(head * scale)}
+        if spec.get("lie"):
+            anchors = lie_down(root, anchors)
         if "canopy" in spec:   # 持った傘の布の真ん中
             anchors["canopy"] = tuple(Vector(spec["canopy"]) * scale)
         if spec["base"] in ("sit", "raise_hand"):   # 腰の点（common.py の person() の腰の球の中心）
@@ -1611,6 +1625,23 @@ def person_builder(pose: str, look: str):
         return anchors
     build.__doc__ = f"{LOOKS[look]['label']}（{spec['label']}）"
     return build
+
+
+def lie_down(root, anchors: dict) -> dict:
+    """立った形で作った人を、頭を +X に向けてうつ伏せに寝かせる（(x, y, z) を (z, x, y) に回す）。
+
+    手と頭の点も同じように回す。足元（feet）は、寝た体の下の地面の真ん中（外接箱の底面の中心）にする。
+    """
+    lie = Matrix(((0, 0, 1), (1, 0, 0), (0, 1, 0)))
+    for o in root.children:
+        o.matrix_basis = lie.to_4x4() @ o.matrix_basis
+    bpy.context.view_layer.update()
+    pts = [o.matrix_world @ v.co for o in root.children if o.type == "MESH" for v in o.data.vertices]
+    lo = Vector([min(p[i] for p in pts) for i in range(3)])
+    hi = Vector([max(p[i] for p in pts) for i in range(3)])
+    out = {k: tuple(lie @ Vector(v)) for k, v in anchors.items() if k != "feet"}
+    out["feet"] = ((lo.x + hi.x) / 2, (lo.y + hi.y) / 2, lo.z)
+    return {k: out[k] for k in anchors}
 
 
 for _pose, _look in PEOPLE:
