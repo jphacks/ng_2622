@@ -3,11 +3,11 @@ id = "play-intro"
 title = "プレイ（回転中）"
 group = "play"
 order = 40
-image = "4a-play-intro.png"
+image = "4a-play-intro-app.png"
 role = "全員の端末に同じ 3D シーンを出し、自動で 1 周（約 3 秒）回す。回っている間は操作できない。"
 main_actions = ["（操作なし）シーンを見る"]
 data_shown = ["3D シーン（自動で 360 度回転）", "カウントダウン「3, 2, 1」（推測）"]
-note = "回る 3 秒をカウントダウンも兼ねる（推測）。画像は v1 の Codex の仮の画面のまま（2026-11-11 に撮った実際のアプリのスクリーンショットに 3D が写っておらず、iOS の担当が原因を直している。撮り直しが届いたら 4a-play-intro-app.png に差し替える）。"
+note = "回る 3 秒をカウントダウンも兼ねる（推測）。"
 entry_points = [
   { from = "lobby", how = "全員同時", trigger = "ホストがスタート" },
 ]
