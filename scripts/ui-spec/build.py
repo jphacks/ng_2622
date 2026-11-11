@@ -122,7 +122,8 @@ def thumb(path: Path, height: int, fmt: str) -> Path:
     if out.exists() and out.stat().st_mtime >= path.stat().st_mtime:
         return out
     out.parent.mkdir(parents=True, exist_ok=True)
-    cmd = ["sips", "-Z", str(height), "-s", "format", fmt]
+    # 元が height 以下なら縮めない（形式だけ変える）。iPhone の 1 画面ぶんの画像を荒くしないため
+    cmd = ["sips", "-s", "format", fmt] if max(pixel_size(path)) <= height else ["sips", "-Z", str(height), "-s", "format", fmt]
     if fmt == "jpeg":
         cmd += ["-s", "formatOptions", "82"]
     subprocess.run(cmd + [str(path), "--out", str(out)], check=True, capture_output=True)
@@ -154,38 +155,75 @@ def placeholder_png(sid: str, title: str) -> Path | None:
     return out
 
 
+def image_names(s: dict) -> list[str]:
+    """frontmatter の image（文字列か、複数の画像の配列）をファイル名の一覧にする。"""
+    img = s.get("image", f"{s['id']}.png")
+    return [img] if isinstance(img, str) else list(img)
+
+
+def image_paths(src: Path, s: dict) -> list[tuple[Path, str]]:
+    """画面の画像と状態（final / draft）の一覧。見つからない画像は飛ばす。"""
+    found = []
+    for name in image_names(s):
+        for state, folder in (("final", "images"), ("draft", "drafts")):
+            p = src / folder / name
+            if p.exists():
+                found.append((p, state))
+                break
+    return found
+
+
 def image_path(src: Path, s: dict) -> tuple[Path | None, str]:
-    """画面の画像と状態（final / draft / none）を返す。"""
-    name = s.get("image", f"{s['id']}.png")
-    for state, folder in (("final", "images"), ("draft", "drafts")):
-        p = src / folder / name
-        if p.exists():
-            return p, state
+    """画面の 1 枚目の画像と状態（final / draft / none）を返す。遷移図のノードと状態の札に使う。"""
+    found = image_paths(src, s)
+    if found:
+        return found[0]
     return placeholder_png(s["id"], s["title"]), "none"
 
 
-def aspect(path: Path) -> float:
-    """画像の縦 ÷ 横（macOS の sips で読む。読めなければ iPhone の縦横比とみなす）。"""
+def pixel_size(path: Path) -> tuple[int, int]:
+    """画像の横と縦の画素数（macOS の sips で読む。読めなければ iPhone の 1 画面ぶんとみなす）。"""
     if shutil.which("sips"):
         out = subprocess.run(["sips", "-g", "pixelWidth", "-g", "pixelHeight", str(path)], capture_output=True, text=True).stdout
         size = dict(re.findall(r"pixel(Width|Height):\s*(\d+)", out))
         if size.get("Width") and size.get("Height"):
-            return int(size["Height"]) / int(size["Width"])
-    return 19.5 / 9
+            return int(size["Width"]), int(size["Height"])
+    return 1206, 2622
+
+
+def aspect(path: Path) -> float:
+    """画像の縦 ÷ 横。"""
+    w, h = pixel_size(path)
+    return h / w
+
+
+# 画面カードに埋める画像の長辺の上限。iPhone の 1 画面ぶん（長辺 2622 など）は縮めない
+CARD_MAX = 2800
+
+
+def frame_html(p: Path, alt: str) -> str:
+    # 縦に長い画像は切り抜かず、枠の中で縦にスクロールさせる
+    tall = aspect(p) > 19.5 / 9 * 1.05
+    return (f'<div class="frame{" tall" if tall else ""}">'
+            f'<img src="{data_uri(thumb(p, CARD_MAX, "jpeg"))}" alt="{alt}"></div>')
 
 
 def image_html(src: Path, s: dict) -> str:
+    found = image_paths(src, s)
     p, state = image_path(src, s)
     label = IMAGE_STATE[state]
-    if p:
-        # 縦に長い画像（振り返りを 2 枚つないだものなど）は切り抜かず、枠の中で縦にスクロールさせる。
-        # 文字が読めるよう、長いものほど大きめに縮小する
-        tall = aspect(p) > 19.5 / 9 * 1.05
-        size = 2400 if tall else 1200
-        hint = "（縦にスクロール）" if tall else ""
-        return (f'<figure class="shot {state}"><div class="frame{" tall" if tall else ""}">'
-                f'<img src="{data_uri(thumb(p, size, "jpeg"))}" alt="{html.escape(s["title"])}"></div>'
+    if found:
+        # 画像が複数（長い画面を上下に分けたものなど）なら、縮めずに横に並べる
+        alt = html.escape(s["title"])
+        frames = "".join(frame_html(q, f"{alt}（{i + 1}/{len(found)}）") for i, (q, _) in enumerate(found))
+        multi = len(found) > 1
+        tall = any(aspect(q) > 19.5 / 9 * 1.05 for q, _ in found)
+        hint = f"（{len(found)} 枚）" if multi else ("（縦にスクロール）" if tall else "")
+        return (f'<figure class="shot {state}{" multi" if multi else ""}"><div class="frames">{frames}</div>'
                 f"<figcaption>{label}{hint}</figcaption></figure>")
+    if p:  # 未作成の画面のダミー画像
+        return (f'<figure class="shot {state}"><div class="frames">{frame_html(p, html.escape(s["title"]))}</div>'
+                f"<figcaption>{label}</figcaption></figure>")
     return (f'<figure class="shot none"><div class="placeholder"><span>{html.escape(s["title"])}<br>'
             f'<small>{html.escape(s["id"])}（未作成）</small></span></div>'
             f"<figcaption>{label}</figcaption></figure>")
@@ -289,6 +327,9 @@ ul.notes { padding-left:20px; } ul.notes li { margin:2px 0; }
 .shot { margin:0; }
 .shot .frame, .placeholder { width:100%; max-width:220px; aspect-ratio: 9/19.5; border-radius:16px; border:1px solid var(--line); background:#fff; display:block; overflow:hidden; }
 .shot .frame.tall { overflow-y:auto; overscroll-behavior:contain; }
+.shot.multi .frames { display:grid; grid-template-columns:repeat(2, 220px); gap:8px; }
+@media (min-width: 640px) { section.screen.multi { grid-template-columns: 448px minmax(0,1fr); } }
+@media (max-width: 639px) { .shot.multi .frames { grid-template-columns:repeat(2, minmax(0,1fr)); } }
 .shot .frame img { width:100%; height:auto; display:block; }
 .placeholder { display:flex; align-items:center; justify-content:center; text-align:center; color:#6b7280; background:repeating-linear-gradient(45deg,#f3f4f6 0 10px,#e5e7eb 10px 20px); font-size:.8rem; padding:8px; }
 figcaption { text-align:center; font-size:.75rem; color:var(--muted); margin-top:4px; }
@@ -323,6 +364,7 @@ def edge_list(edges: list[dict], key: str, by_id: dict[str, dict]) -> str:
 
 def screen_section(s: dict, src: Path, by_id: dict[str, dict]) -> str:
     _, state = image_path(src, s)
+    multi = len(image_paths(src, s)) > 1
     body = s["body_sections"]
     filled = [n for n in DISCUSSION_SECTIONS if body.get(n)]
     discussion = "".join(
@@ -340,7 +382,7 @@ def screen_section(s: dict, src: Path, by_id: dict[str, dict]) -> str:
                 out.append(html.escape(short(other, 18) or other.strip("()（）")))
         return "、".join(dict.fromkeys(out)) or '<span class="muted">—</span>'
     return f"""
-<section class="screen" id="{html.escape(s['id'])}">
+<section class="screen{' multi' if multi else ''}" id="{html.escape(s['id'])}">
   {image_html(src, s)}
   <div class="card-text">
     <header><h3>{html.escape(s['title'])}</h3>
