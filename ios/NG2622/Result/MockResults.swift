@@ -116,10 +116,11 @@ private struct MockSample {
       nextStep = Self.contentStep(checklist.dropFirst(max(1, n / 2)).first, gain: 9)
       tip = .init(aspect: .prosody, text: "文の終わりを少し下げると、抑揚が伝わりやすくなります。")
     case .short:
+      // 3 語未満はバックエンドが Claude を呼ばず、内容・表現を 0 点にする（docs/design/usecase.md）
       shortText = "A girl."
-      expression = 40
+      expression = 0
       speaking = 55
-      nextStep = .init(kind: .content, text: "もう少し長く、誰が何をしているかを文で言ってみよう。", item: nil, gain: nil)
+      nextStep = .init(kind: .content, text: "もう少し長く、文にして話してみよう。", item: nil, gain: nil)
       tip = .init(aspect: .accuracy, text: "一語ずつ、はっきり発音してみよう。")
     case .clean:
       for item in checklist { say(item, item.id == partialID ? .partial : .full) }
