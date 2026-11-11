@@ -1393,7 +1393,8 @@ POSES = {
     "stand": {"base": "stand", "label": "立つ", "words": [("stand", "verb")]},
     "walk": {"base": "walk", "label": "歩く", "words": [("walk", "verb")]},
     "run": {"base": "run", "label": "走る", "words": [("run", "verb")]},
-    "sit": {"base": "sit", "label": "座る", "words": [("sit", "verb")]},
+    # 座って、両手をももの上に置く（common.py の座るポーズのままだと、腕が前へ突き出る）
+    "sit": {"base": "sit", "label": "座る", "words": [("sit", "verb")], "hands": [(-0.17, -0.22, -0.4), (0.17, -0.22, -0.4)]},
     "phone": {"base": "phone", "label": "スマホを見る", "words": [("phone", "noun"), ("look", "verb")]},
     # 立って、開いた本を胸の前で両手に持って読む
     "read": {"base": "stand", "label": "本を読む", "words": [("read", "verb"), ("book", "noun")],
