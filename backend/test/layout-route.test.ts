@@ -5,18 +5,23 @@ import { findPoolScene } from "../src/scenes/pool";
 import index from "../src/scenes/pool/index.json";
 
 test("GET /scenes/{sceneId}/layout は作り置きの場面の JSON をそのまま返す", async () => {
-  for (const id of [index.hard.scenes[0], index.easy.example]) {
+  for (const id of [index["eiken-2"].scenes[0], index["eiken-3"].example]) {
     const res = await app.request(`/scenes/${id}/layout`);
     assert.equal(res.status, 200);
     assert.deepEqual(await res.json(), findPoolScene(id));
   }
 });
 
-test("無い場面と手作りの場面は 404 unknown_scene", async () => {
+test("無い場面（外した手作りの場面も）は 404 unknown_scene", async () => {
   for (const id of ["gen-xxxxxxxxxx", "park"]) {
     const res = await app.request(`/scenes/${id}/layout`);
     assert.equal(res.status, 404);
     const body = (await res.json()) as { error: { code: string } };
     assert.equal(body.error.code, "unknown_scene");
   }
+});
+
+test("場面の一覧（GET /scenes）は消したので 404", async () => {
+  const res = await app.request("/scenes");
+  assert.equal(res.status, 404);
 });

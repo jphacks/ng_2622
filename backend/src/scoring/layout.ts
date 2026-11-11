@@ -1,11 +1,9 @@
 import parts from "../../../assets/parts/index.json";
 
-// 配置の JSON（docs/design/scene-protocol.md の items）と部品のメタデータ（assets/parts/index.json）から、
-// 採点で Claude に渡す場面の情報を作る。部品ごとの名前・words・大きさ・座標・向き・動きを、座標のまま渡す。
-// 位置の関係を Claude が座標から読み違えることが多ければ、関係を計算して渡す形に切り替える
-// （ADR 20261025-score-content-with-layout-and-rubric-bands）
+// 配置の JSON（docs/design/scene-protocol.md の「配置の JSON v2」の items）と部品のメタデータ（assets/parts/index.json）から、
+// 採点で Claude に渡す場面の情報を作る。部品ごとの名前・words・大きさ・座標・向き・動きと、生成で書いた関係（place など）を渡す
 
-export type LayoutItem = {
+type LayoutItem = {
   key: string;
   part: string;
   position: [number, number, number];
@@ -122,25 +120,12 @@ const describeItem = (item: LayoutItem, meta: PartMeta) => {
   return lines.join("\n");
 };
 
-/** 場面の情報を英語の箇条書きにする。地面のほかに部品が 1 つも分からなければ null */
-export const describeLayout = (items: LayoutItem[]): string | null => {
-  const known = items
-    .map((item) => ({ item, meta: catalog.get(item.part.split("@")[0]) }))
-    .filter((k): k is { item: LayoutItem; meta: PartMeta } => !!k.meta);
-  if (known.every(({ meta }) => meta.category === "ground")) return null;
-  return [
-    COORDINATES,
-    "Things (nothing else is in the scene):",
-    ...known.map(({ item, meta }) => describeItem(item, meta)),
-  ].join("\n");
-};
-
 // 関係の読み方。座標より読み違えにくいので、位置の関係はこちらを先に見させる
 const RELATIONS = `Relations: place, facing and "moves toward" are how the scene was built; the positions were computed from them. Use them first to tell where things are, and the coordinates for the rest. place is a relation to the key of another thing (on, in, under, above, next_to, in_front_of, behind, near, between, sit_on, seat_at, relate, thrown_by), or "ground" with a zone of the square (front is the +Z side, back is -Z, left is -X). relate means the thing interacts with the target (link: the body part that reaches it; side, distance and turn: where it stands and which way it faces). facing is camera (+Z), left, right, away, or the key it faces.`;
 
 /**
- * describeLayout に、生成で書いた関係（place・facing・動きの行き先）を書き足したもの。scenenglish.scene/2 の採点で渡す。
- * 関係の無い item は describeLayout と同じ行になる。地面のほかに部品が 1 つも分からなければ null
+ * 場面の情報を英語の箇条書きにする。座標の行に、生成で書いた関係（place・facing・動きの行き先）を書き足す。
+ * 関係の無い item は座標の行だけになる。地面のほかに部品が 1 つも分からなければ null
  */
 export const describeLayoutWithRelations = (
   items: RelationItem[],

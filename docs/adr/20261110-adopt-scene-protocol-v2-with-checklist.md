@@ -2,6 +2,7 @@
 
 ## Status
 - accepted
+- 部分 supersede: 30 場面を入れ替えるまでアプリとバックエンドが `/1` と `/2` の両方を読むこと（Decision の最後の項目）は、[20261111-score-only-with-checklist-and-drop-handmade-scenes](./20261111-score-only-with-checklist-and-drop-handmade-scenes.md) で「両方を読む期間を作らず、まとめ用の branch でアプリと一緒に `/2` だけに切り替える」に置き換えた。場面の形そのものは存続する。
 
 ## Situation
 - 場面は配置の JSON（`scenenglish.scene/1`）で表している（[20261024-compose-scenes-from-stored-parts](./20261024-compose-scenes-from-stored-parts.md)）。上の階層は `protocol`・`id`・`name`・`difficulty`・`description`・`elements`・`extraMax`・`items`。

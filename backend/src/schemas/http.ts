@@ -1,5 +1,16 @@
 import { z } from "zod";
 import {
+  DISTANCES,
+  LINKS,
+  PATHS,
+  RELATIONS,
+  SIDES,
+  TURNS,
+  ZONES,
+} from "../scenes/types";
+import {
+  ChecklistKind,
+  Difficulty,
   ErrorCode,
   MAX_PLAYERS,
   PlayerId,
@@ -9,7 +20,7 @@ import {
   RoomPhase,
   SceneId,
 } from "./common";
-import { Rewrite } from "./ws";
+import { FeedbackNextStep, PlayerContent, Rewrite } from "./ws";
 
 export const CreateRoomResponse = z
   .object({
@@ -68,32 +79,6 @@ export const Rating = z.int().min(1).max(5).meta({
   description: "★の数（1〜5）",
   example: 4,
 });
-
-export const RatingSummary = z
-  .object({
-    average: z.number().nullable().meta({
-      description: "★の平均（小数第 1 位まで）。評価が無ければ null",
-      example: 4.2,
-    }),
-    count: z.int().min(0).meta({ description: "評価した人数" }),
-  })
-  .meta({ ref: "RatingSummary" });
-
-export const SceneSummary = z
-  .object({
-    id: SceneId,
-    name: z.string().meta({ example: "公園" }),
-    kind: z.enum(["vanilla"]).meta({
-      description:
-        "vanilla: 最初から入っているシーン（今後、ユーザーが作るシーンを足す）",
-    }),
-    rating: RatingSummary,
-  })
-  .meta({ ref: "SceneSummary" });
-
-export const ListScenesResponse = z
-  .object({ scenes: z.array(SceneSummary) })
-  .meta({ ref: "ListScenesResponse" });
 
 export const SceneIdParam = z.object({ sceneId: SceneId });
 
@@ -165,110 +150,6 @@ export const SubmitAudioResponse = z
       "受け取って採点を始めた。点数は返さず、全員の採点がそろったら WebSocket の results で届く",
   });
 
-// z.tuple は OpenAPI で prefixItems になり、iOS の swift-openapi-generator が読めない。
-// 長さ 3 の配列として書き出し、型だけ 3 つの組に戻す
-const Vector = z
-  .array(z.number())
-  .length(3)
-  .transform((v) => v as [number, number, number]);
-
-export const ScoringLayout = z
-  .object({
-    description: z.string().max(2000).optional().meta({
-      description:
-        "場面の説明文（英語）。作り置きのときに書いて人が確かめたもの。採点の補足として Claude に渡す",
-    }),
-    items: z
-      .array(
-        z.object({
-          key: z.string().min(1),
-          part: z.string().min(1).meta({
-            description:
-              "部品の ID（assets/parts/index.json）。版を書くときは apple@1",
-          }),
-          position: Vector,
-          yaw: z.number().optional(),
-          scale: z.number().optional(),
-          motion: z
-            .object({
-              type: z.enum(["fall", "move", "rotate", "sway"]),
-              to: Vector.optional(),
-            })
-            .optional(),
-        }),
-      )
-      .min(1)
-      .max(40),
-  })
-  .meta({
-    ref: "ScoringLayout",
-    description:
-      "配置の JSON（scenenglish.scene/1）のうち、採点に使う項目。ほかの項目（name・elements など）は送っても無視する。座標や動きの細かい項目（duration など）も読まない",
-  });
-
-const Score = z.int().min(0).max(100);
-
-export const ScoreRequest = z
-  .object({
-    layout: ScoringLayout,
-    transcript: z
-      .string()
-      .trim()
-      .min(1)
-      .max(2000)
-      .meta({ description: "発話の文字起こし（英語）" }),
-    speech: z
-      .object({ accuracy: Score, fluency: Score, prosody: Score })
-      .optional()
-      .meta({
-        description:
-          "Azure の話し方の 3 つの点（正確さ・なめらかさ・抑揚）。送ると、次に伸ばす一つに話し方も選ばれる。話し方の点そのものは付けない",
-      }),
-  })
-  .meta({ ref: "ScoreRequest" });
-
-export const ScoreResponse = z
-  .object({
-    content: Score.meta({
-      description: "内容（0〜100）。採点基準の段階で付ける",
-    }),
-    expression: Score.meta({
-      description: "表現（0〜100）。採点基準の段階で付ける",
-    }),
-    transcript: z.string(),
-    feedback: z
-      .object({
-        strength: z.object({
-          quote: z.string().meta({
-            description:
-              "根拠にした本人の発話（文字起こしから引用）。無ければ空",
-          }),
-          text: z.string(),
-        }),
-        nextStep: z.object({
-          kind: z.enum(["content", "expression", "speech"]).meta({
-            description: "speech は話し方の点を送ったときだけ",
-          }),
-          text: z.string(),
-        }),
-        rewrite: Rewrite.nullable().meta({
-          description: "直す所が無ければ null",
-        }),
-      })
-      .meta({
-        ref: "ContentFeedback",
-        description: "講評。次に伸ばす一つは Claude が選ぶ",
-      }),
-    mode: z.enum(["live", "fixed"]).meta({
-      description: "fixed は外部 API を呼ばない固定の点数（SCORING_MODE）",
-    }),
-    elapsedMs: z.int(),
-  })
-  .meta({
-    ref: "ScoreResponse",
-    description: "配置と文字起こしから採点した、内容と表現の点と講評",
-  });
-
 // 部品と配置の JSON（docs/design/scene-protocol.md）
 
 const Vec3 = z
@@ -318,15 +199,23 @@ export const ListPartsResponse = z
   .object({ parts: z.array(PartMeta) })
   .meta({ ref: "ListPartsResponse" });
 
-export const SceneLayoutElement = z
-  .object({
-    id: z.string(),
-    label: z.string(),
-    points: z.int(),
-    accept: z.string(),
-    partial: z.string().optional(),
-  })
-  .meta({ ref: "SceneLayoutElement", description: "描写してほしい要素" });
+// 採点の口（POST /score）の入力にも同じ形を使う。ref 付きの型を入力と出力の両方で使うと、
+// OpenAPI で入力用と出力用（…Output）に分かれるので、入力の側は ref の無い形にする
+const checklistItemShape = {
+  id: z.string().meta({ description: "場面の中で重ならない ID" }),
+  kind: ChecklistKind,
+  label: z.string().meta({ description: "振り返りに出す日本語" }),
+  accept: z.string().meta({
+    description:
+      '「言えた」とする英語の言い方。採点の Claude が基準にする。" / " で別の言い方を並べることがある',
+  }),
+  refs: z.array(z.string()).meta({ description: "項目が指す items の key" }),
+};
+
+export const SceneChecklistItem = z.object(checklistItemShape).meta({
+  ref: "SceneChecklistItem",
+  description: "採点のチェックリストの項目",
+});
 
 export const SceneMotion = z
   .object({
@@ -339,11 +228,34 @@ export const SceneMotion = z
     duration: z.number().meta({ description: "秒" }),
     delay: z.number().optional().meta({ description: "秒（既定 0）" }),
     loop: z.boolean().optional().meta({ description: "既定 true" }),
+    toward: z.string().optional().meta({
+      description:
+        "生成で Claude が書いた行き先（相手の key か区画）。アプリは to を使えば足りる",
+    }),
+    path: z.enum(PATHS).optional(),
   })
   .meta({
     ref: "SceneMotion",
     description: "簡単な動き。時刻は round の startAt から数える",
   });
+
+const placeShape = {
+  relation: z.enum(RELATIONS),
+  target: z.string().optional().meta({ description: "相手の key" }),
+  target2: z.string().optional().meta({ description: "between の 2 つ目" }),
+  zone: z.enum(ZONES).optional(),
+  spot: z.string().optional(),
+  link: z.enum(LINKS).optional(),
+  side: z.enum(SIDES).optional(),
+  distance: z.enum(DISTANCES).optional(),
+  turn: z.enum(TURNS).optional(),
+};
+
+export const ScenePlace = z.object(placeShape).meta({
+  ref: "ScenePlace",
+  description:
+    "生成で Claude が書いた置き方の関係。アプリは position を使えば足りる（採点と裏取りが読む）",
+});
 
 export const SceneLayoutItem = z
   .object({
@@ -351,6 +263,11 @@ export const SceneLayoutItem = z
     part: z.string().meta({
       description: "部品の ID。版を固定するときは apple_red@1",
       example: "apple_red",
+    }),
+    place: ScenePlace,
+    facing: z.string().optional().meta({
+      description:
+        "生成で Claude が書いた向き（camera・left・right・away か、向く相手の key）",
     }),
     position: Vec3.meta({ description: "部品の原点（底面の中心）の位置（m）" }),
     yaw: z
@@ -364,25 +281,134 @@ export const SceneLayoutItem = z
 
 export const SceneLayout = z
   .object({
-    protocol: z.literal("scenenglish.scene/1"),
+    protocol: z.literal("scenenglish.scene/2"),
     id: z.string().meta({ example: "gen-7k2m9q4x3a" }),
-    name: z.string().meta({ example: "リンゴが落ちる公園" }),
-    difficulty: z.enum(["easy", "normal", "hard"]),
-    description: z.string(),
-    elements: z.array(SceneLayoutElement),
-    extraMax: z.int(),
+    name: z.string().meta({ example: "雨のバス停" }),
+    difficulty: Difficulty,
+    description: z.string().meta({
+      description:
+        "級の見本の答え（英語）。録音を待つ画面の正答例、振り返りの見本、採点の補足に使う",
+    }),
+    checklist: z.array(SceneChecklistItem),
     items: z.array(SceneLayoutItem),
   })
   .meta({
     ref: "SceneLayout",
-    description: "配置の JSON（scenenglish.scene/1）",
+    description: "配置の JSON（scenenglish.scene/2）",
+  });
+
+// 部屋を通さない採点の口（POST /score）
+
+// z.tuple は OpenAPI で prefixItems になり、iOS の swift-openapi-generator が読めない。
+// 長さ 3 の配列として書き出し、型だけ 3 つの組に戻す
+const Vector = z
+  .array(z.number())
+  .length(3)
+  .transform((v) => v as [number, number, number]);
+
+export const ScoringLayout = z
+  .object({
+    difficulty: Difficulty,
+    description: z.string().max(2000).optional().meta({
+      description: "級の見本の答え（英語）。採点の補足として Claude に渡す",
+    }),
+    checklist: z
+      .array(z.object(checklistItemShape))
+      .min(1)
+      .max(20)
+      // Claude に渡す項目の id の enum に、同じ id が入らないようにする
+      .refine((list) => new Set(list.map((c) => c.id)).size === list.length, {
+        message: "checklist の id が重なっている",
+      }),
+    items: z
+      .array(
+        z.object({
+          key: z.string().min(1),
+          part: z.string().min(1).meta({
+            description:
+              "部品の ID（assets/parts/index.json）。版を書くときは apple@1",
+          }),
+          place: z.object(placeShape).optional(),
+          facing: z.string().optional(),
+          position: Vector,
+          yaw: z.number().optional(),
+          scale: z.number().optional(),
+          motion: z
+            .object({
+              type: z.enum(["fall", "move", "rotate", "sway"]),
+              to: Vector.optional(),
+              toward: z.string().optional(),
+              path: z.enum(PATHS).optional(),
+            })
+            .optional(),
+        }),
+      )
+      .min(1)
+      .max(40),
+  })
+  .meta({
+    ref: "ScoringLayout",
+    description:
+      "配置の JSON（scenenglish.scene/2）のうち、採点に使う項目。ほかの項目（id・name など）は送っても無視する。動きの細かい項目（duration など）も読まない",
+  });
+
+const Score = z.int().min(0).max(100);
+
+export const ScoreRequest = z
+  .object({
+    layout: ScoringLayout,
+    transcript: z
+      .string()
+      .trim()
+      .min(1)
+      .max(2000)
+      .meta({ description: "発話の文字起こし（英語）" }),
+    speech: z
+      .object({ accuracy: Score, fluency: Score, prosody: Score })
+      .optional()
+      .meta({
+        description:
+          "Azure の話し方の 3 つの点（正確さ・なめらかさ・抑揚）。送ると、次に伸ばす一つに話し方も選ばれる。話し方の点そのものは付けない",
+      }),
+  })
+  .meta({ ref: "ScoreRequest" });
+
+export const ScoreResponse = z
+  .object({
+    content: Score.meta({
+      description:
+        "内容（0〜100）。チェックリストの達成（言えた）と、言ったことの正しさの F1",
+    }),
+    expression: Score.meta({
+      description: "表現（0〜100）。級の文法の一覧に照らした段階で付ける",
+    }),
+    transcript: z.string(),
+    breakdown: PlayerContent,
+    feedback: z
+      .object({
+        nextStep: FeedbackNextStep,
+        rewrite: Rewrite.nullable().meta({
+          description: "直す所が無ければ null",
+        }),
+      })
+      .meta({
+        ref: "ContentFeedback",
+        description: "講評（話し方のコツは無い）",
+      }),
+    mode: z.enum(["live", "fixed"]).meta({
+      description: "fixed は外部 API を呼ばない固定の点数（SCORING_MODE）",
+    }),
+    elapsedMs: z.int(),
+  })
+  .meta({
+    ref: "ScoreResponse",
+    description:
+      "配置と文字起こしから採点した、内容と表現の点・内容の内訳・講評。nextStep.gain は、話し方の点を変えないとしたときの合計の伸び",
   });
 
 export const GenerateSceneRequest = z
   .object({
-    difficulty: z
-      .enum(["easy", "normal", "hard"])
-      .meta({ description: "難しさ" }),
+    difficulty: Difficulty,
     theme: z.string().trim().min(1).max(50).optional().meta({
       description:
         "場面のテーマ（1〜50 文字、任意）。省けば、指示の中のテーマの一覧（公園・カフェ・店・駅・部屋など）から Claude が選ぶ",

@@ -1,7 +1,7 @@
 import { fail, ok } from "../domain/result";
 import type { Grade } from "../domain/round";
 import type { RoomRepository } from "../repositories/roomRepository";
-import type { SceneLayout } from "../scenes/types";
+import type { SceneLayoutV2 } from "../scenes/types";
 import { type ScoreResult, type ScoringEnv, score } from "../scoring";
 
 /** 16 kHz・16 bit・モノラルで 20 秒 ≈ 0.64 MB。採点（scoring/）と同じく 1 MB まで */
@@ -13,7 +13,8 @@ const isWav = (audio: ArrayBuffer) => {
   return head.startsWith("RIFF") && head.endsWith("WAVE");
 };
 
-const toGrade = (result: ScoreResult): Grade =>
+/** 採点の結果を、部屋に書き込む 1 人分の採点にする */
+export const toGrade = (result: ScoreResult): Grade =>
   result.ok
     ? {
         status: "done",
@@ -24,6 +25,7 @@ const toGrade = (result: ScoreResult): Grade =>
           total: result.total,
         },
         transcript: result.transcript,
+        content: result.breakdown,
         feedback: result.feedback,
       }
     : { status: "failed" };
@@ -60,7 +62,7 @@ export const submitAudio = async (
       begun.value.sceneId,
       input.transcript,
       // DO の RPC を通ると型の上で座標の組（Vec3）が number[] になるので戻す。中身は部屋が置いた配置そのもの
-      begun.value.layout as SceneLayout | undefined,
+      begun.value.layout as SceneLayoutV2 | undefined,
     ).catch(() => null);
     await repository.recordGrade(roomId, {
       round,

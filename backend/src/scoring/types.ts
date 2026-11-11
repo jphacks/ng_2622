@@ -1,3 +1,5 @@
+import type { NextStepKind, SentContent } from "./checklist";
+
 // 採点の入出力の型。部屋（Durable Object）からは score() とこの型だけを使う
 
 export type ScoringEnv = {
@@ -13,28 +15,6 @@ export type ScoringEnv = {
   CLAUDE_EFFORT?: string;
 };
 
-export type Scene = {
-  id: string;
-  name: string;
-  // Claude に渡す場面の説明（英語）
-  description: string;
-  // 描写してほしい要素。言えた要素の点を足したものが内容の点になる
-  elements: SceneElement[];
-  // 一覧にない正しい描写に出す点の上限。elements の points と足して 100 にする
-  extraMax: number;
-};
-
-export type SceneElement = {
-  id: string;
-  // 画面に出す名前（日本語）
-  label: string;
-  points: number;
-  // 満点にする言い方（英語。Claude に渡す）
-  accept: string;
-  // 半分の点にする言い方。無ければ部分点なし
-  partial?: string;
-};
-
 export type SpeechScore = {
   transcript: string;
   accuracy: number;
@@ -46,53 +26,9 @@ export type SpeechScore = {
   words: { word: string; accuracy: number; errorType: string }[];
 };
 
-export type LanguageScore = {
-  content: number;
-  expression: number;
-  // 要素ごとの判定。内容の点の内訳
-  elements: ElementJudgment[];
-  // 講評の材料。どれを出すかは feedback.ts が点数から決める
-  notes: LanguageNotes;
-};
-
-// Claude が書く講評の材料（日本語。引用だけ英語）
-export type LanguageNotes = {
-  // できたこと。quote は文字起こしからそのまま引く
-  strength: { quote: string; text: string };
-  // 言えなかった要素ごとの一言ヒント
-  hints: { id: string; text: string }[];
-  // 表現を伸ばす一言
-  expressionTip: string;
-  // 本人の一文を自然に直したもの。直す所が無ければ null
-  rewrite: Rewrite | null;
-};
-
 export type Rewrite = { before: string; after: string; reason: string };
 
 export type SpeechAspect = "accuracy" | "fluency" | "prosody";
-
-// 振り返りに出す講評。次に伸ばすのは一つだけ
-export type Feedback = {
-  strength: { quote: string; text: string };
-  nextStep: {
-    kind: "content" | "expression" | "speech";
-    // 合計点で何点伸びるか。内容の要素のときだけ出す
-    gain: number | null;
-    text: string;
-  };
-  rewrite: Rewrite | null;
-  speechTip: { aspect: SpeechAspect; text: string };
-};
-
-// 配置から採点する POST /score の講評。次に伸ばす一つは Claude が選ぶ（話し方の点を送られたときだけ speech も選べる）
-export type ContentFeedback = {
-  strength: Feedback["strength"];
-  nextStep: {
-    kind: "content" | "expression" | "speech";
-    text: string;
-  };
-  rewrite: Rewrite | null;
-};
 
 // Azure の話し方の 3 つの点。Claude が次に伸ばす一つを選ぶ材料
 export type SpeechAspects = Pick<
@@ -100,11 +36,23 @@ export type SpeechAspects = Pick<
   "accuracy" | "fluency" | "prosody"
 >;
 
-export type ElementJudgment = {
-  id: string;
-  level: "full" | "partial" | "none";
-  // 判定の根拠にした発言
-  evidence: string;
+/** 次に伸ばす一つ。Claude が選び、内容のときの項目はコードが確かめる（checklist.ts の checkNextStep） */
+export type NextStep = {
+  kind: NextStepKind;
+  text: string;
+  // 内容のとき、勧めるチェックリストの項目の id。それ以外と、項目が無いときは null
+  item: string | null;
+  // その項目を言えたら合計の点が何点伸びるか（重み付きの合計の差）。項目が無いときは null
+  gain: number | null;
+};
+
+// 振り返りに出す講評。次に伸ばすのは一つだけ
+export type Feedback = {
+  nextStep: NextStep;
+  // 本人の一文の言い換え。直す所が無ければ null
+  rewrite: Rewrite | null;
+  // 話し方のコツ。Azure の点からコードが作る
+  speechTip: { aspect: SpeechAspect; text: string };
 };
 
 export type ScoreResult =
@@ -117,9 +65,9 @@ export type ScoreResult =
       expression: number;
       speech: number;
       transcript: string;
+      // 内容の内訳（描写の一覧・項目ごとの達成・言えたと正しさの分子と分母）
+      breakdown: SentContent;
       feedback: Feedback;
-      // 内容の内訳
-      elements: ElementJudgment[];
       // 話し方の内訳
       speechDetail: { accuracy: number; fluency: number; prosody: number };
       mode: "live" | "fixed";

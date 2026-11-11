@@ -1,7 +1,7 @@
 // /2 の配置の JSON を作る関数（src/scenes/compose-v2.ts）のテスト
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { composeLayout } from "../src/scenes/compose";
+import { composeItems } from "../src/scenes/compose";
 import { composeLayoutV2 } from "../src/scenes/compose-v2";
 import { EXAMPLE_ITEMS, EXAMPLE_SENTENCES } from "../src/scenes/generate-v2";
 import { PARTS } from "../src/scenes/parts";
@@ -47,21 +47,12 @@ test("items は、Claude が書いた関係と計算した座標の両方を持�
   assert.deepEqual(man?.place, { relation: "sit_on", target: "bench" });
 });
 
-test("座標は今の composeLayout（/1）と同じ", () => {
+test("座標は composeItems（compose.ts）が計算したもの", () => {
   const v2 = composeLayoutV2(PLAN, PARTS, META);
-  const v1 = composeLayout(
-    {
-      name: PLAN.name,
-      description: PLAN.description,
-      items: PLAN.items,
-      elements: [],
-    },
-    PARTS,
-    { id: META.id, difficulty: "normal" },
-  );
+  const placed = composeItems(PLAN.items, PARTS);
   assert.deepEqual(
     v2.items.map((i) => [i.key, i.part, i.position, i.yaw]),
-    v1.items.map((i) => [i.key, i.part, i.position, i.yaw]),
+    placed.map((i) => [i.key, i.part, i.position, i.yaw]),
   );
 });
 

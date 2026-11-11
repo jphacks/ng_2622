@@ -10,17 +10,11 @@ import {
   scoreContent,
 } from "./checklist";
 import { ClaudeError, DEFAULT_MODEL, effortOf } from "./claude";
-import type {
-  ContentFeedback,
-  Rewrite,
-  ScoringEnv,
-  SpeechAspects,
-} from "./types";
+import type { Rewrite, ScoringEnv, SpeechAspects } from "./types";
 
 // 内容をチェックリストの F1、表現を級の文法の一覧に照らした段階で付ける。1 人につき Claude を 1 回呼ぶ
 // （ADR 20261110-score-content-with-checklist-f1・20261110-align-scoring-with-eiken-speaking-viewpoints）。
 // Claude が返すのは描写の一覧と表現の点と講評だけで、内容の点は checklist.ts が計算する。
-// 30 場面を作り直して採点を切り替えるまで、score() からは呼ばれない
 
 // 表現の段階の文は下書き。PR で人が確かめたものに差し替える。IELTS・英検の公式の文は丸写ししない。
 // 表現は発話の全部（推測や、場面と合わない文も含む）の英語を見る。合っているかは描写の判定だけで見る
@@ -82,9 +76,8 @@ ${EXPRESSION_BANDS}
 
 # Feedback
 Write feedback in Japanese for the player. Be specific and encouraging, and do not mention points.
-1. strength: the best thing the player said. quote: copy the words exactly from the transcript. text: one short sentence saying what the quote conveys well.
-2. nextStep: the one thing that would improve the player's description the most. kind: "content" (a checklist item they did not say), "expression" (grammar or vocabulary of their grade), or "speech" (pronunciation, fluency or intonation; only when speech scores are given; choose it when the lowest speech score is clearly below how well they did on content and expression). text: one short sentence with a short English example (e.g. 次は男の人がベンチに向かって歩いているところを足してみよう。"A man is walking toward the bench."). item: when kind is "content", the id of the checklist item to say next; choose among the items the player did not say, by kind in this order: center, reason, link, detail. Otherwise null.
-3. rewrite: pick one sentence or fragment of the player and make it natural, keeping the meaning and using the grammar of their grade. before: copy it exactly from the transcript. after: the corrected English. reason: one short sentence in Japanese.
+1. nextStep: the one thing that would improve the player's description the most. kind: "content" (a checklist item they did not say), "expression" (grammar or vocabulary of their grade), or "speech" (pronunciation, fluency or intonation; only when speech scores are given; choose it when the lowest speech score is clearly below how well they did on content and expression). text: one short sentence with a short English example (e.g. 次は男の人がベンチに向かって歩いているところを足してみよう。"A man is walking toward the bench."). item: when kind is "content", the id of the checklist item to say next; choose among the items the player did not say, by kind in this order: center, reason, link, detail. Otherwise null.
+2. rewrite: pick one sentence or fragment of the player and make it natural, keeping the meaning and using the grammar of their grade. before: copy it exactly from the transcript. after: the corrected English. reason: one short sentence in Japanese.
    Words that look like recognition errors (odd or meaningless words, very short fragments) are not the player's mistakes; do not correct them. If nothing needs fixing, return null.`;
 
 const nullable = (schema: Record<string, unknown>) => ({
@@ -131,16 +124,6 @@ const schemaFor = (checklist: ChecklistItem[], withSpeech: boolean) => {
         description:
           "0-100 by the Expression bands, for the English of the whole transcript",
       },
-      strength: {
-        type: "object",
-        properties: {
-          quote: { type: "string" },
-          // minLength は使わない（SDK の transform-json-schema.ts は文字列の制約を format しか通さず、残りを説明文に移している）
-          text: { type: "string", description: "Japanese, never empty" },
-        },
-        required: ["quote", "text"],
-        additionalProperties: false,
-      },
       nextStep: {
         type: "object",
         properties: {
@@ -171,7 +154,6 @@ const schemaFor = (checklist: ChecklistItem[], withSpeech: boolean) => {
       "claims",
       "expressionBasis",
       "expression",
-      "strength",
       "nextStep",
       "rewrite",
     ],
@@ -185,7 +167,6 @@ export type ChecklistJudgment = {
   // 表現の点の根拠（英語で 1 文）。記録用で、アプリには送らない
   expressionBasis: string;
   expression: number;
-  strength: ContentFeedback["strength"];
   nextStep: RawNextStep;
   rewrite: Rewrite | null;
 };
@@ -214,7 +195,6 @@ export type ChecklistScore = {
   expressionRetries: number;
   // 描写の一覧・項目ごとの達成・言えたと正しさの内訳
   breakdown: ContentBreakdown;
-  strength: ContentFeedback["strength"];
   nextStep: CheckedNextStep;
   rewrite: Rewrite | null;
 };
@@ -278,7 +258,6 @@ export const scoreJudgment = (
     expression: clamp(judged.expression),
     expressionBasis: judged.expressionBasis ?? "",
     breakdown,
-    strength: judged.strength,
     nextStep: checkNextStep({ content, ...breakdown }, judged.nextStep),
     rewrite: judged.rewrite,
   };
@@ -301,7 +280,7 @@ const rank = (s: Scored) => (hasBasis(s) ? 2 : 0) + (s.expression > 0 ? 1 : 0);
  * 3 語以上の発話に、表現 0 点か空の根拠が返ったら、同じ入力で 2 回まで呼び直す。
  * 完全な応答が得られたら、その応答の全部（描写・講評も）を使う。得られなければ、根拠が空でない応答を優先し、同じなら先のものを使う。
  * 呼び直しが失敗したら、そこでやめて、それまでの応答から選ぶ。
- * 3 語未満の発話を 0 点にするのと、strength・rewrite の引用の確かめ（feedback.ts の checkedNotes）は、呼ぶ側で行う
+ * 3 語未満の発話を 0 点にするのと、rewrite の引用の確かめ（feedback.ts の checkedRewrite）は、呼ぶ側（index.ts）で行う
  */
 export async function gradeWithChecklist(
   env: ScoringEnv,

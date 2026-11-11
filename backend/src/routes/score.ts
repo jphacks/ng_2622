@@ -17,7 +17,7 @@ export const scoreRoutes = new Hono<AppEnv>().post(
     tags: ["scoring"],
     summary: "配置と文字起こしから採点する",
     description:
-      "場面の配置の JSON（items と description）と発話の文字起こしを送る。部品のメタデータ（名前・words・大きさ）と配置（座標・向き・動き）、説明文を Claude に渡し、内容と表現を採点基準の段階（0・20・40・60・80・100）で付けて講評を返す。画像は使わず、話し方（発音）の点も付けない。",
+      "場面の配置の JSON（scenenglish.scene/2 のうち difficulty・description・checklist・items）と発話の文字起こしを送る。部屋の採点と同じチェックリストの採点で、内容（チェックリストの達成と正しさの F1）と表現（級の文法の一覧に照らした段階）を付け、内容の内訳と講評を返す。音声は受けず、話し方（発音）の点は付けない。",
     responses: {
       200: { description: "採点した", content: jsonContent(ScoreResponse) },
       400: errorResponse(
@@ -31,7 +31,7 @@ export const scoreRoutes = new Hono<AppEnv>().post(
       return c.json(
         errorBody(
           "invalid_message",
-          "layout（items は 1〜40 個）と transcript（1〜2000 文字）を送る。speech の点は 0〜100 の整数",
+          "layout（difficulty・id の重ならない checklist・1〜40 個の items）と transcript（1〜2000 文字）を送る。speech の点は 0〜100 の整数",
         ),
         400,
       );

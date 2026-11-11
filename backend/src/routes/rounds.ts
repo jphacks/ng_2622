@@ -16,6 +16,7 @@ const errorStatus = {
   room_not_found: 404,
   not_playing: 409,
   already_submitted: 409,
+  deadline_passed: 409,
 } as const;
 
 const errorResponse = (description: string) => ({
@@ -59,7 +60,7 @@ export const roundRoutes = new Hono<AppEnv>().post(
       401: errorResponse("参加者の ID と合言葉が合わない（unauthorized）"),
       404: errorResponse("部屋が無い（room_not_found）"),
       409: errorResponse(
-        "ラウンド中でない・番号が違う・参加していない（not_playing）、またはもう送った（already_submitted）",
+        "ラウンド中でない・番号が違う・参加していない（not_playing）、もう送った（already_submitted）、または音声の締め切りを過ぎた（deadline_passed）",
       ),
       413: errorResponse("1 MB を超えている（invalid_audio）"),
     },
