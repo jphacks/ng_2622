@@ -1,0 +1,103 @@
+{
+  "protocol": "scenenglish.scene/2",
+  "id": "gen-v2-eiken3-classroom-06",
+  "name": "教室の二人",
+  "difficulty": "eiken-3",
+  "description": "A woman is writing on the blackboard. A boy is sleeping at his desk. There is a book on the desk.",
+  "checklist": [
+    {
+      "id": "woman_write",
+      "kind": "center",
+      "label": "女の人が黒板に書いている",
+      "accept": "a woman is writing on the blackboard",
+      "refs": ["woman", "blackboard"]
+    },
+    {
+      "id": "boy_sleep",
+      "kind": "center",
+      "label": "男の子が机で寝ている",
+      "accept": "a boy is sleeping at his desk",
+      "refs": ["boy", "desk"]
+    },
+    {
+      "id": "book_desk",
+      "kind": "detail",
+      "label": "机の上に本がある",
+      "accept": "there is a book on the desk",
+      "refs": ["book", "desk"]
+    }
+  ],
+  "items": [
+    {
+      "key": "ground",
+      "part": "floor_classroom",
+      "place": {
+        "relation": "ground"
+      },
+      "position": [0, 0, 0]
+    },
+    {
+      "key": "blackboard",
+      "part": "wall_blackboard",
+      "place": {
+        "relation": "ground"
+      },
+      "position": [0, 0, -3.88]
+    },
+    {
+      "key": "woman",
+      "part": "person_blackboard_woman_a",
+      "place": {
+        "relation": "relate",
+        "target": "blackboard",
+        "link": "hand",
+        "side": "front",
+        "distance": "touch",
+        "turn": "toward"
+      },
+      "position": [-0.723, 0, -3.501],
+      "yaw": 180
+    },
+    {
+      "key": "desk",
+      "part": "table_small",
+      "place": {
+        "relation": "ground",
+        "zone": "center"
+      },
+      "facing": "away",
+      "position": [0, 0, 0],
+      "yaw": 180
+    },
+    {
+      "key": "chair",
+      "part": "chair",
+      "place": {
+        "relation": "seat_at",
+        "target": "desk"
+      },
+      "facing": "desk",
+      "position": [0, 0, 0.595],
+      "yaw": 180
+    },
+    {
+      "key": "boy",
+      "part": "person_sleep_teen_a",
+      "place": {
+        "relation": "sit_on",
+        "target": "chair"
+      },
+      "position": [0, -0.02, 0.395],
+      "yaw": 180
+    },
+    {
+      "key": "book",
+      "part": "book",
+      "place": {
+        "relation": "on",
+        "target": "desk"
+      },
+      "position": [0, 0.72, 0]
+    }
+  ]
+}

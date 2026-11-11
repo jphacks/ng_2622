@@ -1,0 +1,145 @@
+{
+  "protocol": "scenenglish.scene/2",
+  "id": "gen-v2-pre2-library-20",
+  "name": "図書館で机を運ぶ",
+  "difficulty": "eiken-pre2",
+  "description": "A boy is carrying a desk because it is too big for one person. A girl is carrying the desk too. A man is sitting on a chair and reading a book. There is a bookshelf behind the girl. There is a table next to the man.",
+  "checklist": [
+    {
+      "id": "boy_carry",
+      "kind": "center",
+      "label": "男の子が机を運んでいる",
+      "accept": "a boy is carrying a desk",
+      "refs": ["boy", "desk"]
+    },
+    {
+      "id": "girl_carry",
+      "kind": "center",
+      "label": "女の子も机を運んでいる",
+      "accept": "a girl is carrying the desk too",
+      "refs": ["girl", "desk"]
+    },
+    {
+      "id": "man_read",
+      "kind": "center",
+      "label": "男の人が本を読んでいる",
+      "accept": "a man is sitting on a chair and reading a book",
+      "refs": ["man", "chair"]
+    },
+    {
+      "id": "why_carry",
+      "kind": "reason",
+      "label": "男の子が机を運んでいる理由",
+      "accept": "a boy is carrying a desk because it is too big for one person",
+      "refs": ["boy", "desk"]
+    },
+    {
+      "id": "bookshelf",
+      "kind": "detail",
+      "label": "女の子の後ろに本棚がある",
+      "accept": "there is a bookshelf behind the girl",
+      "refs": ["bookshelf", "girl"]
+    },
+    {
+      "id": "table",
+      "kind": "detail",
+      "label": "男の人の隣にテーブルがある",
+      "accept": "there is a table next to the man",
+      "refs": ["table", "man"]
+    }
+  ],
+  "items": [
+    {
+      "key": "ground",
+      "part": "floor_carpet",
+      "place": {
+        "relation": "ground"
+      },
+      "position": [0, 0, 0]
+    },
+    {
+      "key": "wall",
+      "part": "wall_window",
+      "place": {
+        "relation": "ground"
+      },
+      "position": [0, 0, -3.86]
+    },
+    {
+      "key": "desk",
+      "part": "table_small",
+      "place": {
+        "relation": "ground",
+        "zone": "center"
+      },
+      "position": [1.075, 0, -0.985]
+    },
+    {
+      "key": "boy",
+      "part": "person_lift_desk_boy_a",
+      "place": {
+        "relation": "relate",
+        "target": "desk",
+        "link": "hand",
+        "side": "left",
+        "distance": "touch",
+        "turn": "toward"
+      },
+      "position": [1.578, 0, -1.165],
+      "yaw": -90
+    },
+    {
+      "key": "girl",
+      "part": "person_lift_desk_girl_a",
+      "place": {
+        "relation": "relate",
+        "target": "desk",
+        "link": "hand",
+        "side": "right",
+        "distance": "touch",
+        "turn": "toward"
+      },
+      "position": [0.553, 0, -0.805],
+      "yaw": 90
+    },
+    {
+      "key": "bookshelf",
+      "part": "bookshelf",
+      "place": {
+        "relation": "behind",
+        "target": "girl"
+      },
+      "position": [-0.505, 0, -0.805]
+    },
+    {
+      "key": "chair",
+      "part": "chair",
+      "place": {
+        "relation": "ground",
+        "zone": "front_left"
+      },
+      "facing": "camera",
+      "position": [-1.675, 0, 1.765],
+      "yaw": 90
+    },
+    {
+      "key": "man",
+      "part": "person_read_sit_adult_a",
+      "place": {
+        "relation": "sit_on",
+        "target": "chair"
+      },
+      "position": [-1.475, -0.02, 1.765],
+      "yaw": 90
+    },
+    {
+      "key": "table",
+      "part": "table",
+      "place": {
+        "relation": "next_to",
+        "target": "man"
+      },
+      "position": [-0.385, 0, 1.765]
+    }
+  ]
+}

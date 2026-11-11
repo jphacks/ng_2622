@@ -1,0 +1,146 @@
+{
+  "protocol": "scenenglish.scene/2",
+  "id": "gen-v2-eiken2-train-station-04",
+  "name": "駅のホームで転んだ女の人",
+  "difficulty": "eiken-2",
+  "description": "A woman has fallen down on the platform. A man is helping her get up because she has fallen down. A man is running with a bag so that he can catch the train. A girl is looking far away. There is a sign on the platform. The train is at the platform.",
+  "checklist": [
+    {
+      "id": "woman_fallen",
+      "kind": "center",
+      "label": "女の人が転んで倒れている",
+      "accept": "a woman has fallen down",
+      "refs": ["woman"]
+    },
+    {
+      "id": "man_help",
+      "kind": "center",
+      "label": "男の人が女の人を助け起こしている",
+      "accept": "a man is helping her get up",
+      "refs": ["helper_man", "woman"]
+    },
+    {
+      "id": "man_run",
+      "kind": "center",
+      "label": "別の男の人が走っている",
+      "accept": "a man is running with a bag",
+      "refs": ["runner_man"]
+    },
+    {
+      "id": "girl_look",
+      "kind": "center",
+      "label": "女の子が遠くを見ている",
+      "accept": "a girl is looking far away",
+      "refs": ["girl"]
+    },
+    {
+      "id": "why_help",
+      "kind": "reason",
+      "label": "男の人が助けている理由",
+      "accept": "a man is helping her get up because she has fallen down",
+      "refs": ["helper_man", "woman"]
+    },
+    {
+      "id": "link_run",
+      "kind": "link",
+      "label": "男の人が走っている理由と目的",
+      "accept": "a man is running with a bag so that he can catch the train",
+      "refs": ["runner_man", "train"]
+    },
+    {
+      "id": "sign_detail",
+      "kind": "detail",
+      "label": "ホームに看板がある",
+      "accept": "there is a sign on the platform",
+      "refs": ["sign", "platform"]
+    },
+    {
+      "id": "train_detail",
+      "kind": "detail",
+      "label": "電車がホームにいる",
+      "accept": "the train is at the platform",
+      "refs": ["train", "platform"]
+    }
+  ],
+  "items": [
+    {
+      "key": "platform",
+      "part": "platform_station",
+      "place": {
+        "relation": "ground"
+      },
+      "position": [0, 0, 0]
+    },
+    {
+      "key": "train",
+      "part": "train",
+      "place": {
+        "relation": "ground",
+        "zone": "back"
+      },
+      "position": [0, 0, -2.684]
+    },
+    {
+      "key": "sign",
+      "part": "station_sign",
+      "place": {
+        "relation": "ground",
+        "zone": "left"
+      },
+      "facing": "camera",
+      "position": [-2.75, 0, 0]
+    },
+    {
+      "key": "woman",
+      "part": "person_fallen_woman_a",
+      "place": {
+        "relation": "ground",
+        "zone": "front"
+      },
+      "facing": "camera",
+      "position": [0, 0, 2.75],
+      "yaw": 65
+    },
+    {
+      "key": "helper_man",
+      "part": "person_help_up_adult_a",
+      "place": {
+        "relation": "relate",
+        "target": "woman",
+        "link": "hand",
+        "side": "right",
+        "distance": "talk",
+        "turn": "toward"
+      },
+      "position": [0.413, 0, 2.102],
+      "yaw": -25
+    },
+    {
+      "key": "runner_man",
+      "part": "person_run_bag_adult_a",
+      "place": {
+        "relation": "ground",
+        "zone": "front_right"
+      },
+      "position": [2.795, 0, 2.839],
+      "yaw": -153.2,
+      "motion": {
+        "type": "move",
+        "to": [2.087, 0, 1.439],
+        "duration": 5,
+        "toward": "train"
+      }
+    },
+    {
+      "key": "girl",
+      "part": "person_look_girl_a",
+      "place": {
+        "relation": "ground",
+        "zone": "front_left"
+      },
+      "facing": "camera",
+      "position": [-2.75, 0, 2.75],
+      "yaw": 65
+    }
+  ]
+}

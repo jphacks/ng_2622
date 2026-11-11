@@ -1,6 +1,6 @@
 {
   "protocol": "scenenglish.scene/2",
-  "id": "temp-eiken-pre2-bus-stop",
+  "id": "gen-v2-sample-bus-stop-02",
   "name": "雨のバス停",
   "difficulty": "eiken-pre2",
   "description": "It is raining at the bus stop. A girl is holding an umbrella. A boy is running to the bus stop because it is raining. A man is reading a book. The man is sitting on the bench.",
@@ -30,7 +30,7 @@
       "id": "why_run",
       "kind": "reason",
       "label": "男の子が走っている理由",
-      "accept": "a boy is running to the bus stop because it is raining / because he has no umbrella",
+      "accept": "a boy is running to the bus stop because it is raining",
       "refs": ["boy", "rain"]
     },
     {

@@ -1,0 +1,193 @@
+{
+  "protocol": "scenenglish.scene/2",
+  "id": "gen-v2-eiken2-classroom-18",
+  "name": "教室の黒板とノート",
+  "difficulty": "eiken-2",
+  "description": "A woman is writing on the blackboard so that the children can read it. A girl is writing at a desk because the woman is writing on the blackboard. A boy is raising his hand. A tall boy is looking at the girl next to him. There is a plant next to the blackboard. There is a bag under the chair.",
+  "checklist": [
+    {
+      "id": "woman_write",
+      "kind": "center",
+      "label": "女の人が黒板に書いている",
+      "accept": "a woman is writing on the blackboard",
+      "refs": ["woman", "blackboard"]
+    },
+    {
+      "id": "girl_write",
+      "kind": "center",
+      "label": "女の子が机で書いている",
+      "accept": "a girl is writing at a desk",
+      "refs": ["girl"]
+    },
+    {
+      "id": "boy_hand",
+      "kind": "center",
+      "label": "男の子が手を挙げている",
+      "accept": "a boy is raising his hand",
+      "refs": ["boy"]
+    },
+    {
+      "id": "tall_look",
+      "kind": "center",
+      "label": "背の高い男の子が隣の女の子を見ている",
+      "accept": "a tall boy is looking at the girl next to him",
+      "refs": ["tall_boy", "girl"]
+    },
+    {
+      "id": "why_girl_write",
+      "kind": "reason",
+      "label": "女の子が書いている理由",
+      "accept": "a girl is writing at a desk because the woman is writing on the blackboard",
+      "refs": ["girl", "woman"]
+    },
+    {
+      "id": "link_blackboard",
+      "kind": "link",
+      "label": "女の人が黒板に書く目的",
+      "accept": "a woman is writing on the blackboard so that the children can read it",
+      "refs": ["woman", "blackboard"]
+    },
+    {
+      "id": "plant_board",
+      "kind": "detail",
+      "label": "黒板の横に植木鉢がある",
+      "accept": "there is a plant next to the blackboard",
+      "refs": ["plant", "blackboard"]
+    },
+    {
+      "id": "bag_chair",
+      "kind": "detail",
+      "label": "椅子の下にかばんがある",
+      "accept": "there is a bag under the chair",
+      "refs": ["bag", "chair"]
+    }
+  ],
+  "items": [
+    {
+      "key": "ground",
+      "part": "floor_classroom",
+      "place": {
+        "relation": "ground"
+      },
+      "position": [0, 0, 0]
+    },
+    {
+      "key": "blackboard",
+      "part": "wall_blackboard",
+      "place": {
+        "relation": "ground"
+      },
+      "position": [0, 0, -3.88]
+    },
+    {
+      "key": "plant",
+      "part": "plant_pot",
+      "place": {
+        "relation": "ground",
+        "zone": "back_right"
+      },
+      "position": [2.75, 0, -2.75]
+    },
+    {
+      "key": "woman",
+      "part": "person_blackboard_woman_a",
+      "place": {
+        "relation": "relate",
+        "target": "blackboard",
+        "link": "hand",
+        "side": "front",
+        "distance": "touch",
+        "turn": "toward"
+      },
+      "position": [-0.723, 0, -3.501],
+      "yaw": 180
+    },
+    {
+      "key": "desk1",
+      "part": "table_small",
+      "place": {
+        "relation": "ground",
+        "zone": "left"
+      },
+      "facing": "away",
+      "position": [-2.75, 0, 0],
+      "yaw": 180
+    },
+    {
+      "key": "chair",
+      "part": "chair",
+      "place": {
+        "relation": "seat_at",
+        "target": "desk1"
+      },
+      "facing": "desk1",
+      "position": [-2.75, 0, 0.595],
+      "yaw": 180
+    },
+    {
+      "key": "girl",
+      "part": "person_write_girl_a",
+      "place": {
+        "relation": "sit_on",
+        "target": "chair"
+      },
+      "position": [-2.749, 0.1, 0.464],
+      "yaw": 180
+    },
+    {
+      "key": "bag",
+      "part": "bag",
+      "place": {
+        "relation": "under",
+        "target": "chair"
+      },
+      "position": [-2.75, 0, 0.595]
+    },
+    {
+      "key": "desk2",
+      "part": "table_small",
+      "place": {
+        "relation": "ground",
+        "zone": "right"
+      },
+      "facing": "away",
+      "position": [2.75, 0, 0],
+      "yaw": 180
+    },
+    {
+      "key": "chair2",
+      "part": "chair",
+      "place": {
+        "relation": "seat_at",
+        "target": "desk2"
+      },
+      "facing": "desk2",
+      "position": [2.75, 0, 0.595],
+      "yaw": 180
+    },
+    {
+      "key": "boy",
+      "part": "person_raise_hand_boy_a",
+      "place": {
+        "relation": "sit_on",
+        "target": "chair2"
+      },
+      "position": [2.704, 0.1, 0.445],
+      "yaw": 180
+    },
+    {
+      "key": "tall_boy",
+      "part": "person_look_boy_a",
+      "place": {
+        "relation": "relate",
+        "target": "girl",
+        "link": "body",
+        "side": "right",
+        "distance": "beside",
+        "turn": "toward"
+      },
+      "position": [-3.428, 0, 0.61],
+      "yaw": 90
+    }
+  ]
+}

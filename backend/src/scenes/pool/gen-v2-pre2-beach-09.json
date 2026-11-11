@@ -1,0 +1,133 @@
+{
+  "protocol": "scenenglish.scene/2",
+  "id": "gen-v2-pre2-beach-09",
+  "name": "砂浜の砂の城",
+  "difficulty": "eiken-pre2",
+  "description": "A boy is building a sand castle. A girl is carrying a bucket of water because the boy is building a sand castle. A woman is sitting on the beach. There is a ball next to the sand castle. There is a balloon next to the woman.",
+  "checklist": [
+    {
+      "id": "boy_build",
+      "kind": "center",
+      "label": "男の子が砂の城を作っている",
+      "accept": "a boy is building a sand castle",
+      "refs": ["boy", "sand_castle"]
+    },
+    {
+      "id": "girl_carry",
+      "kind": "center",
+      "label": "女の子がバケツの水を運んでいる",
+      "accept": "a girl is carrying a bucket of water",
+      "refs": ["girl", "boy"]
+    },
+    {
+      "id": "woman_sit",
+      "kind": "center",
+      "label": "女の人が座っている",
+      "accept": "a woman is sitting",
+      "refs": ["woman"]
+    },
+    {
+      "id": "why_carry",
+      "kind": "reason",
+      "label": "女の子が水を運ぶ理由",
+      "accept": "a girl is carrying a bucket of water because the boy is building a sand castle",
+      "refs": ["girl", "boy", "sand_castle"]
+    },
+    {
+      "id": "ball_castle",
+      "kind": "detail",
+      "label": "砂の城の隣にボールがある",
+      "accept": "there is a ball next to the sand castle",
+      "refs": ["ball", "sand_castle"]
+    },
+    {
+      "id": "balloon_woman",
+      "kind": "detail",
+      "label": "女の人の隣に風船がある",
+      "accept": "there is a balloon next to the woman",
+      "refs": ["balloon", "woman"]
+    }
+  ],
+  "items": [
+    {
+      "key": "ground",
+      "part": "sand_beach",
+      "place": {
+        "relation": "ground"
+      },
+      "position": [0, 0, 0]
+    },
+    {
+      "key": "sand_castle",
+      "part": "sand_castle",
+      "place": {
+        "relation": "ground",
+        "zone": "center"
+      },
+      "position": [-0.437, 0, -1.02]
+    },
+    {
+      "key": "boy",
+      "part": "person_kneel_build_boy_a",
+      "place": {
+        "relation": "relate",
+        "target": "sand_castle",
+        "link": "hand",
+        "side": "front",
+        "distance": "touch",
+        "turn": "toward"
+      },
+      "position": [0.188, 0, -1.17],
+      "yaw": -90
+    },
+    {
+      "key": "girl",
+      "part": "person_bucket_girl_a",
+      "place": {
+        "relation": "ground",
+        "zone": "front_left"
+      },
+      "facing": "camera",
+      "position": [-3.187, 0, 1.731],
+      "yaw": 90
+    },
+    {
+      "key": "ball",
+      "part": "ball_red",
+      "place": {
+        "relation": "next_to",
+        "target": "sand_castle"
+      },
+      "position": [-1.077, 0, -1.02]
+    },
+    {
+      "key": "chair",
+      "part": "chair",
+      "place": {
+        "relation": "ground",
+        "zone": "right"
+      },
+      "position": [2.313, 0, -1.02],
+      "yaw": 90
+    },
+    {
+      "key": "woman",
+      "part": "person_sit_woman_a",
+      "place": {
+        "relation": "sit_on",
+        "target": "chair"
+      },
+      "position": [2.488, -0.02, -1.02],
+      "yaw": 90
+    },
+    {
+      "key": "balloon",
+      "part": "balloon",
+      "place": {
+        "relation": "next_to",
+        "target": "woman"
+      },
+      "position": [3.222, -0.02, -1.02]
+    }
+  ]
+}

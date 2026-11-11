@@ -15,7 +15,7 @@
 .github/          PR・issue テンプレート、ラベル定義、Actions（pr-checks・format-check・Discord 通知・backend の検査・PR ごとのプレビュー・デプロイ）
 .claude/skills/   共有の Claude Code skill（.agents は .claude への symlink）
 backend/          バックエンド（Hono on Cloudflare Workers）。PR ごとにプレビュー、main に入るとデプロイされる
-backend/src/scenes/pool/ AI で作り置いた場面（配置の JSON、scenenglish.scene/2）と、級ごとの一覧の index.json。今は仮の場面（temp-…）。Worker に同梱し、iOS の Mock もビルドで写して使う
+backend/src/scenes/pool/ AI で作り置いた場面（配置の JSON、scenenglish.scene/2）と、級ごとの一覧の index.json。今は人が絵で選んだ 30 場面（gen-v2-…）。Worker に同梱し、iOS の Mock もビルドで写して使う
 docs/adr/         設計・運用の意思決定ログ
 docs/design/      仕様の正本（使い方・画面の流れ・アーキテクチャ・採点・コスト対策）
 docs/design/ui/   画面設計書の元データ（screens/*.md、仮の画面の画像）
@@ -87,8 +87,9 @@ uv run --with matplotlib python3 scripts/revenue/build.py  # 収益モデルの�
 python3 scripts/scene/preview_parts.py      # 3D の部品を 1 個ずつ回して見る assets/parts/build/preview.html を生成（要 Blender・npm。commit しない）
 blender --background --factory-startup --python scripts/scene/park.py  # 3D シーン assets/scenes/park.usdz と画像を生成（classroom.py・station.py・rainy_street.py・beach.py・cafe.py も同じ。要 Blender 4.5 LTS）
 blender --background --factory-startup --python scripts/scene/parts.py  # 部品 assets/parts/<id>/1.usdz・1.json と index.json を生成（-- --only <id> で 1 個だけ。確かめは check_parts.py、-- --sheet で一覧の画像も作る）
-blender --background --factory-startup --python scripts/scene/render_layout.py -- scripts/scene/samples/*.json --out <dir>  # 配置の JSON を部品で組んで <dir>/<名前>.png に描く（AI が作った場面の目での確かめ用。下の欄は古い形 scenenglish.scene/1 の elements を書く作りのままで、/2 の checklist は出ない）
+blender --background --factory-startup --python scripts/scene/render_layout.py -- scripts/scene/samples/*.json --out <dir>  # 配置の JSON（scenenglish.scene/2）を部品で組んで <dir>/<名前>.png に描く。下の欄に見本の答えと checklist を全部書く（AI が作った場面の目での確かめ用）
 python3 scripts/scene/make_pool.py --url http://localhost:8799 --out <dir> --count 14  # 作り置きの場面の候補を手元の wrangler dev でまとめて作り、PNG と一覧の画像を作る（手順は backend/README.md の「作り置きの場面を作る」）
+(cd backend && CLAUDE_API_KEY=... pnpm tsx scripts/make-pool-v2.ts <dir>)  # 級に合った作り置きの場面（scenenglish.scene/2）の候補をまとめて作る（Claude を呼ぶので費用がかかる。手順は backend/README.md の「/2 の作り置きをまとめて作る」）
 (cd backend && pnpm install && pnpm dev)    # バックエンドを手元で起動（http://localhost:8787/health）
 (cd backend && pnpm typecheck)              # バックエンドの型チェック
 (cd backend && pnpm test)                   # バックエンドの単体テスト（関係 → 座標の計算・場面の生成と裏取り・チェックリストの採点・部屋など）

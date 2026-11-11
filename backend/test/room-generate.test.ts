@@ -5,6 +5,7 @@ import app from "../src/app";
 import type { RoomState } from "../src/domain/room";
 import { roundDeadlines } from "../src/domain/round";
 import {
+  EXAMPLE_ANSWER,
   EXAMPLE_GRADE,
   EXAMPLE_ITEMS,
   EXAMPLE_SENTENCES,
@@ -28,6 +29,8 @@ const OFF = { ...ON, SCENE_GENERATION: "off" };
 
 // 2 段の生成の応答。1 回目は英文の部分、2 回目は部品と関係（generate-v2.ts の例。eiken-pre2 の裏取りを通る）
 const SENTENCES = EXAMPLE_SENTENCES;
+// 1 回目の応答は文の配列で書く形（保存する形の SENTENCES はコードが直したもの）
+const ANSWER = EXAMPLE_ANSWER;
 const ITEMS = { items: EXAMPLE_ITEMS };
 const GRADE = EXAMPLE_GRADE;
 
@@ -62,7 +65,7 @@ const stubClaude = (
 /** 1 回目に英文、2 回目に部品を返す Claude（場面が 1 つできる） */
 const sceneClaude = (items: unknown = ITEMS) => {
   const calls = stubClaude(() =>
-    claudeMessage("end_turn", calls.length % 2 === 1 ? SENTENCES : items),
+    claudeMessage("end_turn", calls.length % 2 === 1 ? ANSWER : items),
   );
   return calls;
 };
@@ -73,7 +76,7 @@ const heldClaude = () => {
   const calls = stubClaude(() =>
     calls.length === 1
       ? new Promise<Response>((resolve) => {
-          release = () => resolve(claudeMessage("end_turn", SENTENCES));
+          release = () => resolve(claudeMessage("end_turn", ANSWER));
         })
       : claudeMessage("end_turn", ITEMS),
   );
@@ -127,7 +130,7 @@ test("生成が on なら generating を配ってから AI の場面でラウン
 
 test("生成に失敗したら、黙って同じ難易度の作り置きの場面で始める", async () => {
   for (const reply of [
-    () => claudeMessage("refusal", SENTENCES),
+    () => claudeMessage("refusal", ANSWER),
     () => claudeMessage("end_turn", { nope: true }),
     () => new Response("oops", { status: 500 }),
     () => {
@@ -318,7 +321,7 @@ test("2 段の合計が待ち時間の上限を超えたら、各段が上限の
       new Promise<Response>((resolve, reject) => {
         const n = calls.length;
         const timer = setTimeout(
-          () => resolve(claudeMessage("end_turn", n === 1 ? SENTENCES : ITEMS)),
+          () => resolve(claudeMessage("end_turn", n === 1 ? ANSWER : ITEMS)),
           40,
         );
         init?.signal?.addEventListener("abort", () => {

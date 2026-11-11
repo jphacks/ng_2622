@@ -1,0 +1,130 @@
+{
+  "protocol": "scenenglish.scene/2",
+  "id": "gen-v2-pre2-beach-21",
+  "name": "砂浜で風船を取る",
+  "difficulty": "eiken-pre2",
+  "description": "A balloon is in the tree on the beach. A man is reaching for the balloon with a stick because it is high in the tree. A girl is looking far away. A woman is walking on the beach. There is a bench next to the tree.",
+  "checklist": [
+    {
+      "id": "man_reach",
+      "kind": "center",
+      "label": "男の人が棒で届こうとしている",
+      "accept": "a man is reaching for the balloon",
+      "refs": ["man", "balloon"]
+    },
+    {
+      "id": "girl_look",
+      "kind": "center",
+      "label": "女の子が遠くを見ている",
+      "accept": "a girl is looking far away",
+      "refs": ["girl"]
+    },
+    {
+      "id": "woman_walk",
+      "kind": "center",
+      "label": "女の人が歩いている",
+      "accept": "a woman is walking on the beach",
+      "refs": ["woman"]
+    },
+    {
+      "id": "why_reach",
+      "kind": "reason",
+      "label": "男の人が棒を使う理由",
+      "accept": "a man is reaching for the balloon with a stick because it is high in the tree",
+      "refs": ["man", "balloon", "tree"]
+    },
+    {
+      "id": "balloon_tree",
+      "kind": "detail",
+      "label": "風船が木の中にある",
+      "accept": "a balloon is in the tree on the beach",
+      "refs": ["balloon", "tree"]
+    },
+    {
+      "id": "bench_tree",
+      "kind": "detail",
+      "label": "木の隣にベンチがある",
+      "accept": "there is a bench next to the tree",
+      "refs": ["bench", "tree"]
+    }
+  ],
+  "items": [
+    {
+      "key": "ground",
+      "part": "sand_beach",
+      "place": {
+        "relation": "ground"
+      },
+      "position": [0, 0, 0]
+    },
+    {
+      "key": "tree",
+      "part": "tree",
+      "place": {
+        "relation": "ground",
+        "zone": "front"
+      },
+      "position": [0.025, 0, 1.317]
+    },
+    {
+      "key": "balloon",
+      "part": "balloon",
+      "place": {
+        "relation": "in",
+        "target": "tree"
+      },
+      "position": [0.025, 2.141, 2.033]
+    },
+    {
+      "key": "man",
+      "part": "person_poke_adult_a",
+      "place": {
+        "relation": "relate",
+        "target": "tree",
+        "link": "body",
+        "side": "front",
+        "distance": "talk",
+        "turn": "toward"
+      },
+      "position": [1.655, 0, 1.337],
+      "yaw": -90
+    },
+    {
+      "key": "bench",
+      "part": "bench",
+      "place": {
+        "relation": "next_to",
+        "target": "tree"
+      },
+      "position": [-2.141, 0, 1.317]
+    },
+    {
+      "key": "girl",
+      "part": "person_look_girl_a",
+      "place": {
+        "relation": "ground",
+        "zone": "front_right"
+      },
+      "facing": "camera",
+      "position": [2.775, 0, 1.317],
+      "yaw": 90
+    },
+    {
+      "key": "woman",
+      "part": "person_walk_woman_a",
+      "place": {
+        "relation": "ground",
+        "zone": "left"
+      },
+      "facing": "right",
+      "position": [-2.725, 0, -1.433],
+      "yaw": 75.1,
+      "motion": {
+        "type": "move",
+        "to": [2.667, 0, 0],
+        "duration": 6,
+        "toward": "right"
+      }
+    }
+  ]
+}

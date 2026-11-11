@@ -33,7 +33,7 @@ const REASON_SEEDS: { needs: string[]; text: string }[] = [
   },
   {
     needs: ["poke", "balloon"],
-    text: "a balloon is caught high in a tree -> a man reaches it with a stick -> to get it down",
+    text: "a balloon is caught high in a tree (keep the tree in a front or center zone so the balloon stays in the picture) -> a man reaches it with a stick -> to get it down",
   },
   {
     needs: ["take_order", "sit"],

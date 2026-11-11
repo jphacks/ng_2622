@@ -1,0 +1,86 @@
+{
+  "protocol": "scenenglish.scene/2",
+  "id": "gen-v2-eiken3-park-01",
+  "name": "公園の犬と男の子",
+  "difficulty": "eiken-3",
+  "description": "A dog is sitting on the grass. A boy is running. There is a bench next to the tree.",
+  "checklist": [
+    {
+      "id": "dog_sit",
+      "kind": "center",
+      "label": "犬が座っている",
+      "accept": "a dog is sitting on the grass",
+      "refs": ["dog"]
+    },
+    {
+      "id": "boy_run",
+      "kind": "center",
+      "label": "男の子が走っている",
+      "accept": "a boy is running",
+      "refs": ["boy"]
+    },
+    {
+      "id": "bench_tree",
+      "kind": "detail",
+      "label": "木の隣にベンチがある",
+      "accept": "there is a bench next to the tree",
+      "refs": ["bench", "tree"]
+    }
+  ],
+  "items": [
+    {
+      "key": "ground",
+      "part": "grass_patch",
+      "place": {
+        "relation": "ground"
+      },
+      "position": [0, 0, 0]
+    },
+    {
+      "key": "tree",
+      "part": "tree",
+      "place": {
+        "relation": "ground",
+        "zone": "back_left"
+      },
+      "position": [-2.734, 0, -2.75]
+    },
+    {
+      "key": "bench",
+      "part": "bench",
+      "place": {
+        "relation": "next_to",
+        "target": "tree",
+        "side": "right"
+      },
+      "position": [-0.568, 0, -2.75]
+    },
+    {
+      "key": "dog",
+      "part": "animal_sit_dog_a",
+      "place": {
+        "relation": "ground",
+        "zone": "front_left"
+      },
+      "facing": "camera",
+      "position": [-2.75, 0, 2.75]
+    },
+    {
+      "key": "boy",
+      "part": "person_run_boy_a",
+      "place": {
+        "relation": "ground",
+        "zone": "front_right"
+      },
+      "facing": "left",
+      "position": [2.75, 0, 2.75],
+      "yaw": -90.9,
+      "motion": {
+        "type": "move",
+        "to": [-2.667, 0, 2.667],
+        "duration": 5,
+        "toward": "front_left"
+      }
+    }
+  ]
+}

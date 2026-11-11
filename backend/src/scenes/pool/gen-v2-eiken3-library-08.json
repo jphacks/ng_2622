@@ -1,0 +1,92 @@
+{
+  "protocol": "scenenglish.scene/2",
+  "id": "gen-v2-eiken3-library-08",
+  "name": "図書館の二人",
+  "difficulty": "eiken-3",
+  "description": "A man is reading a book. A girl is looking at the bookshelf. There is a table next to the bookshelf.",
+  "checklist": [
+    {
+      "id": "man_read",
+      "kind": "center",
+      "label": "男の人が本を読んでいる",
+      "accept": "a man is reading a book",
+      "refs": ["man"]
+    },
+    {
+      "id": "girl_look",
+      "kind": "center",
+      "label": "女の子が本棚を見ている",
+      "accept": "a girl is looking at the bookshelf",
+      "refs": ["girl", "bookshelf"]
+    },
+    {
+      "id": "shelf_table",
+      "kind": "detail",
+      "label": "本棚の隣にテーブルがある",
+      "accept": "there is a table next to the bookshelf",
+      "refs": ["table", "bookshelf"]
+    }
+  ],
+  "items": [
+    {
+      "key": "ground",
+      "part": "floor_carpet",
+      "place": {
+        "relation": "ground"
+      },
+      "position": [0, 0, 0]
+    },
+    {
+      "key": "wall",
+      "part": "wall_window",
+      "place": {
+        "relation": "ground"
+      },
+      "position": [0, 0, -3.86]
+    },
+    {
+      "key": "bookshelf",
+      "part": "bookshelf",
+      "place": {
+        "relation": "ground",
+        "zone": "left"
+      },
+      "position": [-2.38, 0, 0.3],
+      "yaw": -90
+    },
+    {
+      "key": "table",
+      "part": "table",
+      "place": {
+        "relation": "next_to",
+        "target": "bookshelf",
+        "side": "right"
+      },
+      "position": [-1.461, 0, 0.3]
+    },
+    {
+      "key": "girl",
+      "part": "person_look_girl_a",
+      "place": {
+        "relation": "relate",
+        "target": "bookshelf",
+        "link": "body",
+        "side": "front",
+        "distance": "talk",
+        "turn": "toward"
+      },
+      "position": [-3.247, 0, 0.315],
+      "yaw": 90
+    },
+    {
+      "key": "man",
+      "part": "person_read_adult_a",
+      "place": {
+        "relation": "ground",
+        "zone": "right"
+      },
+      "position": [3.12, 0, 0.3],
+      "yaw": -90
+    }
+  ]
+}

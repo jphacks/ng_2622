@@ -160,8 +160,8 @@ export const POSE_VERBS: Record<string, PoseVerbs> = {
   drink: { phrase: "drink from a cup", verbs: ["drink", "have"] },
   eat: { phrase: "eat an apple", verbs: ["eat", "have"] },
   fallen: {
-    phrase: "have fallen down (sitting on the ground)",
-    verbs: ["fall", "sit", "cry", "hurt", "slip", "trip", "lie"],
+    phrase: "have fallen down (lying face down on the ground)",
+    verbs: ["fall", "lie", "hurt", "slip", "trip"],
   },
   feed: { phrase: "feed a bird", verbs: ["feed", "give"] },
   help_up: {
@@ -320,12 +320,12 @@ export const verbLevel = (verb: string): CefrLevel =>
 type Posed = Pick<Part, "pose" | "words"> &
   Partial<Pick<Part, "category" | "anchors">>;
 
-// 立っているとは言えないポーズ（走る・歩く・地面に座り込む・ひざをつく）。名前の先頭で見分ける
+// 立っているとは言えないポーズ（走る・歩く・地面に倒れる・ひざをつく）。名前の先頭で見分ける
 const NOT_STANDING = ["run", "walk", "fallen", "kneel"];
 
 /**
  * 部品の姿勢。座るポーズは腰の基準点（anchors.hip）を持つ人、立つポーズはそれ以外の人のうち
- * 走る・歩く・座り込む・ひざをつくポーズでないもの。動物には付けない。
+ * 走る・歩く・倒れる・ひざをつくポーズでないもの。動物には付けない。
  * 立っている人は何をしていても「立っている」と言えるので、姿勢の動詞（stand・sit）は表に 1 行ずつ書かずここで足す
  */
 export const postureOf = (

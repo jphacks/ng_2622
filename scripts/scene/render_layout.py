@@ -1,9 +1,11 @@
-"""配置の JSON（scenenglish.scene/1）を読み、assets/parts/ の部品を並べて PNG に描く。
+"""配置の JSON（scenenglish.scene/2）を読み、assets/parts/ の部品を並べて PNG に描く。
 
 AI や人が書いた配置が、場面として組めているか（向き・接地・位置・大きさ）を目で確かめるためのもの。
 アプリと同じく、知らない部品は飛ばして警告を出し、残りを並べる。
 動き（motion）は描けないので、move は行き先への矢印、fall は真下への点線で示し、下の欄に文字でも添える。
-各部品の上には key を小さく書く。下の欄には name・difficulty・id・description・elements の label と配点を書く。
+各部品の上には key を小さく書く。下の欄には、名前・級・id、見本の答え（description）を 1 文ずつ、
+checklist を 1 項目ずつ「[kind] label | accept | refs」で、動きと警告を書く。欄の高さは中身に合わせて伸ばし、
+文字は欄の幅で折り返して全部書く（上の 3D の欄の大きさと見え方は変えない）。
 
 座標（scene-protocol.md の「座標」）: m・Y が上・正面 +Z・原点は底面の中心・yaw は度で上から見て反時計回り。
 Blender は Z が上なので、プロトコルの (x, y, z) を Blender の (x, -z, y) に置く。USDZ の読み込み（usd_import）が
@@ -12,7 +14,8 @@ Y が上を Z が上に直すので、部品の正面 +Z は Blender の -Y に�
 使い方:
   blender --background --factory-startup --python scripts/scene/render_layout.py -- <layout.json> [...] --out <dir>
   （--parts で部品の場所を変えられる。既定は assets/parts）
-<dir>/<JSON のファイル名>.png に書き出す。
+<dir>/<JSON のファイル名>.png に書き出す。画像の幅は 1280 px、高さは 3D の欄（672 px）＋下の欄（中身による）。
+--clean なら下の欄を描かず、3D の欄だけの 1280 x 672 にする。
 """
 from __future__ import annotations
 
@@ -27,11 +30,13 @@ import bpy
 from mathutils import Vector
 
 REPO = Path(__file__).resolve().parents[2]
-PROTOCOL = "scenenglish.scene/1"
+PROTOCOL = "scenenglish.scene/2"
 SIZE = 8.0                    # 場面の一辺（m）
-WIDTH, HEIGHT = 1280, 960     # PNG の大きさ（px）
-PANEL = 0.30                  # 下の文字の欄が占める高さの割合
-FOV_Y = 30.0                  # 縦の画角（度）
+WIDTH = 1280                  # PNG の幅（px）
+SCENE_H = 672                 # 上の 3D の欄の高さ（px）。下の文字の欄は中身に合わせて伸ばす
+FOV_Y = 30.0                  # 縦の画角（度）。縦 960 px に対する値で、1 px の見え方をこれで固定する
+PX = 2 * math.tan(math.radians(FOV_Y) / 2) / 960   # カメラから 1 m の所での 1 px の大きさ
+MARGIN = 28                   # 下の欄の余白（px）
 TILT = 28.0                   # 見下ろす角度（度。アプリの SceneOrbit.defaultTilt と同じ）
 DISTANCE = 17.5               # 注視点からカメラまで（m）
 TARGET = (0.0, 0.6, 0.0)      # 注視点（プロトコルの座標）
@@ -197,24 +202,53 @@ def text(name: str, body: str, size: float, mat, font, parent=None, loc=(0, 0, 0
     return obj
 
 
-def wrap(body: str, max_em: float) -> list[str]:
-    """全角を 1、半角を 0.55 文字分として、max_em 文字分の幅で折り返す。英語は語の切れ目で折る。"""
-    lines, line, width = [], "", 0.0
+# 文字の送り幅（大きさ 1 のとき）。Blender で 1 文字ずつ測って覚えておく（場面をまたいで使う）
+ADVANCE: dict[str, float] = {}
+
+
+def advance(c: str, font) -> float:
+    """1 文字の送り幅。|ccccccc| の幅から || の幅を引いて 8 で割る（字形の余白や空白も含めて測るため）。"""
+    if c not in ADVANCE:
+        def width(body: str) -> float:
+            curve = bpy.data.curves.new("measure", "FONT")
+            curve.body = body
+            curve.size = 1.0
+            if font:
+                curve.font = font
+            obj = bpy.data.objects.new("measure", curve)
+            bpy.context.scene.collection.objects.link(obj)
+            bpy.context.view_layer.update()
+            w = obj.dimensions.x
+            bpy.data.objects.remove(obj)
+            bpy.data.curves.remove(curve)
+            return w
+        if "||" not in ADVANCE:
+            ADVANCE["||"] = width("||")
+        ADVANCE[c] = (width("|" + c * 8 + "|") - ADVANCE["||"]) / 8
+    return ADVANCE[c]
+
+
+def wrap(body: str, max_width: float, size: float, font) -> list[str]:
+    """body を、大きさ size の文字で幅 max_width に収まるよう折り返す。英語は語の切れ目、日本語は 1 文字ずつで折る。"""
+    def width(t: str) -> float:
+        return sum(advance(c, font) for c in t) * size
+    lines, line = [], ""
     for token in re.findall(r"[!-~]+\s*|\s+|[^ -~]", body):
-        w = sum(0.55 if " " <= c <= "~" else 1.0 for c in token)
-        if width + w > max_em and line:
+        if line and width((line + token).rstrip()) > max_width:
             lines.append(line.rstrip())
-            line, width = token.lstrip(), sum(0.55 if " " <= c <= "~" else 1.0 for c in token.lstrip())
+            line = token.lstrip()
         else:
-            line, width = line + token, width + w
+            line += token
     if line.strip():
         lines.append(line.rstrip())
-    return lines
+    return lines or [""]
 
 
 def motion_text(key: str, m: dict) -> str:
     t = m.get("type", "?")
     s = f"{key}: {t} {m.get('duration', '?')}s"
+    if t == "move" and m.get("toward"):
+        s += f" toward {m['toward']}" + (f" ({m['path']})" if m.get("path") else "")
     if t == "move" and "to" in m:
         s += " → [" + ", ".join(f"{v:g}" for v in m["to"]) + "]"
     if t == "sway":
@@ -231,7 +265,7 @@ def motion_text(key: str, m: dict) -> str:
 def setup_scene(font):
     scene = bpy.context.scene
     scene.render.engine = "BLENDER_EEVEE"
-    scene.render.resolution_x, scene.render.resolution_y = WIDTH, HEIGHT
+    scene.render.resolution_x, scene.render.resolution_y = WIDTH, SCENE_H
     scene.render.resolution_percentage = 100
     scene.view_settings.view_transform = "Standard"
     scene.eevee.taa_render_samples = 32
@@ -256,66 +290,92 @@ def setup_scene(font):
     cam.location = target + to_blender((0, CAM_DISTANCE * math.sin(t), CAM_DISTANCE * math.cos(t)))
     cam.rotation_euler = (target - cam.location).to_track_quat("-Z", "Y").to_euler()
     cam.data.sensor_fit = "VERTICAL"
-    cam.data.angle_y = math.radians(FOV_Y)
-    # 下の欄の分だけ、場面を上に寄せる（shift は画像の長い辺に対する割合）
-    cam.data.shift_y = -(PANEL / 2) * HEIGHT / WIDTH
     cam.data.clip_start = 0.05
     cam.data.clip_end = 200
     scene.camera = cam
+    frame_camera(cam, 0)
     return cam
 
 
+def frame_camera(cam, panel_h: int) -> None:
+    """画像の高さを 3D の欄＋下の欄（panel_h px）にし、1 px の見え方を変えずに、場面を上の 3D の欄の真ん中に置く。"""
+    scene = bpy.context.scene
+    height = SCENE_H + panel_h
+    scene.render.resolution_y = height
+    cam.data.angle_y = 2 * math.atan(PX * height / 2)
+    # 縦に合わせた（VERTICAL）カメラの shift は画像の高さに対する割合。下の欄の半分だけ画面を下げる
+    cam.data.shift_y = -(panel_h / 2) / height
+
+
+def panel_rows(layout: dict, notes: list[str], motions: list[str]) -> list[tuple[str, str, float, str]]:
+    """下の欄に書く行（種類・文・文字の大きさ px・色）。折り返す前の 1 行ずつ。"""
+    rows: list[tuple[str, str, float, str]] = []
+    head = f"{layout.get('name', '(name なし)')}   [{layout.get('difficulty', '?')}]   {layout.get('id', '')}"
+    rows.append(("head", head, 28, "ink"))
+    sentences = [t for t in re.split(r"(?<=[.!?])\s+", layout.get("description", "").strip()) if t]
+    rows.append(("title", f"見本の答え（{len(sentences)} 文）", 17, "sub"))
+    rows += [("line", f"{n}. {t}", 21, "ink") for n, t in enumerate(sentences, 1)]
+    checklist = layout.get("checklist", [])
+    rows.append(("title", f"checklist（{len(checklist)} 項目）", 17, "sub"))
+    for c in checklist:
+        refs = ", ".join(c.get("refs", []))
+        rows.append(("line", f"[{c.get('kind', '?')}] {c.get('label', c.get('id', '?'))} | {c.get('accept', '')} | {refs}", 20, "ink"))
+    if motions:
+        rows.append(("title", "動き", 17, "sub"))
+        rows += [("line", m, 19, "ink") for m in motions]
+    if notes:
+        rows.append(("title", "警告", 17, "warn"))
+        rows += [("line", n, 19, "warn") for n in notes]
+    return rows
+
+
 def info_panel(cam, layout: dict, notes: list[str], motions: list[str], font) -> None:
-    """カメラの前（距離 1）に下の欄を置き、名前・説明・要素・動き・警告を書く。"""
-    hh = math.tan(math.radians(FOV_Y) / 2)            # 距離 1 での画面の高さの半分
-    hw = hh * WIDTH / HEIGHT
-    off_y = cam.data.shift_y * 2 * hw                 # shift で動いた画面の中心
-    px = 2 * hh / HEIGHT                              # 1 px の大きさ
-    top = off_y - hh + PANEL * 2 * hh                 # 欄の上端
-    bottom = off_y - hh
+    """カメラの前（距離 1）に下の欄を置き、名前・見本の答え・checklist・動き・警告を全部書く。欄の高さは中身で決める。"""
+    inner = WIDTH - 2 * MARGIN
+    indent = 26                                         # 折り返した行の字下げ（px）
+    placed: list[tuple[str, float, float, float, str]] = []   # 文・左の x・上からの y（px）・大きさ・色
+    y = MARGIN
+    for kind, body, size, color in panel_rows(layout, notes, motions):
+        if kind == "title":
+            y += 8
+        for k, seg in enumerate(wrap(body, inner - (indent if kind == "line" else 0), size, font)):
+            x = indent if k > 0 and kind == "line" else 0
+            placed.append((seg, x, y, size, color))
+            y += size * 1.38
+        if kind == "head":
+            y += 6
+    panel_h = math.ceil(y + MARGIN - 8)
+    frame_camera(cam, panel_h)
+
+    # 画面の枠（カメラから距離 1 の所）を Blender に聞いて、下の欄を置く
+    bpy.context.view_layer.update()
+    frame = cam.data.view_frame(scene=bpy.context.scene)
+    xs = [v.x / -v.z for v in frame]
+    ys = [v.y / -v.z for v in frame]
+    left, right, bottom = min(xs), max(xs), min(ys)
+    top = bottom + panel_h * PX
     d = -1.0
-    bg = flat_material("panel", (0.97, 0.97, 0.96), 0.93)
-    plane = add_mesh("panel", [(-hw, bottom, d - 0.001), (hw, bottom, d - 0.001), (hw, top, d - 0.001), (-hw, top, d - 0.001)],
+    bg = flat_material("panel", (0.97, 0.97, 0.96), 0.96)
+    plane = add_mesh("panel", [(left, bottom, d - 0.001), (right, bottom, d - 0.001), (right, top, d - 0.001), (left, top, d - 0.001)],
                      [(0, 1, 2, 3)], bg)
     plane.parent = cam
     no_shadow(plane)
     # Standard の表示ではリニアの値を sRGB に直して出すので、文字の色は小さめの値にする
-    ink = flat_material("ink", (0.004, 0.004, 0.006))
-    sub = flat_material("ink_sub", (0.025, 0.03, 0.04))
-    warn = flat_material("ink_warn", (0.6, 0.02, 0.01))
-    margin = 22 * px
-    limit = bottom + margin * 0.6
-
-    def lines(prefix: str, rows: list[tuple[str, object]], x: float, y: float, size: float, step: float, max_em: float) -> float:
-        """rows（文字列と色）を、欄の下端に収まる分だけ書く。収まらない分は「ほか n 行」にまとめる。"""
-        flat = [(seg, mat) for body, mat in rows for seg in wrap(body, max_em)]
-        room = max(int((y - limit) / (step * px)) + 1, 0)
-        if len(flat) > room:
-            flat = flat[:max(room - 1, 0)] + [(f"…ほか {len(flat) - room + 1} 行（標準出力を見る）", warn)]
-        for k, (seg, mat) in enumerate(flat):
-            text(f"{prefix}{k}", seg, size * px, mat, font, cam, (x, y, d))
-            y -= step * px
-        return y
-
-    x0 = -hw + margin
-    col2 = -hw + 2 * hw * 0.55
-    y = top - margin - 24 * px
-    head = f"{layout.get('name', '(name なし)')}   [{layout.get('difficulty', '?')}]   {layout.get('id', '')}"
-    text("name", head, 26 * px, ink, font, cam, (x0, y, d))
-    y -= 36 * px
-    left_em = (col2 - x0 - margin) / (17 * px)
-    y = lines("desc", [(layout.get("description", ""), sub)], x0, y, 17, 23, left_em)
-    y -= 8 * px
-    lines("motion", [(m, ink) for m in motions], x0, y, 16, 21, left_em)
-
-    y = top - margin - 18 * px
-    elements = layout.get("elements", [])
-    total = sum(e.get("points", 0) for e in elements)
-    text("el_head", f"elements（{total} + extraMax {layout.get('extraMax', '?')}）", 18 * px, ink, font, cam, (col2, y, d))
-    y -= 28 * px
-    right_em = (hw - col2 - margin) / (16 * px)
-    rows = [(f"{e.get('points', '?'):>3}  {e.get('label', e.get('id', '?'))}", sub) for e in elements]
-    lines("el", rows + [(n, warn) for n in notes], col2, y, 16, 21, right_em)
+    mats = {
+        "ink": flat_material("ink", (0.004, 0.004, 0.006)),
+        "sub": flat_material("ink_sub", (0.05, 0.06, 0.08)),
+        "warn": flat_material("ink_warn", (0.6, 0.02, 0.01)),
+    }
+    for k, (seg, x, py, size, color) in enumerate(placed):
+        # 文字の原点は 1 行目の基線。行の上端から大きさの 0.9 倍だけ下げる
+        loc = (left + (MARGIN + x) * PX, top - (py + size * 0.9) * PX, d)
+        text(f"panel{k}", seg, size * PX, mats[color], font, cam, loc)
+    # 測った送り幅で折っているが、念のため右にはみ出した行を数える
+    bpy.context.view_layer.update()
+    over = [o.name for o in cam.children if o.name.startswith("panel") and o.type == "FONT"
+            and o.location.x + o.dimensions.x > right - MARGIN * PX * 0.5]
+    if over:
+        print(f"  警告: 下の欄で右にはみ出した行が {len(over)} 行")
 
 
 def render_layout(src: Path, out_dir: Path, parts: Path) -> list[str]:
@@ -324,7 +384,7 @@ def render_layout(src: Path, out_dir: Path, parts: Path) -> list[str]:
     layout = json.loads(src.read_text(encoding="utf-8"))
     notes: list[str] = []
     if layout.get("protocol") != PROTOCOL:
-        notes.append(f"protocol が {layout.get('protocol')!r}（{PROTOCOL} のはず）")
+        notes.append(f"protocol が {layout.get('protocol')!r}（{PROTOCOL} のはず。checklist が無ければ下の欄は空になる）")
     font = bpy.data.fonts.load(str(FONT)) if FONT.exists() else None
     cam = setup_scene(font)
     index = {}

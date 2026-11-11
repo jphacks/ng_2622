@@ -1,0 +1,86 @@
+{
+  "protocol": "scenenglish.scene/2",
+  "id": "gen-v2-eiken3-train-station-04",
+  "name": "駅のホーム",
+  "difficulty": "eiken-3",
+  "description": "A man is looking at a smartphone. A woman is walking on the platform. There is a train at the platform.",
+  "checklist": [
+    {
+      "id": "man_phone",
+      "kind": "center",
+      "label": "男の人がスマートフォンを見ている",
+      "accept": "a man is looking at a smartphone",
+      "refs": ["man", "smartphone"]
+    },
+    {
+      "id": "woman_walk",
+      "kind": "center",
+      "label": "女の人が歩いている",
+      "accept": "a woman is walking on the platform",
+      "refs": ["woman"]
+    },
+    {
+      "id": "train",
+      "kind": "detail",
+      "label": "ホームに電車がある",
+      "accept": "there is a train at the platform",
+      "refs": ["train"]
+    }
+  ],
+  "items": [
+    {
+      "key": "ground",
+      "part": "platform_station",
+      "place": {
+        "relation": "ground"
+      },
+      "position": [0, 0, 0]
+    },
+    {
+      "key": "train",
+      "part": "train",
+      "place": {
+        "relation": "ground",
+        "zone": "back"
+      },
+      "position": [0, 0, -2.684]
+    },
+    {
+      "key": "man",
+      "part": "person_phone_adult_a",
+      "place": {
+        "relation": "ground",
+        "zone": "left"
+      },
+      "facing": "camera",
+      "position": [-2.75, 0, 0]
+    },
+    {
+      "key": "smartphone",
+      "part": "smartphone",
+      "place": {
+        "relation": "near",
+        "target": "man"
+      },
+      "position": [-2.337, 0, 0.435]
+    },
+    {
+      "key": "woman",
+      "part": "person_walk_woman_a",
+      "place": {
+        "relation": "ground",
+        "zone": "front_right"
+      },
+      "facing": "left",
+      "position": [2.75, 0, 2.75],
+      "yaw": -90.9,
+      "motion": {
+        "type": "move",
+        "to": [-2.667, 0, 2.667],
+        "duration": 6,
+        "toward": "front_left",
+        "path": "along"
+      }
+    }
+  ]
+}

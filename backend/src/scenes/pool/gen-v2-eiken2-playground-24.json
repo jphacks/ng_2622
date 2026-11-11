@@ -1,0 +1,175 @@
+{
+  "protocol": "scenenglish.scene/2",
+  "id": "gen-v2-eiken2-playground-24",
+  "name": "校庭のボール遊びと汗をふく男の人",
+  "difficulty": "eiken-2",
+  "description": "A boy is throwing a ball on the ground. Another boy is catching the ball because the first boy is throwing it. A girl is carrying a bucket of water, so she is walking to the tree to give the flowers water. A man is drinking from a cup. There is a bench next to the tree. There are two flowers under the tree.",
+  "checklist": [
+    {
+      "id": "boy_throw",
+      "kind": "center",
+      "label": "男の子がボールを投げている",
+      "accept": "a boy is throwing a ball",
+      "refs": ["boy", "ball"]
+    },
+    {
+      "id": "boy_catch",
+      "kind": "center",
+      "label": "もう一人の男の子がボールをキャッチしている",
+      "accept": "another boy is catching the ball",
+      "refs": ["tall_boy", "ball"]
+    },
+    {
+      "id": "girl_bucket",
+      "kind": "center",
+      "label": "女の子が水を運んでいる",
+      "accept": "a girl is carrying a bucket of water",
+      "refs": ["girl"]
+    },
+    {
+      "id": "man_drink",
+      "kind": "center",
+      "label": "男の人が飲んでいる",
+      "accept": "a man is drinking from a cup",
+      "refs": ["man"]
+    },
+    {
+      "id": "why_catch",
+      "kind": "reason",
+      "label": "男の子がキャッチする理由",
+      "accept": "another boy is catching the ball because the first boy is throwing it",
+      "refs": ["tall_boy", "boy", "ball"]
+    },
+    {
+      "id": "link_girl",
+      "kind": "link",
+      "label": "女の子が木へ水を運ぶ理由",
+      "accept": "a girl is carrying a bucket of water, so she is walking to the tree to give the flowers water",
+      "refs": ["girl", "tree", "flower"]
+    },
+    {
+      "id": "bench",
+      "kind": "detail",
+      "label": "木の隣にベンチがある",
+      "accept": "there is a bench next to the tree",
+      "refs": ["bench", "tree"]
+    },
+    {
+      "id": "flowers",
+      "kind": "detail",
+      "label": "木の下に花が二つある",
+      "accept": "there are two flowers under the tree",
+      "refs": ["flower", "tree"]
+    }
+  ],
+  "items": [
+    {
+      "key": "ground",
+      "part": "ground_dirt",
+      "place": {
+        "relation": "ground"
+      },
+      "position": [0, 0, 0]
+    },
+    {
+      "key": "tree",
+      "part": "tree",
+      "place": {
+        "relation": "ground",
+        "zone": "back_right"
+      },
+      "position": [2.37, 0, -2.435]
+    },
+    {
+      "key": "bench",
+      "part": "bench",
+      "place": {
+        "relation": "next_to",
+        "target": "tree",
+        "side": "left"
+      },
+      "facing": "camera",
+      "position": [0.204, 0, -2.435]
+    },
+    {
+      "key": "flower",
+      "part": "flower",
+      "place": {
+        "relation": "under",
+        "target": "tree"
+      },
+      "position": [2.37, 0, -1.559]
+    },
+    {
+      "key": "flower2",
+      "part": "flower",
+      "place": {
+        "relation": "near",
+        "target": "flower"
+      },
+      "position": [3.224, 0, -0.645]
+    },
+    {
+      "key": "boy",
+      "part": "person_throw_boy_a",
+      "place": {
+        "relation": "ground",
+        "zone": "front_left"
+      },
+      "facing": "right",
+      "position": [-3.114, 0, 3.065],
+      "yaw": 90
+    },
+    {
+      "key": "tall_boy",
+      "part": "person_catch_boy_a",
+      "place": {
+        "relation": "relate",
+        "target": "boy",
+        "side": "right",
+        "distance": "far",
+        "turn": "toward"
+      },
+      "position": [-0.343, 0, 3.057],
+      "yaw": -90
+    },
+    {
+      "key": "ball",
+      "part": "ball_red",
+      "place": {
+        "relation": "thrown_by",
+        "target": "boy",
+        "target2": "tall_boy"
+      },
+      "position": [-1.424, 1.15, 3.057]
+    },
+    {
+      "key": "girl",
+      "part": "person_bucket_girl_a",
+      "place": {
+        "relation": "ground",
+        "zone": "center"
+      },
+      "facing": "right",
+      "position": [-0.364, 0, 0.315],
+      "yaw": 135.2,
+      "motion": {
+        "type": "move",
+        "to": [1.212, 0, -1.27],
+        "duration": 6,
+        "toward": "tree"
+      }
+    },
+    {
+      "key": "man",
+      "part": "person_drink_adult_a",
+      "place": {
+        "relation": "ground",
+        "zone": "back_left"
+      },
+      "facing": "camera",
+      "position": [-3.114, 0, -2.435],
+      "yaw": 90
+    }
+  ]
+}

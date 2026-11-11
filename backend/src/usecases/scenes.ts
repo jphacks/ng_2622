@@ -53,7 +53,7 @@ export const generateScene = async (
     ? await generateVerifiedScene(env, PARTS, input, deps, callOptions)
     : await generateSceneV2(env, PARTS, input, deps, callOptions);
   if ("problems" in result && result.problems.length > 0) {
-    throw new SceneVerificationError(result.problems);
+    throw new SceneVerificationError([result.problems]);
   }
   const sceneId = newSceneId();
   const layout = composeLayoutV2(result.plan, PARTS, {

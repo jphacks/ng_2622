@@ -1,0 +1,153 @@
+{
+  "protocol": "scenenglish.scene/2",
+  "id": "gen-v2-eiken2-bus-stop-23",
+  "name": "雨のバス停で傘を分ける",
+  "difficulty": "eiken-2",
+  "description": "It is raining at the bus stop. A girl is holding an umbrella over an old woman because it is raining. A man is running to the bus stop with a bag so that he does not get wet. A woman is standing next to the bus stop. The old woman is standing on the sidewalk. The bench is next to the bus stop.",
+  "checklist": [
+    {
+      "id": "girl_umbrella",
+      "kind": "center",
+      "label": "女の子がおばあさんに傘をさしかけている",
+      "accept": "a girl is holding an umbrella over an old woman",
+      "refs": ["girl", "old_woman"]
+    },
+    {
+      "id": "man_run",
+      "kind": "center",
+      "label": "男の人がかばんを持って走っている",
+      "accept": "a man is running",
+      "refs": ["man", "bus_stop"]
+    },
+    {
+      "id": "woman_stand",
+      "kind": "center",
+      "label": "女の人が立っている",
+      "accept": "a woman is standing",
+      "refs": ["woman", "bus_stop"]
+    },
+    {
+      "id": "old_woman_stand",
+      "kind": "center",
+      "label": "おばあさんが立っている",
+      "accept": "the old woman is standing",
+      "refs": ["old_woman", "sidewalk"]
+    },
+    {
+      "id": "why_umbrella",
+      "kind": "reason",
+      "label": "女の子が傘をさしかけている理由",
+      "accept": "a girl is holding an umbrella over an old woman because it is raining",
+      "refs": ["girl", "rain"]
+    },
+    {
+      "id": "link_run",
+      "kind": "link",
+      "label": "男の人が走っている理由と目的",
+      "accept": "a man is running to the bus stop with a bag so that he does not get wet",
+      "refs": ["man", "rain", "bus_stop"]
+    },
+    {
+      "id": "rain",
+      "kind": "detail",
+      "label": "雨が降っている",
+      "accept": "it is raining",
+      "refs": ["rain"]
+    },
+    {
+      "id": "bench_stop",
+      "kind": "detail",
+      "label": "ベンチがバス停の隣にある",
+      "accept": "the bench is next to the bus stop",
+      "refs": ["bench", "bus_stop"]
+    }
+  ],
+  "items": [
+    {
+      "key": "sidewalk",
+      "part": "sidewalk_stone",
+      "place": {
+        "relation": "ground"
+      },
+      "position": [0, 0, 0]
+    },
+    {
+      "key": "rain",
+      "part": "rain",
+      "place": {
+        "relation": "ground"
+      },
+      "position": [0, 0, 0]
+    },
+    {
+      "key": "bus_stop",
+      "part": "bus_shelter",
+      "place": {
+        "relation": "ground",
+        "zone": "back"
+      },
+      "position": [-0.026, 0, -2.48]
+    },
+    {
+      "key": "bench",
+      "part": "bench",
+      "place": {
+        "relation": "ground",
+        "zone": "back_right"
+      },
+      "position": [2.724, 0, -2.48]
+    },
+    {
+      "key": "old_woman",
+      "part": "person_stand_old_woman_a",
+      "place": {
+        "relation": "ground",
+        "zone": "center"
+      },
+      "facing": "camera",
+      "position": [-0.026, 0, 0.27],
+      "yaw": 90
+    },
+    {
+      "key": "girl",
+      "part": "person_umbrella_girl_a",
+      "place": {
+        "relation": "relate",
+        "target": "old_woman",
+        "link": "body",
+        "side": "left",
+        "distance": "beside",
+        "turn": "same"
+      },
+      "position": [-0.149, 0, 1.013],
+      "yaw": 90
+    },
+    {
+      "key": "woman",
+      "part": "person_stand_woman_a",
+      "place": {
+        "relation": "ground",
+        "zone": "back_left"
+      },
+      "facing": "camera",
+      "position": [-2.776, 0, -2.48],
+      "yaw": 90
+    },
+    {
+      "key": "man",
+      "part": "person_run_bag_adult_a",
+      "place": {
+        "relation": "ground",
+        "zone": "front_right"
+      },
+      "position": [2.724, 0, 3.02],
+      "yaw": -153.4,
+      "motion": {
+        "type": "move",
+        "to": [0.941, 0, -0.545],
+        "duration": 5,
+        "toward": "bus_stop"
+      }
+    }
+  ]
+}

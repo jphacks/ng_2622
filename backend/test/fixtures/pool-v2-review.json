@@ -1,0 +1,3488 @@
+[
+  {
+    "id": "gen-v2-eiken2-beach-09",
+    "difficulty": "eiken-2",
+    "expect": [],
+    "name": "砂浜の砂の城",
+    "description": "A boy is building a sand castle on the beach. A girl is carrying a bucket of water because the boy is building a sand castle. An old man is feeding a bird so that it can eat. A bird is eating on the ground. There is a ball next to the sand castle. There is a bicycle on the beach.",
+    "checklist": [
+      {
+        "id": "boy_castle",
+        "kind": "center",
+        "label": "男の子が砂の城を作っている",
+        "accept": "a boy is building a sand castle",
+        "refs": ["boy", "sand_castle"]
+      },
+      {
+        "id": "girl_bucket",
+        "kind": "center",
+        "label": "女の子がバケツの水を運んでいる",
+        "accept": "a girl is carrying a bucket of water",
+        "refs": ["girl", "boy"]
+      },
+      {
+        "id": "man_feed",
+        "kind": "center",
+        "label": "おじいさんが鳥にえさをあげている",
+        "accept": "an old man is feeding a bird",
+        "refs": ["old_man", "bird"]
+      },
+      {
+        "id": "bird_eat",
+        "kind": "center",
+        "label": "鳥が地面で食べている",
+        "accept": "a bird is eating on the ground",
+        "refs": ["bird"]
+      },
+      {
+        "id": "why_bucket",
+        "kind": "reason",
+        "label": "女の子が水を運んでいる理由",
+        "accept": "a girl is carrying a bucket of water because the boy is building a sand castle",
+        "refs": ["girl", "boy", "sand_castle"]
+      },
+      {
+        "id": "link_bird",
+        "kind": "link",
+        "label": "おじいさんが鳥にえさをあげて鳥が食べる",
+        "accept": "an old man is feeding a bird so that it can eat",
+        "refs": ["old_man", "bird"]
+      },
+      {
+        "id": "ball_castle",
+        "kind": "detail",
+        "label": "ボールが砂の城の隣にある",
+        "accept": "there is a ball next to the sand castle",
+        "refs": ["ball", "sand_castle"]
+      },
+      {
+        "id": "bicycle_beach",
+        "kind": "detail",
+        "label": "浜に自転車がある",
+        "accept": "there is a bicycle on the beach",
+        "refs": ["bicycle"]
+      }
+    ],
+    "items": [
+      {
+        "key": "ground",
+        "part": "sand_beach",
+        "place": {
+          "relation": "ground"
+        }
+      },
+      {
+        "key": "sand_castle",
+        "part": "sand_castle",
+        "place": {
+          "relation": "ground",
+          "zone": "center"
+        }
+      },
+      {
+        "key": "boy",
+        "part": "person_kneel_build_boy_a",
+        "place": {
+          "relation": "relate",
+          "target": "sand_castle",
+          "link": "hand",
+          "side": "front",
+          "distance": "touch",
+          "turn": "toward"
+        }
+      },
+      {
+        "key": "ball",
+        "part": "ball_red",
+        "place": {
+          "relation": "next_to",
+          "target": "sand_castle"
+        }
+      },
+      {
+        "key": "girl",
+        "part": "person_bucket_girl_a",
+        "place": {
+          "relation": "relate",
+          "target": "boy",
+          "side": "right",
+          "distance": "talk",
+          "turn": "toward"
+        }
+      },
+      {
+        "key": "old_man",
+        "part": "person_feed_old_a",
+        "place": {
+          "relation": "ground",
+          "zone": "right"
+        },
+        "facing": "bird"
+      },
+      {
+        "key": "bird",
+        "part": "animal_bird_a",
+        "place": {
+          "relation": "relate",
+          "target": "old_man",
+          "side": "front",
+          "distance": "talk",
+          "turn": "toward"
+        }
+      },
+      {
+        "key": "bicycle",
+        "part": "bicycle",
+        "place": {
+          "relation": "ground",
+          "zone": "back_left"
+        }
+      }
+    ]
+  },
+  {
+    "id": "gen-v2-eiken2-bus-stop-11",
+    "difficulty": "eiken-2",
+    "expect": [],
+    "name": "バス停の自動販売機と犬",
+    "description": "A woman is pressing a button on the vending machine so that she can buy a drink. A man is eating an apple. A dog is watching the man because he is eating an apple. A girl is looking far away. There is a bus stop next to the road. There is a trash can next to the bench.",
+    "checklist": [
+      {
+        "id": "woman_press",
+        "kind": "center",
+        "label": "女の人が自動販売機のボタンを押している",
+        "accept": "a woman is pressing a button",
+        "refs": ["woman", "vending_machine"]
+      },
+      {
+        "id": "man_eat",
+        "kind": "center",
+        "label": "男の人がリンゴを食べている",
+        "accept": "a man is eating an apple",
+        "refs": ["man"]
+      },
+      {
+        "id": "dog_watch",
+        "kind": "center",
+        "label": "犬が男の人を見ている",
+        "accept": "a dog is watching the man",
+        "refs": ["dog", "man"]
+      },
+      {
+        "id": "girl_look",
+        "kind": "center",
+        "label": "女の子が遠くを見ている",
+        "accept": "a girl is looking far away",
+        "refs": ["girl"]
+      },
+      {
+        "id": "why_watch",
+        "kind": "reason",
+        "label": "犬が男の人を見ている理由",
+        "accept": "a dog is watching the man because he is eating an apple",
+        "refs": ["dog", "man"]
+      },
+      {
+        "id": "link_press",
+        "kind": "link",
+        "label": "女の人がボタンを押す目的",
+        "accept": "a woman is pressing a button on the vending machine so that she can buy a drink",
+        "refs": ["woman", "vending_machine"]
+      },
+      {
+        "id": "stop_road",
+        "kind": "detail",
+        "label": "バス停は道の横にある",
+        "accept": "there is a bus stop next to the road",
+        "refs": ["bus_stop", "road"]
+      },
+      {
+        "id": "trash_bench",
+        "kind": "detail",
+        "label": "ごみ箱がベンチの横にある",
+        "accept": "there is a trash can next to the bench",
+        "refs": ["trash_can", "bench"]
+      }
+    ],
+    "items": [
+      {
+        "key": "ground",
+        "part": "sidewalk_stone",
+        "place": {
+          "relation": "ground"
+        }
+      },
+      {
+        "key": "road",
+        "part": "road_patch",
+        "place": {
+          "relation": "ground",
+          "zone": "back"
+        }
+      },
+      {
+        "key": "bus_stop",
+        "part": "bus_shelter",
+        "place": {
+          "relation": "ground",
+          "zone": "back_left"
+        }
+      },
+      {
+        "key": "vending_machine",
+        "part": "vending_machine",
+        "place": {
+          "relation": "ground",
+          "zone": "left"
+        }
+      },
+      {
+        "key": "woman",
+        "part": "person_press_woman_a",
+        "place": {
+          "relation": "relate",
+          "target": "vending_machine",
+          "link": "hand",
+          "side": "front",
+          "distance": "touch",
+          "turn": "toward"
+        }
+      },
+      {
+        "key": "bench",
+        "part": "bench",
+        "place": {
+          "relation": "ground",
+          "zone": "front_right"
+        }
+      },
+      {
+        "key": "trash_can",
+        "part": "trash_bin",
+        "place": {
+          "relation": "next_to",
+          "target": "bench"
+        }
+      },
+      {
+        "key": "man",
+        "part": "person_eat_adult_a",
+        "place": {
+          "relation": "ground",
+          "zone": "front"
+        }
+      },
+      {
+        "key": "dog",
+        "part": "animal_sit_dog_a",
+        "place": {
+          "relation": "relate",
+          "target": "man",
+          "side": "front",
+          "distance": "talk",
+          "turn": "toward"
+        }
+      },
+      {
+        "key": "girl",
+        "part": "person_look_girl_a",
+        "place": {
+          "relation": "ground",
+          "zone": "front_left"
+        }
+      }
+    ]
+  },
+  {
+    "id": "gen-v2-eiken2-cafe-02",
+    "difficulty": "eiken-2",
+    "expect": [],
+    "name": "カフェでの注文とこぼれたジュース",
+    "description": "A woman is sitting at the table. A waiter is taking an order because the woman is sitting at the table. There is spilled juice next to the table, so a man is cleaning the floor to make it dry. A boy is sitting on the sofa. A boy is looking at the man. There are two chairs next to the table.",
+    "checklist": [
+      {
+        "id": "woman_sit",
+        "kind": "center",
+        "label": "女の人が座っている",
+        "accept": "a woman is sitting at the table",
+        "refs": ["woman", "table"]
+      },
+      {
+        "id": "waiter_order",
+        "kind": "center",
+        "label": "ウェイターが注文を取っている",
+        "accept": "a waiter is taking an order",
+        "refs": ["waiter"]
+      },
+      {
+        "id": "man_clean",
+        "kind": "center",
+        "label": "男の人が掃除している",
+        "accept": "a man is cleaning the floor",
+        "refs": ["man", "juice"]
+      },
+      {
+        "id": "boy_sit",
+        "kind": "center",
+        "label": "男の子がソファに座っている",
+        "accept": "a boy is sitting on the sofa",
+        "refs": ["boy", "sofa"]
+      },
+      {
+        "id": "why_order",
+        "kind": "reason",
+        "label": "ウェイターが注文を取る理由",
+        "accept": "a waiter is taking an order because the woman is sitting at the table",
+        "refs": ["waiter", "woman", "table"]
+      },
+      {
+        "id": "link_clean",
+        "kind": "link",
+        "label": "男の人が掃除する理由と目的",
+        "accept": "there is spilled juice next to the table, so a man is cleaning the floor to make it dry",
+        "refs": ["man", "juice"]
+      },
+      {
+        "id": "boy_look",
+        "kind": "detail",
+        "label": "男の子が男の人を見ている",
+        "accept": "a boy is looking at the man",
+        "refs": ["boy", "man"]
+      },
+      {
+        "id": "chairs",
+        "kind": "detail",
+        "label": "テーブルの横に椅子が2つある",
+        "accept": "there are two chairs next to the table",
+        "refs": ["chair", "table"]
+      }
+    ],
+    "items": [
+      {
+        "key": "ground",
+        "part": "floor_wood",
+        "place": {
+          "relation": "ground"
+        }
+      },
+      {
+        "key": "wall",
+        "part": "wall_cafe",
+        "place": {
+          "relation": "ground"
+        }
+      },
+      {
+        "key": "table",
+        "part": "table_small",
+        "place": {
+          "relation": "ground",
+          "zone": "center"
+        }
+      },
+      {
+        "key": "chair",
+        "part": "chair",
+        "place": {
+          "relation": "seat_at",
+          "target": "table"
+        },
+        "facing": "table"
+      },
+      {
+        "key": "chair2",
+        "part": "chair",
+        "place": {
+          "relation": "seat_at",
+          "target": "table"
+        },
+        "facing": "table"
+      },
+      {
+        "key": "woman",
+        "part": "person_sit_woman_a",
+        "place": {
+          "relation": "sit_on",
+          "target": "chair"
+        }
+      },
+      {
+        "key": "waiter",
+        "part": "person_take_order_waiter_a",
+        "place": {
+          "relation": "relate",
+          "target": "woman",
+          "link": "body",
+          "side": "front",
+          "distance": "talk",
+          "turn": "toward"
+        }
+      },
+      {
+        "key": "juice",
+        "part": "spilled_juice",
+        "place": {
+          "relation": "next_to",
+          "target": "table"
+        }
+      },
+      {
+        "key": "man",
+        "part": "person_sweep_adult_a",
+        "place": {
+          "relation": "near",
+          "target": "juice"
+        },
+        "facing": "camera"
+      },
+      {
+        "key": "sofa",
+        "part": "sofa",
+        "place": {
+          "relation": "ground",
+          "zone": "right"
+        }
+      },
+      {
+        "key": "boy",
+        "part": "person_sit_look_l_boy_a",
+        "place": {
+          "relation": "sit_on",
+          "target": "sofa"
+        }
+      }
+    ]
+  },
+  {
+    "id": "gen-v2-eiken2-classroom-06",
+    "difficulty": "eiken-2",
+    "expect": ["wall_thing"],
+    "name": "教室で寝ている男の子",
+    "description": "A boy is sleeping at his desk. A woman is waking the boy because he is sleeping at his desk. A girl is carrying a box. A boy is offering a hand so that the girl can put down the box. There are two windows in the classroom. The shelf is next to the blackboard.",
+    "checklist": [
+      {
+        "id": "boy_sleep",
+        "kind": "center",
+        "label": "男の子が机で寝ている",
+        "accept": "a boy is sleeping at his desk",
+        "refs": ["boy"]
+      },
+      {
+        "id": "woman_wake",
+        "kind": "center",
+        "label": "女の人が男の子を起こしている",
+        "accept": "a woman is waking the boy",
+        "refs": ["woman", "boy"]
+      },
+      {
+        "id": "girl_box",
+        "kind": "center",
+        "label": "女の子が箱を運んでいる",
+        "accept": "a girl is carrying a box",
+        "refs": ["girl"]
+      },
+      {
+        "id": "boy_offer",
+        "kind": "center",
+        "label": "男の子が手を差し出している",
+        "accept": "a boy is offering a hand",
+        "refs": ["tall_boy"]
+      },
+      {
+        "id": "why_wake",
+        "kind": "reason",
+        "label": "女の人が男の子を起こす理由",
+        "accept": "a woman is waking the boy because he is sleeping at his desk",
+        "refs": ["woman", "boy"]
+      },
+      {
+        "id": "link_offer",
+        "kind": "link",
+        "label": "男の子が手を差し出す理由と目的",
+        "accept": "a boy is offering a hand so that the girl can put down the box",
+        "refs": ["tall_boy", "girl"]
+      },
+      {
+        "id": "windows",
+        "kind": "detail",
+        "label": "教室に窓が二つある",
+        "accept": "there are two windows in the classroom",
+        "refs": ["window"]
+      },
+      {
+        "id": "shelf_board",
+        "kind": "detail",
+        "label": "棚は黒板の隣にある",
+        "accept": "the shelf is next to the blackboard",
+        "refs": ["shelf", "blackboard"]
+      }
+    ],
+    "items": [
+      {
+        "key": "ground",
+        "part": "floor_classroom",
+        "place": {
+          "relation": "ground"
+        }
+      },
+      {
+        "key": "blackboard",
+        "part": "wall_blackboard",
+        "place": {
+          "relation": "ground"
+        }
+      },
+      {
+        "key": "shelf",
+        "part": "shelf",
+        "place": {
+          "relation": "ground",
+          "zone": "back_right"
+        }
+      },
+      {
+        "key": "window",
+        "part": "window",
+        "place": {
+          "relation": "ground",
+          "zone": "back_left"
+        }
+      },
+      {
+        "key": "window2",
+        "part": "window",
+        "place": {
+          "relation": "ground",
+          "zone": "back"
+        }
+      },
+      {
+        "key": "desk",
+        "part": "table_small",
+        "place": {
+          "relation": "ground",
+          "zone": "left"
+        }
+      },
+      {
+        "key": "chair",
+        "part": "chair",
+        "place": {
+          "relation": "seat_at",
+          "target": "desk"
+        },
+        "facing": "desk"
+      },
+      {
+        "key": "boy",
+        "part": "person_sleep_teen_a",
+        "place": {
+          "relation": "sit_on",
+          "target": "chair"
+        }
+      },
+      {
+        "key": "woman",
+        "part": "person_wake_woman_a",
+        "place": {
+          "relation": "relate",
+          "target": "boy",
+          "link": "hand",
+          "side": "front",
+          "distance": "touch",
+          "turn": "toward"
+        }
+      },
+      {
+        "key": "girl",
+        "part": "person_carry_girl_a",
+        "place": {
+          "relation": "ground",
+          "zone": "right"
+        },
+        "facing": "camera"
+      },
+      {
+        "key": "tall_boy",
+        "part": "person_offer_boy_a",
+        "place": {
+          "relation": "relate",
+          "target": "girl",
+          "link": "body",
+          "side": "front",
+          "distance": "talk",
+          "turn": "toward"
+        }
+      }
+    ]
+  },
+  {
+    "id": "gen-v2-eiken2-kitchen-05",
+    "difficulty": "eiken-2",
+    "expect": [],
+    "name": "台所の夕食じたく",
+    "description": "A woman is cooking at the stove. A boy is putting plates on the table so that they can eat. A man is cleaning the floor because there are pieces of glass on it. A girl is carrying a box. There is a bottle on the table. There is a window next to the door.",
+    "checklist": [
+      {
+        "id": "woman_cook",
+        "kind": "center",
+        "label": "女の人が料理をしている",
+        "accept": "a woman is cooking",
+        "refs": ["woman"]
+      },
+      {
+        "id": "boy_plates",
+        "kind": "center",
+        "label": "男の子がテーブルに皿を置いている",
+        "accept": "a boy is putting plates on the table",
+        "refs": ["boy", "table"]
+      },
+      {
+        "id": "man_clean",
+        "kind": "center",
+        "label": "男の人が床をそうじしている",
+        "accept": "a man is cleaning the floor",
+        "refs": ["man", "floor"]
+      },
+      {
+        "id": "girl_box",
+        "kind": "center",
+        "label": "女の子が箱を運んでいる",
+        "accept": "a girl is carrying a box",
+        "refs": ["girl"]
+      },
+      {
+        "id": "why_clean",
+        "kind": "reason",
+        "label": "男の人が床をそうじしている理由",
+        "accept": "a man is cleaning the floor because there are pieces of glass on it",
+        "refs": ["man", "glass"]
+      },
+      {
+        "id": "link_plates",
+        "kind": "link",
+        "label": "男の子が皿を置いている理由と目的",
+        "accept": "a boy is putting plates on the table so that they can eat",
+        "refs": ["boy", "woman"]
+      },
+      {
+        "id": "bottle_table",
+        "kind": "detail",
+        "label": "テーブルの上にペットボトルがある",
+        "accept": "there is a bottle on the table",
+        "refs": ["bottle", "table"]
+      },
+      {
+        "id": "window_door",
+        "kind": "detail",
+        "label": "ドアの隣に窓がある",
+        "accept": "there is a window next to the door",
+        "refs": ["window", "door"]
+      }
+    ],
+    "items": [
+      {
+        "key": "floor",
+        "part": "floor_tile",
+        "place": {
+          "relation": "ground"
+        }
+      },
+      {
+        "key": "wall",
+        "part": "wall_kitchen_tile",
+        "place": {
+          "relation": "ground"
+        }
+      },
+      {
+        "key": "counter",
+        "part": "kitchen_counter",
+        "place": {
+          "relation": "ground",
+          "zone": "back"
+        }
+      },
+      {
+        "key": "pan",
+        "part": "pan",
+        "place": {
+          "relation": "on",
+          "target": "counter",
+          "spot": "stove"
+        }
+      },
+      {
+        "key": "woman",
+        "part": "person_cook_mother_a",
+        "place": {
+          "relation": "relate",
+          "target": "counter",
+          "link": "hand",
+          "side": "front",
+          "distance": "touch",
+          "turn": "toward"
+        }
+      },
+      {
+        "key": "table",
+        "part": "table",
+        "place": {
+          "relation": "ground",
+          "zone": "right"
+        }
+      },
+      {
+        "key": "bottle",
+        "part": "bottle",
+        "place": {
+          "relation": "on",
+          "target": "table"
+        }
+      },
+      {
+        "key": "boy",
+        "part": "person_set_plates_boy_a",
+        "place": {
+          "relation": "relate",
+          "target": "table",
+          "link": "hand",
+          "side": "front",
+          "distance": "touch",
+          "turn": "toward"
+        }
+      },
+      {
+        "key": "plate",
+        "part": "plate",
+        "place": {
+          "relation": "on",
+          "target": "table"
+        }
+      },
+      {
+        "key": "glass",
+        "part": "shards_glass",
+        "place": {
+          "relation": "ground",
+          "zone": "front_left"
+        }
+      },
+      {
+        "key": "man",
+        "part": "person_sweep_adult_a",
+        "place": {
+          "relation": "next_to",
+          "target": "glass",
+          "side": "right",
+          "distance": "beside"
+        },
+        "facing": "camera"
+      },
+      {
+        "key": "girl",
+        "part": "person_carry_girl_a",
+        "place": {
+          "relation": "ground",
+          "zone": "front"
+        }
+      },
+      {
+        "key": "door",
+        "part": "door",
+        "place": {
+          "relation": "ground",
+          "zone": "back_left"
+        }
+      },
+      {
+        "key": "window",
+        "part": "window",
+        "place": {
+          "relation": "next_to",
+          "target": "door",
+          "side": "right"
+        }
+      }
+    ]
+  },
+  {
+    "id": "gen-v2-eiken2-library-08",
+    "difficulty": "eiken-2",
+    "expect": ["who_mismatch"],
+    "name": "図書館で本をとる",
+    "description": "A boy is taking a book from a high shelf because a girl is pointing at it. The girl is pointing at a book. A man is reading a book, so a woman is sitting next to him to listen. A woman is sitting on the sofa. There is a bookshelf behind the sofa. There is a plant next to the door.",
+    "checklist": [
+      {
+        "id": "boy_take",
+        "kind": "center",
+        "label": "男の子が高い棚から本をとっている",
+        "accept": "a boy is taking a book from a high shelf",
+        "refs": ["boy", "girl", "shelf"]
+      },
+      {
+        "id": "girl_point",
+        "kind": "center",
+        "label": "女の子が本を指さしている",
+        "accept": "the girl is pointing at a book",
+        "refs": ["girl"]
+      },
+      {
+        "id": "man_read",
+        "kind": "center",
+        "label": "男の人が本を読んでいる",
+        "accept": "a man is reading a book",
+        "refs": ["man"]
+      },
+      {
+        "id": "woman_sit",
+        "kind": "center",
+        "label": "女の人がソファに座っている",
+        "accept": "a woman is sitting on the sofa",
+        "refs": ["woman", "sofa"]
+      },
+      {
+        "id": "why_take",
+        "kind": "reason",
+        "label": "男の子が本をとっている理由",
+        "accept": "a boy is taking a book from a high shelf because a girl is pointing at it",
+        "refs": ["boy", "girl"]
+      },
+      {
+        "id": "link_read",
+        "kind": "link",
+        "label": "男の人が本を読み、女の人が聞く",
+        "accept": "a man is reading a book, so a woman is sitting next to him to listen",
+        "refs": ["man", "woman"]
+      },
+      {
+        "id": "bookshelf",
+        "kind": "detail",
+        "label": "ソファの後ろに本棚がある",
+        "accept": "there is a bookshelf behind the sofa",
+        "refs": ["bookshelf", "sofa"]
+      },
+      {
+        "id": "plant",
+        "kind": "detail",
+        "label": "ドアの横に植木がある",
+        "accept": "there is a plant next to the door",
+        "refs": ["plant", "door"]
+      }
+    ],
+    "items": [
+      {
+        "key": "ground",
+        "part": "floor_carpet",
+        "place": {
+          "relation": "ground"
+        }
+      },
+      {
+        "key": "wall",
+        "part": "wall_window",
+        "place": {
+          "relation": "ground"
+        }
+      },
+      {
+        "key": "door",
+        "part": "door",
+        "place": {
+          "relation": "ground",
+          "zone": "back_right"
+        }
+      },
+      {
+        "key": "plant",
+        "part": "plant_pot",
+        "place": {
+          "relation": "next_to",
+          "target": "door",
+          "side": "left"
+        }
+      },
+      {
+        "key": "shelf",
+        "part": "bookshelf",
+        "place": {
+          "relation": "ground",
+          "zone": "left"
+        }
+      },
+      {
+        "key": "boy",
+        "part": "person_take_book_teen_a",
+        "place": {
+          "relation": "relate",
+          "target": "shelf",
+          "link": "hand",
+          "side": "front",
+          "distance": "touch",
+          "turn": "toward"
+        }
+      },
+      {
+        "key": "girl",
+        "part": "person_point_woman_a",
+        "place": {
+          "relation": "relate",
+          "target": "boy",
+          "side": "front",
+          "distance": "talk",
+          "turn": "toward"
+        }
+      },
+      {
+        "key": "sofa",
+        "part": "sofa",
+        "place": {
+          "relation": "ground",
+          "zone": "back"
+        },
+        "facing": "camera"
+      },
+      {
+        "key": "bookshelf",
+        "part": "shelf",
+        "place": {
+          "relation": "behind",
+          "target": "sofa"
+        }
+      },
+      {
+        "key": "woman",
+        "part": "person_sit_woman_a",
+        "place": {
+          "relation": "sit_on",
+          "target": "sofa"
+        }
+      },
+      {
+        "key": "bench",
+        "part": "bench",
+        "place": {
+          "relation": "ground",
+          "zone": "front_right"
+        },
+        "facing": "camera"
+      },
+      {
+        "key": "man",
+        "part": "person_read_sit_adult_a",
+        "place": {
+          "relation": "sit_on",
+          "target": "bench"
+        }
+      }
+    ]
+  },
+  {
+    "id": "gen-v2-eiken2-living-room-07",
+    "difficulty": "eiken-2",
+    "expect": [],
+    "name": "部屋での誕生日ケーキ",
+    "description": "A girl is blowing out the candles on the cake. A boy is celebrating because the girl is blowing out the candles. A woman is cutting the cake so that the children can eat it. A man is putting a cup on the table. There is a sofa next to the table. There is a bag under the table.",
+    "checklist": [
+      {
+        "id": "girl_blow",
+        "kind": "center",
+        "label": "女の子がろうそくを吹き消している",
+        "accept": "a girl is blowing out the candles on the cake",
+        "refs": ["girl", "candle", "cake"]
+      },
+      {
+        "id": "boy_celebrate",
+        "kind": "center",
+        "label": "男の子がお祝いしている",
+        "accept": "a boy is celebrating",
+        "refs": ["boy"]
+      },
+      {
+        "id": "woman_cut",
+        "kind": "center",
+        "label": "女の人がケーキを切っている",
+        "accept": "a woman is cutting the cake",
+        "refs": ["woman", "cake"]
+      },
+      {
+        "id": "man_put",
+        "kind": "center",
+        "label": "男の人がカップをテーブルに置いている",
+        "accept": "a man is putting a cup on the table",
+        "refs": ["man", "table"]
+      },
+      {
+        "id": "why_celebrate",
+        "kind": "reason",
+        "label": "男の子がお祝いしている理由",
+        "accept": "a boy is celebrating because the girl is blowing out the candles",
+        "refs": ["boy", "girl", "candle"]
+      },
+      {
+        "id": "link_cut",
+        "kind": "link",
+        "label": "女の人がケーキを切る目的",
+        "accept": "a woman is cutting the cake so that the children can eat it",
+        "refs": ["woman", "cake", "boy"]
+      },
+      {
+        "id": "sofa_table",
+        "kind": "detail",
+        "label": "ソファがテーブルの隣にある",
+        "accept": "there is a sofa next to the table",
+        "refs": ["sofa", "table"]
+      },
+      {
+        "id": "bag_table",
+        "kind": "detail",
+        "label": "かばんがテーブルの下にある",
+        "accept": "there is a bag under the table",
+        "refs": ["bag", "table"]
+      }
+    ],
+    "items": [
+      {
+        "key": "ground",
+        "part": "floor_wood",
+        "place": {
+          "relation": "ground"
+        }
+      },
+      {
+        "key": "wall",
+        "part": "wall_window",
+        "place": {
+          "relation": "ground"
+        }
+      },
+      {
+        "key": "table",
+        "part": "table_long",
+        "place": {
+          "relation": "ground",
+          "zone": "center"
+        }
+      },
+      {
+        "key": "chair1",
+        "part": "chair",
+        "place": {
+          "relation": "seat_at",
+          "target": "table"
+        },
+        "facing": "table"
+      },
+      {
+        "key": "chair2",
+        "part": "chair",
+        "place": {
+          "relation": "seat_at",
+          "target": "table"
+        },
+        "facing": "table"
+      },
+      {
+        "key": "girl",
+        "part": "person_blow_girl_a",
+        "place": {
+          "relation": "sit_on",
+          "target": "chair1"
+        }
+      },
+      {
+        "key": "boy",
+        "part": "person_clap_boy_a",
+        "place": {
+          "relation": "sit_on",
+          "target": "chair2"
+        }
+      },
+      {
+        "key": "cake",
+        "part": "cake",
+        "place": {
+          "relation": "on",
+          "target": "table"
+        }
+      },
+      {
+        "key": "candle",
+        "part": "candles",
+        "place": {
+          "relation": "on",
+          "target": "cake"
+        }
+      },
+      {
+        "key": "woman",
+        "part": "person_cut_mother_a",
+        "place": {
+          "relation": "relate",
+          "target": "table",
+          "link": "body",
+          "side": "any",
+          "distance": "touch",
+          "turn": "toward"
+        }
+      },
+      {
+        "key": "man",
+        "part": "person_put_adult_a",
+        "place": {
+          "relation": "relate",
+          "target": "table",
+          "link": "body",
+          "side": "any",
+          "distance": "touch",
+          "turn": "toward"
+        }
+      },
+      {
+        "key": "sofa",
+        "part": "sofa",
+        "place": {
+          "relation": "next_to",
+          "target": "table"
+        },
+        "facing": "camera"
+      },
+      {
+        "key": "bag",
+        "part": "bag",
+        "place": {
+          "relation": "under",
+          "target": "table"
+        }
+      }
+    ]
+  },
+  {
+    "id": "gen-v2-eiken2-train-station-04",
+    "difficulty": "eiken-2",
+    "expect": [],
+    "name": "駅のホームで転んだ女の人",
+    "description": "A woman has fallen down on the platform. A man is helping her get up because she has fallen down. A man is running with a bag so that he can catch the train. A girl is looking far away. There is a sign next to the train. The train is at the platform.",
+    "checklist": [
+      {
+        "id": "woman_fallen",
+        "kind": "center",
+        "label": "女の人が転んで座っている",
+        "accept": "a woman has fallen down",
+        "refs": ["woman"]
+      },
+      {
+        "id": "man_help",
+        "kind": "center",
+        "label": "男の人が女の人を助け起こしている",
+        "accept": "a man is helping her get up",
+        "refs": ["helper_man", "woman"]
+      },
+      {
+        "id": "man_run",
+        "kind": "center",
+        "label": "別の男の人が走っている",
+        "accept": "a man is running with a bag",
+        "refs": ["runner_man"]
+      },
+      {
+        "id": "girl_look",
+        "kind": "center",
+        "label": "女の子が遠くを見ている",
+        "accept": "a girl is looking far away",
+        "refs": ["girl"]
+      },
+      {
+        "id": "why_help",
+        "kind": "reason",
+        "label": "男の人が助けている理由",
+        "accept": "a man is helping her get up because she has fallen down",
+        "refs": ["helper_man", "woman"]
+      },
+      {
+        "id": "link_run",
+        "kind": "link",
+        "label": "男の人が走っている理由と目的",
+        "accept": "a man is running with a bag so that he can catch the train",
+        "refs": ["runner_man", "train"]
+      },
+      {
+        "id": "sign_detail",
+        "kind": "detail",
+        "label": "電車の隣に看板がある",
+        "accept": "there is a sign next to the train",
+        "refs": ["sign", "train"]
+      },
+      {
+        "id": "train_detail",
+        "kind": "detail",
+        "label": "電車がホームにいる",
+        "accept": "the train is at the platform",
+        "refs": ["train", "platform"]
+      }
+    ],
+    "items": [
+      {
+        "key": "platform",
+        "part": "platform_station",
+        "place": {
+          "relation": "ground"
+        }
+      },
+      {
+        "key": "train",
+        "part": "train",
+        "place": {
+          "relation": "ground",
+          "zone": "back"
+        }
+      },
+      {
+        "key": "sign",
+        "part": "station_sign",
+        "place": {
+          "relation": "next_to",
+          "target": "train"
+        }
+      },
+      {
+        "key": "woman",
+        "part": "person_fallen_woman_a",
+        "place": {
+          "relation": "ground",
+          "zone": "center"
+        },
+        "facing": "camera"
+      },
+      {
+        "key": "helper_man",
+        "part": "person_help_up_adult_a",
+        "place": {
+          "relation": "relate",
+          "target": "woman",
+          "link": "hand",
+          "side": "right",
+          "distance": "talk",
+          "turn": "toward"
+        }
+      },
+      {
+        "key": "runner_man",
+        "part": "person_run_bag_adult_a",
+        "place": {
+          "relation": "ground",
+          "zone": "front_right"
+        },
+        "motion": {
+          "type": "move",
+          "duration": 5,
+          "toward": "train"
+        }
+      },
+      {
+        "key": "girl",
+        "part": "person_look_girl_a",
+        "place": {
+          "relation": "ground",
+          "zone": "front_left"
+        },
+        "facing": "camera"
+      }
+    ]
+  },
+  {
+    "id": "gen-v2-eiken3-beach-09",
+    "difficulty": "eiken-3",
+    "expect": [],
+    "name": "砂浜の男の子と女の子",
+    "description": "A boy is building a sand castle. A girl is carrying a bucket. There is a ball on the beach.",
+    "checklist": [
+      {
+        "id": "boy_build",
+        "kind": "center",
+        "label": "男の子が砂の城を作っている",
+        "accept": "a boy is building a sand castle",
+        "refs": ["boy", "sand_castle"]
+      },
+      {
+        "id": "girl_carry",
+        "kind": "center",
+        "label": "女の子がバケツを運んでいる",
+        "accept": "a girl is carrying a bucket",
+        "refs": ["girl"]
+      },
+      {
+        "id": "ball_beach",
+        "kind": "detail",
+        "label": "砂浜にボールがある",
+        "accept": "there is a ball on the beach",
+        "refs": ["ball"]
+      }
+    ],
+    "items": [
+      {
+        "key": "ground",
+        "part": "sand_beach",
+        "place": {
+          "relation": "ground"
+        }
+      },
+      {
+        "key": "sand_castle",
+        "part": "sand_castle",
+        "place": {
+          "relation": "ground",
+          "zone": "center"
+        }
+      },
+      {
+        "key": "boy",
+        "part": "person_kneel_build_boy_a",
+        "place": {
+          "relation": "relate",
+          "target": "sand_castle",
+          "side": "front",
+          "distance": "touch",
+          "turn": "toward"
+        }
+      },
+      {
+        "key": "girl",
+        "part": "person_bucket_girl_a",
+        "place": {
+          "relation": "ground",
+          "zone": "right"
+        },
+        "facing": "camera"
+      },
+      {
+        "key": "ball",
+        "part": "ball_red",
+        "place": {
+          "relation": "ground",
+          "zone": "front_left"
+        }
+      }
+    ]
+  },
+  {
+    "id": "gen-v2-eiken3-bus-stop-11",
+    "difficulty": "eiken-3",
+    "expect": [],
+    "name": "バス停の二人",
+    "description": "A woman is waiting at the bus stop. A boy is sitting on the bench. There is a bag under the bench.",
+    "checklist": [
+      {
+        "id": "woman_wait",
+        "kind": "center",
+        "label": "女の人が待っている",
+        "accept": "a woman is waiting",
+        "refs": ["woman", "bus_stop"]
+      },
+      {
+        "id": "boy_sit",
+        "kind": "center",
+        "label": "男の子がベンチに座っている",
+        "accept": "a boy is sitting on the bench",
+        "refs": ["boy", "bench"]
+      },
+      {
+        "id": "bag_under",
+        "kind": "detail",
+        "label": "ベンチの下にかばんがある",
+        "accept": "there is a bag under the bench",
+        "refs": ["bag", "bench"]
+      }
+    ],
+    "items": [
+      {
+        "key": "ground",
+        "part": "sidewalk_stone",
+        "place": {
+          "relation": "ground"
+        }
+      },
+      {
+        "key": "bus_stop",
+        "part": "bus_shelter",
+        "place": {
+          "relation": "ground",
+          "zone": "back"
+        }
+      },
+      {
+        "key": "bench",
+        "part": "bench",
+        "place": {
+          "relation": "ground",
+          "zone": "center"
+        }
+      },
+      {
+        "key": "boy",
+        "part": "person_sit_boy_a",
+        "place": {
+          "relation": "sit_on",
+          "target": "bench"
+        }
+      },
+      {
+        "key": "bag",
+        "part": "bag",
+        "place": {
+          "relation": "under",
+          "target": "bench"
+        }
+      },
+      {
+        "key": "woman",
+        "part": "person_stand_woman_a",
+        "place": {
+          "relation": "ground",
+          "zone": "right"
+        }
+      }
+    ]
+  },
+  {
+    "id": "gen-v2-eiken3-cafe-02",
+    "difficulty": "eiken-3",
+    "expect": [],
+    "name": "カフェの二人",
+    "description": "A woman is drinking from a cup. A man is reading a book. There is a table in the cafe.",
+    "checklist": [
+      {
+        "id": "woman_drink",
+        "kind": "center",
+        "label": "女の人がカップで飲んでいる",
+        "accept": "a woman is drinking from a cup",
+        "refs": ["woman"]
+      },
+      {
+        "id": "man_read",
+        "kind": "center",
+        "label": "男の人が本を読んでいる",
+        "accept": "a man is reading a book",
+        "refs": ["man"]
+      },
+      {
+        "id": "table",
+        "kind": "detail",
+        "label": "カフェにテーブルがある",
+        "accept": "there is a table in the cafe",
+        "refs": ["table"]
+      }
+    ],
+    "items": [
+      {
+        "key": "ground",
+        "part": "floor_wood",
+        "place": {
+          "relation": "ground"
+        }
+      },
+      {
+        "key": "wall",
+        "part": "wall_cafe",
+        "place": {
+          "relation": "ground"
+        }
+      },
+      {
+        "key": "table",
+        "part": "table_small",
+        "place": {
+          "relation": "ground",
+          "zone": "center"
+        }
+      },
+      {
+        "key": "woman",
+        "part": "person_drink_woman_a",
+        "place": {
+          "relation": "ground",
+          "zone": "left"
+        },
+        "facing": "camera"
+      },
+      {
+        "key": "man",
+        "part": "person_read_adult_a",
+        "place": {
+          "relation": "ground",
+          "zone": "right"
+        },
+        "facing": "camera"
+      }
+    ]
+  },
+  {
+    "id": "gen-v2-eiken3-classroom-06",
+    "difficulty": "eiken-3",
+    "expect": [],
+    "name": "教室の二人",
+    "description": "A woman is writing on the blackboard. A boy is sleeping at his desk. There is a book on the desk.",
+    "checklist": [
+      {
+        "id": "woman_write",
+        "kind": "center",
+        "label": "女の人が黒板に書いている",
+        "accept": "a woman is writing on the blackboard",
+        "refs": ["woman", "blackboard"]
+      },
+      {
+        "id": "boy_sleep",
+        "kind": "center",
+        "label": "男の子が机で寝ている",
+        "accept": "a boy is sleeping at his desk",
+        "refs": ["boy", "desk"]
+      },
+      {
+        "id": "book_desk",
+        "kind": "detail",
+        "label": "机の上に本がある",
+        "accept": "there is a book on the desk",
+        "refs": ["book", "desk"]
+      }
+    ],
+    "items": [
+      {
+        "key": "ground",
+        "part": "floor_classroom",
+        "place": {
+          "relation": "ground"
+        }
+      },
+      {
+        "key": "blackboard",
+        "part": "wall_blackboard",
+        "place": {
+          "relation": "ground"
+        }
+      },
+      {
+        "key": "woman",
+        "part": "person_blackboard_woman_a",
+        "place": {
+          "relation": "relate",
+          "target": "blackboard",
+          "link": "hand",
+          "side": "front",
+          "distance": "touch",
+          "turn": "toward"
+        }
+      },
+      {
+        "key": "desk",
+        "part": "table_small",
+        "place": {
+          "relation": "ground",
+          "zone": "front_right"
+        }
+      },
+      {
+        "key": "chair",
+        "part": "chair",
+        "place": {
+          "relation": "seat_at",
+          "target": "desk"
+        },
+        "facing": "desk"
+      },
+      {
+        "key": "boy",
+        "part": "person_sleep_teen_a",
+        "place": {
+          "relation": "sit_on",
+          "target": "chair"
+        }
+      },
+      {
+        "key": "book",
+        "part": "book",
+        "place": {
+          "relation": "on",
+          "target": "desk"
+        }
+      }
+    ]
+  },
+  {
+    "id": "gen-v2-eiken3-kitchen-05",
+    "difficulty": "eiken-3",
+    "expect": [],
+    "name": "台所の二人",
+    "description": "A woman is cooking in the kitchen. A boy is carrying a box. There is a table in the kitchen.",
+    "checklist": [
+      {
+        "id": "woman_cook",
+        "kind": "center",
+        "label": "女の人が料理をしている",
+        "accept": "a woman is cooking",
+        "refs": ["woman"]
+      },
+      {
+        "id": "boy_carry",
+        "kind": "center",
+        "label": "男の子が箱を運んでいる",
+        "accept": "a boy is carrying a box",
+        "refs": ["boy"]
+      },
+      {
+        "id": "table",
+        "kind": "detail",
+        "label": "台所にテーブルがある",
+        "accept": "there is a table in the kitchen",
+        "refs": ["table"]
+      }
+    ],
+    "items": [
+      {
+        "key": "ground",
+        "part": "floor_tile",
+        "place": {
+          "relation": "ground"
+        }
+      },
+      {
+        "key": "wall",
+        "part": "wall_kitchen_tile",
+        "place": {
+          "relation": "ground"
+        }
+      },
+      {
+        "key": "counter",
+        "part": "kitchen_counter",
+        "place": {
+          "relation": "ground",
+          "zone": "left"
+        }
+      },
+      {
+        "key": "pan",
+        "part": "pan",
+        "place": {
+          "relation": "on",
+          "target": "counter",
+          "spot": "stove"
+        }
+      },
+      {
+        "key": "woman",
+        "part": "person_cook_mother_a",
+        "place": {
+          "relation": "relate",
+          "target": "counter",
+          "link": "hand",
+          "side": "front",
+          "distance": "touch",
+          "turn": "toward"
+        }
+      },
+      {
+        "key": "table",
+        "part": "table",
+        "place": {
+          "relation": "ground",
+          "zone": "right"
+        }
+      },
+      {
+        "key": "boy",
+        "part": "person_carry_boy_a",
+        "place": {
+          "relation": "ground",
+          "zone": "front"
+        },
+        "facing": "camera"
+      }
+    ]
+  },
+  {
+    "id": "gen-v2-eiken3-library-08",
+    "difficulty": "eiken-3",
+    "expect": [],
+    "name": "図書館の二人",
+    "description": "A man is reading a book. A girl is looking at a bookshelf. There is a table next to the bookshelf.",
+    "checklist": [
+      {
+        "id": "man_read",
+        "kind": "center",
+        "label": "男の人が本を読んでいる",
+        "accept": "a man is reading a book",
+        "refs": ["man"]
+      },
+      {
+        "id": "girl_look",
+        "kind": "center",
+        "label": "女の子が遠くを見ている",
+        "accept": "a girl is looking",
+        "refs": ["girl", "bookshelf"]
+      },
+      {
+        "id": "shelf_table",
+        "kind": "detail",
+        "label": "本棚の隣にテーブルがある",
+        "accept": "there is a table next to the bookshelf",
+        "refs": ["table", "bookshelf"]
+      }
+    ],
+    "items": [
+      {
+        "key": "ground",
+        "part": "floor_carpet",
+        "place": {
+          "relation": "ground"
+        }
+      },
+      {
+        "key": "wall",
+        "part": "wall_window",
+        "place": {
+          "relation": "ground"
+        }
+      },
+      {
+        "key": "bookshelf",
+        "part": "bookshelf",
+        "place": {
+          "relation": "ground",
+          "zone": "left"
+        }
+      },
+      {
+        "key": "table",
+        "part": "table",
+        "place": {
+          "relation": "next_to",
+          "target": "bookshelf",
+          "side": "right"
+        }
+      },
+      {
+        "key": "girl",
+        "part": "person_look_girl_a",
+        "place": {
+          "relation": "relate",
+          "target": "bookshelf",
+          "link": "body",
+          "side": "front",
+          "distance": "talk",
+          "turn": "toward"
+        }
+      },
+      {
+        "key": "man",
+        "part": "person_read_adult_a",
+        "place": {
+          "relation": "ground",
+          "zone": "right"
+        }
+      }
+    ]
+  },
+  {
+    "id": "gen-v2-eiken3-living-room-07",
+    "difficulty": "eiken-3",
+    "expect": ["clause_action"],
+    "name": "部屋の二人",
+    "description": "A girl is sitting on a sofa and reading. A man is eating an apple. There is a bed in the room.",
+    "checklist": [
+      {
+        "id": "girl_sit",
+        "kind": "center",
+        "label": "女の子がソファに座っている",
+        "accept": "a girl is sitting on a sofa",
+        "refs": ["girl", "sofa"]
+      },
+      {
+        "id": "man_eat",
+        "kind": "center",
+        "label": "男の人がリンゴを食べている",
+        "accept": "a man is eating an apple",
+        "refs": ["man"]
+      },
+      {
+        "id": "bed",
+        "kind": "detail",
+        "label": "部屋にベッドがある",
+        "accept": "there is a bed in the room",
+        "refs": ["bed"]
+      }
+    ],
+    "items": [
+      {
+        "key": "ground",
+        "part": "floor_wood",
+        "place": {
+          "relation": "ground"
+        }
+      },
+      {
+        "key": "wall",
+        "part": "wall_window",
+        "place": {
+          "relation": "ground"
+        }
+      },
+      {
+        "key": "bed",
+        "part": "bed",
+        "place": {
+          "relation": "ground",
+          "zone": "back_right"
+        },
+        "facing": "camera"
+      },
+      {
+        "key": "sofa",
+        "part": "sofa",
+        "place": {
+          "relation": "ground",
+          "zone": "left"
+        },
+        "facing": "camera"
+      },
+      {
+        "key": "girl",
+        "part": "person_sit_girl_a",
+        "place": {
+          "relation": "sit_on",
+          "target": "sofa"
+        }
+      },
+      {
+        "key": "man",
+        "part": "person_eat_adult_a",
+        "place": {
+          "relation": "ground",
+          "zone": "front_right"
+        },
+        "facing": "camera"
+      }
+    ]
+  },
+  {
+    "id": "gen-v2-eiken3-park-01",
+    "difficulty": "eiken-3",
+    "expect": [],
+    "name": "公園の犬と男の子",
+    "description": "A dog is sitting on the grass. A boy is running. There is a bench next to the tree.",
+    "checklist": [
+      {
+        "id": "dog_sit",
+        "kind": "center",
+        "label": "犬が座っている",
+        "accept": "a dog is sitting on the grass",
+        "refs": ["dog"]
+      },
+      {
+        "id": "boy_run",
+        "kind": "center",
+        "label": "男の子が走っている",
+        "accept": "a boy is running",
+        "refs": ["boy"]
+      },
+      {
+        "id": "bench_tree",
+        "kind": "detail",
+        "label": "木の隣にベンチがある",
+        "accept": "there is a bench next to the tree",
+        "refs": ["bench", "tree"]
+      }
+    ],
+    "items": [
+      {
+        "key": "ground",
+        "part": "grass_patch",
+        "place": {
+          "relation": "ground"
+        }
+      },
+      {
+        "key": "tree",
+        "part": "tree",
+        "place": {
+          "relation": "ground",
+          "zone": "back_left"
+        }
+      },
+      {
+        "key": "bench",
+        "part": "bench",
+        "place": {
+          "relation": "next_to",
+          "target": "tree",
+          "side": "right"
+        }
+      },
+      {
+        "key": "dog",
+        "part": "animal_sit_dog_a",
+        "place": {
+          "relation": "ground",
+          "zone": "front_left"
+        },
+        "facing": "camera"
+      },
+      {
+        "key": "boy",
+        "part": "person_run_boy_a",
+        "place": {
+          "relation": "ground",
+          "zone": "front_right"
+        },
+        "facing": "left",
+        "motion": {
+          "type": "move",
+          "duration": 5,
+          "toward": "front_left"
+        }
+      }
+    ]
+  },
+  {
+    "id": "gen-v2-eiken3-playground-12",
+    "difficulty": "eiken-3",
+    "expect": [],
+    "name": "校庭のボールあそび",
+    "description": "A boy is playing with a ball. A girl is looking far away. There is a tree on the ground.",
+    "checklist": [
+      {
+        "id": "boy_ball",
+        "kind": "center",
+        "label": "男の子がボールで遊んでいる",
+        "accept": "a boy is playing with a ball",
+        "refs": ["boy", "ball"]
+      },
+      {
+        "id": "girl_look",
+        "kind": "center",
+        "label": "女の子が遠くを見ている",
+        "accept": "a girl is looking far away",
+        "refs": ["girl"]
+      },
+      {
+        "id": "tree_ground",
+        "kind": "detail",
+        "label": "グラウンドに木がある",
+        "accept": "there is a tree on the ground",
+        "refs": ["tree"]
+      }
+    ],
+    "items": [
+      {
+        "key": "ground",
+        "part": "ground_dirt",
+        "place": {
+          "relation": "ground"
+        }
+      },
+      {
+        "key": "tree",
+        "part": "tree",
+        "place": {
+          "relation": "ground",
+          "zone": "back_right"
+        }
+      },
+      {
+        "key": "boy",
+        "part": "person_throw_boy_a",
+        "place": {
+          "relation": "ground",
+          "zone": "left"
+        },
+        "facing": "right"
+      },
+      {
+        "key": "ball",
+        "part": "ball_red",
+        "place": {
+          "relation": "thrown_by",
+          "target": "boy"
+        }
+      },
+      {
+        "key": "girl",
+        "part": "person_look_girl_a",
+        "place": {
+          "relation": "ground",
+          "zone": "front_right"
+        },
+        "facing": "camera"
+      }
+    ]
+  },
+  {
+    "id": "gen-v2-eiken3-store-03",
+    "difficulty": "eiken-3",
+    "expect": ["held_missing"],
+    "name": "店のレジ",
+    "description": "A woman is paying at the counter. A girl is waiting with a basket. There is a cart next to the checkout counter.",
+    "checklist": [
+      {
+        "id": "woman_pay",
+        "kind": "center",
+        "label": "女の人がレジで支払いをしている",
+        "accept": "a woman is paying at the counter",
+        "refs": ["woman", "checkout_counter"]
+      },
+      {
+        "id": "girl_wait",
+        "kind": "center",
+        "label": "女の子がかごを持って待っている",
+        "accept": "a girl is waiting with a basket",
+        "refs": ["girl"]
+      },
+      {
+        "id": "cart_next",
+        "kind": "detail",
+        "label": "レジの隣にカートがある",
+        "accept": "there is a cart next to the checkout counter",
+        "refs": ["cart", "checkout_counter"]
+      }
+    ],
+    "items": [
+      {
+        "key": "ground",
+        "part": "floor_tile",
+        "place": {
+          "relation": "ground"
+        }
+      },
+      {
+        "key": "wall",
+        "part": "wall_store_shelves",
+        "place": {
+          "relation": "ground"
+        }
+      },
+      {
+        "key": "checkout_counter",
+        "part": "checkout_counter",
+        "place": {
+          "relation": "ground",
+          "zone": "left"
+        }
+      },
+      {
+        "key": "woman",
+        "part": "person_pay_woman_a",
+        "place": {
+          "relation": "relate",
+          "target": "checkout_counter",
+          "link": "hand",
+          "side": "front",
+          "distance": "touch",
+          "turn": "toward"
+        }
+      },
+      {
+        "key": "cart",
+        "part": "cart",
+        "place": {
+          "relation": "next_to",
+          "target": "checkout_counter"
+        }
+      },
+      {
+        "key": "girl",
+        "part": "person_stand_girl_a",
+        "place": {
+          "relation": "ground",
+          "zone": "front_right"
+        }
+      }
+    ]
+  },
+  {
+    "id": "gen-v2-eiken3-street-10",
+    "difficulty": "eiken-3",
+    "expect": [],
+    "name": "道の男の人と女の子",
+    "description": "A man is walking on the sidewalk. A girl is carrying a box. There is a car on the road.",
+    "checklist": [
+      {
+        "id": "man_walk",
+        "kind": "center",
+        "label": "男の人が歩いている",
+        "accept": "a man is walking",
+        "refs": ["man"]
+      },
+      {
+        "id": "girl_carry",
+        "kind": "center",
+        "label": "女の子が箱を運んでいる",
+        "accept": "a girl is carrying a box",
+        "refs": ["girl"]
+      },
+      {
+        "id": "car_road",
+        "kind": "detail",
+        "label": "道路に車がある",
+        "accept": "there is a car on the road",
+        "refs": ["car", "road"]
+      }
+    ],
+    "items": [
+      {
+        "key": "ground",
+        "part": "sidewalk_stone",
+        "place": {
+          "relation": "ground"
+        }
+      },
+      {
+        "key": "road",
+        "part": "road_patch",
+        "place": {
+          "relation": "ground",
+          "zone": "back"
+        }
+      },
+      {
+        "key": "car",
+        "part": "car",
+        "place": {
+          "relation": "on",
+          "target": "road"
+        },
+        "facing": "right"
+      },
+      {
+        "key": "man",
+        "part": "person_walk_adult_a",
+        "place": {
+          "relation": "ground",
+          "zone": "front_left"
+        },
+        "facing": "right",
+        "motion": {
+          "type": "move",
+          "duration": 6,
+          "toward": "front_right"
+        }
+      },
+      {
+        "key": "girl",
+        "part": "person_carry_girl_a",
+        "place": {
+          "relation": "ground",
+          "zone": "front_right"
+        },
+        "facing": "camera"
+      }
+    ]
+  },
+  {
+    "id": "gen-v2-eiken3-train-station-04",
+    "difficulty": "eiken-3",
+    "expect": [],
+    "name": "駅のホーム",
+    "description": "A man is looking at a smartphone. A woman is walking on the platform. There is a train at the platform.",
+    "checklist": [
+      {
+        "id": "man_phone",
+        "kind": "center",
+        "label": "男の人がスマートフォンを見ている",
+        "accept": "a man is looking at a smartphone",
+        "refs": ["man", "smartphone"]
+      },
+      {
+        "id": "woman_walk",
+        "kind": "center",
+        "label": "女の人が歩いている",
+        "accept": "a woman is walking on the platform",
+        "refs": ["woman"]
+      },
+      {
+        "id": "train",
+        "kind": "detail",
+        "label": "ホームに電車がある",
+        "accept": "there is a train at the platform",
+        "refs": ["train"]
+      }
+    ],
+    "items": [
+      {
+        "key": "ground",
+        "part": "platform_station",
+        "place": {
+          "relation": "ground"
+        }
+      },
+      {
+        "key": "train",
+        "part": "train",
+        "place": {
+          "relation": "ground",
+          "zone": "back"
+        }
+      },
+      {
+        "key": "man",
+        "part": "person_phone_adult_a",
+        "place": {
+          "relation": "ground",
+          "zone": "left"
+        },
+        "facing": "camera"
+      },
+      {
+        "key": "smartphone",
+        "part": "smartphone",
+        "place": {
+          "relation": "near",
+          "target": "man"
+        }
+      },
+      {
+        "key": "woman",
+        "part": "person_walk_woman_a",
+        "place": {
+          "relation": "ground",
+          "zone": "front_right"
+        },
+        "facing": "left",
+        "motion": {
+          "type": "move",
+          "duration": 6,
+          "toward": "front_left",
+          "path": "along"
+        }
+      }
+    ]
+  },
+  {
+    "id": "gen-v2-pre2-beach-09",
+    "difficulty": "eiken-pre2",
+    "expect": [],
+    "name": "砂浜の砂の城",
+    "description": "A boy is building a sand castle. A girl is carrying a bucket of water because the boy is building a sand castle. A woman is sitting on the beach. There is a ball next to the sand castle. There is a balloon next to the woman.",
+    "checklist": [
+      {
+        "id": "boy_build",
+        "kind": "center",
+        "label": "男の子が砂の城を作っている",
+        "accept": "a boy is building a sand castle",
+        "refs": ["boy", "sand_castle"]
+      },
+      {
+        "id": "girl_carry",
+        "kind": "center",
+        "label": "女の子がバケツの水を運んでいる",
+        "accept": "a girl is carrying a bucket of water",
+        "refs": ["girl", "boy"]
+      },
+      {
+        "id": "woman_sit",
+        "kind": "center",
+        "label": "女の人が座っている",
+        "accept": "a woman is sitting",
+        "refs": ["woman"]
+      },
+      {
+        "id": "why_carry",
+        "kind": "reason",
+        "label": "女の子が水を運ぶ理由",
+        "accept": "a girl is carrying a bucket of water because the boy is building a sand castle",
+        "refs": ["girl", "boy", "sand_castle"]
+      },
+      {
+        "id": "ball_castle",
+        "kind": "detail",
+        "label": "砂の城の隣にボールがある",
+        "accept": "there is a ball next to the sand castle",
+        "refs": ["ball", "sand_castle"]
+      },
+      {
+        "id": "balloon_woman",
+        "kind": "detail",
+        "label": "女の人の隣に風船がある",
+        "accept": "there is a balloon next to the woman",
+        "refs": ["balloon", "woman"]
+      }
+    ],
+    "items": [
+      {
+        "key": "ground",
+        "part": "sand_beach",
+        "place": {
+          "relation": "ground"
+        }
+      },
+      {
+        "key": "sand_castle",
+        "part": "sand_castle",
+        "place": {
+          "relation": "ground",
+          "zone": "center"
+        }
+      },
+      {
+        "key": "boy",
+        "part": "person_kneel_build_boy_a",
+        "place": {
+          "relation": "relate",
+          "target": "sand_castle",
+          "link": "hand",
+          "side": "front",
+          "distance": "touch",
+          "turn": "toward"
+        }
+      },
+      {
+        "key": "girl",
+        "part": "person_bucket_girl_a",
+        "place": {
+          "relation": "ground",
+          "zone": "front_left"
+        },
+        "facing": "camera"
+      },
+      {
+        "key": "ball",
+        "part": "ball_red",
+        "place": {
+          "relation": "next_to",
+          "target": "sand_castle"
+        }
+      },
+      {
+        "key": "chair",
+        "part": "chair",
+        "place": {
+          "relation": "ground",
+          "zone": "right"
+        }
+      },
+      {
+        "key": "woman",
+        "part": "person_sit_woman_a",
+        "place": {
+          "relation": "sit_on",
+          "target": "chair"
+        }
+      },
+      {
+        "key": "balloon",
+        "part": "balloon",
+        "place": {
+          "relation": "next_to",
+          "target": "woman"
+        }
+      }
+    ]
+  },
+  {
+    "id": "gen-v2-pre2-bus-stop-11",
+    "difficulty": "eiken-pre2",
+    "expect": [],
+    "name": "バス停の天気とバス",
+    "description": "It is raining at the bus stop. A man is running with a bag because it is raining. A woman is waiting with a shopping basket. A boy is sitting on the bench. There is a bus stop behind the bench.",
+    "checklist": [
+      {
+        "id": "man_run",
+        "kind": "center",
+        "label": "男の人がかばんを持って走っている",
+        "accept": "a man is running",
+        "refs": ["man"]
+      },
+      {
+        "id": "woman_wait",
+        "kind": "center",
+        "label": "女の人が待っている",
+        "accept": "a woman is waiting",
+        "refs": ["woman"]
+      },
+      {
+        "id": "boy_sit",
+        "kind": "center",
+        "label": "男の子が座っている",
+        "accept": "a boy is sitting",
+        "refs": ["boy", "bench"]
+      },
+      {
+        "id": "why_run",
+        "kind": "reason",
+        "label": "男の人が走っている理由",
+        "accept": "a man is running with a bag because it is raining",
+        "refs": ["man", "rain"]
+      },
+      {
+        "id": "rain",
+        "kind": "detail",
+        "label": "雨が降っている",
+        "accept": "it is raining",
+        "refs": ["rain"]
+      },
+      {
+        "id": "bus_stop_behind",
+        "kind": "detail",
+        "label": "ベンチの後ろにバス停がある",
+        "accept": "there is a bus stop behind the bench",
+        "refs": ["bus_stop", "bench"]
+      }
+    ],
+    "items": [
+      {
+        "key": "ground",
+        "part": "sidewalk_stone",
+        "place": {
+          "relation": "ground"
+        }
+      },
+      {
+        "key": "rain",
+        "part": "rain",
+        "place": {
+          "relation": "ground"
+        }
+      },
+      {
+        "key": "bus_stop",
+        "part": "bus_shelter",
+        "place": {
+          "relation": "ground",
+          "zone": "back"
+        }
+      },
+      {
+        "key": "bench",
+        "part": "bench",
+        "place": {
+          "relation": "in_front_of",
+          "target": "bus_stop"
+        }
+      },
+      {
+        "key": "boy",
+        "part": "person_sit_boy_a",
+        "place": {
+          "relation": "sit_on",
+          "target": "bench"
+        }
+      },
+      {
+        "key": "woman",
+        "part": "person_basket_woman_a",
+        "place": {
+          "relation": "ground",
+          "zone": "front_right"
+        }
+      },
+      {
+        "key": "man",
+        "part": "person_run_bag_adult_a",
+        "place": {
+          "relation": "ground",
+          "zone": "front_left"
+        },
+        "facing": "right",
+        "motion": {
+          "type": "move",
+          "duration": 5,
+          "toward": "bench"
+        }
+      }
+    ]
+  },
+  {
+    "id": "gen-v2-pre2-cafe-02",
+    "difficulty": "eiken-pre2",
+    "expect": [],
+    "name": "カフェでこぼれたジュース",
+    "description": "A woman is cleaning the table because the juice was spilled. A waiter is bringing drinks. A man is sitting on a chair. There is a cup on the table. There are two chairs next to the table.",
+    "checklist": [
+      {
+        "id": "woman_clean",
+        "kind": "center",
+        "label": "女の人がテーブルをきれいにしている",
+        "accept": "a woman is cleaning the table",
+        "refs": ["woman", "table"]
+      },
+      {
+        "id": "waiter_bring",
+        "kind": "center",
+        "label": "ウェイターが飲み物を運んでいる",
+        "accept": "a waiter is bringing drinks",
+        "refs": ["waiter"]
+      },
+      {
+        "id": "man_sit",
+        "kind": "center",
+        "label": "男の人が椅子に座っている",
+        "accept": "a man is sitting on a chair",
+        "refs": ["man", "chair"]
+      },
+      {
+        "id": "why_clean",
+        "kind": "reason",
+        "label": "女の人がテーブルを拭く理由",
+        "accept": "a woman is cleaning the table because the juice was spilled",
+        "refs": ["woman", "juice"]
+      },
+      {
+        "id": "cup_table",
+        "kind": "detail",
+        "label": "テーブルの上にカップがある",
+        "accept": "there is a cup on the table",
+        "refs": ["cup", "table"]
+      },
+      {
+        "id": "two_chairs",
+        "kind": "detail",
+        "label": "テーブルの横に椅子が2つある",
+        "accept": "there are two chairs next to the table",
+        "refs": ["chair", "table"]
+      }
+    ],
+    "items": [
+      {
+        "key": "ground",
+        "part": "floor_wood",
+        "place": {
+          "relation": "ground"
+        }
+      },
+      {
+        "key": "wall",
+        "part": "wall_cafe",
+        "place": {
+          "relation": "ground"
+        }
+      },
+      {
+        "key": "table",
+        "part": "table_small",
+        "place": {
+          "relation": "ground",
+          "zone": "center"
+        }
+      },
+      {
+        "key": "juice",
+        "part": "spilled_juice",
+        "place": {
+          "relation": "on",
+          "target": "table"
+        }
+      },
+      {
+        "key": "cup",
+        "part": "cup",
+        "place": {
+          "relation": "on",
+          "target": "table"
+        }
+      },
+      {
+        "key": "chair",
+        "part": "chair",
+        "place": {
+          "relation": "seat_at",
+          "target": "table"
+        },
+        "facing": "table"
+      },
+      {
+        "key": "chair2",
+        "part": "chair",
+        "place": {
+          "relation": "seat_at",
+          "target": "table"
+        },
+        "facing": "table"
+      },
+      {
+        "key": "man",
+        "part": "person_sit_adult_a",
+        "place": {
+          "relation": "sit_on",
+          "target": "chair"
+        }
+      },
+      {
+        "key": "woman",
+        "part": "person_wipe_woman_a",
+        "place": {
+          "relation": "relate",
+          "target": "table",
+          "link": "hand",
+          "side": "left",
+          "distance": "touch",
+          "turn": "toward"
+        }
+      },
+      {
+        "key": "waiter",
+        "part": "person_serve_waiter_a",
+        "place": {
+          "relation": "ground",
+          "zone": "right"
+        },
+        "facing": "camera"
+      }
+    ]
+  },
+  {
+    "id": "gen-v2-pre2-classroom-06",
+    "difficulty": "eiken-pre2",
+    "expect": ["clause_action"],
+    "name": "授業中の教室",
+    "description": "A woman is writing on the blackboard. A boy is raising his hand because the woman is asking a question. A girl is writing at a desk. There is a bag next to the girl. There is a window in the classroom.",
+    "checklist": [
+      {
+        "id": "woman_write",
+        "kind": "center",
+        "label": "女の人が黒板に書いている",
+        "accept": "a woman is writing on the blackboard",
+        "refs": ["woman", "blackboard"]
+      },
+      {
+        "id": "boy_raise",
+        "kind": "center",
+        "label": "男の子が手を挙げている",
+        "accept": "a boy is raising his hand",
+        "refs": ["boy"]
+      },
+      {
+        "id": "girl_write",
+        "kind": "center",
+        "label": "女の子が机で書いている",
+        "accept": "a girl is writing at a desk",
+        "refs": ["girl", "desk"]
+      },
+      {
+        "id": "why_raise",
+        "kind": "reason",
+        "label": "男の子が手を挙げている理由",
+        "accept": "a boy is raising his hand because the woman is asking a question",
+        "refs": ["boy", "woman"]
+      },
+      {
+        "id": "bag_next",
+        "kind": "detail",
+        "label": "女の子の隣にかばんがある",
+        "accept": "there is a bag next to the girl",
+        "refs": ["bag", "girl"]
+      },
+      {
+        "id": "window",
+        "kind": "detail",
+        "label": "教室に窓がある",
+        "accept": "there is a window in the classroom",
+        "refs": ["window"]
+      }
+    ],
+    "items": [
+      {
+        "key": "ground",
+        "part": "floor_classroom",
+        "place": {
+          "relation": "ground"
+        }
+      },
+      {
+        "key": "blackboard",
+        "part": "wall_blackboard",
+        "place": {
+          "relation": "ground"
+        }
+      },
+      {
+        "key": "woman",
+        "part": "person_blackboard_woman_a",
+        "place": {
+          "relation": "relate",
+          "target": "blackboard",
+          "link": "hand",
+          "side": "front",
+          "distance": "touch",
+          "turn": "toward"
+        }
+      },
+      {
+        "key": "desk",
+        "part": "table_small",
+        "place": {
+          "relation": "ground",
+          "zone": "front_left"
+        }
+      },
+      {
+        "key": "chair_girl",
+        "part": "chair",
+        "place": {
+          "relation": "seat_at",
+          "target": "desk"
+        },
+        "facing": "desk"
+      },
+      {
+        "key": "girl",
+        "part": "person_write_girl_a",
+        "place": {
+          "relation": "sit_on",
+          "target": "chair_girl"
+        }
+      },
+      {
+        "key": "bag",
+        "part": "bag",
+        "place": {
+          "relation": "next_to",
+          "target": "desk"
+        }
+      },
+      {
+        "key": "chair_boy",
+        "part": "chair",
+        "place": {
+          "relation": "ground",
+          "zone": "front_right"
+        },
+        "facing": "camera"
+      },
+      {
+        "key": "boy",
+        "part": "person_raise_hand_boy_a",
+        "place": {
+          "relation": "sit_on",
+          "target": "chair_boy"
+        }
+      },
+      {
+        "key": "window",
+        "part": "window",
+        "place": {
+          "relation": "ground",
+          "zone": "back_right"
+        }
+      }
+    ]
+  },
+  {
+    "id": "gen-v2-pre2-library-08",
+    "difficulty": "eiken-pre2",
+    "expect": ["who_mismatch"],
+    "name": "図書館で本を取る",
+    "description": "A girl is pointing at a book on the shelf. A boy is taking a book from the shelf because the girl is pointing at it. A man is reading a book. The man is sitting on a chair. There is a table next to the chair.",
+    "checklist": [
+      {
+        "id": "girl_point",
+        "kind": "center",
+        "label": "女の子が指さしている",
+        "accept": "a girl is pointing",
+        "refs": ["girl", "shelf"]
+      },
+      {
+        "id": "boy_take",
+        "kind": "center",
+        "label": "男の子が本を取っている",
+        "accept": "a boy is taking a book",
+        "refs": ["boy", "shelf", "girl"]
+      },
+      {
+        "id": "man_read",
+        "kind": "center",
+        "label": "男の人が本を読んでいる",
+        "accept": "a man is reading a book",
+        "refs": ["man"]
+      },
+      {
+        "id": "why_take",
+        "kind": "reason",
+        "label": "男の子が本を取る理由",
+        "accept": "a boy is taking a book from the shelf because the girl is pointing at it",
+        "refs": ["boy", "girl"]
+      },
+      {
+        "id": "man_chair",
+        "kind": "detail",
+        "label": "男の人は椅子に座っている",
+        "accept": "the man is sitting on a chair",
+        "refs": ["man", "chair"]
+      },
+      {
+        "id": "table_chair",
+        "kind": "detail",
+        "label": "椅子の隣にテーブルがある",
+        "accept": "there is a table next to the chair",
+        "refs": ["table", "chair"]
+      }
+    ],
+    "items": [
+      {
+        "key": "ground",
+        "part": "floor_carpet",
+        "place": {
+          "relation": "ground"
+        }
+      },
+      {
+        "key": "wall",
+        "part": "wall_window",
+        "place": {
+          "relation": "ground"
+        }
+      },
+      {
+        "key": "shelf",
+        "part": "bookshelf",
+        "place": {
+          "relation": "ground",
+          "zone": "left"
+        }
+      },
+      {
+        "key": "boy",
+        "part": "person_take_book_teen_a",
+        "place": {
+          "relation": "relate",
+          "target": "shelf",
+          "link": "hand",
+          "side": "front",
+          "distance": "touch",
+          "turn": "toward"
+        }
+      },
+      {
+        "key": "girl",
+        "part": "person_point_woman_a",
+        "place": {
+          "relation": "relate",
+          "target": "shelf",
+          "side": "front",
+          "distance": "talk",
+          "turn": "toward"
+        }
+      },
+      {
+        "key": "chair",
+        "part": "chair",
+        "place": {
+          "relation": "ground",
+          "zone": "right"
+        },
+        "facing": "camera"
+      },
+      {
+        "key": "man",
+        "part": "person_read_sit_adult_a",
+        "place": {
+          "relation": "sit_on",
+          "target": "chair"
+        }
+      },
+      {
+        "key": "table",
+        "part": "table_small",
+        "place": {
+          "relation": "next_to",
+          "target": "chair",
+          "side": "left"
+        }
+      }
+    ]
+  },
+  {
+    "id": "gen-v2-pre2-living-room-07",
+    "difficulty": "eiken-pre2",
+    "expect": [],
+    "name": "誕生日の部屋",
+    "description": "A girl is blowing out the candles on the cake. A boy is celebrating because the candles are on the cake. A man is sitting on the sofa. There is a table in the room. There are two chairs next to the table.",
+    "checklist": [
+      {
+        "id": "girl_blow",
+        "kind": "center",
+        "label": "女の子がろうそくを吹き消している",
+        "accept": "a girl is blowing out the candles",
+        "refs": ["girl", "cake", "candle"]
+      },
+      {
+        "id": "boy_clap",
+        "kind": "center",
+        "label": "男の子がお祝いしている",
+        "accept": "a boy is celebrating",
+        "refs": ["boy"]
+      },
+      {
+        "id": "man_sit",
+        "kind": "center",
+        "label": "男の人がソファに座っている",
+        "accept": "a man is sitting on the sofa",
+        "refs": ["man", "sofa"]
+      },
+      {
+        "id": "why_clap",
+        "kind": "reason",
+        "label": "男の子がお祝いしている理由",
+        "accept": "a boy is celebrating because the candles are on the cake",
+        "refs": ["boy", "candle", "cake"]
+      },
+      {
+        "id": "table",
+        "kind": "detail",
+        "label": "部屋にテーブルがある",
+        "accept": "there is a table in the room",
+        "refs": ["table"]
+      },
+      {
+        "id": "chairs",
+        "kind": "detail",
+        "label": "テーブルの横に椅子が2つある",
+        "accept": "there are two chairs next to the table",
+        "refs": ["chair", "table"]
+      }
+    ],
+    "items": [
+      {
+        "key": "ground",
+        "part": "floor_wood",
+        "place": {
+          "relation": "ground"
+        }
+      },
+      {
+        "key": "wall",
+        "part": "wall_window",
+        "place": {
+          "relation": "ground"
+        }
+      },
+      {
+        "key": "table",
+        "part": "table_small",
+        "place": {
+          "relation": "ground",
+          "zone": "center"
+        }
+      },
+      {
+        "key": "chair",
+        "part": "chair",
+        "place": {
+          "relation": "seat_at",
+          "target": "table"
+        },
+        "facing": "table"
+      },
+      {
+        "key": "chair2",
+        "part": "chair",
+        "place": {
+          "relation": "seat_at",
+          "target": "table"
+        },
+        "facing": "table"
+      },
+      {
+        "key": "cake",
+        "part": "cake",
+        "place": {
+          "relation": "on",
+          "target": "table"
+        }
+      },
+      {
+        "key": "candle",
+        "part": "candles",
+        "place": {
+          "relation": "on",
+          "target": "cake"
+        }
+      },
+      {
+        "key": "girl",
+        "part": "person_blow_girl_a",
+        "place": {
+          "relation": "sit_on",
+          "target": "chair"
+        }
+      },
+      {
+        "key": "boy",
+        "part": "person_clap_boy_a",
+        "place": {
+          "relation": "sit_on",
+          "target": "chair2"
+        }
+      },
+      {
+        "key": "sofa",
+        "part": "sofa",
+        "place": {
+          "relation": "ground",
+          "zone": "right"
+        }
+      },
+      {
+        "key": "man",
+        "part": "person_sit_adult_a",
+        "place": {
+          "relation": "sit_on",
+          "target": "sofa"
+        }
+      }
+    ]
+  },
+  {
+    "id": "gen-v2-pre2-park-01",
+    "difficulty": "eiken-pre2",
+    "expect": [],
+    "name": "公園でボール遊び",
+    "description": "A boy is throwing a ball. A dog is running across the grass because the boy threw the ball. A woman is sitting on the bench. There is a tree behind the bench. There is a trash can next to the bench.",
+    "checklist": [
+      {
+        "id": "boy_throw",
+        "kind": "center",
+        "label": "男の子がボールを投げている",
+        "accept": "a boy is throwing a ball",
+        "refs": ["boy", "ball"]
+      },
+      {
+        "id": "dog_run",
+        "kind": "center",
+        "label": "犬が走っている",
+        "accept": "a dog is running",
+        "refs": ["dog"]
+      },
+      {
+        "id": "woman_sit",
+        "kind": "center",
+        "label": "女の人が座っている",
+        "accept": "a woman is sitting on the bench",
+        "refs": ["woman", "bench"]
+      },
+      {
+        "id": "why_run",
+        "kind": "reason",
+        "label": "犬が走っている理由",
+        "accept": "a dog is running across the grass because the boy threw the ball",
+        "refs": ["dog", "boy", "ball"]
+      },
+      {
+        "id": "tree_behind",
+        "kind": "detail",
+        "label": "ベンチの後ろに木がある",
+        "accept": "there is a tree behind the bench",
+        "refs": ["tree", "bench"]
+      },
+      {
+        "id": "trash_next",
+        "kind": "detail",
+        "label": "ベンチの隣にごみ箱がある",
+        "accept": "there is a trash can next to the bench",
+        "refs": ["trash_can", "bench"]
+      }
+    ],
+    "items": [
+      {
+        "key": "ground",
+        "part": "grass_patch",
+        "place": {
+          "relation": "ground"
+        }
+      },
+      {
+        "key": "bench",
+        "part": "bench",
+        "place": {
+          "relation": "ground",
+          "zone": "back"
+        }
+      },
+      {
+        "key": "woman",
+        "part": "person_sit_woman_a",
+        "place": {
+          "relation": "sit_on",
+          "target": "bench"
+        }
+      },
+      {
+        "key": "tree",
+        "part": "tree",
+        "place": {
+          "relation": "behind",
+          "target": "bench"
+        }
+      },
+      {
+        "key": "trash_can",
+        "part": "trash_bin",
+        "place": {
+          "relation": "next_to",
+          "target": "bench",
+          "side": "right"
+        }
+      },
+      {
+        "key": "boy",
+        "part": "person_throw_boy_a",
+        "place": {
+          "relation": "ground",
+          "zone": "front_left"
+        },
+        "facing": "right"
+      },
+      {
+        "key": "ball",
+        "part": "ball_red",
+        "place": {
+          "relation": "thrown_by",
+          "target": "boy"
+        }
+      },
+      {
+        "key": "dog",
+        "part": "animal_run_dog_a",
+        "place": {
+          "relation": "ground",
+          "zone": "front_right"
+        },
+        "facing": "right",
+        "motion": {
+          "type": "move",
+          "duration": 5,
+          "toward": "ball"
+        }
+      }
+    ]
+  },
+  {
+    "id": "gen-v2-pre2-playground-12",
+    "difficulty": "eiken-pre2",
+    "expect": ["out_of_view"],
+    "name": "校庭のボール遊び",
+    "description": "A boy is throwing a ball on the ground. Another boy is waiting to catch it. A girl is looking far away because a balloon is in the tree. There is a tree next to the bench. There is a bicycle behind the girl.",
+    "checklist": [
+      {
+        "id": "boy_throw",
+        "kind": "center",
+        "label": "男の子がボールを投げている",
+        "accept": "a boy is throwing a ball",
+        "refs": ["boy", "ball"]
+      },
+      {
+        "id": "tall_boy_catch",
+        "kind": "center",
+        "label": "もう一人の男の子が待っている",
+        "accept": "another boy is waiting",
+        "refs": ["tall_boy", "ball"]
+      },
+      {
+        "id": "girl_look",
+        "kind": "center",
+        "label": "女の子が遠くを見ている",
+        "accept": "a girl is looking far away",
+        "refs": ["girl"]
+      },
+      {
+        "id": "why_look",
+        "kind": "reason",
+        "label": "女の子が遠くを見ている理由",
+        "accept": "a girl is looking far away because a balloon is in the tree",
+        "refs": ["girl", "balloon", "tree"]
+      },
+      {
+        "id": "tree_bench",
+        "kind": "detail",
+        "label": "木がベンチの隣にある",
+        "accept": "there is a tree next to the bench",
+        "refs": ["tree", "bench"]
+      },
+      {
+        "id": "bicycle_girl",
+        "kind": "detail",
+        "label": "自転車が女の子の後ろにある",
+        "accept": "there is a bicycle behind the girl",
+        "refs": ["bicycle", "girl"]
+      }
+    ],
+    "items": [
+      {
+        "key": "ground",
+        "part": "ground_dirt",
+        "place": {
+          "relation": "ground"
+        }
+      },
+      {
+        "key": "boy",
+        "part": "person_throw_boy_a",
+        "place": {
+          "relation": "ground",
+          "zone": "left"
+        },
+        "facing": "right"
+      },
+      {
+        "key": "ball",
+        "part": "ball_red",
+        "place": {
+          "relation": "thrown_by",
+          "target": "boy",
+          "target2": "tall_boy"
+        }
+      },
+      {
+        "key": "tall_boy",
+        "part": "person_catch_boy_a",
+        "place": {
+          "relation": "ground",
+          "zone": "front"
+        },
+        "facing": "left"
+      },
+      {
+        "key": "bench",
+        "part": "bench",
+        "place": {
+          "relation": "ground",
+          "zone": "back_right"
+        }
+      },
+      {
+        "key": "tree",
+        "part": "tree",
+        "place": {
+          "relation": "next_to",
+          "target": "bench",
+          "side": "left"
+        }
+      },
+      {
+        "key": "balloon",
+        "part": "balloon",
+        "place": {
+          "relation": "above",
+          "target": "tree"
+        }
+      },
+      {
+        "key": "girl",
+        "part": "person_look_girl_a",
+        "place": {
+          "relation": "ground",
+          "zone": "right"
+        },
+        "facing": "camera"
+      },
+      {
+        "key": "bicycle",
+        "part": "bicycle",
+        "place": {
+          "relation": "behind",
+          "target": "girl"
+        }
+      }
+    ]
+  },
+  {
+    "id": "gen-v2-pre2-street-10",
+    "difficulty": "eiken-pre2",
+    "expect": ["who_mismatch"],
+    "name": "道で転んだ女の人",
+    "description": "A bicycle is lying on the road. A woman has fallen down on the road. A man is helping the woman get up because she has fallen down. A girl is looking at a smartphone. The girl is standing on the sidewalk.",
+    "checklist": [
+      {
+        "id": "woman_fall",
+        "kind": "center",
+        "label": "女の人が転んで座っている",
+        "accept": "a woman has fallen down on the road",
+        "refs": ["woman", "road"]
+      },
+      {
+        "id": "man_help",
+        "kind": "center",
+        "label": "男の人が女の人を助けている",
+        "accept": "a man is helping the woman get up",
+        "refs": ["man", "woman"]
+      },
+      {
+        "id": "girl_phone",
+        "kind": "center",
+        "label": "女の子がスマートフォンを見ている",
+        "accept": "a girl is looking at a smartphone",
+        "refs": ["girl"]
+      },
+      {
+        "id": "why_help",
+        "kind": "reason",
+        "label": "男の人が助けている理由",
+        "accept": "a man is helping the woman get up because she has fallen down",
+        "refs": ["man", "woman"]
+      },
+      {
+        "id": "bike_road",
+        "kind": "detail",
+        "label": "道に自転車が倒れている",
+        "accept": "a bicycle is lying on the road",
+        "refs": ["bicycle", "road"]
+      },
+      {
+        "id": "girl_sidewalk",
+        "kind": "detail",
+        "label": "女の子は歩道に立っている",
+        "accept": "the girl is standing on the sidewalk",
+        "refs": ["girl", "sidewalk"]
+      }
+    ],
+    "items": [
+      {
+        "key": "sidewalk",
+        "part": "sidewalk_stone",
+        "place": {
+          "relation": "ground"
+        }
+      },
+      {
+        "key": "road",
+        "part": "road_patch",
+        "place": {
+          "relation": "ground",
+          "zone": "back"
+        }
+      },
+      {
+        "key": "bicycle",
+        "part": "bicycle_down",
+        "place": {
+          "relation": "ground",
+          "zone": "back_right"
+        }
+      },
+      {
+        "key": "woman",
+        "part": "person_fallen_woman_a",
+        "place": {
+          "relation": "ground",
+          "zone": "center"
+        },
+        "facing": "camera"
+      },
+      {
+        "key": "man",
+        "part": "person_help_up_adult_a",
+        "place": {
+          "relation": "relate",
+          "target": "woman",
+          "link": "hand",
+          "side": "left",
+          "distance": "talk",
+          "turn": "toward"
+        }
+      },
+      {
+        "key": "girl",
+        "part": "person_phone_adult_a",
+        "place": {
+          "relation": "ground",
+          "zone": "front_right"
+        }
+      }
+    ]
+  },
+  {
+    "id": "gen-v2-pre2-train-station-04",
+    "difficulty": "eiken-pre2",
+    "expect": ["who_mismatch"],
+    "name": "駅のホームで電車に乗る",
+    "description": "A train is at the platform. A man is running with a bag because the train is at the platform. A man is reading a book. A girl is looking at a smartphone. The girl is standing on the platform.",
+    "checklist": [
+      {
+        "id": "man_run",
+        "kind": "center",
+        "label": "男の人がかばんを持って走っている",
+        "accept": "a man is running",
+        "refs": ["man", "train"]
+      },
+      {
+        "id": "man_read",
+        "kind": "center",
+        "label": "男の人が本を読んでいる",
+        "accept": "a man is reading a book",
+        "refs": ["reader"]
+      },
+      {
+        "id": "girl_phone",
+        "kind": "center",
+        "label": "女の子がスマートフォンを見ている",
+        "accept": "a girl is looking at a smartphone",
+        "refs": ["girl"]
+      },
+      {
+        "id": "why_run",
+        "kind": "reason",
+        "label": "男の人が走っている理由",
+        "accept": "a man is running with a bag because the train is at the platform",
+        "refs": ["man", "train"]
+      },
+      {
+        "id": "train_there",
+        "kind": "detail",
+        "label": "電車がホームにいる",
+        "accept": "a train is at the platform",
+        "refs": ["train", "platform"]
+      },
+      {
+        "id": "girl_stand",
+        "kind": "detail",
+        "label": "女の子はホームに立っている",
+        "accept": "the girl is standing on the platform",
+        "refs": ["girl", "platform"]
+      }
+    ],
+    "items": [
+      {
+        "key": "platform",
+        "part": "platform_station",
+        "place": {
+          "relation": "ground"
+        }
+      },
+      {
+        "key": "train",
+        "part": "train",
+        "place": {
+          "relation": "ground",
+          "zone": "back"
+        }
+      },
+      {
+        "key": "man",
+        "part": "person_run_bag_adult_a",
+        "place": {
+          "relation": "ground",
+          "zone": "front_left"
+        },
+        "facing": "right",
+        "motion": {
+          "type": "move",
+          "duration": 5,
+          "toward": "right"
+        }
+      },
+      {
+        "key": "reader",
+        "part": "person_read_adult_a",
+        "place": {
+          "relation": "ground",
+          "zone": "center"
+        }
+      },
+      {
+        "key": "girl",
+        "part": "person_phone_adult_a",
+        "place": {
+          "relation": "ground",
+          "zone": "right"
+        }
+      }
+    ]
+  }
+]

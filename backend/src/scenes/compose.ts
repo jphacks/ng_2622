@@ -296,14 +296,20 @@ const standAt = (part: Part, x: number, z: number, yaw: number): Spot => {
   return { position: [x - f[0], 0, z - f[2]], surface: "ground", yaw };
 };
 
+/** 人や動物のまわりに空ける幅（m）。立つ人の箱（幅 0.47・奥行き 0.29 ほど）なら、足元から 0.5 m ほど離れる */
+const LIVING_CLEARANCE = 0.3;
+
 /** 足元に立てるか。家具に埋まらず、ほかの人と重ならず、場面の中にある */
 const canStand = (c: Composer, x: number, z: number, skip: string[] = []) => {
   if (Math.abs(x) > STAND_LIMIT || Math.abs(z) > STAND_LIMIT) return false;
   for (const p of c.placed.values()) {
     if (skip.includes(p.key)) continue;
     if (LIVING_CATEGORIES.has(p.part.category)) {
-      const [fx, fz] = feetOf(p);
-      if (Math.hypot(fx - x, fz - z) < 0.5) return false;
+      // 足もとの 1 点ではなく、体の実際の広がり（倒れた人は 1.8 m）から空ける
+      const dx = Math.abs(x - p.position[0]);
+      const dz = Math.abs(z - p.position[2]);
+      if (dx < p.hx + LIVING_CLEARANCE && dz < p.hz + LIVING_CLEARANCE)
+        return false;
     } else if (SOLID_CATEGORIES.has(p.part.category) && !isBackdrop(p.part)) {
       const dx = Math.abs(x - p.position[0]);
       const dz = Math.abs(z - p.position[2]);
@@ -469,9 +475,13 @@ const placeBody = (
     const own = isLiving(part)
       ? BODY_RADIUS
       : extentToward(part, target.yaw, ux, uz);
-    const base =
-      (living ? BODY_RADIUS : extentToward(target.part, target.yaw, ux, uz)) +
-      own;
+    // 相手の体が基準の点（人は足元、物は真ん中）から (ux, uz) の向きに張り出す長さ。
+    // 人も実際の大きさで測る（倒れた人は長い向きに 0.9 m 張り出す）。立つ人は体の半分の幅を下限にする
+    const reachOut =
+      extentToward(target.part, target.yaw, ux, uz) +
+      (target.position[0] - ox) * ux +
+      (target.position[2] - oz) * uz;
+    const base = (living ? Math.max(BODY_RADIUS, reachOut) : reachOut) + own;
     const toward = yawToward(-ux, -uz);
     // 横に並ぶ関係は、真横だとカメラから重なることがある。計算が選んだときは相手の後ろへ少しずらす
     const [fx, fz] = forwardOf(target.yaw);

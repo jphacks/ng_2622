@@ -1,0 +1,77 @@
+{
+  "protocol": "scenenglish.scene/2",
+  "id": "gen-v2-eiken3-cafe-02",
+  "name": "カフェの二人",
+  "difficulty": "eiken-3",
+  "description": "A woman is drinking from a cup. A man is reading a book. There is a table in the cafe.",
+  "checklist": [
+    {
+      "id": "woman_drink",
+      "kind": "center",
+      "label": "女の人がカップで飲んでいる",
+      "accept": "a woman is drinking from a cup",
+      "refs": ["woman"]
+    },
+    {
+      "id": "man_read",
+      "kind": "center",
+      "label": "男の人が本を読んでいる",
+      "accept": "a man is reading a book",
+      "refs": ["man"]
+    },
+    {
+      "id": "table",
+      "kind": "detail",
+      "label": "カフェにテーブルがある",
+      "accept": "there is a table in the cafe",
+      "refs": ["table"]
+    }
+  ],
+  "items": [
+    {
+      "key": "ground",
+      "part": "floor_wood",
+      "place": {
+        "relation": "ground"
+      },
+      "position": [0, 0, 0]
+    },
+    {
+      "key": "wall",
+      "part": "wall_cafe",
+      "place": {
+        "relation": "ground"
+      },
+      "position": [0, 0, -3.57]
+    },
+    {
+      "key": "table",
+      "part": "table_small",
+      "place": {
+        "relation": "ground",
+        "zone": "center"
+      },
+      "position": [0, 0, 0]
+    },
+    {
+      "key": "woman",
+      "part": "person_drink_woman_a",
+      "place": {
+        "relation": "ground",
+        "zone": "left"
+      },
+      "facing": "camera",
+      "position": [-2.75, 0, 0]
+    },
+    {
+      "key": "man",
+      "part": "person_read_adult_a",
+      "place": {
+        "relation": "ground",
+        "zone": "right"
+      },
+      "facing": "camera",
+      "position": [2.75, 0, 0]
+    }
+  ]
+}

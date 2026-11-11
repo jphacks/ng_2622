@@ -37,7 +37,7 @@ pnpm openapi          # openapi.json を生成し直す
 
 ## 作り置きの場面（`src/scenes/pool/`）
 
-AI で作り置いた場面（配置の JSON、`scenenglish.scene/2`）と、級ごとの例と出題の候補を書いた `index.json`。今あるのは仮の場面（`temp-…`、級ごとに例 1 つ・出題 1 つ）で、人が確かめた場面ができたら差し替える。形と足し方は [`src/scenes/pool/README.md`](./src/scenes/pool/README.md)。iOS の Mock もビルドのときにここから写して使う。
+AI で作り置いた場面（配置の JSON、`scenenglish.scene/2`）と、級ごとの例と出題の候補を書いた `index.json`。今あるのは、2 段の生成で作って人が絵で選んだ 30 場面（`gen-v2-…`、級ごとに例 1 つ・出題 9 つ）。形と足し方は [`src/scenes/pool/README.md`](./src/scenes/pool/README.md)。iOS の Mock もビルドのときにここから写して使う。
 
 ### 手元で採点を試す
 
@@ -54,9 +54,9 @@ CLAUDE_API_KEY=...
 ```sh
 # 16 kHz・16 bit・モノラルの WAV を作って送る（1 回で Azure と Claude を 1 回ずつ呼ぶ）
 say -o test.wav --data-format=LEI16@16000 "A boy is running in the park and a dog is running to a red ball."
-curl -F audio=@test.wav -F sceneId=temp-eiken-pre2-park http://localhost:8787/dev/score
+curl -F audio=@test.wav -F sceneId=gen-v2-pre2-park-01 http://localhost:8787/dev/score
 # 端末の文字起こしの代わりに transcript も付けるとき
-curl -F audio=@test.wav -F sceneId=temp-eiken-pre2-park -F "transcript=A boy is throwing a ball." http://localhost:8787/dev/score
+curl -F audio=@test.wav -F sceneId=gen-v2-pre2-park-01 -F "transcript=A boy is throwing a ball." http://localhost:8787/dev/score
 ```
 
 `/dev/score` は `ENABLE_DEV_ROUTES=true` のときだけ開く（`pnpm dev` が自動で付ける）。デプロイ先には入れない。
@@ -109,7 +109,21 @@ python3 scripts/scene/make_pool.py --url http://localhost:8799 --out <出力先>
 
 ### 英文を先に書く 2 段の生成（`scenenglish.scene/2`）
 
-級（`eiken-3`・`eiken-pre2`・`eiken-2`）に合った場面を作る生成（[ADR](../docs/adr/20261110-write-grade-sentences-before-scene-parts.md)）。部屋での生成も `POST /scenes/generate` もこれを使う（`usecases/scenes.ts` の `generateScene`）。`generate-v2.ts` が、1 回目に部品の一覧を見せずに英文とチェックリストを書かせ（`generateSentences`）、`candidates()` が 2 回目に渡す部品を選び（今は全部を返す。後でベクトル検索に差し替える）、2 回目に部品と関係を書かせる（`generateItems`）。級の規則は `grades.ts` の `GRADES`、ポーズで言える動詞と CEFR-J の段階は `pose-verbs.ts` にあり、指示の表も裏取りの数もここから作る。裏取り（`verify.ts`）は、チェックリストの数・`refs` の呼び名が `items` にあるか・`accept` が `description` にあるか・中心の項目の動詞が部品のポーズと級の段階に合うかを確かめ、落ちた理由を文で返す。作り置きを作るときは `generateVerifiedScene` を使う（落ちた理由を指示に足して 2 回まで作り直し、通らなければ `SceneVerificationError`）。座標に直して `/2` の配置の JSON にするのは `compose-v2.ts` の `composeLayoutV2`。級ごとにまとめて作るときは、先に作った場面の要約（`variety.ts` の `summarizeScene`）を入力の `avoid` に渡して違う場面を書かせ、`overusedCauses` で同じ理由の原因（rain など）が 3 場面を超えていないかを数える。時間は `CLAUDE_API_KEY=... pnpm tsx scripts/measure-scene-generation-v2.ts [1 級あたりの回数（既定 20）] [結果の JSON の書き出し先] [--avoid]` で測る（`--avoid` で、同じ級の前の回の要約を渡す）。級ごとに、各回の時間（1 回目・2 回目・合計）と裏取りの結果を出し、最後に第 3 四分位数の表を出す（各段を 1 回だけ呼び、作り直さない。Claude を実際に呼ぶので費用がかかる）。合計の第 3 四分位数が 10 秒を超えていたら、部屋での生成を動かす前に扱いを決める。
+級（`eiken-3`・`eiken-pre2`・`eiken-2`）に合った場面を作る生成（[ADR](../docs/adr/20261110-write-grade-sentences-before-scene-parts.md)）。部屋での生成も `POST /scenes/generate` もこれを使う（`usecases/scenes.ts` の `generateScene`）。`generate-v2.ts` が、1 回目に部品の一覧を見せずに英文とチェックリストを書かせ（`generateSentences`。見本の答えを文の配列で書かせ、項目ごとにどの文の事実かを番号で書かせて、`accept` はコードがその文から取る）、`candidates()` が 2 回目に渡す部品を選び（今は全部を返す。後でベクトル検索に差し替える）、2 回目に部品と関係を書かせる（`generateItems`）。級の規則は `grades.ts` の `GRADES`、ポーズで言える動詞と CEFR-J の段階は `pose-verbs.ts` にあり、指示の表も裏取りの数もここから作る。裏取り（`verify.ts`）は、チェックリストの数・`refs` の呼び名が `items` にあるか・`accept` が `description` にあるか・中心の項目の動詞が部品のポーズと級の段階に合うかを確かめ、落ちた理由を文で返す。作り置きを作るときは `generateVerifiedScene` を使う（落ちた理由を指示に足して 2 回まで作り直し、通らなければ `SceneVerificationError`）。座標に直して `/2` の配置の JSON にするのは `compose-v2.ts` の `composeLayoutV2`。級ごとにまとめて作るときは、先に作った場面の要約（`variety.ts` の `summarizeScene`）を入力の `avoid` に渡して違う場面を書かせ、`overusedCauses` で同じ理由の原因（rain など）が 3 場面を超えていないかを数える。時間は `CLAUDE_API_KEY=... pnpm tsx scripts/measure-scene-generation-v2.ts [1 級あたりの回数（既定 20）] [結果の JSON の書き出し先] [--avoid]` で測る（`--avoid` で、同じ級の前の回の要約を渡す）。級ごとに、各回の時間（1 回目・2 回目・合計）と裏取りの結果を出し、最後に第 3 四分位数の表を出す（各段を 1 回だけ呼び、作り直さない。Claude を実際に呼ぶので費用がかかる）。合計の第 3 四分位数が 10 秒を超えていたら、部屋での生成を動かす前に扱いを決める。
+
+### `/2` の作り置きをまとめて作る（`scripts/make-pool-v2.ts`）
+
+級ごとに `generateVerifiedScene` を順に呼び、裏取りを通った場面を `<出力>/<id>.json`（`scenenglish.scene/2`。id は `gen-v2-<級>-<テーマ>-<連番>`、例 `gen-v2-pre2-bus-stop-11`）に書く。テーマは 12 個を順に回し、その級で先に通った場面の要約を次の場面に渡して、似た場面を避けさせる。1 つ落ちても API が失敗しても止まらず、全部の試行（級・テーマ・通ったか・落ちた理由・呼び出しの数・作り直しの数・時間・費用）を `<出力>/log.json` に残し、最後に級ごとの通過の数と費用の表を出す。費用の合計が上限（`--max-usd`、既定 3 ドル）に達したら、次の場面を作らずに止まる。Claude を実際に呼ぶので費用がかかる。キーは環境変数 `CLAUDE_API_KEY` で渡す（引数やファイルには書かない）。
+
+```sh
+# mini で。級ごとに 12 場面ずつ試す（既定）
+cd backend
+CLAUDE_API_KEY=... pnpm tsx scripts/make-pool-v2.ts ~/pool-v2
+# 2級だけ、続きの 12 場面（連番 13 から。テーマは一周して公園から）を、上限 2 ドルで
+CLAUDE_API_KEY=... pnpm tsx scripts/make-pool-v2.ts ~/pool-v2 --grade eiken-2 --start 12 --max-usd 2
+```
+
+`--count` は級ごとに試す数、`--grade` は級（`,` 区切り）、`--start` は開始番号（テーマの回し始めと id の連番。同じ id のファイルがあれば飛ばす）。ここで出来るのは候補で、絵に描いて（`scripts/scene/render_layout.py`）人が選んでから `src/scenes/pool/` に入れる。
 
 ## デプロイ
 

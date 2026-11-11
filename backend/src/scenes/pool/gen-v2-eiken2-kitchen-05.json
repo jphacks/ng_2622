@@ -1,0 +1,189 @@
+{
+  "protocol": "scenenglish.scene/2",
+  "id": "gen-v2-eiken2-kitchen-05",
+  "name": "台所の夕食じたく",
+  "difficulty": "eiken-2",
+  "description": "A woman is cooking at the stove. A boy is putting plates on the table so that they can eat. A man is cleaning the floor because there are pieces of glass on it. A girl is carrying a box. There is a bottle on the table. There is a pan on the stove.",
+  "checklist": [
+    {
+      "id": "woman_cook",
+      "kind": "center",
+      "label": "女の人が料理をしている",
+      "accept": "a woman is cooking",
+      "refs": ["woman"]
+    },
+    {
+      "id": "boy_plates",
+      "kind": "center",
+      "label": "男の子がテーブルに皿を置いている",
+      "accept": "a boy is putting plates on the table",
+      "refs": ["boy", "table"]
+    },
+    {
+      "id": "man_clean",
+      "kind": "center",
+      "label": "男の人が床をそうじしている",
+      "accept": "a man is cleaning the floor",
+      "refs": ["man", "floor"]
+    },
+    {
+      "id": "girl_box",
+      "kind": "center",
+      "label": "女の子が箱を運んでいる",
+      "accept": "a girl is carrying a box",
+      "refs": ["girl"]
+    },
+    {
+      "id": "why_clean",
+      "kind": "reason",
+      "label": "男の人が床をそうじしている理由",
+      "accept": "a man is cleaning the floor because there are pieces of glass on it",
+      "refs": ["man", "glass"]
+    },
+    {
+      "id": "link_plates",
+      "kind": "link",
+      "label": "男の子が皿を置いている理由と目的",
+      "accept": "a boy is putting plates on the table so that they can eat",
+      "refs": ["boy", "woman"]
+    },
+    {
+      "id": "bottle_table",
+      "kind": "detail",
+      "label": "テーブルの上にペットボトルがある",
+      "accept": "there is a bottle on the table",
+      "refs": ["bottle", "table"]
+    },
+    {
+      "id": "pan_stove",
+      "kind": "detail",
+      "label": "コンロにフライパンがある",
+      "accept": "there is a pan on the stove",
+      "refs": ["pan"]
+    }
+  ],
+  "items": [
+    {
+      "key": "floor",
+      "part": "floor_tile",
+      "place": {
+        "relation": "ground"
+      },
+      "position": [0, 0, 0]
+    },
+    {
+      "key": "wall",
+      "part": "wall_kitchen_tile",
+      "place": {
+        "relation": "ground"
+      },
+      "position": [0, 0, -3.757]
+    },
+    {
+      "key": "counter",
+      "part": "kitchen_counter",
+      "place": {
+        "relation": "ground",
+        "zone": "back"
+      },
+      "position": [-0.4, 0, -1.854],
+      "yaw": 65
+    },
+    {
+      "key": "pan",
+      "part": "pan",
+      "place": {
+        "relation": "on",
+        "target": "counter",
+        "spot": "stove"
+      },
+      "position": [-0.166, 0.925, -2.296]
+    },
+    {
+      "key": "woman",
+      "part": "person_cook_mother_a",
+      "place": {
+        "relation": "relate",
+        "target": "counter",
+        "link": "hand",
+        "side": "front",
+        "distance": "touch",
+        "turn": "toward"
+      },
+      "position": [0.264, 0, -2.317],
+      "yaw": -115
+    },
+    {
+      "key": "table",
+      "part": "table",
+      "place": {
+        "relation": "ground",
+        "zone": "right"
+      },
+      "position": [2.35, 0, 0.146]
+    },
+    {
+      "key": "bottle",
+      "part": "bottle",
+      "place": {
+        "relation": "on",
+        "target": "table"
+      },
+      "position": [2.35, 0.72, 0.146]
+    },
+    {
+      "key": "boy",
+      "part": "person_set_plates_boy_a",
+      "place": {
+        "relation": "relate",
+        "target": "table",
+        "link": "hand",
+        "side": "front",
+        "distance": "touch",
+        "turn": "toward"
+      },
+      "position": [2.974, 0, 0.019],
+      "yaw": -90
+    },
+    {
+      "key": "plate",
+      "part": "plate",
+      "place": {
+        "relation": "on",
+        "target": "table"
+      },
+      "position": [2.1, 0.72, 0.146]
+    },
+    {
+      "key": "glass",
+      "part": "shards_glass",
+      "place": {
+        "relation": "ground",
+        "zone": "front_left"
+      },
+      "position": [-3.15, 0, 2.896]
+    },
+    {
+      "key": "man",
+      "part": "person_sweep_adult_a",
+      "place": {
+        "relation": "next_to",
+        "target": "glass",
+        "side": "right",
+        "distance": "beside"
+      },
+      "facing": "camera",
+      "position": [-2.266, 0, 2.896]
+    },
+    {
+      "key": "girl",
+      "part": "person_carry_girl_a",
+      "place": {
+        "relation": "ground",
+        "zone": "front"
+      },
+      "position": [-0.4, 0, 2.896],
+      "yaw": 65
+    }
+  ]
+}
