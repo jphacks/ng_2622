@@ -28,9 +28,14 @@ export type Problem = {
     | "duplicate_key"
     | "unknown_part"
     | "ref_not_in_items"
+    | "people_count"
     | "center_without_actor"
+    | "actor_twice"
+    | "reason_without_actor"
     | "verb_mismatch"
-    | "verb_level";
+    | "verb_level"
+    /** 応答が JSON でない・形が違う・途中で止まった（作り置きの道で、作り直しの理由にする） */
+    | "invalid_response";
   stage: "sentences" | "items";
   message: string;
 };
@@ -125,8 +130,9 @@ const isLiving = (part: Part) =>
 
 /**
  * 部品（2 回目の出力）と照らして確かめること。
- * 中心の項目は、refs が指す人や動物のポーズの動詞が accept に出てくるか（食い違わないか）と、
- * その動詞が級の段階に入るかを見る。動詞は pose-verbs.ts の表の形（-s・-ing・-ed・不規則な形）で探す。
+ * 人と動物の数が級の範囲か、reason・link が行動する人を指すかを見る。
+ * 中心の項目は、同じ人が 2 つの項目の主役になっていないか、
+ * refs が指す人や動物のポーズの動詞が accept に出てくるか（食い違わないか）、その動詞が級の段階に入るかを見る。動詞は pose-verbs.ts の表の形（-s・-ing・-ed・不規則な形）で探す。
  * 見るのは動詞だけで、目的語や位置の関係（on the bench など）は確かめない
  */
 export const verifyItems = (
@@ -160,6 +166,31 @@ export const verifyItems = (
     }
   }
 
+  // 人の数（動物も 1 人と数える）。英文に出てこない人を足しても、ここで落ちる
+  const people = items.filter((i) => {
+    const part = parts.get(i.part);
+    return !!part && isLiving(part);
+  });
+  if (people.length < grade.people.min || people.length > grade.people.max) {
+    const want =
+      grade.people.min === grade.people.max
+        ? `${grade.people.min}`
+        : `${grade.people.min}〜${grade.people.max}`;
+    add(
+      "people_count",
+      "sentences",
+      `人と動物が ${people.length}（${people.map((i) => i.key).join(", ")}）。${gradeId} は ${want}`,
+    );
+  }
+
+  const livingRefs = (c: ChecklistItem) =>
+    c.refs
+      .map((r) => ({ key: r, part: parts.get(byKey.get(r)?.part ?? "") }))
+      .filter((a): a is { key: string; part: Part } => !!a.part)
+      .filter((a) => isLiving(a.part));
+  /** center の主役（refs の先頭の人や動物）と、その項目の id */
+  const actorOf = new Map<string, string>();
+
   for (const c of sentences.checklist) {
     const missing = [...new Set(c.refs)].filter((r) => !byKey.has(r));
     for (const r of missing) {
@@ -169,12 +200,21 @@ export const verifyItems = (
         `refs の ${r}（項目 ${c.id}）が items の key に無い`,
       );
     }
-    if (c.kind !== "center" || missing.length > 0) continue;
+    if (missing.length > 0) continue;
+    const actors = livingRefs(c);
+    if (c.kind === "reason" || c.kind === "link") {
+      // 原因と行動のうち、行動する人がいるか。原因が見える物かどうか（因果の中身）は確かめられない
+      if (actors.length === 0) {
+        add(
+          "reason_without_actor",
+          "sentences",
+          `${c.kind} の項目 ${c.id} の refs（${c.refs.join(", ")}）に、行動する人や動物がいない`,
+        );
+      }
+      continue;
+    }
+    if (c.kind !== "center") continue;
 
-    const actors = c.refs
-      .map((r) => ({ key: r, part: parts.get(byKey.get(r)?.part ?? "") }))
-      .filter((a): a is { key: string; part: Part } => !!a.part)
-      .filter((a) => isLiving(a.part));
     if (actors.length === 0) {
       add(
         "center_without_actor",
@@ -182,6 +222,18 @@ export const verifyItems = (
         `center の項目 ${c.id} の refs（${c.refs.join(", ")}）に人や動物がいない。center は誰が何をしているかにする`,
       );
       continue;
+    }
+    // 1 人につき動作は 1 つ。同じ人が 2 つの center の主役になっていないか
+    const actor = actors[0].key;
+    const before = actorOf.get(actor);
+    if (before) {
+      add(
+        "actor_twice",
+        "sentences",
+        `${actor} が center の項目 ${before} と ${c.id} の両方の主役になっている。1 人につき動作は 1 つにし、2 つ目は detail にするか別の人にする`,
+      );
+    } else {
+      actorOf.set(actor, c.id);
     }
     const said = actors.flatMap((a) => poseVerbsIn(c.accept, a.part));
     if (said.length === 0) {

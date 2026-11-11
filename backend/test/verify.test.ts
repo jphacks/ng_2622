@@ -63,24 +63,25 @@ const EASY_ITEMS: PlanItem[] = [
   item("ball", "ball_red"),
 ];
 
-// eiken-2 の通る場面（中心 4・理由 1・つながり 1・細部 2）
+// eiken-2 の通る場面（中心 4・理由 1・つながり 1・細部 2、人と動物は 4）
 const HARD: SceneSentences = {
   name: "ボールを追う犬",
   description:
-    "A boy threw a ball, so the dog is running across the grass to get it. Another boy is waiting to catch the ball. A woman has fallen down next to her bicycle. A man is helping her because she fell down. There is a bench behind them. The bicycle is lying on the ground.",
+    "A boy threw a ball, so the dog is running across the grass to get it. A woman has fallen down next to her bicycle. A man is helping her because she has fallen down. There is a bench behind them. The bicycle is lying on the ground.",
   checklist: [
     check("boy_throw", "center", "a boy threw a ball", ["boy"]),
-    check("dog_run", "center", "the dog is running across the grass", ["dog"]),
-    check("boy_catch", "center", "another boy is waiting to catch the ball", [
-      "tall_boy",
-    ]),
+    check("dog_run", "center", "the dog is running", ["dog"]),
+    check("woman_fall", "center", "a woman has fallen down", ["woman"]),
     check("man_help", "center", "a man is helping her", ["man", "woman"]),
-    check("why_help", "reason", "because she fell down", ["woman", "man"]),
+    check("why_help", "reason", "because she has fallen down", [
+      "man",
+      "woman",
+    ]),
     check(
       "ball_dog",
       "link",
       "a boy threw a ball, so the dog is running across the grass to get it",
-      ["boy", "ball", "dog"],
+      ["dog", "ball", "boy"],
     ),
     check("bench", "detail", "there is a bench behind them", ["bench"]),
     check("bicycle", "detail", "the bicycle is lying on the ground", [
@@ -91,7 +92,6 @@ const HARD: SceneSentences = {
 const HARD_ITEMS: PlanItem[] = [
   ground,
   item("boy", "person_throw_boy_a"),
-  item("tall_boy", "person_catch_boy_a"),
   item("ball", "ball_red"),
   item("dog", "animal_run_dog_a"),
   item("woman", "person_fallen_woman_a"),
@@ -114,8 +114,8 @@ test("呼び名を集める: 重ねず、出てきた順", () => {
     "girl",
     "boy",
     "man",
-    "bench",
     "rain",
+    "bench",
   ]);
 });
 
@@ -131,7 +131,7 @@ test("kind ごとの数が級の形と違えば落ちる", () => {
 
   // 細部が 1 つ足りない
   const s = clone(EXAMPLE_SENTENCES);
-  s.checklist = s.checklist.filter((c) => c.id !== "man_read");
+  s.checklist = s.checklist.filter((c) => c.id !== "man_sit");
   assert.deepEqual(
     verifySentences("eiken-pre2", s).map((p) => p.message),
     ["checklist の detail が 1 個ある。eiken-pre2 は 2 個"],
@@ -309,8 +309,10 @@ test("center の動詞が級の段階を超えれば落ちる（1 回目から�
     problems[0].message,
     "center の項目 boy_throw の動詞（throw は A2）が級の範囲に無い。eiken-3 の中心の動作は CEFR-J A1 まで",
   );
-  // 準2級（A2）なら通る
-  assert.deepEqual(codes(verifyItems("eiken-pre2", s, items, PARTS)), []);
+  // 準2級（A2）なら動詞では落ちない
+  assert.ok(
+    !codes(verifyItems("eiken-pre2", s, items, PARTS)).includes("verb_level"),
+  );
 });
 
 test("同じポーズでも、やさしい動詞で言えば下の級で通る（wipe は B2、clean は A1）", () => {
@@ -338,7 +340,7 @@ test("同じポーズでも、やさしい動詞で言えば下の級で通る�
     assert.deepEqual(
       codes(
         verifyItems(grade, scene("A woman is wiping the table"), items, PARTS),
-      ),
+      ).filter((c) => c.startsWith("verb")),
       ["verb_level"],
       grade,
     );
@@ -346,7 +348,7 @@ test("同じポーズでも、やさしい動詞で言えば下の級で通る�
 });
 
 test("detail・reason・link の項目は、ポーズの動詞を見ない", () => {
-  // man_read（detail）は座って読む人。立つ人に替えても、detail では落とさない
+  // man_sit（detail）は座って読む人。立つ人に替えても、detail では落とさない
   const s = clone(EXAMPLE_SENTENCES);
   s.checklist = s.checklist.filter((c) => c.kind !== "center");
   const items = EXAMPLE_ITEMS.map((i) =>
@@ -369,5 +371,150 @@ test("英文と部品の理由をまとめて返す", () => {
   assert.deepEqual(codes(all("eiken-3", s, items)), [
     "accept_not_in_description",
     "ref_not_in_items",
+  ]);
+});
+
+test("立っているポーズの人は、何をしていても「立っている」と言える（段階は stand の A2）", () => {
+  const scene = (accept: string): SceneSentences => ({
+    name: "部屋",
+    description: `${accept}. A boy is looking at it. A man is eating. Because it is raining. It is raining. There is a table.`,
+    checklist: [
+      check("girl", "center", accept, ["girl", "table"]),
+      check("boy", "center", "a boy is looking at it", ["boy"]),
+      check("man", "center", "a man is eating", ["man"]),
+      check("why", "reason", "because it is raining", ["girl", "rain"]),
+      check("rain", "detail", "it is raining", ["rain"]),
+      check("table", "detail", "there is a table", ["table"]),
+    ],
+  });
+  const items = (girl: string) => [
+    ground,
+    item("rain", "rain"),
+    item("table", "table"),
+    item("girl", girl),
+    item("boy", "person_look_boy_a"),
+    item("man", "person_eat_adult_a"),
+  ];
+  const standing = scene("A girl is standing next to the table");
+  // 手をかざして見る女の子・スマホを見る人も、立っている
+  for (const part of ["person_look_girl_a", "person_phone_adult_a"]) {
+    const problems = verifyItems("eiken-pre2", standing, items(part), PARTS);
+    assert.ok(!codes(problems).includes("verb_mismatch"), part);
+    assert.ok(!codes(problems).includes("verb_level"), part);
+  }
+  // 走っている人・座っている人は「立っている」と言えない
+  for (const part of ["person_run_phone_girl_a", "person_sit_girl_a"]) {
+    assert.ok(
+      codes(verifyItems("eiken-pre2", standing, items(part), PARTS)).includes(
+        "verb_mismatch",
+      ),
+      part,
+    );
+  }
+});
+
+test("3級では standing は段階で落ち、waiting・looking なら通る", () => {
+  const scene = (accept: string): SceneSentences => ({
+    ...EASY,
+    description: `${accept}. ${EASY.description}`,
+    checklist: [
+      check("boy", "center", accept, ["boy"]),
+      EASY.checklist[1],
+      EASY.checklist[2],
+    ],
+  });
+  const items = EASY_ITEMS.map((i) =>
+    i.key === "boy" ? item("boy", "person_stand_boy_a") : i,
+  );
+  assert.deepEqual(
+    verifyItems("eiken-3", scene("A boy is standing"), items, PARTS).map(
+      (p) => p.message,
+    ),
+    [
+      "center の項目 boy の動詞（stand は A2）が級の範囲に無い。eiken-3 の中心の動作は CEFR-J A1 まで",
+    ],
+  );
+  assert.deepEqual(all("eiken-3", scene("A boy is waiting"), items), []);
+  assert.deepEqual(
+    all("eiken-3", scene("A boy is looking at a dog"), items),
+    [],
+  );
+});
+
+test("座っているポーズの人は「座っている」と言える（拍手する人など）", () => {
+  const s: SceneSentences = {
+    ...EASY,
+    description: `A man is sitting. ${EASY.description}`,
+    checklist: [
+      check("man", "center", "a man is sitting", ["man"]),
+      EASY.checklist[1],
+      EASY.checklist[2],
+    ],
+  };
+  const items = [
+    ...EASY_ITEMS.filter((i) => i.key !== "boy"),
+    item("man", "person_clap_adult_a"),
+  ];
+  assert.deepEqual(all("eiken-3", s, items), []);
+});
+
+test("同じ人が 2 つの center の主役なら落ちる（1 回目から作り直す）", () => {
+  const s = clone(HARD);
+  // 助けている男の人に、もう 1 つ動作を持たせる
+  s.description = `${s.description} The man is holding her hand.`;
+  s.checklist[2] = check("man_hold", "center", "the man is holding her hand", [
+    "man",
+    "woman",
+  ]);
+  const problems = verifyItems("eiken-2", s, HARD_ITEMS, PARTS);
+  assert.deepEqual(codes(problems), ["actor_twice"]);
+  assert.equal(problems[0].stage, "sentences");
+  assert.equal(
+    problems[0].message,
+    "man が center の項目 man_hold と man_help の両方の主役になっている。1 人につき動作は 1 つにし、2 つ目は detail にするか別の人にする",
+  );
+});
+
+test("別の center の相手として出てくるだけなら落ちない（主役は refs の先頭の人）", () => {
+  // woman は woman_fall の主役で、man_help では相手
+  assert.deepEqual(verifyItems("eiken-2", HARD, HARD_ITEMS, PARTS), []);
+});
+
+test("reason・link の refs に行動する人や動物がいなければ落ちる", () => {
+  const s = clone(HARD);
+  s.checklist[4].refs = ["bench", "bicycle"];
+  const problems = verifyItems("eiken-2", s, HARD_ITEMS, PARTS);
+  assert.deepEqual(codes(problems), ["reason_without_actor"]);
+  assert.equal(problems[0].stage, "sentences");
+  assert.equal(
+    problems[0].message,
+    "reason の項目 why_help の refs（bench, bicycle）に、行動する人や動物がいない",
+  );
+});
+
+test("人と動物の数が級の範囲を外れれば落ちる（動物も 1 人と数える）", () => {
+  // 3級は 1〜2。3 人目を足すと落ちる
+  const many = [...EASY_ITEMS, item("woman", "person_walk_woman_a")];
+  assert.deepEqual(
+    verifyItems("eiken-3", EASY, many, PARTS).map((p) => p.message),
+    ["人と動物が 3（boy, dog, woman）。eiken-3 は 1〜2"],
+  );
+  // 準2級はちょうど 3。1 人足りないと落ちる
+  const few = EXAMPLE_ITEMS.filter((i) => i.key !== "girl");
+  const s = clone(EXAMPLE_SENTENCES);
+  s.checklist[0].refs = ["boy"];
+  const problems = verifyItems("eiken-pre2", s, few, PARTS);
+  assert.ok(
+    problems.some(
+      (p) =>
+        p.code === "people_count" &&
+        p.stage === "sentences" &&
+        p.message === "人と動物が 2（man, boy）。eiken-pre2 は 3",
+    ),
+  );
+  // 2級は 3〜4。背景に足した 5 人目で落ちる
+  const five = [...HARD_ITEMS, item("girl", "person_stand_girl_a")];
+  assert.deepEqual(codes(verifyItems("eiken-2", HARD, five, PARTS)), [
+    "people_count",
   ]);
 });

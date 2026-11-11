@@ -22,9 +22,11 @@ import {
   itemsMessage,
   itemsOnlySchema,
   MAX_REMAKES,
+  SceneResponseError,
   SceneVerificationError,
   sentenceMessage,
   sentenceSchema,
+  verbLimits,
 } from "../src/scenes/generate-v2";
 import { GRADES } from "../src/scenes/grades";
 import { PARTS } from "../src/scenes/parts";
@@ -89,13 +91,19 @@ test("級の規則の表は級の定数から作る（人の数・文の数・ch
   assert.ok(rules.includes("- People: 1-2 people or animals"));
   assert.ok(rules.includes("- People: 3 people or animals"));
   assert.ok(rules.includes("- People: 3-4 people or animals"));
-  assert.ok(rules.includes("- checklist: exactly 2 center, 1 detail."));
   assert.ok(
-    rules.includes("- checklist: exactly 3 center, 1 reason, 2 detail."),
+    rules.includes("- checklist: exactly 3 items: 2 center, 1 detail."),
+  );
+  assert.ok(rules.includes("only verbs marked A1 in the list of actions"));
+  assert.ok(rules.includes("only verbs marked A1, A2, B1 in the list"));
+  assert.ok(
+    rules.includes(
+      "- checklist: exactly 6 items: 3 center, 1 reason, 2 detail.",
+    ),
   );
   assert.ok(
     rules.includes(
-      "- checklist: exactly 4 center, 1 reason, 1 link, 2 detail.",
+      "- checklist: exactly 8 items: 4 center, 1 reason, 1 link, 2 detail.",
     ),
   );
 });
@@ -109,9 +117,17 @@ test("1 回目の指示: 級の表・語彙・テーマ・例があり、部品�
   assert.ok(system.includes(JSON.stringify(EXAMPLE_SENTENCES)));
   // 決定のとおりの決まり
   assert.ok(system.includes("Every accept must be found in the description"));
-  assert.ok(
-    system.includes("The cause must be something visible in the scene"),
-  );
+  assert.ok(system.includes("The cause must be visible in the scene"));
+  // 実測で見つかった崩れへの決まり
+  assert.ok(system.includes("Never return an empty or shorter checklist"));
+  assert.ok(system.includes("One person, one action"));
+  assert.ok(system.includes("One item, one fact"));
+  assert.ok(system.includes("a feeling, a wish or a plan is not a cause"));
+  assert.ok(system.includes("Good reason:") && system.includes("Bad link:"));
+  assert.ok(system.includes("eiken-3 uses only verbs marked A1"));
+  assert.ok(system.includes(verbLimits(PARTS)));
+  assert.ok(verbLimits(PARTS).includes("- eiken-3: "));
+  assert.ok(/- eiken-3: .*\bstand\b.*\bthrow\b/.test(verbLimits(PARTS)));
   assert.ok(system.includes("two or more refs"));
   // 部品の ID は 1 つも出さない
   for (const p of PARTS.filter((x) => x.id.includes("_"))) {
@@ -170,17 +186,20 @@ test("書かせる形: 2 回目は items だけで、部品の ID は候補の e
 });
 
 test("user の文: 1 回目は級とテーマ、2 回目は 1 回目の出力の全部と呼び名の一覧", () => {
-  assert.equal(sentenceMessage(INPUT), "級: eiken-pre2\nテーマ: バス停");
+  assert.equal(
+    sentenceMessage(INPUT),
+    "級: eiken-pre2\nテーマ: バス停\nchecklist: 3 center, 1 reason, 2 detail（計 6 個）",
+  );
   assert.equal(
     sentenceMessage({ grade: "eiken-3" }),
-    "級: eiken-3\nテーマ: 一覧から選ぶ",
+    "級: eiken-3\nテーマ: 一覧から選ぶ\nchecklist: 2 center, 1 detail（計 3 個）",
   );
   assert.equal(
     itemsMessage(INPUT, EXAMPLE_SENTENCES),
-    `級: eiken-pre2\nScene: ${JSON.stringify(EXAMPLE_SENTENCES)}\nKeys: girl, boy, man, bench, rain`,
+    `級: eiken-pre2\nScene: ${JSON.stringify(EXAMPLE_SENTENCES)}\nKeys: girl, boy, man, rain, bench`,
   );
   const again = sentenceMessage(INPUT, ["理由 1", "理由 2"]);
-  assert.ok(again.startsWith("級: eiken-pre2\nテーマ: バス停\n\n"));
+  assert.ok(again.startsWith(`${sentenceMessage(INPUT)}\n\n`));
   assert.ok(again.endsWith("- 理由 1\n- 理由 2"));
 });
 
@@ -275,21 +294,67 @@ test("形が違う応答は、その段だけ 1 回やり直す", async () => {
   assert.deepEqual(result.problems, []);
 });
 
-test("checklist が空・kind が知らない値の応答は形が違う扱い", async () => {
-  for (const body of [
-    { ...EXAMPLE_SENTENCES, checklist: [] },
-    {
-      ...EXAMPLE_SENTENCES,
-      checklist: [{ ...EXAMPLE_SENTENCES.checklist[0], kind: "main" }],
-    },
-  ]) {
-    const f = fake([() => message(body), () => message(body)]);
-    await assert.rejects(
-      generateSentences(ENV, PARTS, INPUT, { create: f.create }),
-      (e) => e instanceof SceneGenerationError && e.kind === "invalid",
-    );
-    assert.equal(f.calls.length, 2);
-  }
+test("kind が知らない値の応答は形が違う扱い。生の本文の先頭を持つ", async () => {
+  const body = {
+    ...EXAMPLE_SENTENCES,
+    checklist: [{ ...EXAMPLE_SENTENCES.checklist[0], kind: "main" }],
+  };
+  const f = fake([() => message(body), () => message(body)]);
+  await assert.rejects(
+    generateSentences(ENV, PARTS, INPUT, { create: f.create }),
+    (e) =>
+      e instanceof SceneResponseError &&
+      e.kind === "invalid" &&
+      e.raw === JSON.stringify(body),
+  );
+  assert.equal(f.calls.length, 2);
+  // 長い本文は先頭 500 文字だけ残す
+  const long = fake([() => message("x".repeat(2000))]);
+  await assert.rejects(
+    generateSentences(
+      ENV,
+      PARTS,
+      INPUT,
+      { create: long.create },
+      { maxAttempts: 1 },
+    ),
+    (e) => e instanceof SceneResponseError && e.raw === "x".repeat(500),
+  );
+});
+
+test("checklist が空の応答は受け取り、裏取りが数の違いとして落とす", async () => {
+  const empty = () => message({ ...EXAMPLE_SENTENCES, checklist: [] });
+  const f = fake([empty, ITEMS]);
+  const result = await generateSceneV2(ENV, PARTS, INPUT, { create: f.create });
+  assert.deepEqual(
+    result.problems.map((p) => p.message),
+    [
+      "checklist の center が 0 個ある。eiken-pre2 は 3 個",
+      "checklist の reason が 0 個ある。eiken-pre2 は 1 個",
+      "checklist の detail が 0 個ある。eiken-pre2 は 2 個",
+    ],
+  );
+});
+
+test("書かせる形: checklist と refs は空にさせない（minItems は 1 まで）", () => {
+  const schema = sentenceSchema("eiken-2");
+  assert.equal(schema.properties.checklist.minItems, 1);
+  assert.equal(schema.properties.checklist.items.properties.refs.minItems, 1);
+});
+
+test("2 回目の部品の一覧には、人と動物のポーズで言える動詞（says）を出す", () => {
+  const system = buildItemsSystem(PARTS);
+  const line = (id: string) =>
+    system.split("\n").find((l) => l.startsWith(`- ${id} | `)) ?? "";
+  assert.ok(
+    line("person_drink_woman_a").includes("| says: drink, have, stand |"),
+  );
+  assert.ok(
+    line("person_wipe_woman_a").includes("| says: wipe, clean, stand |"),
+  );
+  assert.ok(!line("bench").includes("says:"));
+  assert.ok(system.includes('a part whose "says" lists that verb'));
+  assert.ok(system.includes("never change a woman into a man"));
 });
 
 test("断られたらやり直さず refused。2 回目は呼ばない", async () => {
@@ -408,7 +473,17 @@ test("作り置き: 動詞が級を超えたら（英文の理由）、1 回目�
       easy.checklist[2],
     ],
   };
-  const f = fake([() => message(easy), ITEMS, () => message(fixed), ITEMS]);
+  // 3級は 1〜2 人。女の子と男の子だけを置く
+  const two = () =>
+    message({
+      items: EXAMPLE_ITEMS.filter((i) => !["man", "bench"].includes(i.key)).map(
+        (i) =>
+          i.key === "girl"
+            ? { ...i, place: { relation: "ground", zone: "center" } }
+            : { ...i, motion: undefined },
+      ),
+    });
+  const f = fake([() => message(easy), two, () => message(fixed), two]);
   const result = await generateVerifiedScene(
     ENV,
     PARTS,
@@ -490,4 +565,73 @@ test("作り置き: 部品の候補は、英文が決まるたびに選び直す
   });
   // 同じ英文で 2 回目だけを作り直すときは、選び直さない
   assert.deepEqual(asked, [EXAMPLE_SENTENCES.description]);
+});
+
+test("作り置き: checklist が空なら、2 回目を呼ばずに理由つきで 1 回目から作り直す", async () => {
+  const empty = () => message({ ...EXAMPLE_SENTENCES, checklist: [] });
+  const f = fake([empty, SENTENCES, ITEMS]);
+  const result = await generateVerifiedScene(ENV, PARTS, INPUT, {
+    create: f.create,
+  });
+  assert.deepEqual(f.calls.map(stageOf), ["sentences", "sentences", "items"]);
+  assert.equal(result.remakes, 1);
+  assert.deepEqual(
+    result.rejected[0].map((p) => p.code),
+    ["kind_count", "kind_count", "kind_count"],
+  );
+  assert.ok(
+    userOf(f.calls[1]).includes(
+      "- checklist の center が 0 個ある。eiken-pre2 は 3 個",
+    ),
+  );
+});
+
+test("作り置き: 形が違う応答が続いても（段の中のやり直しの後）、1 回目から作り直す", async () => {
+  const broken = () => message("{");
+  const f = fake([broken, broken, SENTENCES, ITEMS]);
+  const result = await generateVerifiedScene(ENV, PARTS, INPUT, {
+    create: f.create,
+  });
+  assert.deepEqual(f.calls.map(stageOf), [
+    "sentences",
+    "sentences",
+    "sentences",
+    "items",
+  ]);
+  assert.equal(result.remakes, 1);
+  assert.equal(result.rejected[0][0].code, "invalid_response");
+  assert.ok(userOf(f.calls[2]).includes("前の応答は使えなかった"));
+});
+
+test("作り置き: 2 回目が途中で止まったら、同じ英文のまま 2 回目を作り直す", async () => {
+  const cut = () => message({ items: [] }, "max_tokens");
+  const f = fake([SENTENCES, cut, cut, ITEMS]);
+  const result = await generateVerifiedScene(ENV, PARTS, INPUT, {
+    create: f.create,
+  });
+  assert.deepEqual(f.calls.map(stageOf), [
+    "sentences",
+    "items",
+    "items",
+    "items",
+  ]);
+  assert.equal(result.remakes, 1);
+  assert.deepEqual(result.rejected[0][0], {
+    code: "invalid_response",
+    stage: "items",
+    message:
+      "前の応答は使えなかった（Claude が途中で止まった（max_tokens））。決まった形で、全部の欄を最後まで書く",
+  });
+});
+
+test("作り置き: 形が違う応答が最後まで続けば、その理由を持った例外を投げる", async () => {
+  const broken = () => message("{");
+  const f = fake(Array(6).fill(broken));
+  await assert.rejects(
+    generateVerifiedScene(ENV, PARTS, INPUT, { create: f.create }),
+    (e) =>
+      e instanceof SceneVerificationError &&
+      e.problems[0].code === "invalid_response",
+  );
+  assert.equal(f.calls.length, 6);
 });

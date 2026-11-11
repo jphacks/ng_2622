@@ -15,8 +15,21 @@ import {
   SceneGenerationError,
   THEMES,
 } from "./generate";
-import { GRADE_LIST, grammarUpTo, kindsOf } from "./grades";
-import { actionVocabulary, thingVocabulary } from "./pose-verbs";
+import {
+  CEFR_LEVELS,
+  checklistSize,
+  GRADE_LIST,
+  GRADES,
+  grammarUpTo,
+  kindsOf,
+  withinLevel,
+} from "./grades";
+import {
+  actionVocabulary,
+  poseVerbsOf,
+  thingVocabulary,
+  verbsAbove,
+} from "./pose-verbs";
 import {
   CHECKLIST_KINDS,
   type GradeId,
@@ -44,7 +57,7 @@ export const EXAMPLE_THEME = "バス停（bus stop）";
 export const EXAMPLE_SENTENCES: SceneSentences = {
   name: "雨のバス停",
   description:
-    "It is raining at the bus stop. A girl is holding an umbrella. A boy is running to the bus stop because he has no umbrella. A man is sitting on the bench. He is reading a book.",
+    "It is raining at the bus stop. A girl is holding an umbrella. A boy is running to the bus stop because it is raining. A man is reading a book. He is sitting on the bench.",
   checklist: [
     {
       id: "girl_umbrella",
@@ -57,22 +70,22 @@ export const EXAMPLE_SENTENCES: SceneSentences = {
       id: "boy_run",
       kind: "center",
       label: "男の子が走っている",
-      accept: "a boy is running to the bus stop",
+      accept: "a boy is running",
       refs: ["boy"],
     },
     {
-      id: "man_sit",
+      id: "man_read",
       kind: "center",
-      label: "男の人がベンチに座っている",
-      accept: "a man is sitting on the bench",
-      refs: ["man", "bench"],
+      label: "男の人が本を読んでいる",
+      accept: "a man is reading a book",
+      refs: ["man"],
     },
     {
       id: "why_run",
       kind: "reason",
       label: "男の子が走っている理由",
-      accept: "because he has no umbrella / because it is raining",
-      refs: ["rain", "boy"],
+      accept: "because it is raining / because he has no umbrella",
+      refs: ["boy", "rain"],
     },
     {
       id: "rain",
@@ -82,11 +95,11 @@ export const EXAMPLE_SENTENCES: SceneSentences = {
       refs: ["rain"],
     },
     {
-      id: "man_read",
+      id: "man_sit",
       kind: "detail",
-      label: "男の人が本を読んでいる",
-      accept: "he is reading a book",
-      refs: ["man"],
+      label: "男の人はベンチに座っている",
+      accept: "he is sitting on the bench",
+      refs: ["man", "bench"],
     },
   ],
 };
@@ -125,19 +138,33 @@ export const EXAMPLE_ITEMS: PlanItem[] = [
 const range = (min: number, max: number) =>
   min === max ? `${min}` : `${min}-${max}`;
 
+/** その級の checklist の数の言い方（"3 center, 1 reason, 2 detail"） */
+export const checklistCounts = (id: GradeId) =>
+  kindsOf(id)
+    .map((k) => `${GRADES[id].checklist[k]} ${k}`)
+    .join(", ");
+
+/** その級の中心の動作に使える段階（"A1, A2"） */
+const levelsUpTo = (id: GradeId) =>
+  CEFR_LEVELS.filter((l) => withinLevel(l, GRADES[id].cefr)).join(", ");
+
 /** 級の規則の表（1 回目の指示）。GRADES から作るので、裏取りで数える数と食い違わない */
 export const gradeRules = (): string =>
-  GRADE_LIST.map((g) => {
-    const counts = kindsOf(g.id)
-      .map((k) => `${g.checklist[k]} ${k}`)
-      .join(", ");
-    return `## ${g.id} (CEFR ${g.cefr})
-- People: ${range(g.people.min, g.people.max)} people or animals (an animal counts as one), ${g.people.note}.
+  GRADE_LIST.map(
+    (g) => `## ${g.id} (CEFR ${g.cefr})
+- People: ${range(g.people.min, g.people.max)} people or animals in the whole scene (an animal counts as one), ${g.people.note}.
 - description: exactly ${g.sentences} sentences, about ${g.words} words in total.
-- checklist: exactly ${counts}.
-- Verbs of the center items: CEFR-J ${g.cefr} or below.
-- Grammar you may use: ${grammarUpTo(g.id).join("; ")}.`;
-  }).join("\n\n");
+- checklist: exactly ${checklistSize(g.id)} items: ${checklistCounts(g.id)}.
+- Verbs of the center items: only verbs marked ${levelsUpTo(g.id)} in the list of actions.
+- Grammar you may use: ${grammarUpTo(g.id).join("; ")}.`,
+  ).join("\n\n");
+
+/** 級ごとに、動作の語彙に出てくるが中心には使えない動詞を名指しする（1 回目の指示） */
+export const verbLimits = (parts: Part[]): string =>
+  GRADE_LIST.map((g) => {
+    const verbs = verbsAbove(g.cefr, parts);
+    return `- ${g.id}: ${verbs.length ? verbs.join(", ") : "(none)"}`;
+  }).join("\n");
 
 /** 1 回目の指示。部品の一覧は渡さず、今の部品で描ける人・動作・物の語彙だけを渡す */
 export const buildSentenceSystem = (
@@ -155,21 +182,33 @@ Grammar and verbs of a lower grade may be used in a higher grade, but never use 
 # description (the model answer)
 - Write what a good player of that grade would say about the scene: plain sentences, one fact or action per sentence or clause.
 - Every sentence must be visible in a still 3D scene with simple motion. Do not write names, feelings, thoughts, speech, sounds, or anything that happened before and left nothing to see.
-- Every person and animal does one action from the list below, and only a person listed for that action can do it (a girl can blow out candles; a man cannot). Use each person or animal once.
+- One person, one action: every person and animal does exactly one action from the list of actions below. Never give the same person a second action (not "a woman is cooking" and later "the woman is wiping the table"). A second fact about the same person (where they are, what they have) is fine and becomes a detail.
+- Only a person listed for an action can do it (a girl can blow out candles; a man cannot).
+- Use only people, actions and things from the lists below. Do not write about a thing that is not in the list of things.
+- Count the people and animals: the whole scene has exactly the number of the grade, and all of them are in the description.
 - Write the description before the checklist.
 
 # checklist
-- center: who is doing what (the main people and animals). The verb must be one of the verbs listed for that action, at or below the CEFR-J level of the grade.
+- Always write the whole checklist, with exactly the number of items of each kind for the grade. Never return an empty or shorter checklist. A program counts the items.
+- center: who is doing what. Each person or animal is the subject of at most one center item.
+- The verb of a center accept must be one of the verbs on the line of that person's action, and its level must be within the grade: eiken-3 uses only verbs marked A1, eiken-pre2 verbs marked A1 or A2, eiken-2 verbs marked A1, A2 or B1. A program checks this against the 3D part. When the usual verb of an action is above the grade, say the action with another verb of the same line (in eiken-3 the boy of "throw a ball" "is playing with a ball", a person who stands "is waiting" or "is looking at" something, the woman of "wipe a table" "is cleaning the table"), or choose another action. Verbs from the list that a center accept must not use:
+${verbLimits(parts)}
 - detail: a position, a number, a thing, the weather, or a second fact about a person.
-- reason (eiken-pre2 and eiken-2): why a person does something. The cause must be something visible in the scene, placed as its own thing or person: rain, a spilled drink, a person who has fallen down, a thrown ball, and so on. Think of the cause yourself, but use only causes the scene can show. Say the reason in the description.
-- link (eiken-2 only): a chain of two steps, cause -> action -> result or purpose, said in one sentence ("The boy threw a ball, so the dog is running across the grass to get it.").
+- reason (eiken-pre2 and eiken-2): why a person does their action. The cause must be visible in the scene as the weather, a thing or another person from the lists below: rain, spilled juice, a person who has fallen down, a thrown ball, a bicycle lying on the ground, and so on. Think of the cause yourself, but a feeling, a wish or a plan is not a cause (she wants it, he is in a hurry, he is late, she wants to go home), and neither is a thing that is not in the list of things. Say the reason in the description.
+- link (eiken-2 only): one sentence with two steps: a visible cause -> the action -> the purpose or result of that action. The last step must follow naturally from what the player sees, not from a plan you invent.
+- Good and bad reasons and links:
+  - Good reason: "A man is helping a woman because she has fallen down." (the woman on the ground is in the scene)
+  - Bad reason: "A girl is reaching for the ball because she wants it." (a wish is not visible) / "A man is running because a girl is standing near the door." (not a cause)
+  - Good link: "A boy threw a ball, so the dog is running across the grass to get it." (the ball in the air -> the dog runs -> to get it)
+  - Bad link: "The man is hurrying so that he can leave." (no visible cause, and the purpose is invented)
 - id: short snake_case, unique. label: short Japanese shown to the player after the round.
-- accept: the English wording that counts as "said". Copy it word for word from the description (a whole sentence or one clause; lower case and no final period are fine). Every accept must be found in the description. For reason and link you may add other correct wordings after " / ", but the first wording must be copied from the description.
-- refs: the people and things the item is about, as short lower-case English names (man, bench, rain; letters, digits and _ only). Use one name for one person or thing in the whole checklist (two boys: boy and tall_boy). The second step puts one part in the scene for every name, so name only things that stand in the scene as their own part: people, animals, furniture, things, rain. Do not name the place itself (park), a body part, or a thing that a person holds as part of the action (the book of a person reading, the box of a person carrying): name the person instead.
-- reason and link items need two or more refs: the cause and the person who acts.
+- accept: the English wording that counts as "said". One item, one fact. For a center item it is who is doing what, without the place and without a second fact joined by "and" ("a woman is waiting", not "a woman is waiting with a shopping basket in the store"; "a girl is holding a plate", not "a girl is standing next to her and she is holding a plate"). Put the place into accept only when the item is a detail about the place.
+- Copy accept word for word from the description (one clause is enough; lower case and no final period are fine), so write the description in a way that each fact is a clause of its own. Every accept must be found in the description. For reason and link you may add other correct wordings after " / ", but the first wording must be copied from the description.
+- refs: the people and things the item is about, as short lower-case English names (man, bench, rain; letters, digits and _ only). Put the person or animal who acts first. Use one name for one person or thing in the whole checklist (two boys: boy and tall_boy). The second step puts one part in the scene for every name, so name only things that stand in the scene as their own part: people, animals, furniture, things, rain. Do not name the place itself (park), a body part, or a thing that a person holds as part of the action (the book of a person reading, the box of a person carrying): name the person instead.
+- reason and link items need two or more refs: the person who acts, and the cause (a thing or another person).
 
 # What the scene can show
-People and animals, one line per action: action | verbs you may use for it, each with its CEFR-J level | who can do it
+People and animals, one line per action: action | verbs that can say it, each marked with its CEFR-J level (A1, A2, B1; B2 is above every grade) | who can do it
 ${actionVocabulary(parts)}
 
 Things and places, as "English word (Japanese name of the part)":
@@ -185,6 +224,9 @@ For eiken-pre2 and eiken-2, do not choose a theme where you cannot place a visib
 Request: 級: ${EXAMPLE_GRADE} / テーマ: ${EXAMPLE_THEME}
 ${JSON.stringify(EXAMPLE_SENTENCES)}`;
 
+const isLivingPart = (p: Part) =>
+  p.category === "person" || p.category === "animal";
+
 const describePartV2 = (p: Part) => {
   const fields = [
     p.id,
@@ -192,6 +234,11 @@ const describePartV2 = (p: Part) => {
     p.category,
     `words: ${p.words.map((w) => w.word).join(", ")}`,
     p.pose ? `pose: ${p.pose}` : null,
+    isLivingPart(p)
+      ? `says: ${poseVerbsOf(p)
+          .map((v) => v.verb)
+          .join(", ")}`
+      : null,
     p.holds ? `holds: ${p.holds}` : null,
     p.uses ? `uses: ${p.uses.join(", ")}` : null,
     `size(w,h,d): ${p.size.join(", ")}`,
@@ -233,12 +280,14 @@ ${PEOPLE_RULES}
 # Writing the items
 - "Keys" lists the names used in the refs of the checklist. Use every one of them, exactly once, as the key of the item that shows that person or thing. A program checks this.
 - Give the other items (the ground, the background wall, chairs to sit on, a few background things) other short lower-case keys.
-- For every person and animal, choose the part whose words say the same person and whose pose shows the action that the description and the accept of the checklist say. A program checks the pose of the people in center items against the verb of accept.
-- Show only the people and animals that the description mentions. Everything the description mentions must be in the scene.
+- For every person and animal, choose the part whose words say the same person and whose pose shows the action of the description.
+- For each center item, read the verb of its accept and give the first person or animal of its refs a part whose "says" lists that verb (accept "a woman is drinking" needs a woman part that says drink, not one that says wipe). A program checks this.
+- Keep who the person is. If that person has no part that says the verb, still use a part of that person (the closest pose); never change a woman into a man or give the action to someone else. The checker then sends the text back to be rewritten.
+- Show exactly the people and animals that the description mentions: no one more, no one less, one item for each. Everything the description mentions must be in the scene.
 - The cause of a reason or link item must be visible as its own item (rain, spilled_juice, a person who has fallen down, a thrown ball).
 - At most 40 items.
 
-# Parts (id | label | category | words | pose | holds | uses | size in meters | anchors)
+# Parts (id | label | category | words | pose | says: verbs that can say the pose | holds | uses | size in meters | anchors)
 ${parts.map(describePartV2).join("\n")}
 
 # Example
@@ -255,6 +304,8 @@ export const sentenceSchema = (grade: GradeId) => ({
     description: { type: "string" },
     checklist: {
       type: "array",
+      // structured outputs が受け付ける minItems は 0 と 1 だけなので、級の数までは指定できない
+      minItems: 1,
       items: {
         type: "object",
         properties: {
@@ -262,7 +313,7 @@ export const sentenceSchema = (grade: GradeId) => ({
           kind: { type: "string", enum: kindsOf(grade) },
           label: { type: "string" },
           accept: { type: "string" },
-          refs: { type: "array", items: { type: "string" } },
+          refs: { type: "array", minItems: 1, items: { type: "string" } },
         },
         required: ["id", "kind", "label", "accept", "refs"],
         additionalProperties: false,
@@ -284,17 +335,16 @@ export const itemsOnlySchema = (parts: Part[]) => ({
 const Sentences = z.object({
   name: z.string().trim().min(1),
   description: z.string().trim().min(1),
-  checklist: z
-    .array(
-      z.object({
-        id: z.string().trim().min(1),
-        kind: z.enum(CHECKLIST_KINDS),
-        label: z.string().trim().min(1),
-        accept: z.string().trim().min(1),
-        refs: z.array(z.string().trim()),
-      }),
-    )
-    .min(1),
+  // 空でも受け取り、裏取り（数が合わない）で落とす。理由を付けて作り直せるようにするため
+  checklist: z.array(
+    z.object({
+      id: z.string().trim().min(1),
+      kind: z.enum(CHECKLIST_KINDS),
+      label: z.string().trim().min(1),
+      accept: z.string().trim().min(1),
+      refs: z.array(z.string().trim()),
+    }),
+  ),
 });
 const ItemsOnly = z.object({ items: PlanItems });
 
@@ -306,7 +356,7 @@ const feedbackText = (feedback: string[] | undefined) =>
 
 /** 1 回目の user の文 */
 export const sentenceMessage = (input: GenerateV2Input, feedback?: string[]) =>
-  `級: ${input.grade}\nテーマ: ${input.theme ?? "一覧から選ぶ"}${feedbackText(feedback)}`;
+  `級: ${input.grade}\nテーマ: ${input.theme ?? "一覧から選ぶ"}\nchecklist: ${checklistCounts(input.grade)}（計 ${checklistSize(input.grade)} 個）${feedbackText(feedback)}`;
 
 /** 2 回目の user の文。1 回目の出力の全部と、コードが refs から集めた呼び名の一覧 */
 export function itemsMessage(
@@ -376,6 +426,19 @@ const prepare = (
  * Claude を 1 段ぶん呼び、JSON を形で確かめて返す。呼び方は generatePlan と同じ
  * （json_schema・system に cache_control・形が違う／途中で止まった／5xx／接続の失敗のときだけやり直す）
  */
+/** 測定で原因を調べるために残す、生の本文の長さ */
+const RAW_LENGTH = 500;
+
+/** 応答が JSON でない・形が違う。raw は Claude の生の本文の先頭 */
+export class SceneResponseError extends SceneGenerationError {
+  constructor(
+    message: string,
+    readonly raw: string,
+  ) {
+    super("invalid", message);
+  }
+}
+
 const callJson = async <T>(
   call: Call,
   label: string,
@@ -422,18 +485,16 @@ const callJson = async <T>(
       if (text?.type !== "text") {
         throw new SceneGenerationError("invalid", "Claude の応答に本文が無い");
       }
+      const raw = text.text.slice(0, RAW_LENGTH);
       let json: unknown;
       try {
         json = JSON.parse(text.text);
       } catch {
-        throw new SceneGenerationError(
-          "invalid",
-          "Claude の応答が JSON でない",
-        );
+        throw new SceneResponseError("Claude の応答が JSON でない", raw);
       }
       const value = parse(json);
       if (value === undefined) {
-        throw new SceneGenerationError("invalid", "Claude の応答の形が違う");
+        throw new SceneResponseError("Claude の応答の形が違う", raw);
       }
       return { value, usage: response.usage };
     } catch (e) {
@@ -576,6 +637,19 @@ export class SceneVerificationError extends SceneGenerationError {
   }
 }
 
+/**
+ * 形が違う・途中で止まった応答（invalid）を、作り直しの理由にする。
+ * 断られた・API の失敗はそのまま投げる（作り直しても直らないので）
+ */
+const invalidResponse = (e: unknown, stage: Problem["stage"]): Problem => {
+  if (!(e instanceof SceneGenerationError) || e.kind !== "invalid") throw e;
+  return {
+    code: "invalid_response",
+    stage,
+    message: `前の応答は使えなかった（${e.message}）。決まった形で、全部の欄を最後まで書く`,
+  };
+};
+
 export type VerifiedSceneResult = {
   plan: ScenePlanV2;
   model: string;
@@ -591,6 +665,7 @@ export type VerifiedSceneResult = {
  * 英文の部分で落ちたら 1 回目から、部品だけで落ちたら同じ英文のまま 2 回目だけを作り直す
  *（同じ英文で部品が 2 回落ちたら、英文が部品で描けないとみて 1 回目から）。
  * 英文の部分で落ちたときは 2 回目を呼ばない（部品を選ぶ前に分かるので）。
+ * 形が違う・途中で止まった応答（各段の中で 1 回やり直した後も）も、同じように作り直す。
  * 通らなければ SceneVerificationError を投げる。部屋での生成では使わない（作り直さず作り置きに切り替えるため）
  */
 export async function generateVerifiedScene(
@@ -609,39 +684,53 @@ export async function generateVerifiedScene(
   let itemsRejected = 0;
   for (let round = 0; round <= MAX_REMAKES; round++) {
     if (!sentences) {
-      const first = await generateSentences(
-        env,
-        parts,
-        input,
-        deps,
-        options,
-        feedback,
-      );
-      usage.push(first.usage);
-      const problems = verifySentences(input.grade, first.sentences);
-      if (problems.length > 0) {
+      let written: SceneSentences | undefined;
+      let problems: Problem[];
+      try {
+        const first = await generateSentences(
+          env,
+          parts,
+          input,
+          deps,
+          options,
+          feedback,
+        );
+        usage.push(first.usage);
+        written = first.sentences;
+        problems = verifySentences(input.grade, written);
+      } catch (e) {
+        problems = [invalidResponse(e, "sentences")];
+      }
+      if (problems.length > 0 || !written) {
         rejected.push(problems);
         feedback = problems.map((p) => p.message);
         continue;
       }
-      sentences = first.sentences;
+      sentences = written;
       found = await find(sentences.description, parts);
       feedback = undefined;
     }
-    const second = await generateItems(
-      env,
-      found,
-      input,
-      sentences,
-      deps,
-      options,
-      feedback,
-    );
-    usage.push(second.usage);
-    const problems = verifyItems(input.grade, sentences, second.items, parts);
-    if (problems.length === 0) {
+    let items: PlanItem[] | undefined;
+    let problems: Problem[];
+    try {
+      const second = await generateItems(
+        env,
+        found,
+        input,
+        sentences,
+        deps,
+        options,
+        feedback,
+      );
+      usage.push(second.usage);
+      items = second.items;
+      problems = verifyItems(input.grade, sentences, items, parts);
+    } catch (e) {
+      problems = [invalidResponse(e, "items")];
+    }
+    if (problems.length === 0 && items) {
       return {
-        plan: { ...sentences, items: second.items },
+        plan: { ...sentences, items },
         model: env.CLAUDE_SCENE_MODEL || DEFAULT_SCENE_MODEL,
         remakes: round,
         rejected,
