@@ -136,20 +136,3 @@ extension View {
       .frame(maxWidth: .infinity)
   }
 }
-
-/// 「チェック 3 つ ・ 一部 1 つ ・ 合わない 1 つ」（結果発表とみんなの描写）
-struct ContentCounts: View {
-  let content: ContentBreakdown
-
-  var body: some View {
-    Text("チェック \(count(content.fullCount)) ・ 一部 \(count(content.partialCount)) ・ 合わない \(count(content.mismatchCount))")
-      .font(Theme.font(13, .heavy))
-      .foregroundStyle(Theme.muted)
-      .lineLimit(1)
-      .minimumScaleFactor(0.8)
-  }
-
-  private func count(_ n: Int) -> String {
-    n == 0 ? "0" : "\(n) つ"
-  }
-}

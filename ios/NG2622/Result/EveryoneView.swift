@@ -1,6 +1,6 @@
 import SwiftUI
 
-/// みんなの描写。上にこのラウンドの場面を出し、全員の文字起こしを点数順に並べ、チェックの数を添える
+/// みんなの描写。上にこのラウンドの場面を出し、全員の文字起こしと合計の点を点数順に並べる
 struct EveryoneView: View {
   let results: RoundResults
   let onBack: () -> Void
@@ -74,9 +74,6 @@ private struct TranscriptCard: View {
           .font(Theme.font(17, .semibold))
           .lineSpacing(3)
           .fixedSize(horizontal: false, vertical: true)
-        if let content = player.content {
-          ContentCounts(content: content)
-        }
       }
     }
     .padding(18)
