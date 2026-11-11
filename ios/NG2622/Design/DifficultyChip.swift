@@ -1,19 +1,17 @@
 import SwiftUI
 
-/// 難易度の小さな札（かんたん・ふつう・むずかしい）。録音のお題と結果の画面に出す
+/// 難易度の小さな札（かんたん・ふつう・むずかしい）。振り返りに出す
 struct DifficultyChip: View {
   let difficulty: SceneDifficulty
-  /// 塗りつぶし（録音のお題）か、薄い地（結果の画面）か
-  var filled = false
   var size: CGFloat = 14
 
   var body: some View {
     Text(difficulty.label)
       .font(Theme.font(size, .heavy))
-      .foregroundStyle(filled ? .white : Theme.accent)
+      .foregroundStyle(Theme.accent)
       .padding(.horizontal, size * 0.85)
       .padding(.vertical, size * 0.25)
-      .background(filled ? Theme.accent : Theme.accentSoft, in: Capsule())
+      .background(Theme.accentSoft, in: Capsule())
       .accessibilityLabel("難易度 \(difficulty.label)")
   }
 }
