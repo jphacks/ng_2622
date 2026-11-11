@@ -49,17 +49,26 @@ final class SceneLibrary {
     return task
   }
 
-  /// 配置の JSON から部品を並べる。範囲は初めの位置と、move の行き先で測る
+  /// 手元にある配置から、その場で組み立てる（覚えない）。遊んだ記録の場面のように、
+  /// ID では取れなくなった場面（作り置きから外した・部屋が閉じた）を出すときに使う。置けた部品が無ければ nil
+  func instance(composing layout: SceneLayout) async -> SceneComposer.Composed? {
+    await Self.compose(layout)
+  }
+
+  /// 配置の JSON を取って部品を並べる
   private static func compose(_ id: String, room: String?) async -> SceneComposer.Composed? {
-    let layout: SceneLayout
     do {
-      layout = try await SceneLayouts.store.layout(of: id, room: room)
+      return await compose(try await SceneLayouts.store.layout(of: id, room: room))
     } catch {
       sceneLog.error("配置の JSON を取れませんでした（\(id, privacy: .public)）: \(error, privacy: .public)")
       return nil
     }
+  }
+
+  /// 配置から部品を並べる。範囲は初めの位置と、move の行き先で測る
+  private static func compose(_ layout: SceneLayout) async -> SceneComposer.Composed? {
     guard let composed = await SceneComposer.compose(layout, parts: .shared) else {
-      sceneLog.error("部品を 1 つも置けませんでした（\(id, privacy: .public)）")
+      sceneLog.error("部品を 1 つも置けませんでした（\(layout.id ?? layout.name, privacy: .public)）")
       return nil
     }
     let bounds = SceneComposer.bounds(of: composed)
