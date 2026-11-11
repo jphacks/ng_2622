@@ -164,6 +164,86 @@ v1 の基本は止まった場面で、動作は人物のポーズで表す。�
 
 時刻はラウンドの `startAt`（round のメッセージ）から数える。全員の端末で、同じ動きが同じ時に起きるようにするため。
 
+## 配置の JSON v2（`scenenglish.scene/2`、2026-11-10 に決定、未実装）
+
+チェックリストで採点するため、形を `/2` に上げる（[ADR](../adr/20261110-adopt-scene-protocol-v2-with-checklist.md)）。入れるのは、生成の実装の後に 30 場面を作り直して採点の関数を切り替えるとき。それまではアプリもバックエンドも `/1` と `/2` の両方を読む。級の規則と生成の書かせ方は [ADR](../adr/20261110-write-grade-sentences-before-scene-parts.md)。
+
+例（`eiken-pre2`、雨のバス停。部品の ID の一部は省略）:
+
+```json
+{
+  "protocol": "scenenglish.scene/2",
+  "id": "gen-xxxxxxxxxx",
+  "name": "雨のバス停",
+  "difficulty": "eiken-pre2",
+  "description": "It is raining at the bus stop. A woman is holding an umbrella. A boy is running to the bus stop because he has no umbrella. A man is sitting on the bench. He is reading a book.",
+  "checklist": [
+    { "id": "woman_umbrella", "kind": "center", "label": "女の人が傘をさしている", "accept": "a woman is holding an umbrella", "refs": ["woman"] },
+    { "id": "boy_run", "kind": "center", "label": "男の子が走っている", "accept": "a boy is running to the bus stop", "refs": ["boy"] },
+    { "id": "man_sit", "kind": "center", "label": "男の人がベンチに座っている", "accept": "a man is sitting on the bench", "refs": ["man", "bench"] },
+    { "id": "why_run", "kind": "reason", "label": "男の子が走っている理由", "accept": "he is running because it is raining / he has no umbrella", "refs": ["rain", "boy"] },
+    { "id": "rain", "kind": "detail", "label": "雨が降っている", "accept": "it is raining", "refs": ["rain"] },
+    { "id": "man_read", "kind": "detail", "label": "男の人が本を読んでいる", "accept": "he is reading a book", "refs": ["man"] }
+  ],
+  "items": [
+    { "key": "ground", "part": "sidewalk_stone", "place": { "relation": "ground" }, "position": [0, 0, 0] },
+    { "key": "rain", "part": "rain", "place": { "relation": "ground" }, "position": [0, 0, 0] },
+    { "key": "bench", "part": "bench", "place": { "relation": "ground", "zone": "center" }, "position": [0, 0, 0] },
+    { "key": "man", "part": "person_read_sit_…", "place": { "relation": "sit_on", "target": "bench" }, "position": [0, 0.45, 0] },
+    { "key": "woman", "part": "person_umbrella_…", "place": { "relation": "next_to", "target": "bench" }, "position": [1.2, 0, 0] },
+    { "key": "boy", "part": "person_run_…", "place": { "relation": "ground", "zone": "left" }, "position": [-3, 0, 1],
+      "motion": { "type": "move", "toward": "bench", "duration": 5 } }
+  ]
+}
+```
+
+### 上の階層（`/1` からの違い）
+
+| 項目 | 型 | 意味 |
+| --- | --- | --- |
+| `protocol` | 文字列 | `scenenglish.scene/2` で固定 |
+| `difficulty` | 文字列 | `eiken-3`・`eiken-pre2`・`eiken-2`。画面の名前（かんたんなど）は変えない |
+| `description` | 文字列 | 級の見本の答え（3・5・6 文）。録音を待つ画面の正答例、振り返りの見本、採点の補足に使う。`checklist` の `accept` を全部含める |
+| `checklist` | 配列 | 採点のチェックリスト（下）。`/1` の `elements`・`extraMax` は無くす |
+| `items` | 配列 | `/1` の欄に加えて、Claude が書いた `place`・`facing` と、動きの関係（`motion.toward`・`path`）を残す |
+
+`id`・`name` は `/1` と同じ。
+
+### チェックリスト（`checklist[]`）
+
+| 項目 | 型 | 意味 |
+| --- | --- | --- |
+| `id` | 文字列 | 場面の中で重ならない ID |
+| `kind` | `center`・`reason`・`link`・`detail` | 中心・理由・つながり（2級）・細部。重みはバックエンドがここから付ける（中心 2・理由 2・つながり 2・細部 1。[ADR](../adr/20261110-score-content-with-checklist-f1.md)） |
+| `label` | 文字列 | 振り返りに出す日本語 |
+| `accept` | 文字列 | 「言えた」とする英語の言い方。「一部」は採点の Claude がこれと比べて決める |
+| `refs` | 文字列の配列 | 項目が指す `items` の `key`。`reason`・`link` は原因と行動の 2 つ以上 |
+
+級ごとの `kind` の数: `eiken-3` は中心 2・細部 1、`eiken-pre2` は中心 3・理由 1・細部 2、`eiken-2` は中心 4・理由 1・つながり 1・細部 2。
+
+### 生成で確かめること（裏取り）
+
+- `refs` の `key` が全部 `items` にある。`reason`・`link` の `refs` が 2 つ以上。
+- `kind` ごとの数が級の形に合う。
+- `center` の項目が指す人や動物のポーズの動詞が、級の範囲（CEFR-J）に入り、`accept` の動詞と食い違わない。
+- `accept` が `description` に含まれる。
+- 落ちたら、作り置きは理由を指示に足して 2 回まで作り直す。部屋での生成は作り置きに切り替える。
+
+### Claude に書かせる形（`/2`、2 段）
+
+```
+1 回目（部品の一覧は渡さない）
+  { name, description, checklist: [{ id, kind, label, accept, refs }] }   ← refs は英小文字の短い呼び名（man・bench）
+     ↓ description を 1〜3 文ずつ
+部品の候補 candidates(description)   ← 今は全部の部品を返す。後でベクトル検索（種類ごとに上位 k 個の要素 → 部品）に差し替える
+     ↓ コードが refs の呼び名を集める
+2 回目（1 回目の出力の全部・候補の部品・呼び名の一覧を渡す）
+  { items: [{ key, part, place, facing?, motion? }] }                    ← 呼び名を全部 key に使う。/1 と同じ形
+```
+
+- 呼び名の一覧（`cast`）は作らない。検索の問い合わせは、検索のモデルの学習と同じ形（場面の英文 1〜3 文）にする（[ADR](../adr/20261110-write-grade-sentences-before-scene-parts.md)）。
+- Award Day（2026-11-15）の当日は、部屋での生成を止める（`SCENE_GENERATION` を `off`）。
+
 ## 崩れの扱い
 
 - バックエンドは、保存するときに何も確かめない（座標も、部品があるかも）。
