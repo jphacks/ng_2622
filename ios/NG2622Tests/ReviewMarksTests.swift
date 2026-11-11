@@ -25,16 +25,89 @@ struct ReviewMarksTests {
     #expect(marks[2].range.lowerBound > marks[1].range.upperBound)
   }
 
-  /// 見つからない（前の描写と重なる・文字起こしと違う）描写には線を引かない
+  func marked(_ text: String, _ marks: [MarkedRange]) -> [String] {
+    marks.map { "\(text[$0.range])=\($0.mark)" }
+  }
+
+  /// 文字起こしに無い描写には線を引かない
   @Test func skipsMissingQuotes() {
-    let transcript = "A boy is running because it is raining."
+    let transcript = "A boy is running."
     let claims = [
-      Claim(quote: "A boy is running because it is raining.", verdict: .correct, item: "why", level: .full, note: nil),
-      Claim(quote: "A boy is running", verdict: .correct, item: "run", level: .full, note: nil),
-      Claim(quote: "A girl.", verdict: .absent, item: nil, level: nil, note: nil),
+      Claim(quote: "A girl is dancing.", verdict: .absent, item: nil, level: nil, note: nil),
+      Claim(quote: "A boy is running.", verdict: .correct, item: "run", level: .full, note: nil),
     ]
     let marks = TranscriptMarks.marks(transcript: transcript, claims: claims)
-    #expect(texts(transcript, marks) == ["A boy is running because it is raining."])
+    #expect(marked(transcript, marks) == ["A boy is running.=hit"])
+  }
+
+  /// 前の描写の内側に入る短い引用（始まりの位置で並ぶ）でも、後ろの描写が消えない。
+  /// 探す順はバックエンドと同じ（前の描写の終わりから → 前の描写の始まりから → 頭から）
+  @Test func quotesInsidePreviousClaim() {
+    let transcript = "A woman is sitting on the bench because she is tired. A man is reading on the bench."
+    let claims = [
+      Claim(
+        quote: "A woman is sitting on the bench because she is tired", verdict: .correct, item: "why", level: .partial,
+        note: nil),
+      Claim(quote: "A woman is sitting", verdict: .correct, item: "sit", level: .full, note: nil),
+      Claim(quote: "on the bench", verdict: .correct, item: nil, level: nil, note: nil),
+      Claim(quote: "A man is reading", verdict: .correct, item: "read", level: .full, note: nil),
+      Claim(quote: "on the bench", verdict: .correct, item: "bench", level: .full, note: nil),
+    ]
+    let marks = TranscriptMarks.marks(transcript: transcript, claims: claims)
+    #expect(
+      marked(transcript, marks) == [
+        "A woman is sitting=hit", " on the bench because she is tired=partial", "A man is reading=hit",
+        "on the bench=hit",
+      ])
+  }
+
+  /// 中心 → 理由の順で重なっても、中心の所は中心の線、because から先に理由の線が付く
+  @Test func centerThenReason() {
+    let transcript = "A boy is running because it is raining."
+    let claims = [
+      Claim(quote: "A boy is running", verdict: .correct, item: "run", level: .full, note: nil),
+      Claim(quote: "A boy is running because it is raining", verdict: .correct, item: "why", level: .partial, note: nil),
+    ]
+    let marks = TranscriptMarks.marks(transcript: transcript, claims: claims)
+    #expect(marked(transcript, marks) == ["A boy is running=hit", " because it is raining=partial"])
+  }
+
+  /// 同じ言い回しが前の引用の内側と後ろの両方にあるとき、後ろの方を先に探す（バックエンドと同じ）。
+  /// 内側の分は前の描写の線に覆われるので、どちらの線も消えない
+  @Test func sameWordsInsideAndAfter() {
+    let transcript = "A dog is sleeping under the tree. A cat is under the tree."
+    let claims = [
+      Claim(quote: "A dog is sleeping under the tree", verdict: .correct, item: "dog", level: .full, note: nil),
+      Claim(quote: "under the tree", verdict: .correct, item: nil, level: nil, note: nil),
+      Claim(quote: "A cat is", verdict: .absent, item: nil, level: nil, note: "猫はいません"),
+    ]
+    let marks = TranscriptMarks.marks(transcript: transcript, claims: claims)
+    #expect(
+      marked(transcript, marks) == ["A dog is sleeping under the tree=hit", "A cat is=mismatch", "under the tree=bonus"])
+  }
+
+  /// 見本の答えの強調は、重なればつなぎ、前から順に並べる
+  @Test func mergeHighlights() {
+    let text = "A boy is running because it is raining."
+    func r(_ a: Int, _ b: Int) -> MarkedRange {
+      MarkedRange(range: text.index(text.startIndex, offsetBy: a)..<text.index(text.startIndex, offsetBy: b), mark: .highlight)
+    }
+    let merged = ModelAnswerLines.merge([r(17, 38), r(0, 16), r(10, 20)])
+    #expect(texts(text, merged) == ["A boy is running because it is raining"])
+    #expect(texts(text, ModelAnswerLines.merge([r(17, 24), r(0, 5)])) == ["A boy", "because"])
+  }
+
+  /// accept の " / " の 2 つ目以降の言い方でも文と結ぶ。’ と ' は同じとみなす
+  @Test func otherAcceptsAndApostrophe() {
+    let checklist = [
+      SceneLayout.ChecklistItem(
+        id: "why", kind: .reason, label: "理由", accept: "because it is raining / because he doesn't have an umbrella")
+    ]
+    let lines = ModelAnswerLines.lines(
+      description: "The boy is running because he doesn’t have an umbrella.", checklist: checklist,
+      items: [.init(id: "why", kind: .reason, label: "", level: .partial)])
+    #expect(lines.first?.level == .partial)
+    #expect(texts(lines[0].text, lines[0].marks) == ["because he doesn’t have an umbrella"])
   }
 
   @Test func sentences() {

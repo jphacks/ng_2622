@@ -99,22 +99,61 @@ struct MarkedTextRenderer: TextRenderer {
 // MARK: - 下線と強調の位置
 
 enum TranscriptMarks {
-  /// 描写の印。描写を話した順に、前の描写が終わった位置から先で quote をそのまま探す。見つからない描写には線を引かない
+  /// 描写の印。探す順はバックエンドの verifyClaims（backend/src/scoring/checklist.ts）と同じで、
+  /// 前の描写の終わりから先 → 見つからなければ前の描写の始まりから → それでも無ければ頭から、quote をそのまま探す。
+  /// 文字起こしに無い描写には線を引かない。描写が重なった所は、強い印を 1 つだけ付ける（strength）
   static func marks(transcript: String, claims: [ContentBreakdown.Claim]) -> [MarkedRange] {
     var cursor = transcript.startIndex
-    var result: [MarkedRange] = []
+    var previous = transcript.startIndex
+    var found: [MarkedRange] = []
     for claim in claims where !claim.quote.isEmpty {
-      guard let range = transcript.range(of: claim.quote, range: cursor..<transcript.endIndex) else { continue }
-      result.append(MarkedRange(range: range, mark: mark(of: claim)))
-      cursor = range.upperBound
+      var range = transcript.range(of: claim.quote, range: cursor..<transcript.endIndex)
+      if let r = range {
+        cursor = r.upperBound
+      } else {
+        range = transcript.range(of: claim.quote, range: previous..<transcript.endIndex)
+          ?? transcript.range(of: claim.quote)
+      }
+      guard let range else { continue }
+      previous = range.lowerBound
+      found.append(MarkedRange(range: range, mark: mark(of: claim)))
     }
-    return result
+    return flatten(found, in: transcript)
   }
 
   static func mark(of claim: ContentBreakdown.Claim) -> TextMark {
     guard claim.verdict == .correct else { return .mismatch }
     guard claim.item != nil else { return .bonus }
     return claim.level == .partial ? .partial : .hit
+  }
+
+  /// 重なったときに残す印の強さ。項目に当たった > 一部 > 場面と合わない > おまけ
+  static func strength(_ mark: TextMark) -> Int {
+    switch mark {
+    case .hit: 4
+    case .partial: 3
+    case .mismatch: 2
+    case .bonus: 1
+    case .highlight: 0
+    }
+  }
+
+  /// 重なった範囲を切り分け、どの位置にも覆っている中でいちばん強い印を 1 つだけ付ける。
+  /// 隣り合う同じ印はつなぐ。前から順に並べて返す（例: 中心 A boy is running → 理由 A boy is running because …
+  /// の順でも、because から先に理由の線が付く）
+  static func flatten(_ marks: [MarkedRange], in text: String) -> [MarkedRange] {
+    let bounds = Set(marks.flatMap { [$0.range.lowerBound, $0.range.upperBound] }).sorted()
+    var result: [MarkedRange] = []
+    for (lower, upper) in zip(bounds, bounds.dropFirst()) where lower < upper {
+      let covering = marks.filter { $0.range.lowerBound <= lower && upper <= $0.range.upperBound }
+      guard let best = covering.max(by: { strength($0.mark) < strength($1.mark) }) else { continue }
+      if let last = result.last, last.mark == best.mark, last.range.upperBound == lower {
+        result[result.count - 1] = MarkedRange(range: last.range.lowerBound..<upper, mark: best.mark)
+      } else {
+        result.append(MarkedRange(range: lower..<upper, mark: best.mark))
+      }
+    }
+    return result
   }
 }
 
@@ -159,13 +198,18 @@ enum ModelAnswerLines {
       if isWordChar(text[i]) {
         if start == nil { start = i }
       } else if let s = start {
-        result.append((text[s..<i].lowercased(), s..<i))
+        result.append((normalized(text[s..<i]), s..<i))
         start = nil
       }
       i = text.index(after: i)
     }
-    if let s = start { result.append((text[s...].lowercased(), s..<text.endIndex)) }
+    if let s = start { result.append((normalized(text[s...]), s..<text.endIndex)) }
     return result
+  }
+
+  /// 小文字にし、’ を ' にそろえる（バックエンドの tokenize と同じ）
+  static func normalized(_ word: Substring) -> String {
+    word.lowercased().replacingOccurrences(of: "’", with: "'")
   }
 
   /// accept の単語の並びが、文の中で続けて出てくる範囲（大文字小文字と句読点は見ない）
@@ -194,7 +238,8 @@ enum ModelAnswerLines {
       var matched: [ContentBreakdown.Level] = []
       var marks: [MarkedRange] = []
       for item in checklist {
-        guard let found = find(item.firstAccept, in: sentence) else { continue }
+        // " / " で分けた言い方を順に試し、最初に文に当たったものを使う
+        guard let found = item.accepts.lazy.compactMap({ find($0, in: sentence) }).first else { continue }
         let level = levels[item.id] ?? ContentBreakdown.Level.none
         matched.append(level)
         guard level != .full else { continue }

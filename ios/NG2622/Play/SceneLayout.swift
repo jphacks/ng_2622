@@ -46,9 +46,14 @@ nonisolated struct SceneLayout: Decodable, Sendable, Equatable {
     /// 「言えた」とする英語の言い方。" / " で別の言い方が続くことがある
     let accept: String
 
+    /// accept を " / " で分けた言い方（空のものは除く）
+    var accepts: [String] {
+      accept.components(separatedBy: " / ").map { $0.trimmingCharacters(in: .whitespaces) }.filter { !$0.isEmpty }
+    }
+
     /// accept の 1 つ目の言い方（" / " より前）
     var firstAccept: String {
-      accept.components(separatedBy: " / ").first ?? accept
+      accepts.first ?? accept
     }
   }
 
