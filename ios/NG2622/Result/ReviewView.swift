@@ -231,7 +231,7 @@ private struct Legend: View {
       ctx.stroke(line, with: .color(Theme.gray), style: StrokeStyle(lineWidth: 1.3, lineCap: .round))
     case .mismatch:
       ctx.stroke(
-        MarkedTextRenderer.wave(from: 1, to: size.width - 1, y: y), with: .color(Theme.red),
+        MarkedTextRenderer.wave(from: 1, to: size.width - 1, y: y), with: .color(Theme.mismatch),
         style: StrokeStyle(lineWidth: 1.6, lineCap: .round))
     case .highlight:
       break
@@ -355,7 +355,7 @@ private struct MismatchCard: View {
         HStack(alignment: .firstTextBaseline, spacing: 10) {
           Image(systemName: "xmark")
             .font(.system(size: 15, weight: .black))
-            .foregroundStyle(Theme.red)
+            .foregroundStyle(Theme.mismatch)
           VStack(alignment: .leading, spacing: 4) {
             Text(claim.quote)
               .font(Theme.font(17, .heavy))

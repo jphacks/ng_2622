@@ -8,7 +8,7 @@ enum TextMark: Hashable, Sendable {
   case partial
   /// 一覧に無い正しい描写（おまけ。細い灰色の下線）
   case bonus
-  /// 場面と合わない描写（赤の波線）
+  /// 場面と合わない描写（オレンジの波線）
   case mismatch
   /// まだ言えていない所（薄い色の地）
   case highlight
@@ -64,7 +64,7 @@ struct MarkedTextRenderer: TextRenderer {
         switch mark {
         case .mismatch:
           line = Self.wave(from: rect.minX, to: rect.maxX, y: y + 0.5)
-          ctx.stroke(line, with: .color(Theme.red), style: StrokeStyle(lineWidth: 1.6, lineCap: .round, lineJoin: .round))
+          ctx.stroke(line, with: .color(Theme.mismatch), style: StrokeStyle(lineWidth: 1.6, lineCap: .round, lineJoin: .round))
         case .hit, .partial:
           line.move(to: CGPoint(x: rect.minX, y: y))
           line.addLine(to: CGPoint(x: rect.maxX, y: y))
