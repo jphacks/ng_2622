@@ -184,9 +184,9 @@ private final class RecordingLayoutClient: SceneLayoutClient {
   private(set) var requested: [String] = []
   private(set) var rooms: [String?] = []
 
-  func layout(sceneID: String, room: String?) async throws -> SceneLayout {
+  func document(sceneID: String, room: String?) async throws -> SceneDocument {
     requested.append(sceneID)
     rooms.append(room)
-    return try SceneLayout.decode(Data(#"{"protocol":"scenenglish.scene/2","name":"遠くの場面","items":[]}"#.utf8))
+    return try SceneDocument(data: Data(#"{"protocol":"scenenglish.scene/2","name":"遠くの場面","items":[]}"#.utf8))
   }
 }
