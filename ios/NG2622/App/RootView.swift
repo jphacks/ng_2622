@@ -16,18 +16,15 @@ struct RootView: View {
         }
       case .mock:
         AppFlow {
-          MockGameClient(options: config.mock, pool: config.scenePick == .difficulty ? .bundled : nil)
+          MockGameClient(options: config.mock, pool: .bundled)
         }
       }
     }
     .foregroundStyle(Theme.ink)
-    // 3D シーンは読み込みに時間がかかるので、起動したらすぐ読み始める（最初に出す公園から）。
-    // 難易度で選ぶときは、作り置きの場面も組み立てておく（Live も同梱の配置を使う。SceneLayouts.client）
+    // 3D の場面は組み立てに時間がかかるので、起動したらすぐ作り置きの場面を組み立てておく
+    // （Live も同梱の配置を使う。SceneLayouts.client）
     .task {
-      SceneLibrary.shared.preload(SceneCatalog.all.map(\.id))
-      if config.scenePick == .difficulty {
-        SceneLibrary.shared.preload(SceneDifficulty.allCases.flatMap { ScenePool.bundled.scenes[$0] ?? [] })
-      }
+      SceneLibrary.shared.preload(SceneDifficulty.allCases.flatMap { ScenePool.bundled.scenes[$0] ?? [] })
     }
   }
 }

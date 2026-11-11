@@ -1,6 +1,7 @@
 import Foundation
 
-/// AI で作った場面（sceneId が gen- で始まる）の配置の JSON を取る口（GET /scenes/{sceneId}/layout）。
+/// 場面の配置の JSON を取る口。作り置きの場面は同梱の pool/<sceneId>.json を読み、
+/// 部屋がその場で AI で作った場面だけ GET /scenes/{sceneId}/layout で取る（BundledFirstSceneLayoutClient）。
 /// docs/design/scene-protocol.md の「API」。場面は部屋が作る（作り置きか、スタートのときに AI で作る）ので、
 /// アプリは作る口（POST /scenes/generate）を呼ばない
 protocol SceneLayoutClient: AnyObject {
@@ -151,6 +152,11 @@ final class MockSceneLayoutClient: SceneLayoutClient {
   }
 
   func layout(sceneID: String, room: String?) async throws -> SceneLayout {
+    try Self.read(sceneID, bundle: bundle)
+  }
+
+  /// 同梱の配置をその場で読む（Mock の結果を作るときに使う）
+  static func read(_ sceneID: String, bundle: Bundle = .main) throws -> SceneLayout {
     guard let url = bundle.url(forResource: sceneID, withExtension: "json", subdirectory: ScenePool.directory) else {
       throw SceneLayoutError.notFound
     }

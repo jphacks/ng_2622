@@ -1,8 +1,7 @@
 import RealityKit
 import SwiftUI
 
-/// 3D シーンを、向きと見下ろす角度を指定して描く。同梱のシーンは焼き込んだ <sceneID>.usdz を、
-/// AI で作った場面（gen-）は配置の JSON から部品を並べて出す（SceneLibrary）。
+/// 3D シーンを、向きと見下ろす角度を指定して描く。場面は配置の JSON から部品を並べて出す（SceneLibrary）。
 /// どのシーンも同じ広さに収まるよう、読み込んだ形の大きさに合わせて縮める
 struct DioramaView: View {
   let sceneID: String

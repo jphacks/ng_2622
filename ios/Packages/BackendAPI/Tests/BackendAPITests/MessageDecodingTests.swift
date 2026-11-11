@@ -54,7 +54,7 @@ struct MessageDecodingTests {
   ])
   func results(fields: String, graded: Bool) throws {
     let message = try decode(
-      #"{"type":"results","round":1,"sceneId":"park","sceneName":"公園","players":[{"id":"\#(playerID)","name":"はなこ","color":5987302,\#(fields)"transcript":"","comment":"","feedback":null}]}"#
+      #"{"type":"results","round":1,"sceneId":"temp-eiken-3-park","sceneName":"公園","players":[{"id":"\#(playerID)","name":"はなこ","color":5987302,\#(fields)"transcript":"","content":null,"feedback":null}]}"#
     )
     guard case .results(let results) = message, let player = results.players.first else {
       Issue.record("results でない: \(message)")
@@ -67,6 +67,34 @@ struct MessageDecodingTests {
       #expect(player.rank == nil)
       #expect(player.score == nil)
     }
+  }
+
+  /// 内容の内訳（描写の判定・項目の達成・言えたと正しさ）と、講評（次の一つ・言い直し・話し方の一言）が読める
+  @Test func resultsWithContent() throws {
+    let content =
+      #"{"claims":[{"quote":"A dog is sleeping.","verdict":"correct","item":"dog","level":"partial","note":null},"#
+      + #"{"quote":"A cat.","verdict":"absent","item":null,"level":null,"note":"猫はいません"}],"#
+      + #""items":[{"id":"dog","kind":"center","label":"犬","level":"partial"}],"others":0,"#
+      + #""recall":{"earned":1,"max":2},"precision":{"correct":1,"said":2}}"#
+    let feedback =
+      #"{"nextStep":{"kind":"content","text":"t","item":"dog","gain":4},"rewrite":null,"speechTip":{"aspect":"prosody","text":"s"}}"#
+    let message = try decode(
+      #"{"type":"results","round":1,"sceneId":"temp-eiken-3-park","sceneName":"公園","players":[{"id":"\#(playerID)","name":"はなこ","color":5987302,"rank":1,"score":{"content":50,"expression":60,"speech":70,"total":58},"transcript":"A dog is sleeping. A cat.","content":\#(content),"feedback":\#(feedback)}]}"#
+    )
+    guard case .results(let results) = message, let player = results.players.first,
+      let breakdown = player.content?.value1, let review = player.feedback?.value1
+    else {
+      Issue.record("results の内訳が読めない: \(message)")
+      return
+    }
+    #expect(breakdown.claims.map(\.verdict.rawValue) == ["correct", "absent"])
+    #expect(breakdown.claims.first?.level?.rawValue == "partial")
+    #expect(breakdown.claims.last?.level == nil)
+    #expect(breakdown.items.first?.kind == .center)
+    #expect(breakdown.recall.earned == 1)
+    #expect(breakdown.precision.said == 2)
+    #expect(review.nextStep.gain == 4)
+    #expect(review.speechTip.aspect.rawValue == "prosody")
   }
 
   /// iPhone から送る join は、type と name だけの JSON になる
