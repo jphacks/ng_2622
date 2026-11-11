@@ -12,6 +12,15 @@ enum SceneDifficulty: String, CaseIterable, Identifiable, Sendable {
 
   var id: String { rawValue }
 
+  /// 録音の画面のお題の段階。級が上がるほど、理由とつながりを足す
+  var topicSteps: [String] {
+    switch self {
+    case .eiken3: ["誰が何をしている？"]
+    case .eikenPre2: ["誰が何をしている？", "なぜ？"]
+    case .eiken2: ["誰が何をしている？", "なぜ？", "つなげよう"]
+    }
+  }
+
   /// 画面に出す名前（級の名前は出さない）
   var label: String {
     switch self {

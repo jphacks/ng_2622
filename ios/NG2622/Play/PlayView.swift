@@ -1,7 +1,8 @@
 import SwiftUI
 
 /// プレイの画面。回転中（3 秒）から録音中（最長 20 秒）へ、画面を切り替えずにつなぐ。
-/// 3D は同じ位置・大きさのまま、上のカウントダウンが「● 録音中」と残り時間のバーに入れ替わる
+/// 3D は同じ位置・大きさのまま、上のカウントダウンが「● 録音中」と残り時間のバーに入れ替わり、
+/// 3D の上にお題（難易度ごとの段階）の帯が出る
 struct PlayView: View {
   let round: RoundInfo
   /// 録音中の間だけ録る
@@ -17,6 +18,12 @@ struct PlayView: View {
   /// 3D の枠の高さと、指示文とカウントダウンのまとまりの高さ。まとまりを置く位置の計算に使う
   @State private var sceneHeight: CGFloat = 0
   @State private var introHeight: CGFloat = 0
+  /// 遊んでいる場面の難易度（配置の JSON から）。取れるまでお題の帯を出さない
+  @State private var difficulty: SceneDifficulty?
+
+  /// お題の帯の高さと、下の 3D との間
+  private static let topicHeight: CGFloat = 74
+  private static let topicGap: CGFloat = 8
 
   private var introEnd: Date { round.startsAt + RoundTiming.intro }
   private var recordingEnd: Date { introEnd + RoundTiming.recording }
@@ -28,16 +35,23 @@ struct PlayView: View {
         .padding(.top, 24)
         // 下にずらした指示文が 3D の枠に重なっても隠れないように
         .zIndex(1)
+      topic
+        .frame(width: 346, height: Self.topicHeight)
+        .padding(.bottom, Self.topicGap)
       scene
         .onGeometryChange(for: CGFloat.self) { $0.size.height } action: { sceneHeight = $0 }
         .padding(.top, 0)
       footer
-        .frame(width: 346, height: 70)
+        .frame(width: 346, height: 96)
         .padding(.top, 14)
         .padding(.bottom, 12)
     }
     .frame(maxWidth: .infinity)
     .task(id: round) { await runTimeline() }
+    .task(id: round.sceneID) {
+      // 3D を出すときに取るので、ふつうは通信しない
+      difficulty = try? await SceneLayouts.store.layout(of: round.sceneID, room: round.room).difficulty
+    }
   }
 
   // MARK: - 上（指示文とカウントダウン → 録音中と残り時間）
@@ -66,10 +80,11 @@ struct PlayView: View {
   private static let dioramaHalfHeight: CGFloat = 113
 
   /// 指示文とカウントダウンのまとまりの中心を、セーフエリアの上端と 3D の模型の上端のちょうど真ん中に置く。
-  /// 座標は header の上端が 0（セーフエリアの上端は -24、3D の枠の上端は 126）
+  /// 座標は header の上端が 0（セーフエリアの上端は -24、3D の枠の上端は 126 + お題の帯）。
+  /// お題の帯は録音中にだけ出すので、回転中は帯の場所に重なってよい
   private var introOffset: CGFloat {
     let top: CGFloat = -24
-    let dioramaTop = 126 + sceneHeight / 2 - Self.dioramaHalfHeight
+    let dioramaTop = 126 + Self.topicHeight + Self.topicGap + sceneHeight / 2 - Self.dioramaHalfHeight
     return max(10, (top + dioramaTop) / 2 - introHeight / 2)
   }
 
@@ -141,6 +156,46 @@ struct PlayView: View {
         .frame(height: 14)
       }
     }
+  }
+
+  // MARK: - お題
+
+  /// お題の帯。難易度の札と「お題」、矢印でつないだ段階。録音中にだけ出す
+  private var topic: some View {
+    VStack(alignment: .leading, spacing: 8) {
+      HStack(spacing: 8) {
+        Text("お題")
+          .font(Theme.font(13, .heavy))
+          .foregroundStyle(Theme.muted)
+        if let difficulty {
+          DifficultyChip(difficulty: difficulty, filled: true, size: 13)
+        }
+      }
+      if let steps = difficulty?.topicSteps {
+        HStack(spacing: 6) {
+          ForEach(Array(steps.enumerated()), id: \.offset) { i, step in
+            if i > 0 {
+              Image(systemName: "arrow.right")
+                .font(.system(size: 14, weight: .black))
+                .foregroundStyle(Theme.accent)
+            }
+            Text(step)
+              .font(Theme.font(17, .heavy))
+              .foregroundStyle(Theme.ink)
+          }
+        }
+        .lineLimit(1)
+        .minimumScaleFactor(0.7)
+      }
+    }
+    .padding(.horizontal, 16)
+    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .leading)
+    .background(Theme.accentSoft.opacity(0.7), in: RoundedRectangle(cornerRadius: 20))
+    .opacity(isRecording && difficulty != nil ? 1 : 0)
+    .offset(y: isRecording ? 0 : -10)
+    .animation(.easeOut(duration: 0.5).delay(0.1), value: isRecording)
+    .accessibilityElement(children: .combine)
+    .accessibilityHidden(!isRecording)
   }
 
   // MARK: - 3D
@@ -215,11 +270,16 @@ struct PlayView: View {
       .onEnded { _ in lastDrag = nil }
   }
 
-  // MARK: - 下（「話し終えた」）
+  // MARK: - 下（「話し終えた」と注意書き）
 
   private var footer: some View {
-    Button("話し終えた", action: onFinish)
-      .buttonStyle(BigButtonStyle(kind: .primary))
+    VStack(spacing: 12) {
+      Button("話し終えた", action: onFinish)
+        .buttonStyle(BigButtonStyle(kind: .primary))
+      Text("場面にいない物を言うと、正しさが下がります")
+        .font(Theme.font(13, .heavy))
+        .foregroundStyle(Theme.muted)
+    }
       .opacity(isRecording ? 1 : 0)
       .offset(y: isRecording ? 0 : 40)
       .allowsHitTesting(isRecording)
