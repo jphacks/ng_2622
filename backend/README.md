@@ -58,6 +58,10 @@ curl -F audio=@test.wav -F sceneId=gen-098scv1adb -F "transcript=A boy is runnin
 
 `/dev/score` は `ENABLE_DEV_ROUTES=true` のときだけ開く（`pnpm dev` が自動で付ける）。デプロイ先には入れない。
 
+### チェックリストの採点のぶれを測る
+
+チェックリストの F1 の採点（`src/scoring/checklist.ts` の計算と `checklistGrade.ts` の `gradeWithChecklist`。[ADR](../docs/adr/20261110-score-content-with-checklist-f1.md)）は、30 場面を作り直して切り替えるまで `score()` からは呼ばれない。それまでは `CLAUDE_API_KEY=... pnpm tsx scripts/measure-scoring-baseline.ts <結果の JSON> [1 答えあたりの回数（既定 5）] [費用の上限ドル（既定 2.5）]` で確かめる。試験用の 3 場面（`test/fixtures/checklist-eiken-*.json`、級ごとに 1 つ）に、用意した答え（見本どおり・正しい一文だけ・細部だけ・誤り・的外れなど 10 通り）を同じ回数ずつ採点させ、答えごとの内容と表現の点の並び・幅・かかった時間を表と JSON に出す。合格は、どの答えも内容の点の幅（最大 − 最小）が 5 点以内で、合格しなければ終了コード 1 で終わる。Claude を実際に呼ぶ（既定で 150 回）ので費用がかかり、上限に達したらそこで止まる。Azure は呼ばず、話し方の 3 つの点は 75 に固定する。級の文法の一覧はスクリプトの中の仮の値で、生成の定数（`GRADES`）が入ったらそちらから渡す。
+
 ## 作り置きの場面を作る（`src/scenes/`）
 
 形と流れの正本は [`docs/design/scene-protocol.md`](../docs/design/scene-protocol.md) の「AI で場面を作り置く」。場面は遊ぶ前に手元でまとめて作り、PNG を目で見て良いものだけを repo に入れる。本番では作らない。
