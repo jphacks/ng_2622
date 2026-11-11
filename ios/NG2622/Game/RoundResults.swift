@@ -14,13 +14,11 @@ struct RoundResults: Sendable, Equatable {
   /// 部屋のコード。部屋がその場で AI で作った場面の配置を取るときに付ける（みんなの描写で場面を出す）。Mock は nil
   var room: String? = nil
 
-  /// 合計の点の重み（バックエンドの採点と同じ。結果の画面に小さく出すだけで、計算には使わない）
+  /// 合計の点の重み（バックエンドの採点と同じ）。画面には出さず、Mock の合計の計算にだけ使う
   enum Weights {
     static let content = 50
     static let expression = 25
     static let speech = 25
-    /// 「内容 50% ・ 表現 25% ・ 話し方 25%」
-    static let caption = "内容 \(content)% ・ 表現 \(expression)% ・ 話し方 \(speech)%"
   }
 
   /// 自分の講評（バックエンドの Feedback）。次に伸ばすのは一つだけ

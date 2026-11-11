@@ -1,7 +1,7 @@
 import SwiftUI
 
-/// 結果発表。人ごとのカード（順位・名前・合計、3 つの軸の細い棒、チェックの数）を、
-/// 最下位から 1 枚ずつパタパタと開き、1 位が開いたら優勝を出す。自分のカードは枠と「あなた」の札で目立たせる
+/// 結果発表。最下位から 1 行ずつパタパタと開き、1 位が開いたら優勝を出す。
+/// 誰の画面でも同じ盤面にするため、自分の行に印は付けない
 struct RankingView: View {
   let results: RoundResults
   let isHost: Bool
@@ -15,9 +15,6 @@ struct RankingView: View {
   /// 1 行ごとの間隔
   private static let step: Duration = .seconds(0.9)
 
-  /// 遊んだ場面の難易度（配置の JSON から）。取れるまで出さない
-  @State private var difficulty: SceneDifficulty?
-
   private var players: [PlayerResult] { results.players }
   private var winner: PlayerResult? { players.first.flatMap { $0.score == nil ? nil : $0 } }
 
@@ -28,19 +25,8 @@ struct RankingView: View {
           Text("結果発表")
             .font(Theme.font(26, .black))
             .padding(.top, 24)
-          Group {
-            if let difficulty {
-              DifficultyChip(difficulty: difficulty)
-            }
-          }
-          .frame(height: 30)
-          .padding(.top, 6)
-          .padding(.bottom, 12)
+            .padding(.bottom, 20)
           board
-          Text(RoundResults.Weights.caption)
-            .font(Theme.font(13, .heavy))
-            .foregroundStyle(Theme.muted)
-            .padding(.top, 14)
           if winnerShown, let winner {
             WinnerBanner(player: winner)
               .padding(.top, 20)
@@ -63,9 +49,6 @@ struct RankingView: View {
       .scrollBounceBehavior(.basedOnSize)
     }
     .task { await reveal() }
-    .task(id: results.sceneID) {
-      difficulty = try? await SceneLayouts.store.layout(of: results.sceneID, room: results.room).difficulty
-    }
     .sensoryFeedback(.impact(weight: .light), trigger: openCount)
     .sensoryFeedback(.success, trigger: winnerShown)
   }
@@ -73,7 +56,7 @@ struct RankingView: View {
   // MARK: - 順位表
 
   private var board: some View {
-    VStack(spacing: 12) {
+    VStack(spacing: 10) {
       ForEach(Array(players.enumerated()), id: \.element.id) { i, p in
         RankRow(
           place: results.place(of: p),
@@ -132,7 +115,7 @@ struct RankingView: View {
   }
 }
 
-/// 順位表の 1 枚。順位の数字は最初から見せ、カードがめくれて開く
+/// 順位表の 1 行。順位の数字は最初から見せ、名前と点数の板がめくれて開く
 private struct RankRow: View {
   let place: Int?
   let player: PlayerResult
@@ -140,73 +123,51 @@ private struct RankRow: View {
   let isWinner: Bool
 
   var body: some View {
-    // 開いた面の大きさで場所を取り、その上でめくる
-    openFace
-      .hidden()
-      .modifier(FlapEffect(progress: isOpen ? 1 : 0, closed: closedFace, open: openFace))
-      .accessibilityElement(children: .ignore)
-      .accessibilityLabel(accessibilityText)
-  }
-
-  private var placeBadge: some View {
-    let first = place == 1
-    return Text(place.map(String.init) ?? "–")
-      .font(Theme.font(20, .black))
-      .monospacedDigit()
-      .foregroundStyle(first ? .white : Theme.accent)
-      .frame(width: 38, height: 38)
-      .background(first ? Theme.accent : Theme.accentSoft, in: Circle())
+    HStack(spacing: 12) {
+      Text(place.map(String.init) ?? "–")
+        .font(Theme.font(22, .black))
+        .monospacedDigit()
+        .foregroundStyle(isWinner ? Theme.accent : Theme.muted)
+        .frame(width: 30)
+      Color.clear
+        .frame(height: 58)
+        .modifier(FlapEffect(progress: isOpen ? 1 : 0, closed: closedFace, open: openFace))
+    }
+    .accessibilityElement(children: .ignore)
+    .accessibilityLabel(accessibilityText)
   }
 
   private var closedFace: some View {
-    HStack(spacing: 12) {
-      placeBadge
-      Text("？？？")
-        .font(Theme.font(19, .heavy))
-        .foregroundStyle(Theme.gray)
-        .frame(maxWidth: .infinity)
-    }
-    .padding(.horizontal, 16)
-    .frame(maxWidth: .infinity, maxHeight: .infinity)
-    .background(Theme.line, in: RoundedRectangle(cornerRadius: 22))
+    Text("？？？")
+      .font(Theme.font(19, .heavy))
+      .foregroundStyle(Theme.gray)
+      .frame(maxWidth: .infinity, maxHeight: .infinity)
+      .background(Theme.line, in: RoundedRectangle(cornerRadius: 18))
   }
 
   private var openFace: some View {
-    VStack(alignment: .leading, spacing: 10) {
-      HStack(spacing: 10) {
-        placeBadge
-        Text(player.name)
-          .font(Theme.font(20, .heavy))
-          .lineLimit(1)
-        if player.isSelf { SelfBadge() }
-        Spacer(minLength: 8)
-        if let score = player.score {
-          PointsText(total: score.total, size: 30)
-            .foregroundStyle(isWinner ? Theme.accent : Theme.ink)
-        }
-      }
+    HStack(spacing: 12) {
+      Avatar(name: player.name, color: player.color, size: 40)
+      Text(player.name)
+        .font(Theme.font(19, .heavy))
+        .lineLimit(1)
+      Spacer(minLength: 8)
       if let score = player.score {
-        VStack(spacing: 6) {
-          AxisBar(label: "内容", value: score.content)
-          AxisBar(label: "表現", value: score.expression)
-          AxisBar(label: "話し方", value: score.speaking)
-        }
-        if let content = player.content {
-          ContentCounts(content: content)
-            .padding(.leading, 4)
-        }
+        PointsText(total: score.total)
+          .foregroundStyle(isWinner ? Theme.accent : Theme.ink)
       } else {
         Text("採点できませんでした")
-          .font(Theme.font(14, .heavy))
+          .font(Theme.font(13, .heavy))
           .foregroundStyle(Theme.gray)
+          .fixedSize()
       }
     }
-    .padding(16)
-    .frame(maxWidth: .infinity, alignment: .leading)
-    .background(Theme.card, in: RoundedRectangle(cornerRadius: 22))
+    .padding(.horizontal, 14)
+    .frame(maxWidth: .infinity, maxHeight: .infinity)
+    .background(Theme.card, in: RoundedRectangle(cornerRadius: 18))
     .overlay {
-      if player.isSelf {
-        RoundedRectangle(cornerRadius: 22).strokeBorder(Theme.accent, lineWidth: 2.5)
+      if isWinner {
+        RoundedRectangle(cornerRadius: 18).strokeBorder(Theme.accent, lineWidth: 3)
       }
     }
     .shadow(color: Theme.ink.opacity(0.07), radius: 8, y: 4)
@@ -214,44 +175,8 @@ private struct RankRow: View {
 
   private var accessibilityText: String {
     guard isOpen else { return "\(place.map { "\($0) 位" } ?? "")、まだ開いていません" }
-    let you = player.isSelf ? "（あなた）" : ""
-    guard let score = player.score else {
-      return "\(place.map { "\($0) 位" } ?? "順位なし")、\(player.name)\(you)、採点できませんでした"
-    }
-    var text =
-      "\(place.map { "\($0) 位" } ?? "順位なし")、\(player.name)\(you)、\(score.total) 点。"
-      + "内容 \(score.content)、表現 \(score.expression)、話し方 \(score.speaking)"
-    if let content = player.content {
-      text += "。チェック \(content.fullCount)、一部 \(content.partialCount)、合わない \(content.mismatchCount)"
-    }
-    return text
-  }
-}
-
-/// カードの中の細い棒（内容・表現・話し方）
-private struct AxisBar: View {
-  let label: String
-  let value: Int
-
-  var body: some View {
-    HStack(spacing: 10) {
-      Text(label)
-        .font(Theme.font(13, .heavy))
-        .foregroundStyle(Theme.muted)
-        .frame(width: 44, alignment: .leading)
-      GeometryReader { geo in
-        Capsule()
-          .fill(Theme.accentSoft)
-          .overlay(alignment: .leading) {
-            Capsule()
-              .fill(Theme.accent)
-              .frame(width: geo.size.width * Double(min(100, max(0, value))) / 100)
-          }
-      }
-      .frame(height: 8)
-      PointsText(total: value, size: 16)
-        .frame(width: 48, alignment: .trailing)
-    }
+    let score = player.score.map { "\($0.total) 点" } ?? "採点できませんでした"
+    return "\(place.map { "\($0) 位" } ?? "順位なし")、\(player.name)、\(score)"
   }
 }
 
