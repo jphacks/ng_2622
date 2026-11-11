@@ -758,18 +758,18 @@ test("作り置き: 場所の食い違い（座標に直して分かる）は、
   const street = {
     name: "道",
     sentences: [
-      "A woman is sitting on the sidewalk.",
+      "A boy is running on the sidewalk.",
       "A girl is waiting.",
-      "There is a bicycle next to the woman.",
+      "There is a bicycle next to the boy.",
     ],
     checklist: [
       {
-        id: "fall",
+        id: "run",
         kind: "center",
-        label: "転んだ",
+        label: "走る",
         sentence: 1,
-        accept: "a woman is sitting on the sidewalk",
-        refs: ["woman", "sidewalk"],
+        accept: "a boy is running on the sidewalk",
+        refs: ["boy", "sidewalk"],
       },
       {
         id: "wait",
@@ -784,8 +784,8 @@ test("作り置き: 場所の食い違い（座標に直して分かる）は、
         kind: "detail",
         label: "自転車",
         sentence: 3,
-        accept: "there is a bicycle next to the woman",
-        refs: ["bicycle", "woman"],
+        accept: "there is a bicycle next to the boy",
+        refs: ["bicycle", "boy"],
       },
     ],
   };
@@ -803,14 +803,14 @@ test("作り置き: 場所の食い違い（座標に直して分かる）は、
           place: { relation: "ground", zone: "back" },
         },
         {
-          key: "woman",
-          part: "person_fallen_woman_a",
+          key: "boy",
+          part: "person_run_boy_a",
           place: { relation: "ground", zone },
         },
         {
           key: "bicycle",
           part: "bicycle_down",
-          place: { relation: "next_to", target: "woman" },
+          place: { relation: "next_to", target: "boy" },
         },
         {
           key: "girl",
@@ -828,7 +828,7 @@ test("作り置き: 場所の食い違い（座標に直して分かる）は、
   );
   assert.deepEqual(f.calls.map(stageOf), ["sentences", "items", "items"]);
   assert.equal(result.rejected[0][0].code, "place_mismatch");
-  assert.ok(userOf(f.calls[2]).includes("woman を sidewalk の上に置く"));
+  assert.ok(userOf(f.calls[2]).includes("boy を sidewalk の上に置く"));
 });
 
 test("指示: 写した accept・壁の物・場所・detail の決まり", () => {
