@@ -9,17 +9,23 @@ import type {
   GradeId,
   PlanItem,
   SceneSentences,
+  Vec3,
 } from "../src/scenes/types";
 import {
   acceptInDescription,
   acceptWordings,
+  clauseAction,
   normalizeText,
+  nounFits,
   type Problem,
+  project,
   refNames,
+  verifyHeld,
   verifyItems,
   verifyPlaces,
   verifyScene,
   verifySentences,
+  verifyView,
 } from "../src/scenes/verify";
 
 const clone = <T>(v: T): T => structuredClone(v);
@@ -298,7 +304,7 @@ test("center の refs に人や動物がいなければ落ちる（1 回目か�
 test("center の動詞が級の段階を超えれば落ちる（1 回目から作り直す）", () => {
   // throw は A2。3級（A1）では中心に使えない
   const s = clone(EASY);
-  s.description = `A boy is throwing a ball. ${s.description}`;
+  s.description = `A boy is throwing a ball. ${s.description.replace("A boy is running in the park. ", "")}`;
   s.checklist[0] = check("boy_throw", "center", "a boy is throwing a ball", [
     "boy",
   ]);
@@ -431,7 +437,7 @@ test("立っているポーズの人は、何をしていても「立ってい�
 test("3級では standing は段階で落ち、waiting・looking なら通る", () => {
   const scene = (accept: string): SceneSentences => ({
     ...EASY,
-    description: `${accept}. ${EASY.description}`,
+    description: `${accept}. ${EASY.description.replace("A boy is running in the park. ", "")}`,
     checklist: [
       check("boy", "center", accept, ["boy"]),
       EASY.checklist[1],
@@ -1156,4 +1162,419 @@ test("場所の確かめは、部品までの裏取りを通った場面だけ�
   assert.deepEqual(codes(all("eiken-3", s, EASY_ITEMS)), [
     "accept_not_in_description",
   ]);
+});
+
+// ここから、絵と見比べて見つかった食い違い（2026-11-12）の確かめ。実例を小さくしたもの
+
+/** 部品の一覧から引く */
+const partOf = (id: string) => {
+  const p = PARTS.find((x) => x.id === id);
+  assert.ok(p, id);
+  return p;
+};
+
+test("呼び方と見た目: 子どもと大人・男と女は取り違えを落とし、同じ枠の言い換えは通す", () => {
+  assert.ok(nounFits("girl", partOf("person_stand_girl_a")));
+  assert.ok(!nounFits("girl", partOf("person_point_woman_a")));
+  assert.ok(!nounFits("girl", partOf("person_phone_adult_a")));
+  // 背の高い男の子（teen）は boy、おじいさんは man でもよい、店員は男女どちらでも
+  assert.ok(nounFits("boy", partOf("person_take_book_teen_a")));
+  assert.ok(nounFits("tall boy", partOf("person_take_book_teen_a")));
+  assert.ok(nounFits("man", partOf("person_stand_old_a")));
+  assert.ok(!nounFits("old man", partOf("person_stand_adult_a")));
+  assert.ok(nounFits("woman", partOf("person_serve_waiter_a")));
+  assert.ok(nounFits("mother", partOf("person_cook_mother_a")));
+  assert.ok(!nounFits("boy", partOf("person_stand_girl_a")));
+});
+
+test("呼び方と見た目が合わない人の部品は落ちる（女の子にスマホを見る男の人の部品）", () => {
+  const s: SceneSentences = {
+    ...EASY,
+    description: `A girl is looking at a smartphone. ${EASY.description.replace("A boy is running in the park. ", "")}`,
+    checklist: [
+      check("girl_phone", "center", "a girl is looking at a smartphone", [
+        "girl",
+      ]),
+      EASY.checklist[1],
+      EASY.checklist[2],
+    ],
+  };
+  const items = (part: string) => [
+    ...EASY_ITEMS.filter((i) => i.key !== "boy"),
+    item("girl", part),
+  ];
+  const problems = verifyItems(
+    "eiken-3",
+    s,
+    items("person_phone_adult_a"),
+    PARTS,
+  );
+  assert.deepEqual(
+    problems.map((p) => [p.code, p.stage]),
+    [["who_mismatch", "items"]],
+  );
+  assert.equal(
+    problems[0].message,
+    "項目 girl_phone は girl のことだが、refs の girl の部品 person_phone_adult_a（man） は girl の見た目ではない。girl に合う人の部品を選ぶ（girl の部品）",
+  );
+  // 女の子の部品なら、呼び方では落ちない（スマホを見るポーズは無いので動詞で落ちる）
+  assert.ok(
+    !codes(
+      verifyItems("eiken-3", s, items("person_look_girl_a"), PARTS),
+    ).includes("who_mismatch"),
+  );
+});
+
+test("節の主語と動作: be の後の -ing、has の後の過去分詞、and でつないだ -ing を拾い、to の後は数えない", () => {
+  assert.deepEqual(clauseAction("A girl is sitting on a sofa and reading."), {
+    noun: "girl",
+    verbs: ["sit", "read"],
+  });
+  assert.deepEqual(clauseAction("the woman is asking a question"), {
+    noun: "woman",
+    verbs: ["ask"],
+  });
+  assert.deepEqual(clauseAction("A woman has fallen down"), {
+    noun: "woman",
+    verbs: ["fall"],
+  });
+  assert.deepEqual(clauseAction("Another boy is waiting to catch it."), {
+    noun: "boy",
+    verbs: ["wait"],
+  });
+  assert.deepEqual(clauseAction("A tall boy is taking a book"), {
+    noun: "tall boy",
+    verbs: ["take"],
+  });
+  // 主語が人でない文・代名詞の文は見ない
+  assert.equal(
+    clauseAction("There is a building next to the park."),
+    undefined,
+  );
+  assert.equal(clauseAction("she is reading"), undefined);
+  // 名詞の -ing（a building）は動作にしない
+  assert.deepEqual(clauseAction("A man is next to the building"), {
+    noun: "man",
+    verbs: [],
+  });
+});
+
+test("見本の答えにだけある動作は落ちる（座る女の子が読んでもいる）", () => {
+  const s: SceneSentences = {
+    name: "居間",
+    description:
+      "A girl is sitting on a sofa and reading. A man is eating an apple. There is a bed in the room.",
+    checklist: [
+      check("girl_sit", "center", "a girl is sitting on a sofa", [
+        "girl",
+        "sofa",
+      ]),
+      check("man_eat", "center", "a man is eating an apple", ["man"]),
+      check("bed", "detail", "there is a bed in the room", ["bed"]),
+    ],
+  };
+  const items: PlanItem[] = [
+    { key: "ground", part: "floor_wood", place: { relation: "ground" } },
+    { key: "wall", part: "wall_window", place: { relation: "ground" } },
+    {
+      key: "bed",
+      part: "bed",
+      place: { relation: "ground", zone: "back_right" },
+    },
+    { key: "sofa", part: "sofa", place: { relation: "ground", zone: "left" } },
+    {
+      key: "girl",
+      part: "person_sit_girl_a",
+      place: { relation: "sit_on", target: "sofa" },
+    },
+    {
+      key: "man",
+      part: "person_eat_adult_a",
+      place: { relation: "ground", zone: "front_right" },
+    },
+  ];
+  const problems = verifyItems("eiken-3", s, items, PARTS);
+  assert.deepEqual(
+    problems.map((p) => [p.code, p.stage]),
+    [["clause_action", "sentences"]],
+  );
+  assert.ok(
+    problems[0].message.startsWith(
+      "見本の答えの「A girl is sitting on a sofa and reading.」の動作（sit・read）",
+    ),
+  );
+  // 読む動作を書かなければ通る
+  const fixed = {
+    ...s,
+    description: s.description.replace(" and reading", ""),
+  };
+  assert.deepEqual(verifyScene("eiken-3", { ...fixed, items }, PARTS), []);
+});
+
+test("理由の原因の側の人の動作も、その人のポーズと照らす。ほかの部品で言えるなら部品の選び直し", () => {
+  const scene = (cause: string): SceneSentences => ({
+    name: "教室",
+    description: `A woman is writing on the blackboard. A boy is raising his hand because ${cause}. A girl is writing at a desk. There is a bag next to the girl. There is a chair next to the boy.`,
+    checklist: [
+      check("woman_write", "center", "a woman is writing on the blackboard", [
+        "woman",
+        "blackboard",
+      ]),
+      check("boy_raise", "center", "a boy is raising his hand", ["boy"]),
+      check("girl_write", "center", "a girl is writing at a desk", ["girl"]),
+      check("why", "reason", `a boy is raising his hand because ${cause}`, [
+        "boy",
+        "woman",
+      ]),
+      check("bag", "detail", "there is a bag next to the girl", [
+        "bag",
+        "girl",
+      ]),
+      check("chair", "detail", "there is a chair next to the boy", [
+        "chair_boy",
+        "boy",
+      ]),
+    ],
+  });
+  const items: PlanItem[] = [
+    { key: "ground", part: "floor_classroom", place: { relation: "ground" } },
+    {
+      key: "blackboard",
+      part: "wall_blackboard",
+      place: { relation: "ground" },
+    },
+    {
+      key: "woman",
+      part: "person_blackboard_woman_a",
+      place: { relation: "relate", target: "blackboard", link: "hand" },
+    },
+    {
+      key: "desk",
+      part: "table_small",
+      place: { relation: "ground", zone: "front_left" },
+    },
+    {
+      key: "chair_girl",
+      part: "chair",
+      place: { relation: "seat_at", target: "desk" },
+    },
+    {
+      key: "girl",
+      part: "person_write_girl_a",
+      place: { relation: "sit_on", target: "chair_girl" },
+    },
+    { key: "bag", part: "bag", place: { relation: "next_to", target: "desk" } },
+    {
+      key: "chair_boy",
+      part: "chair",
+      place: { relation: "ground", zone: "front_right" },
+    },
+    {
+      key: "boy",
+      part: "person_raise_hand_boy_a",
+      place: { relation: "sit_on", target: "chair_boy" },
+    },
+  ];
+  const bad = verifyItems(
+    "eiken-pre2",
+    scene("the woman is asking a question"),
+    items,
+    PARTS,
+  );
+  assert.deepEqual(
+    bad.map((p) => [p.code, p.stage]),
+    [["clause_action", "items"]],
+  );
+  assert.ok(
+    bad[0].message.includes("「the woman is asking a question.」の動作（ask）"),
+  );
+  assert.ok(
+    bad[0].message.endsWith("woman の部品を、その動作を全部言えるものにする"),
+  );
+  // 原因の動作がポーズで言えれば通る
+  assert.deepEqual(
+    verifyItems(
+      "eiken-pre2",
+      scene("the woman is writing on the blackboard"),
+      items,
+      PARTS,
+    ),
+    [],
+  );
+});
+
+test("持ち物: 部品の持ち物にも近くにも無い物を「持っている」と言うと落ちる（立つ女の子とかご）", () => {
+  const plan: SceneSentences = {
+    name: "店",
+    description:
+      "A woman is paying at the counter. A girl is waiting with a basket. There is a cart next to the counter.",
+    checklist: [],
+  };
+  const placed = (
+    girl: string,
+    extra: { key: string; part: string; position: Vec3 }[] = [],
+  ) => [
+    {
+      key: "woman",
+      part: "person_pay_woman_a",
+      position: [-1.7, 0, -1.3] as Vec3,
+    },
+    { key: "girl", part: girl, position: [3.1, 0, 1.9] as Vec3 },
+    { key: "cart", part: "cart", position: [-3.1, 0, -0.8] as Vec3 },
+    ...extra,
+  ];
+  const problems = verifyHeld(plan, placed("person_stand_girl_a"), PARTS);
+  assert.deepEqual(
+    problems.map((p) => [p.code, p.stage]),
+    [["held_missing", "sentences"]],
+  );
+  assert.equal(
+    problems[0].message,
+    "見本の答えの「A girl is waiting with a basket.」で girl が basket を持っていると言うが、girl の部品 person_stand_girl_a は basket を持っておらず、近くにも無い。girl の部品で持てる物だけを書く（basket を持つ girl の部品は無い）",
+  );
+  // 近くにかごの部品があれば通る。遠くにあるだけなら落ちる
+  assert.deepEqual(
+    verifyHeld(
+      plan,
+      placed("person_stand_girl_a", [
+        { key: "basket", part: "basket", position: [3.6, 0, 2.3] },
+      ]),
+      PARTS,
+    ),
+    [],
+  );
+  assert.equal(
+    verifyHeld(
+      plan,
+      placed("person_stand_girl_a", [
+        { key: "basket", part: "basket", position: [-3, 0, -3] },
+      ]),
+      PARTS,
+    ).length,
+    1,
+  );
+  // 女の人なら、かごを持つ部品があるので部品の選び直し。かごを持つ部品なら通る
+  const woman = {
+    ...plan,
+    description: plan.description
+      .replace("A girl", "A shopper woman")
+      .replace("shopper ", ""),
+  };
+  const w = [
+    {
+      key: "girl",
+      part: "person_stand_woman_a",
+      position: [3.1, 0, 1.9] as Vec3,
+    },
+  ];
+  assert.deepEqual(
+    verifyHeld(woman, w, PARTS).map((p) => p.stage),
+    ["items"],
+  );
+  assert.deepEqual(
+    verifyHeld(woman, [{ ...w[0], part: "person_basket_woman_a" }], PARTS),
+    [],
+  );
+  // 物の名前でない語（with both hands・with her friend）は見ない
+  const hands = {
+    ...plan,
+    description:
+      "A girl is holding a box with both hands. A girl is talking with her friend.",
+  };
+  assert.deepEqual(
+    verifyHeld(
+      hands,
+      [{ key: "girl", part: "person_hold_girl_a", position: [0, 0, 0] }],
+      PARTS,
+    ).map((p) => p.message.includes("box")),
+    [true],
+  );
+});
+
+test("窓・扉は背景の壁ぎわならよく、部屋の真ん中の床に立てると落ちる。英文で言っていれば 1 回目から", () => {
+  const plan = (refs: string[]): SceneSentences => ({
+    name: "教室",
+    description: "",
+    checklist: [check("w", "detail", "there is a window", refs)],
+  });
+  const wall = {
+    key: "wall",
+    part: "wall_blackboard",
+    position: [0, 0, -3.88] as Vec3,
+  };
+  const at = (z: number) => [
+    wall,
+    { key: "window", part: "window", position: [-0.3, 0, z] as Vec3 },
+  ];
+  const middle = verifyView(plan(["window"]), at(-1.17), PARTS);
+  assert.deepEqual(
+    middle.map((p) => [p.code, p.stage]),
+    [["wall_thing", "sentences"]],
+  );
+  assert.ok(
+    middle[0].message.startsWith(
+      "window（window）が、背景の壁から離れて部屋の中の床に立っている",
+    ),
+  );
+  assert.deepEqual(
+    verifyView(plan([]), at(-1.17), PARTS).map((p) => p.stage),
+    ["items"],
+  );
+  // 奥の区画（壁の手前の面から 1.2 m 以内）なら通る
+  assert.deepEqual(verifyView(plan(["window"]), at(-2.75), PARTS), []);
+  // 屋外の窓・時計は付ける壁が無いので落ちる。屋外の扉は通す
+  assert.equal(
+    verifyView(
+      plan([]),
+      [{ key: "clock", part: "clock", position: [0, 0, 0] }],
+      PARTS,
+    ).length,
+    1,
+  );
+  assert.deepEqual(
+    verifyView(
+      plan([]),
+      [{ key: "door", part: "door", position: [0, 0, -3] }],
+      PARTS,
+    ),
+    [],
+  );
+});
+
+test("項目が指す物の真ん中が絵の外なら落ちる（奥の木の上の風船）。手前の木の上なら見える", () => {
+  const plan: SceneSentences = {
+    name: "校庭",
+    description: "",
+    checklist: [
+      check(
+        "why",
+        "reason",
+        "a girl is looking far away because a balloon is in the tree",
+        ["girl", "balloon", "tree"],
+      ),
+    ],
+  };
+  const balloon = (z: number) => [
+    { key: "tree", part: "tree", position: [0.58, 0, z] as Vec3 },
+    { key: "balloon", part: "balloon", position: [0.58, 3.87, z] as Vec3 },
+    { key: "girl", part: "person_look_girl_a", position: [2.75, 0, 0] as Vec3 },
+  ];
+  assert.deepEqual(
+    verifyView(plan, balloon(-2.75), PARTS).map((p) => [
+      p.code,
+      p.stage,
+      p.message,
+    ]),
+    [
+      [
+        "out_of_view",
+        "items",
+        "balloon（balloon）が絵の外にある（上にはみ出す）。見える高さ・位置に置く",
+      ],
+    ],
+  );
+  assert.deepEqual(verifyView(plan, balloon(2.75), PARTS), []);
+  // カメラ: 場面の真ん中の少し上が画面の真ん中に来る
+  const c = project([0, 0.6, 0]);
+  assert.ok(Math.abs(c.x) < 1e-9 && Math.abs(c.y) < 1e-9);
 });

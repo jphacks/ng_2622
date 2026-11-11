@@ -345,11 +345,17 @@ ${verbLimits(parts)}
 - reason (eiken-pre2 and eiken-2): why a person does their action. The cause must be visible in the scene as a thing, the weather, or what another person or animal is doing. Choose it from "Visible events that can be a reason" below, or build another one from the lists in the same way. A feeling, a wish or a plan is not a cause (she wants it, he is in a hurry, he is late, she wants to go home), and neither is a thing that is not in the list of things. 
 - link (eiken-2 only): one sentence with two steps: because of a visible cause, a person does the action, and the action has a purpose or result that the player can see coming (the dog runs to get the ball). Not a plan you invent, and not two facts that only stand next to each other.
 - Do not make every scene about the same cause. Rain and a person who has fallen down are only two of many causes; prefer a cause that belongs to the theme, and when you can, let the cause be a thing or another person's action rather than a repeat of a center item.
+- The cause must make the action happen: if the cause were not there, the person would not do it. Two things that are only in the same place are not a reason.
+  - Good: "A woman is cleaning the table because juice is spilled on it." (the spilled juice makes her clean)
+  - Bad: "A woman is sitting on the bench because a man is reading a book next to her." (his reading does not make her sit)
+- What a person does in the cause ("because the woman is asking a question") is also an action of that person: it must be the same action as that person's center item, and only things the scene can show.
 - Bad reasons and links (never write these):
   - "A girl is reaching for the ball because she wants it." (a wish is not visible)
   - "A man is running because a girl is standing near the door." (not a cause)
   - "The man is hurrying so that he can leave." (no visible cause, and the purpose is invented)
   - "A bag is on the ground so the boy is running past it." (the bag does not make him run, and running past it has no purpose)
+  - "A man is waiting behind her because he has a basket." / "A woman is paying because a man is waiting behind her." (having a basket or someone waiting does not cause the action)
+- What a person holds, and the second action joined by "and" ("is sitting on a sofa and reading"), must also be shown by that person's action line: a girl who only sits cannot also read, and a girl who stands has no basket.
 - id: short snake_case, unique. label: short Japanese shown to the player after the round.
 - sentence: the number of the sentence that says this item (1 is the first sentence). Each center and each detail has a different number. The reason has the number of the center sentence that contains its "because"; the link has the number of the center sentence that contains its "so" or "so that". The reason and the link have different numbers.
 - accept for a center or detail item: the English wording that counts as "said", copied letter for letter from the sentence with that number (lower case and no final period are fine). One item, one fact, with a subject and a verb ("a man is reading a book", "there is a ball under the bench"); never a piece of a sentence ("to the train", "waiting with a basket").
@@ -439,8 +445,11 @@ ${PEOPLE_RULES}
 - Give the other items (the ground, the background wall, chairs to sit on, a few background things) other short lower-case keys.
 - For every person and animal, choose the part whose words say the same person and whose pose shows the action of the description.
 - For each center item, read the verb of its accept and give the first person or animal of its refs a part whose "says" lists that verb (accept "a woman is drinking" needs a woman part that says drink, not one that says wipe, and not one that only says sit or stand). A program checks this.
+- Choose the part whose words name the same person as the noun in the sentences: a girl is a girl part, never a woman or man part (person_point_woman_a and person_phone_adult_a are adults); a boy is a boy part; a man is a man or old man part. A program checks this.
 - Keep who the person is. If that person has no part that says the verb, still use a part of that person (the closest pose); never change a woman into a man or give the action to someone else. The checker then sends the text back to be rewritten.
-- Nothing can hang on a wall: do not use clock, and never put a wall thing on a table or on the floor instead.
+- Nothing can hang on a wall: do not use clock, and never put a wall thing on a table or on the floor instead. Indoors, the background wall already has windows; use window or door only in a back zone right in front of the background wall, never in the middle of the room. A program checks this.
+- Keep everything the checklist names inside the picture: the camera looks down from the front, so a thing high above a tree in a back zone (a balloon "above" a tree) is cut off at the top. Put such a tree in a front or center zone.
+- People must not hide each other: the camera looks from the front and above, so a person right behind another person, or behind a table, a shelf or a counter, is hidden. Do not put two people at the same spot; at a table, seat at most two people, and let a standing person (a waiter, someone setting plates) stand at the side, not in front of a seated person.
 - When an accept says that someone is on the sidewalk, on the grass or on the road, place them on that ground part. road_patch lies on top of the sidewalk and is 5.5 m deep, so with the road in zone "back" it also covers the center zones: people on the sidewalk go in a front zone, people on the road in center or back. A program checks this with the computed positions.
 - Show exactly the people and animals that the description mentions: no one more, no one less, one item for each. Everything the description mentions must be in the scene.
 - The cause of a reason or link item must be visible as its own item (rain, spilled_juice, a person who has fallen down, a thrown ball).
