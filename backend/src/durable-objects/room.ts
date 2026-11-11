@@ -20,8 +20,9 @@ import {
 } from "../domain/room";
 import {
   beginGrading,
-  closeRound,
+  expireRound,
   type Grade,
+  nextRoundDeadline,
   progressOf,
   type Round,
   recordGrade,
@@ -43,6 +44,8 @@ type Attachment = { playerId: string | null };
 const STATE_KEY = "state";
 /** ホストが切断した時刻。戻らないまま HOST_GRACE_MS たったらホストを替える */
 const HOST_AWAY_KEY = "hostAwaySince";
+/** 誰もつながっていなければ部屋を消す時刻。保存するたびに IDLE_TTL_MS 後へ延ばす */
+const IDLE_AT_KEY = "idleAt";
 const IDLE_TTL_MS = 2 * 60 * 60 * 1000;
 const HOST_GRACE_MS = 30 * 1000;
 const CLOSE_REPLACED = 4000;
@@ -62,6 +65,8 @@ export class Room extends DurableObject<CloudflareBindings> {
   private generation: { id: string; controller: AbortController } | null = null;
   /** 部屋で AI に場面を作らせるときの待ち時間の上限（ms）。テストでは短くする */
   protected generationTimeoutMs = GENERATION_TIMEOUT_MS;
+  /** 今の時刻（ms）。テストでは差し替えて、ラウンドの締め切りを進める */
+  protected clock = () => Date.now();
 
   /** そのコードの部屋がすでにあれば null */
   async create(roomId: string) {
@@ -85,8 +90,10 @@ export class Room extends DurableObject<CloudflareBindings> {
     token: string;
     round: number;
   }): Promise<Result<{ sceneId: string; layout?: SceneLayoutV2 }>> {
-    const state = await this.load();
-    if (!state) return fail("room_not_found", "部屋が無い");
+    const loaded = await this.load();
+    if (!loaded) return fail("room_not_found", "部屋が無い");
+    // 音声の締め切りを過ぎて届いた音声は受け取らない（その人はもう採点できなかった扱い）
+    const state = await this.expireIfDue(loaded);
     const player = authenticate(state, input.playerId, input.token);
     if (!player.ok) return player;
 
@@ -108,8 +115,10 @@ export class Room extends DurableObject<CloudflareBindings> {
 
   /** 採点の結果を書き込む */
   async recordGrade(input: { playerId: string; round: number; grade: Grade }) {
-    const state = await this.load();
-    if (!state) return;
+    const loaded = await this.load();
+    if (!loaded) return;
+    // alarm が遅れても、締め切りを過ぎてから届いた採点は捨てる
+    const state = await this.expireIfDue(loaded);
     const next = recordGrade(state, input);
     if (next) await this.update(state, next);
   }
@@ -134,6 +143,7 @@ export class Room extends DurableObject<CloudflareBindings> {
       return;
     }
     state = await this.recoverInterruptedGeneration(state);
+    state = await this.expireIfDue(state);
     const message = parseMessage(raw);
     if (!message) {
       return this.sendError(ws, {
@@ -162,8 +172,6 @@ export class Room extends DurableObject<CloudflareBindings> {
     switch (message.type) {
       case "start":
         return this.start(ws, state, playerId, message);
-      case "close":
-        return this.apply(ws, state, closeRound(state, { playerId }));
       case "again":
         return this.apply(ws, state, playAgain(state, { playerId }));
       case "skip":
@@ -183,27 +191,51 @@ export class Room extends DurableObject<CloudflareBindings> {
     if (!state) return;
     this.broadcastRoom(state);
     this.broadcastProgress(state);
-    await this.scheduleAlarm(state, ws);
+    await this.scheduleAlarm(state, { closing: ws });
   }
 
   async webSocketError(ws: WebSocket) {
     await this.webSocketClose(ws);
   }
 
-  /** 切断したまま戻らないホストを替える。誰もつながっていなければ部屋を消す */
+  /**
+   * ラウンドを時間で締め切り、切断したまま戻らないホストを替える。
+   * 誰もつながっていないまま IDLE_TTL_MS たったら部屋を消す
+   */
   async alarm() {
     const state = await this.load();
-    if (state && this.openSockets().length > 0) {
-      const awaySince = await this.ctx.storage.get<number>(HOST_AWAY_KEY);
-      if (awaySince !== undefined && Date.now() >= awaySince + HOST_GRACE_MS) {
-        const next = replaceAwayHost(state, this.connectedPlayerIds());
-        if (next !== state) return this.update(state, next);
+    const now = this.clock();
+    const connected = this.openSockets().length > 0;
+    if (state && !connected) {
+      const idleAt = await this.ctx.storage.get<number>(IDLE_AT_KEY);
+      if (idleAt === undefined || now >= idleAt) {
+        await this.ctx.storage.deleteAll();
+        this.state = null;
+        return;
       }
-      await this.scheduleAlarm(state);
+    }
+    if (!state) {
+      await this.ctx.storage.deleteAll();
+      this.state = null;
       return;
     }
-    await this.ctx.storage.deleteAll();
-    this.state = null;
+    let next = expireRound(state, now);
+    if (connected) {
+      const awaySince = await this.ctx.storage.get<number>(HOST_AWAY_KEY);
+      if (awaySince !== undefined && now >= awaySince + HOST_GRACE_MS) {
+        next = replaceAwayHost(next, this.connectedPlayerIds());
+      }
+    }
+    if (next !== state) return this.update(state, next);
+    await this.scheduleAlarm(state, { refreshIdle: false });
+  }
+
+  /** ラウンドの締め切りを過ぎていれば締め切る（alarm が遅れたときのため、メッセージや採点が届いたときにも見る） */
+  private async expireIfDue(state: RoomState) {
+    const next = expireRound(state, this.clock());
+    if (next === state) return state;
+    await this.update(state, next);
+    return next;
   }
 
   private async join(
@@ -260,7 +292,7 @@ export class Room extends DurableObject<CloudflareBindings> {
       playerId,
       sceneId: input.sceneId,
       difficulty: input.difficulty,
-      now: Date.now(),
+      now: this.clock(),
       connectedIds: this.connectedPlayerIds(),
     });
     if (!result.ok) return this.sendError(ws, result.error);
@@ -316,7 +348,7 @@ export class Room extends DurableObject<CloudflareBindings> {
       const finished = finishGeneration(current, {
         generationId,
         scene,
-        now: Date.now(),
+        now: this.clock(),
         connectedIds: this.connectedPlayerIds(),
       });
       // ホストが抜けて先に始めたなど、もうこの生成の番でない
@@ -344,7 +376,7 @@ export class Room extends DurableObject<CloudflareBindings> {
     const finished = finishGeneration(state, {
       generationId: id,
       scene: null,
-      now: Date.now(),
+      now: this.clock(),
       connectedIds: this.connectedPlayerIds(),
     });
     if (!finished) return state;
@@ -385,7 +417,7 @@ export class Room extends DurableObject<CloudflareBindings> {
       const finished = finishGeneration(next, {
         generationId,
         scene: null,
-        now: Date.now(),
+        now: this.clock(),
         connectedIds: this.connectedPlayerIds(),
       });
       if (finished) return this.beginRound(finished.state, finished.round);
@@ -492,22 +524,36 @@ export class Room extends DurableObject<CloudflareBindings> {
   }
 
   /**
-   * 次の alarm を決める。ホストが切断中なら切断から HOST_GRACE_MS 後（ホストを替える）、
-   * そうでなければ IDLE_TTL_MS 後（誰もつながっていなければ部屋を消す）
+   * 次の alarm を決める。次のうち最も早い時刻にする。
+   * - ラウンドの締め切り（音声がまだの人がいれば音声の締め切り、いなければ採点の締め切り。domain/round.ts）
+   * - ホストが切断中なら、切断から HOST_GRACE_MS 後（ホストを替える）
+   * - IDLE_TTL_MS 後（誰もつながっていなければ部屋を消す）。refreshIdle が false なら延ばさない
    */
-  private async scheduleAlarm(state: RoomState, closing?: WebSocket) {
-    const now = Date.now();
-    if (hostIsAway(state, this.connectedPlayerIds(closing))) {
+  private async scheduleAlarm(
+    state: RoomState,
+    options: { closing?: WebSocket; refreshIdle?: boolean } = {},
+  ) {
+    const now = this.clock();
+    const times: number[] = [];
+    let idleAt = await this.ctx.storage.get<number>(IDLE_AT_KEY);
+    if (options.refreshIdle !== false || idleAt === undefined) {
+      idleAt = now + IDLE_TTL_MS;
+      await this.ctx.storage.put(IDLE_AT_KEY, idleAt);
+    }
+    times.push(idleAt);
+    if (hostIsAway(state, this.connectedPlayerIds(options.closing))) {
       let since = await this.ctx.storage.get<number>(HOST_AWAY_KEY);
       if (since === undefined) {
         since = now;
         await this.ctx.storage.put(HOST_AWAY_KEY, since);
       }
-      await this.ctx.storage.setAlarm(since + HOST_GRACE_MS);
-      return;
+      times.push(since + HOST_GRACE_MS);
+    } else {
+      await this.ctx.storage.delete(HOST_AWAY_KEY);
     }
-    await this.ctx.storage.delete(HOST_AWAY_KEY);
-    await this.ctx.storage.setAlarm(now + IDLE_TTL_MS);
+    const deadline = nextRoundDeadline(state);
+    if (deadline !== null) times.push(deadline);
+    await this.ctx.storage.setAlarm(Math.min(...times));
   }
 }
 
