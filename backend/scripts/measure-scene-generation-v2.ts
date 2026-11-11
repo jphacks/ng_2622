@@ -3,12 +3,13 @@
 // 部屋での生成の上限（10 秒）に収まるかを見るためのもの。Claude を実際に呼ぶので費用がかかる。
 //   CLAUDE_API_KEY=... pnpm tsx scripts/measure-scene-generation-v2.ts [1 級あたりの回数（既定 20）] [結果の JSON の書き出し先]
 // 各段は 1 回だけ呼び（やり直さない）、裏取りで落ちても作り直さない（部屋での生成と同じ条件）。
+// 失敗した回は、理由と種類、形が違う応答なら Claude の生の本文の先頭を JSON に残す。
 // 時間の分布を見るため、各段の timeout は 10 秒で切らず 60 秒にしてある。
 // 料金は 100 万トークンあたりのドル（Sonnet 5.5。キャッシュの書き込みは 5 分の TTL で入力の 1.25 倍）。
 import { writeFile } from "node:fs/promises";
 import { composeLayoutV2 } from "../src/scenes/compose-v2";
-import { THEMES } from "../src/scenes/generate";
-import { generateSceneV2 } from "../src/scenes/generate-v2";
+import { SceneGenerationError, THEMES } from "../src/scenes/generate";
+import { generateSceneV2, SceneResponseError } from "../src/scenes/generate-v2";
 import { newSceneId } from "../src/scenes/id";
 import { PARTS } from "../src/scenes/parts";
 import { GRADE_IDS, type ScenePlanV2 } from "../src/scenes/types";
@@ -24,7 +25,11 @@ type Run = {
   theme: string;
   /** Claude が 2 段とも答えたか（裏取りの結果は problems） */
   ok: boolean;
+  /** 失敗した理由と種類（refused・invalid・unavailable） */
   error?: string;
+  errorKind?: string;
+  /** 形が違う・JSON でない応答のときの、Claude の生の本文の先頭（500 文字） */
+  raw?: string;
   /** 裏取りで落ちた理由。空なら通った */
   problems: string[];
   /** 座標に直せたか（composeLayoutV2 が例外を投げなかったか） */
@@ -117,6 +122,8 @@ for (const grade of GRADE_IDS) {
       }
     } catch (e) {
       run.error = e instanceof Error ? e.message : String(e);
+      if (e instanceof SceneGenerationError) run.errorKind = e.kind;
+      if (e instanceof SceneResponseError) run.raw = e.raw;
       run.totalMs = performance.now() - start;
     }
     runs.push(run);
