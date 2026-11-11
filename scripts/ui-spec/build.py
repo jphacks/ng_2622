@@ -164,12 +164,28 @@ def image_path(src: Path, s: dict) -> tuple[Path | None, str]:
     return placeholder_png(s["id"], s["title"]), "none"
 
 
+def aspect(path: Path) -> float:
+    """画像の縦 ÷ 横（macOS の sips で読む。読めなければ iPhone の縦横比とみなす）。"""
+    if shutil.which("sips"):
+        out = subprocess.run(["sips", "-g", "pixelWidth", "-g", "pixelHeight", str(path)], capture_output=True, text=True).stdout
+        size = dict(re.findall(r"pixel(Width|Height):\s*(\d+)", out))
+        if size.get("Width") and size.get("Height"):
+            return int(size["Height"]) / int(size["Width"])
+    return 19.5 / 9
+
+
 def image_html(src: Path, s: dict) -> str:
     p, state = image_path(src, s)
     label = IMAGE_STATE[state]
     if p:
-        return (f'<figure class="shot {state}"><img src="{data_uri(thumb(p, 1200, "jpeg"))}" alt="{html.escape(s["title"])}">'
-                f"<figcaption>{label}</figcaption></figure>")
+        # 縦に長い画像（振り返りを 2 枚つないだものなど）は切り抜かず、枠の中で縦にスクロールさせる。
+        # 文字が読めるよう、長いものほど大きめに縮小する
+        tall = aspect(p) > 19.5 / 9 * 1.05
+        size = 2400 if tall else 1200
+        hint = "（縦にスクロール）" if tall else ""
+        return (f'<figure class="shot {state}"><div class="frame{" tall" if tall else ""}">'
+                f'<img src="{data_uri(thumb(p, size, "jpeg"))}" alt="{html.escape(s["title"])}"></div>'
+                f"<figcaption>{label}{hint}</figcaption></figure>")
     return (f'<figure class="shot none"><div class="placeholder"><span>{html.escape(s["title"])}<br>'
             f'<small>{html.escape(s["id"])}（未作成）</small></span></div>'
             f"<figcaption>{label}</figcaption></figure>")
@@ -271,7 +287,9 @@ details ul { margin:2px 0 0; padding-left:18px; }
 .overview { margin-top:32px; } .overview summary { color:var(--fg); }
 ul.notes { padding-left:20px; } ul.notes li { margin:2px 0; }
 .shot { margin:0; }
-.shot img, .placeholder { width:100%; max-width:220px; aspect-ratio: 9/19.5; border-radius:16px; border:1px solid var(--line); object-fit:cover; background:#fff; display:block; }
+.shot .frame, .placeholder { width:100%; max-width:220px; aspect-ratio: 9/19.5; border-radius:16px; border:1px solid var(--line); background:#fff; display:block; overflow:hidden; }
+.shot .frame.tall { overflow-y:auto; overscroll-behavior:contain; }
+.shot .frame img { width:100%; height:auto; display:block; }
 .placeholder { display:flex; align-items:center; justify-content:center; text-align:center; color:#6b7280; background:repeating-linear-gradient(45deg,#f3f4f6 0 10px,#e5e7eb 10px 20px); font-size:.8rem; padding:8px; }
 figcaption { text-align:center; font-size:.75rem; color:var(--muted); margin-top:4px; }
 .discussion { margin-top:6px; display:grid; gap:8px; grid-template-columns:repeat(auto-fit,minmax(200px,1fr)); }
@@ -280,7 +298,7 @@ figcaption { text-align:center; font-size:.75rem; color:var(--muted); margin-top
 svg.flow { max-width:none; height:auto; display:block; margin:12px auto; }
 code { font-family: ui-monospace, Menlo, monospace; font-size:.85em; }
 .legend { font-size:.85rem; } .legend span { margin-right:14px; white-space:nowrap; }
-@media print { body { padding:0; } section.screen { break-inside:avoid; } h2 { break-before:page; } }
+@media print { .shot .frame.tall { aspect-ratio:auto; overflow:visible; } body { padding:0; } section.screen { break-inside:avoid; } h2 { break-before:page; } }
 """
 
 
