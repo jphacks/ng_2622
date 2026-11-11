@@ -1,5 +1,5 @@
 import { findPoolScene, poolCandidates } from "../scenes/pool";
-import { GRADE_IDS, type GradeId } from "../scenes/types";
+import { GRADE_IDS, type GradeId, toGradeId } from "../scenes/types";
 
 // 遊べる場面は、作り置きの場面（scenes/pool.ts）と、部屋が AI で作った場面（部屋の保存領域）。
 // 手作りの場面は外した（docs/adr/20261111-score-only-with-checklist-and-drop-handmade-scenes.md）
@@ -10,13 +10,6 @@ export const sceneName = (id: string) => findPoolScene(id)?.name ?? id;
 /** 選べるシーンか（index.json に載っている作り置きの場面） */
 export const isSceneId = (id: string) => findPoolScene(id) !== undefined;
 
-/** 一覧に出すシーン。作り置きの場面は出題まで名前を見せないので、今は 1 つも出さない */
-export const listScenes = (): {
-  id: string;
-  name: string;
-  kind: "vanilla";
-}[] => [];
-
 /** おまかせ（sceneId も difficulty も無いスタート）のときのシーン。全部の級の出題の候補から選ぶ */
 export const pickRandomSceneId = (random: () => number = Math.random) => {
   const all = GRADE_IDS.flatMap((g) => poolCandidates(g));
@@ -25,14 +18,15 @@ export const pickRandomSceneId = (random: () => number = Math.random) => {
 
 /**
  * 難易度から作り置きの場面を選ぶ。その部屋でまだ出ていないものからランダムに 1 つ。
- * その難易度を全部出したら、その難易度の分の履歴を消して最初に戻る。選んだ場面を足した履歴も返す
+ * その難易度を全部出したら、その難易度の分の履歴を消して最初に戻る。選んだ場面を足した履歴も返す。
+ * 級の値でない難易度（デプロイの前に easy などで保存された部屋）は、既定の級（eiken-3）に寄せる
  */
 export const pickPoolSceneId = (
   difficulty: GradeId,
   played: readonly string[],
   random: () => number = Math.random,
 ): { sceneId: string; played: string[] } => {
-  const candidates = poolCandidates(difficulty);
+  const candidates = poolCandidates(toGradeId(difficulty));
   const fresh = candidates.filter((id) => !played.includes(id));
   const history =
     fresh.length > 0

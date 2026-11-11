@@ -32,8 +32,9 @@ REPO = Path(__file__).resolve().parents[2]
 DIFFICULTIES = ("eiken-3", "eiken-pre2", "eiken-2")
 # 今の部品で作れる場所（生成の口の THEMES と同じ顔ぶれ）
 THEMES = ("公園", "カフェ", "店", "駅", "台所", "教室", "部屋", "図書館", "砂浜", "道", "バス停", "校庭")
-# 生成の口は 1 回 60 秒まで待ち、1 回やり直すことがある
-REQUEST_TIMEOUT = 150
+# 生成の口（POST /scenes/generate）は 2 段で Claude を呼ぶ。各段は 1 回 60 秒まで待ち、形が違えば 1 回やり直す。
+# 裏取りで落ちたら 2 回まで作り直す（計 3 回）。いちばん長くて 60 秒 × 2 回 × 2 段 × 3 回 = 720 秒
+REQUEST_TIMEOUT = 720
 BLENDER_CANDIDATES = ("blender", "/Applications/Blender.app/Contents/MacOS/Blender")
 
 

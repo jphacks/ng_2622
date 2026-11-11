@@ -55,21 +55,6 @@ export class SceneReviews extends DurableObject<CloudflareBindings> {
     return this.summaryOf(input.sceneId);
   }
 
-  /** 評価が 1 件以上あるシーンの平均と件数 */
-  async summaries(): Promise<RatingSummary[]> {
-    return this.sql
-      .exec<{ scene_id: string; average: number; count: number }>(
-        `SELECT scene_id, AVG(rating) AS average, COUNT(*) AS count
-         FROM reviews GROUP BY scene_id`,
-      )
-      .toArray()
-      .map((r) => ({
-        sceneId: r.scene_id,
-        average: r.average,
-        count: r.count,
-      }));
-  }
-
   /** 新しい順。コメントの無い評価も含む */
   async list(sceneId: string, limit: number): Promise<Review[]> {
     return this.sql

@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 import { afterEach, test } from "node:test";
 import app from "../src/app";
 import type { RoomState } from "../src/domain/room";
+import { roundDeadlines } from "../src/domain/round";
 import {
   EXAMPLE_GRADE,
   EXAMPLE_ITEMS,
@@ -294,6 +295,49 @@ test("DO が作り直されて生成が途切れていたら、次のメッセ�
   (room as any).generation?.controller.abort();
 });
 
+test("前の版で easy のまま generating で保存された部屋も、既定の級（eiken-3）の作り置きで始める", async () => {
+  hangingClaude();
+  const { ctx, storage, sockets } = await openRoom(ON);
+  storage.set("state", {
+    ...stateOf(storage),
+    phase: "generating",
+    generating: { id: "old-generation", difficulty: "easy" },
+  });
+  const fresh = reopen(ctx, ON);
+  await send(fresh, sockets[1], { type: "skip", round: 1 });
+  const state = stateOf(storage);
+  assert.ok(state.phase === "playing" || state.phase === "waiting");
+  assert.ok(poolCandidates("eiken-3").includes(String(state.current?.sceneId)));
+  assert.equal(received(sockets[1], "round").length, 1);
+});
+
+test("2 段の合計が待ち時間の上限を超えたら、各段が上限の中でも作り置きの場面で始める", async () => {
+  // 各段は 40 ms で返す。上限を 60 ms にすると、1 段目は間に合い、2 段目の途中で合計の上限に届く
+  const calls = stubClaude(
+    (init) =>
+      new Promise<Response>((resolve, reject) => {
+        const n = calls.length;
+        const timer = setTimeout(
+          () => resolve(claudeMessage("end_turn", n === 1 ? SENTENCES : ITEMS)),
+          40,
+        );
+        init?.signal?.addEventListener("abort", () => {
+          clearTimeout(timer);
+          reject(new DOMException("aborted", "AbortError"));
+        });
+      }),
+  );
+  const { room, host, others, storage } = await openRoom(ON);
+  // biome-ignore lint/suspicious/noExplicitAny: テストのために待ち時間を短くする
+  (room as any).generationTimeoutMs = 60;
+  await send(room, host, { type: "start", difficulty: GRADE });
+  assert.equal(calls.length, 2, "2 段目まで呼んだ");
+  assert.equal(calls[1].signal?.aborted, true, "2 段目を止めた");
+  const [round] = received(others[0], "round");
+  assert.ok(poolCandidates(GRADE).includes(String(round.sceneId)));
+  assert.ok(![...storage.keys()].some((k) => k.startsWith("layout:")));
+});
+
 test("GET /scenes/{sceneId}/layout?room= で部屋が作った場面の配置を返す", async () => {
   sceneClaude();
   const { room, host, others } = await openRoom(ON);
@@ -428,7 +472,11 @@ test("部屋の結果発表には AI で作った場面の名前を出す", asyn
   sceneClaude();
   const { room, host, others } = await openRoom(ON);
   await send(room, host, { type: "start", difficulty: GRADE });
-  await send(room, host, { type: "close" });
+  // 誰も音声を送らないまま、音声の締め切りを過ぎる
+  const startAt = Number(received(others[0], "round")[0].startAt);
+  // biome-ignore lint/suspicious/noExplicitAny: テストのために時計を進める
+  (room as any).clock = () => roundDeadlines({ startAt }).audio;
+  await room.alarm();
   const [results] = received(others[0], "results");
   assert.equal(results.sceneName, SENTENCES.name);
 });

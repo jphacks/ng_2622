@@ -20,3 +20,8 @@ test("無い場面（外した手作りの場面も）は 404 unknown_scene", as
     assert.equal(body.error.code, "unknown_scene");
   }
 });
+
+test("場面の一覧（GET /scenes）は消したので 404", async () => {
+  const res = await app.request("/scenes");
+  assert.equal(res.status, 404);
+});

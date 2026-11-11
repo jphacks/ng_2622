@@ -297,7 +297,7 @@ v1 の基本は止まった場面で、動作は人物のポーズで表す。�
 
 ## API
 
-今の `/scenes`（シーンの一覧と評価、[ADR](../adr/20261024-store-scene-reviews-in-a-global-durable-object.md)）を広げる。部品と、`POST /scenes` で保存したシーンの JSON は R2 に置く。作り置きの場面は R2 ではなく、Worker に同梱する（下の「AI で場面を作り置く」）。
+今の `/scenes`（シーンの評価、[ADR](../adr/20261024-store-scene-reviews-in-a-global-durable-object.md)。シーンの一覧 `GET /scenes` は 2026-11-11 に消した）を広げる。部品と、`POST /scenes` で保存したシーンの JSON は R2 に置く。作り置きの場面は R2 ではなく、Worker に同梱する（下の「AI で場面を作り置く」）。
 
 | メソッドとパス | だれが使う | 中身 |
 | --- | --- | --- |
@@ -333,7 +333,7 @@ render_layout.py で PNG に描く ──▶ 人が目で確かめる ──▶ 
 - 場面は遊ぶ前にスクリプトでまとめて作る。待合でその場では作らない。
 - 数: まず難易度ごとに 10 場面（計 30）。
 - 確かめ方: `scripts/scene/render_layout.py` で PNG に描き、人が目で見る。崩れていないか、`description` の文がその絵と合っているかを見る（`description` は採点で補足として Claude に渡すため）。だめなものは捨てて作り直す。
-- 置き場所: `backend/src/scenes/pool/` に 1 場面 1 ファイルの JSON（`<sceneId>.json`）で置き、Worker に同梱する（採点の `backend/src/scoring/scenes.json` と同じ扱い）。R2 には置かない。iOS の Mock も、ビルドのときにここから写して使う（置き場所は 1 か所）。
+- 置き場所: `backend/src/scenes/pool/` に 1 場面 1 ファイルの JSON（`<sceneId>.json`）で置き、Worker に同梱する。R2 には置かない。iOS の Mock も、ビルドのときにここから写して使う（置き場所は 1 か所）。
 - 一覧: Worker は glob できないので、同じ所の `index.json` に難易度ごとの例（`example`、待合で見せて出題しない）と出題の候補（`scenes`、例は含めない）を書く。形は `backend/src/scenes/pool/README.md`。
 - ID（案）: 今までどおり `gen-` ＋ 英小文字と数字 10 文字。生成の口が付けて返す。
 - 作り置きのスクリプトも `POST /scenes/generate` を呼ぶ。Claude への指示と座標の計算を 1 箇所にまとめるため。
@@ -352,7 +352,7 @@ render_layout.py で PNG に描く ──▶ 人が目で確かめる ──▶ 
 
 ### 難易度の中身（推測）
 
-2026-11-10 に、難易度の値を `eiken-3`・`eiken-pre2`・`eiken-2` に変えると決めた（[ADR](../adr/20261110-align-scoring-with-eiken-speaking-viewpoints.md)）。画面の名前は変えず、古い値は受け付けない。切り替えるのは、30 場面を作り直すとき。級ごとのチェックリストの数は [`usecase.md`](./usecase.md) の採点。
+2026-11-10 に、難易度の値を `eiken-3`・`eiken-pre2`・`eiken-2` に変えると決めた（[ADR](../adr/20261110-align-scoring-with-eiken-speaking-viewpoints.md)）。画面の名前は変えず、古い値は受け付けない。2026-11-11 にバックエンドを切り替えた（[ADR](../adr/20261111-score-only-with-checklist-and-drop-handmade-scenes.md)）。下の表の A・B・C は古い 1 回の生成のもので、経緯として残している。今の級の中身は `backend/src/scenes/grades.ts` の `GRADES`。級ごとのチェックリストの数は [`usecase.md`](./usecase.md) の採点。
 
 [`research/scene-levels-emotions.md`](./research/scene-levels-emotions.md) の A・B・C の段階に合わせる案。
 
@@ -372,7 +372,7 @@ render_layout.py で PNG に描く ──▶ 人が目で確かめる ──▶ 
 - `start` で難易度（`difficulty`: `eiken-3`・`eiken-pre2`・`eiken-2`。2026-11-11 に切り替えた。古い値は `invalid_message`）を送り、部屋が選んだ `sceneId` を round で全員に配る。round の形は変えない。
 - 部屋は出した場面を覚え（難易度ごと）、その難易度を全部出したら、その難易度の分だけ忘れて最初に戻る。
 - `sceneId` と `difficulty` の両方を送ると `invalid_message`。どちらも無ければ、全部の級の作り置きの場面からおまかせで選ぶ（2026-11-11。手作りの場面を外したため。それまでは手作りの場面のおまかせだった）。`sceneId` には作り置きの場面の ID だけを送れる。
-- 作り置きの場面のラウンドは、話し方は Azure のまま、内容・表現と講評を `backend/src/scoring/bands.ts` の 1 回の Claude 呼び出しで付ける。結果（results）の形は変えず、要素の判定が無いので `nextStep.gain` は null になる。手作りの場面は今の要素の加点式のまま。
+- 作り置きの場面のラウンドは、話し方は Azure のまま、内容・表現と講評をチェックリストの採点（`backend/src/scoring/checklistGrade.ts`）の 1 回の Claude 呼び出しで付ける（2026-11-11。それまでは `bands.ts` の段階の基準で、`nextStep.gain` は null だった）。結果（results）には内容の内訳が入り、`nextStep.gain` は合計の点の伸び。手作りの場面は外した。形は [`usecase.md`](./usecase.md) の「アプリへ送るもの」。
 - 手作りの 6 場面の扱いは、下の API の節の最後。
 
 ### 失敗したとき

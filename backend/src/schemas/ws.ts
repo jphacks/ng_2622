@@ -53,12 +53,6 @@ export const StartMessage = z
       "ホストだけが送れる。待合のときだけ有効（generating の間に送ると not_in_lobby）。ラウンドが始まったときにつながっている人がラウンドの参加者になる（切断中の人は入らない）。generating の間にホストが leave すると、生成をやめて作り置きの場面でラウンドを始める",
   });
 
-export const CloseMessage = z.object({ type: z.literal("close") }).meta({
-  ref: "CloseMessage",
-  description:
-    "ホストだけが送れる。ラウンドを締め切って結果発表に進む。採点がまだの人は「採点できませんでした」になる",
-});
-
 export const AgainMessage = z.object({ type: z.literal("again") }).meta({
   ref: "AgainMessage",
   description:
@@ -73,7 +67,7 @@ export const SkipMessage = z
   .meta({
     ref: "SkipMessage",
     description:
-      "音声を送らずにこのラウンドを終える（マイクが使えない・録れなかったとき）。その人は done になり、結果では「採点できませんでした」（rank・score が null）になる。音声を送った後は already_submitted",
+      "音声を送らずにこのラウンドを終える（マイクが使えない・録れなかったとき）。その人は done になり、結果では「採点できませんでした」（rank・score が null）になる。音声を送った後は already_submitted、音声の締め切りを過ぎた後は deadline_passed",
   });
 
 export const LeaveMessage = z.object({ type: z.literal("leave") }).meta({
@@ -86,7 +80,6 @@ export const ClientMessage = z
   .discriminatedUnion("type", [
     JoinMessage,
     StartMessage,
-    CloseMessage,
     AgainMessage,
     SkipMessage,
     LeaveMessage,
@@ -98,7 +91,6 @@ export const ClientMessage = z
       mapping: {
         join: "#/components/schemas/JoinMessage",
         start: "#/components/schemas/StartMessage",
-        close: "#/components/schemas/CloseMessage",
         again: "#/components/schemas/AgainMessage",
         skip: "#/components/schemas/SkipMessage",
         leave: "#/components/schemas/LeaveMessage",
@@ -343,7 +335,7 @@ export const ResultsMessage = z
   .meta({
     ref: "ResultsMessage",
     description:
-      "全員の採点がそろうか、ホストが締め切ったら全員へ送る。結果発表のときに戻ってきた人にも送り直す",
+      "全員の採点がそろうか、締め切りの時刻が来たら全員へ送る。締め切りは、録音が終わるはずの時刻（round の startAt + 回転 3 秒 + 録音 20 秒）から、音声が 10 秒・採点が 30 秒。音声を送っていない人と、採点が間に合わなかった人は「採点できませんでした」（rank・score が null）。結果発表のときに戻ってきた人にも送り直す",
   });
 
 export const ErrorMessage = z

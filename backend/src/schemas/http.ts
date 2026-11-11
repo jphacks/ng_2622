@@ -80,32 +80,6 @@ export const Rating = z.int().min(1).max(5).meta({
   example: 4,
 });
 
-export const RatingSummary = z
-  .object({
-    average: z.number().nullable().meta({
-      description: "★の平均（小数第 1 位まで）。評価が無ければ null",
-      example: 4.2,
-    }),
-    count: z.int().min(0).meta({ description: "評価した人数" }),
-  })
-  .meta({ ref: "RatingSummary" });
-
-export const SceneSummary = z
-  .object({
-    id: SceneId,
-    name: z.string().meta({ example: "公園" }),
-    kind: z.enum(["vanilla"]).meta({
-      description:
-        "vanilla: 最初から入っているシーン（今後、ユーザーが作るシーンを足す）",
-    }),
-    rating: RatingSummary,
-  })
-  .meta({ ref: "SceneSummary" });
-
-export const ListScenesResponse = z
-  .object({ scenes: z.array(SceneSummary) })
-  .meta({ ref: "ListScenesResponse" });
-
 export const SceneIdParam = z.object({ sceneId: SceneId });
 
 export const SceneLayoutQuery = z.object({
@@ -338,7 +312,14 @@ export const ScoringLayout = z
     description: z.string().max(2000).optional().meta({
       description: "級の見本の答え（英語）。採点の補足として Claude に渡す",
     }),
-    checklist: z.array(z.object(checklistItemShape)).min(1).max(20),
+    checklist: z
+      .array(z.object(checklistItemShape))
+      .min(1)
+      .max(20)
+      // Claude に渡す項目の id の enum に、同じ id が入らないようにする
+      .refine((list) => new Set(list.map((c) => c.id)).size === list.length, {
+        message: "checklist の id が重なっている",
+      }),
     items: z
       .array(
         z.object({

@@ -11,18 +11,13 @@ import {
   GenerateSceneRequest,
   ListReviewsQuery,
   ListReviewsResponse,
-  ListScenesResponse,
   SceneIdParam,
   SceneLayout,
   SceneLayoutQuery,
   SubmitReviewRequest,
   SubmitReviewResponse,
 } from "../schemas/http";
-import {
-  listReviews,
-  listScenesWithRatings,
-  submitReview,
-} from "../usecases/sceneReviews";
+import { listReviews, submitReview } from "../usecases/sceneReviews";
 import { generateScene } from "../usecases/scenes";
 import { type AppEnv, errorBody, jsonContent } from "./shared";
 
@@ -122,22 +117,6 @@ export const sceneRoutes = new Hono<AppEnv>()
           status,
         );
       }
-    },
-  )
-  .get(
-    "/scenes",
-    describeRoute({
-      operationId: "listScenes",
-      tags: ["scenes"],
-      summary: "シーンの一覧と★の平均",
-      description: "選べるシーンと、それぞれの★の平均と評価した人数を返す。",
-      responses: {
-        200: { description: "一覧", content: jsonContent(ListScenesResponse) },
-      },
-    }),
-    async (c) => {
-      const repository = createSceneReviewRepository(c.env.SCENE_REVIEWS);
-      return c.json({ scenes: await listScenesWithRatings(repository) });
     },
   )
   .get(

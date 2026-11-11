@@ -6,10 +6,13 @@ import {
   type RoomState,
   startRound,
 } from "../src/domain/room";
-import { isSceneId, sceneName } from "../src/domain/scenes";
+import { isSceneId, pickPoolSceneId, sceneName } from "../src/domain/scenes";
+import { PARTS } from "../src/scenes/parts";
 import { findPoolScene, importedPoolIds } from "../src/scenes/pool";
 import index from "../src/scenes/pool/index.json";
-import { GRADE_IDS } from "../src/scenes/types";
+import { GRADE_IDS, type PlanItem, toGradeId } from "../src/scenes/types";
+import { verifyScene } from "../src/scenes/verify";
+import { SceneLayout } from "../src/schemas/http";
 import { ClientMessage } from "../src/schemas/ws";
 
 const poolDir = new URL("../src/scenes/pool/", import.meta.url);
@@ -32,6 +35,56 @@ test("pool/ の JSON を全部 import し、index.json の場面がそろって�
       assert.equal(scene.protocol, "scenenglish.scene/2");
     }
   }
+});
+
+test("作り置きの場面は全部、API の形（SceneLayout）と生成の裏取り（verifyScene）を通る", () => {
+  for (const id of importedPoolIds()) {
+    const scene = findPoolScene(id);
+    assert.ok(scene, `${id} が index.json に無い`);
+    const parsed = SceneLayout.safeParse(scene);
+    assert.ok(parsed.success, `${id}: ${parsed.error?.message}`);
+    // 配置の JSON から、生成で Claude が書いた形（関係だけ）に戻して裏取りにかける
+    const items: PlanItem[] = scene.items.map((i) => ({
+      key: i.key,
+      part: i.part,
+      place: i.place,
+      ...(i.facing !== undefined ? { facing: i.facing } : {}),
+      ...(i.motion
+        ? {
+            motion: {
+              type: i.motion.type,
+              duration: i.motion.duration,
+              ...(i.motion.toward !== undefined
+                ? { toward: i.motion.toward }
+                : {}),
+              ...(i.motion.path !== undefined ? { path: i.motion.path } : {}),
+            },
+          }
+        : {}),
+    }));
+    const problems = verifyScene(
+      scene.difficulty,
+      {
+        name: scene.name,
+        description: scene.description,
+        checklist: scene.checklist,
+        items,
+      },
+      PARTS,
+    );
+    assert.deepEqual(
+      problems.map((p) => p.message),
+      [],
+      id,
+    );
+  }
+});
+
+test("級の値でない難易度（前の版の easy など）は、既定の級（eiken-3）の候補から選ぶ", () => {
+  const picked = pickPoolSceneId("easy" as never, []);
+  assert.ok(index["eiken-3"].scenes.includes(picked.sceneId));
+  assert.equal(toGradeId("hard"), "eiken-3");
+  assert.equal(toGradeId("eiken-2"), "eiken-2");
 });
 
 test("作り置きの場面も選べるシーンで、名前は JSON の name", () => {
