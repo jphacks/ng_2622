@@ -1,0 +1,161 @@
+{
+  "protocol": "scenenglish.scene/2",
+  "id": "temp-eiken-2-rain",
+  "name": "雨の中で傘を差しかける",
+  "difficulty": "eiken-2",
+  "description": "A girl is holding an umbrella over an old man so that he does not get wet. An old man is standing next to the girl. A man is running to the bench because it is raining. A woman is sitting on the bench. There is a trash bin next to the bench. There is a tree near the bench.",
+  "checklist": [
+    {
+      "id": "girl_hold",
+      "kind": "center",
+      "label": "女の子が傘を差しかけている",
+      "accept": "a girl is holding an umbrella",
+      "refs": ["girl"]
+    },
+    {
+      "id": "oldman_stand",
+      "kind": "center",
+      "label": "おじいさんが立っている",
+      "accept": "an old man is standing",
+      "refs": ["oldman"]
+    },
+    {
+      "id": "man_run",
+      "kind": "center",
+      "label": "男の人が走っている",
+      "accept": "a man is running",
+      "refs": ["man"]
+    },
+    {
+      "id": "woman_sit",
+      "kind": "center",
+      "label": "女の人が座っている",
+      "accept": "a woman is sitting",
+      "refs": ["woman"]
+    },
+    {
+      "id": "why_run",
+      "kind": "reason",
+      "label": "男の人が走っている理由",
+      "accept": "a man is running to the bench because it is raining",
+      "refs": ["rain", "man"]
+    },
+    {
+      "id": "girl_care",
+      "kind": "link",
+      "label": "女の子は、おじいさんがぬれないように傘を差しかけている",
+      "accept": "a girl is holding an umbrella over an old man so that he does not get wet",
+      "refs": ["rain", "girl", "oldman"]
+    },
+    {
+      "id": "bin",
+      "kind": "detail",
+      "label": "ベンチの横にごみ箱がある",
+      "accept": "there is a trash bin next to the bench",
+      "refs": ["bin", "bench"]
+    },
+    {
+      "id": "tree",
+      "kind": "detail",
+      "label": "ベンチの近くに木がある",
+      "accept": "there is a tree near the bench",
+      "refs": ["tree", "bench"]
+    }
+  ],
+  "items": [
+    {
+      "key": "ground",
+      "part": "sidewalk_stone",
+      "place": {
+        "relation": "ground"
+      },
+      "position": [0, 0, 0]
+    },
+    {
+      "key": "rain",
+      "part": "rain",
+      "place": {
+        "relation": "ground"
+      },
+      "position": [0, 0, 0]
+    },
+    {
+      "key": "bench",
+      "part": "bench",
+      "place": {
+        "relation": "ground",
+        "zone": "back"
+      },
+      "position": [0, 0, -2.75],
+      "yaw": 90
+    },
+    {
+      "key": "tree",
+      "part": "tree",
+      "place": {
+        "relation": "ground",
+        "zone": "back_right"
+      },
+      "position": [2.734, 0, -2.75]
+    },
+    {
+      "key": "woman",
+      "part": "person_sit_woman_a",
+      "place": {
+        "relation": "sit_on",
+        "target": "bench"
+      },
+      "position": [0.255, 0.002, -2.75],
+      "yaw": 90
+    },
+    {
+      "key": "bin",
+      "part": "trash_bin",
+      "place": {
+        "relation": "next_to",
+        "target": "bench"
+      },
+      "position": [-0.608, 0, -2.75]
+    },
+    {
+      "key": "oldman",
+      "part": "person_stand_old_a",
+      "place": {
+        "relation": "ground",
+        "zone": "front_left"
+      },
+      "position": [-2.75, 0, 2.75],
+      "yaw": 90
+    },
+    {
+      "key": "girl",
+      "part": "person_umbrella_girl_a",
+      "place": {
+        "relation": "relate",
+        "target": "oldman",
+        "link": "body",
+        "side": "left",
+        "distance": "beside",
+        "turn": "same"
+      },
+      "position": [-2.873, 0, 3.492],
+      "yaw": 90
+    },
+    {
+      "key": "man",
+      "part": "person_run_bag_adult_a",
+      "place": {
+        "relation": "ground",
+        "zone": "left"
+      },
+      "position": [-2.75, 0, 0],
+      "yaw": 135,
+      "motion": {
+        "type": "move",
+        "to": [-0.932, 0, -1.818],
+        "duration": 5,
+        "toward": "bench"
+      }
+    }
+  ]
+}

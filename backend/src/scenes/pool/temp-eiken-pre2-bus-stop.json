@@ -1,0 +1,118 @@
+{
+  "protocol": "scenenglish.scene/2",
+  "id": "temp-eiken-pre2-bus-stop",
+  "name": "雨のバス停",
+  "difficulty": "eiken-pre2",
+  "description": "It is raining at the bus stop. A girl is holding an umbrella. A boy is running to the bus stop because it is raining. A man is reading a book. The man is sitting on the bench.",
+  "checklist": [
+    {
+      "id": "girl_umbrella",
+      "kind": "center",
+      "label": "女の子が傘をさしている",
+      "accept": "a girl is holding an umbrella",
+      "refs": ["girl"]
+    },
+    {
+      "id": "boy_run",
+      "kind": "center",
+      "label": "男の子が走っている",
+      "accept": "a boy is running",
+      "refs": ["boy"]
+    },
+    {
+      "id": "man_read",
+      "kind": "center",
+      "label": "男の人が本を読んでいる",
+      "accept": "a man is reading a book",
+      "refs": ["man"]
+    },
+    {
+      "id": "why_run",
+      "kind": "reason",
+      "label": "男の子が走っている理由",
+      "accept": "a boy is running to the bus stop because it is raining / because he has no umbrella",
+      "refs": ["boy", "rain"]
+    },
+    {
+      "id": "rain",
+      "kind": "detail",
+      "label": "雨が降っている",
+      "accept": "it is raining",
+      "refs": ["rain"]
+    },
+    {
+      "id": "man_sit",
+      "kind": "detail",
+      "label": "男の人はベンチに座っている",
+      "accept": "the man is sitting on the bench",
+      "refs": ["man", "bench"]
+    }
+  ],
+  "items": [
+    {
+      "key": "ground",
+      "part": "sidewalk_stone",
+      "place": {
+        "relation": "ground"
+      },
+      "position": [0, 0, 0]
+    },
+    {
+      "key": "rain",
+      "part": "rain",
+      "place": {
+        "relation": "ground"
+      },
+      "position": [0, 0, 0]
+    },
+    {
+      "key": "bench",
+      "part": "bench",
+      "place": {
+        "relation": "ground",
+        "zone": "center"
+      },
+      "position": [1.316, 0, 1.4],
+      "yaw": 90
+    },
+    {
+      "key": "man",
+      "part": "person_read_sit_adult_a",
+      "place": {
+        "relation": "sit_on",
+        "target": "bench"
+      },
+      "position": [1.596, 0.002, 1.4],
+      "yaw": 90
+    },
+    {
+      "key": "girl",
+      "part": "person_umbrella_girl_a",
+      "place": {
+        "relation": "relate",
+        "target": "bench",
+        "side": "right",
+        "distance": "approach",
+        "turn": "same"
+      },
+      "position": [1.193, 0, -0.759],
+      "yaw": 90
+    },
+    {
+      "key": "boy",
+      "part": "person_run_boy_a",
+      "place": {
+        "relation": "ground",
+        "zone": "left"
+      },
+      "position": [-1.434, 0, 1.4],
+      "yaw": 90,
+      "motion": {
+        "type": "move",
+        "to": [0.102, 0, 1.4],
+        "duration": 5,
+        "toward": "bench"
+      }
+    }
+  ]
+}

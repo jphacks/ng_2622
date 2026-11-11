@@ -1,22 +1,12 @@
+import type { ChecklistItem, ChecklistKind, GradeId } from "../scenes/types";
+
 // チェックリストの F1 で内容の点を付けるための型と計算（Claude は呼ばない純粋な関数）。
-// 決まりは ADR 20261110-score-content-with-checklist-f1 と docs/design/usecase.md の「採点のときに Claude が返す形」。
-// 30 場面を作り直して採点を切り替えるまで、今の採点（score・gradeWithBands）からは呼ばれない
+// 決まりは ADR 20261110-score-content-with-checklist-f1・20261111-count-other-claims-as-bonus-and-require-actions-for-items と、
+// docs/design/usecase.md の「採点のときに Claude が返す形」
 
-export type Grade = "eiken-3" | "eiken-pre2" | "eiken-2";
-
-export type ChecklistKind = "center" | "reason" | "link" | "detail";
-
-/** 場面の JSON（scenenglish.scene/2）の checklist の 1 項目 */
-export type ChecklistItem = {
-  id: string;
-  kind: ChecklistKind;
-  // 振り返りに出す日本語
-  label: string;
-  // 「言えた」とする英語の言い方
-  accept: string;
-  // 項目が指す items の key
-  refs: string[];
-};
+// 級・チェックリストの項目の型は、場面の形（scenes/types.ts）の 1 か所で決める
+export type Grade = GradeId;
+export type { ChecklistItem, ChecklistKind };
 
 export type Verdict =
   | "correct"
@@ -46,7 +36,7 @@ export type ItemResult = {
   level: ItemLevel;
 };
 
-/** アプリへ送る内容の内訳（ws.ts・openapi.json にはまだ入れていない） */
+/** 内容の内訳。アプリへは toSentContent で送る形に直す */
 export type ContentBreakdown = {
   // 引用を文字起こしのとおりの文字列に直し、話した順に並べた描写
   claims: Claim[];
@@ -246,12 +236,15 @@ export const scoreContent = (
 };
 
 /**
- * その項目を full で言えたら、内容が何点伸びるか。
+ * その項目を full で言えたときの内容の点。項目が無い・もう full なら今の点のまま。
  * 言えていない項目は、正しい描写が 1 つ増えるとして P も動かす。一部の項目は、今の描写が full になるとして P はそのまま
  */
-export const gainOf = (result: ContentResult, itemId: string): number => {
+export const contentIfSaid = (
+  result: ContentResult,
+  itemId: string,
+): number => {
   const target = result.items.find((i) => i.id === itemId);
-  if (!target || target.level === "full") return 0;
+  if (!target || target.level === "full") return result.content;
   const recall = recallOf(
     result.items.map((i) => (i.id === itemId ? { ...i, level: "full" } : i)),
     result.others,
@@ -259,8 +252,36 @@ export const gainOf = (result: ContentResult, itemId: string): number => {
   const add = target.level === "none" ? 1 : 0;
   const precision =
     (result.precision.correct + add) / (result.precision.said + add);
-  return f1Content(precision, recall.value) - result.content;
+  return f1Content(precision, recall.value);
 };
+
+/** アプリへ送る内容の内訳（schemas/ws.ts の PlayerContent）。数えない描写（ignored）と、割り算の結果は送らない */
+export type SentContent = {
+  claims: (Omit<Claim, "verdict"> & { verdict: Exclude<Verdict, "ignored"> })[];
+  items: ItemResult[];
+  others: number;
+  recall: { earned: number; max: number };
+  precision: { correct: number; said: number };
+};
+
+export const toSentContent = (breakdown: ContentBreakdown): SentContent => ({
+  claims: breakdown.claims.filter(
+    (c): c is SentContent["claims"][number] => c.verdict !== "ignored",
+  ),
+  items: breakdown.items,
+  others: breakdown.others,
+  recall: { earned: breakdown.recall.earned, max: breakdown.recall.max },
+  precision: {
+    correct: breakdown.precision.correct,
+    said: breakdown.precision.said,
+  },
+});
+
+/** 何も言えていないときの内訳（3 語未満の発話・固定の点数のモード）。項目は全部「言えていない」 */
+export const emptyContent = (checklist: ChecklistItem[]): ContentBreakdown =>
+  (({ content: _, ...breakdown }) => breakdown)(
+    scoreContent(checklist, "", []),
+  );
 
 export type NextStepKind = "content" | "expression" | "speech";
 
@@ -276,8 +297,8 @@ export type CheckedNextStep = {
   text: string;
   // content のとき、勧める項目の id。全部言えていれば null
   item: string | null;
-  // その項目を full で言えたら内容が何点伸びるか。項目が無ければ null
-  gain: number | null;
+  // その項目を full で言えたときの内容の点。項目が無ければ null。合計の伸び（gain）は呼ぶ側が重みから計算する
+  contentIfSaid: number | null;
 };
 
 // 重みの最も重い言えていない項目（同じ重みなら checklist の順）。言えていない項目が無ければ、一部の項目から選ぶ
@@ -301,7 +322,12 @@ export const checkNextStep = (
   raw: RawNextStep,
 ): CheckedNextStep => {
   if (raw.kind !== "content") {
-    return { kind: raw.kind, text: raw.text, item: null, gain: null };
+    return {
+      kind: raw.kind,
+      text: raw.text,
+      item: null,
+      contentIfSaid: null,
+    };
   }
   const chosen = result.items.find((i) => i.id === raw.item);
   if (chosen && chosen.level !== "full") {
@@ -309,18 +335,23 @@ export const checkNextStep = (
       kind: "content",
       text: raw.text,
       item: chosen.id,
-      gain: gainOf(result, chosen.id),
+      contentIfSaid: contentIfSaid(result, chosen.id),
     };
   }
   const missing = heaviestMissing(result.items);
   if (!missing) {
     // 項目は全部言えている。Claude の一言（その他の描写や間違いの直し）をそのまま出す
-    return { kind: "content", text: raw.text, item: null, gain: null };
+    return {
+      kind: "content",
+      text: raw.text,
+      item: null,
+      contentIfSaid: null,
+    };
   }
   return {
     kind: "content",
     text: `次は「${missing.label}」を足してみよう。`,
     item: missing.id,
-    gain: gainOf(result, missing.id),
+    contentIfSaid: contentIfSaid(result, missing.id),
   };
 };

@@ -43,7 +43,7 @@
 | 2026-10-24 | [シーンの評価は全体で 1 つの Durable Object（SQLite）に保存する](./20261024-store-scene-reviews-in-a-global-durable-object.md) | accepted |
 | 2026-10-24 | [シーンは作り置いた部品を配置の JSON で並べて作る](./20261024-compose-scenes-from-stored-parts.md) | accepted（AI の場面を待合でその場で作る前提のみ 2026-10-25 に、採点の情報の欄のみ 2026-11-10 に部分 supersede） |
 | 2026-10-25 | [AI の場面は遊ぶ前に作り置き、待合では難易度だけを選ぶ](./20261025-pre-generate-ai-scenes-and-pick-by-difficulty.md) | accepted（待合でその場で作らない条項のみ 2026-10-26 に、難易度の値のみ 2026-11-10 に部分 supersede） |
-| 2026-10-25 | [内容と表現の点は、場面の配置の情報を渡し、採点基準の段階で付ける](./20261025-score-content-with-layout-and-rubric-bands.md) | accepted（内容の段階・減点しない・要素を渡さない・表現の IELTS の条項のみ 2026-11-10 に部分 supersede） |
+| 2026-10-25 | [内容と表現の点は、場面の配置の情報を渡し、採点基準の段階で付ける](./20261025-score-content-with-layout-and-rubric-bands.md) | accepted（内容の段階・減点しない・要素を渡さない・表現の IELTS の条項のみ 2026-11-10 に、手作りの場面を作り直す条項のみ 2026-11-11 に部分 supersede） |
 | 2026-10-25 | [採点の基準は、配置の JSON と部品のメタデータから作る](./20261025-grade-from-layout-and-part-metadata.md) | superseded |
 | 2026-10-26 | [部屋がスタートのたびに AI で場面を作り、だめなら作り置きに切り替える](./20261026-generate-scenes-in-room-on-start.md) | accepted |
 | 2026-11-01 | [App Store には専用のビルド構成で、高橋の個人チームから出す](./20261101-ship-ios-app-from-a-dedicated-store-config.md) | accepted |
@@ -51,5 +51,6 @@
 | 2026-11-10 | [内容の点は、場面ごとのチェックリストと言ったことの正しさの F1 で付ける](./20261110-score-content-with-checklist-f1.md) | accepted（その他を満点の重みに含める条項のみ 2026-11-11 に部分 supersede） |
 | 2026-11-10 | [チェックリストは場面を作るときに Claude が作り、コードが場面と照らして確かめる](./20261110-make-checklist-at-scene-generation.md) | accepted |
 | 2026-11-10 | [場面の生成は、級の規則で英文とチェックリストを先に書き、その英文に合う部品と関係を後に書く](./20261110-write-grade-sentences-before-scene-parts.md) | accepted |
-| 2026-11-10 | [場面の形を scenenglish.scene/2 にし、要素をチェックリストに置き換え、説明文を見本の答えにする](./20261110-adopt-scene-protocol-v2-with-checklist.md) | accepted |
+| 2026-11-10 | [場面の形を scenenglish.scene/2 にし、要素をチェックリストに置き換え、説明文を見本の答えにする](./20261110-adopt-scene-protocol-v2-with-checklist.md) | accepted（`/1` と `/2` の両方を読む期間の条項のみ 2026-11-11 に部分 supersede） |
 | 2026-11-11 | [その他の描写は満点に含めないおまけにし、名前だけでは中心・理由・つながりの項目に当てない](./20261111-count-other-claims-as-bonus-and-require-actions-for-items.md) | accepted |
+| 2026-11-11 | [手作りの場面と古い採点を外し、採点をチェックリストの 1 通りにする](./20261111-score-only-with-checklist-and-drop-handmade-scenes.md) | accepted |

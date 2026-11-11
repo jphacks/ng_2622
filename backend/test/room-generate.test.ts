@@ -3,8 +3,15 @@ import assert from "node:assert/strict";
 import { afterEach, test } from "node:test";
 import app from "../src/app";
 import type { RoomState } from "../src/domain/room";
+import { roundDeadlines } from "../src/domain/round";
+import {
+  EXAMPLE_ANSWER,
+  EXAMPLE_GRADE,
+  EXAMPLE_ITEMS,
+  EXAMPLE_SENTENCES,
+} from "../src/scenes/generate-v2";
 import { poolCandidates } from "../src/scenes/pool";
-import type { SceneLayout } from "../src/scenes/types";
+import type { SceneLayoutV2 } from "../src/scenes/types";
 import { score } from "../src/scoring";
 import { openRoom, received, reopen, send } from "./helpers/room-harness";
 
@@ -20,30 +27,14 @@ const ON = {
 };
 const OFF = { ...ON, SCENE_GENERATION: "off" };
 
-const PLAN = {
-  name: "ボールのある公園",
-  description: "A park. A man is walking. A red ball is on the grass.",
-  elements: [
-    { id: "place", label: "公園", points: 30, accept: "park" },
-    { id: "man", label: "歩く男の人", points: 30, accept: "a man is walking" },
-    { id: "ball", label: "赤いボール", points: 30, accept: "a red ball" },
-  ],
-  items: [
-    { key: "grass", part: "grass_patch", place: { relation: "ground" } },
-    {
-      key: "man",
-      part: "person_walk_adult_a",
-      place: { relation: "ground", zone: "center" },
-    },
-    {
-      key: "ball",
-      part: "ball_red",
-      place: { relation: "ground", zone: "front_right" },
-    },
-  ],
-};
+// 2 段の生成の応答。1 回目は英文の部分、2 回目は部品と関係（generate-v2.ts の例。eiken-pre2 の裏取りを通る）
+const SENTENCES = EXAMPLE_SENTENCES;
+// 1 回目の応答は文の配列で書く形（保存する形の SENTENCES はコードが直したもの）
+const ANSWER = EXAMPLE_ANSWER;
+const ITEMS = { items: EXAMPLE_ITEMS };
+const GRADE = EXAMPLE_GRADE;
 
-const claudeMessage = (stop_reason: string, plan: unknown = PLAN) =>
+const claudeMessage = (stop_reason: string, body: unknown) =>
   Response.json({
     id: "msg_1",
     type: "message",
@@ -52,7 +43,7 @@ const claudeMessage = (stop_reason: string, plan: unknown = PLAN) =>
     stop_reason,
     stop_sequence: null,
     usage: { input_tokens: 1, output_tokens: 1 },
-    content: [{ type: "text", text: JSON.stringify(plan) }],
+    content: [{ type: "text", text: JSON.stringify(body) }],
   });
 
 /** Claude への呼び出しを数え、reply の応答を返す */
@@ -69,6 +60,27 @@ const stubClaude = (
     return reply(init);
   }) as typeof fetch;
   return calls;
+};
+
+/** 1 回目に英文、2 回目に部品を返す Claude（場面が 1 つできる） */
+const sceneClaude = (items: unknown = ITEMS) => {
+  const calls = stubClaude(() =>
+    claudeMessage("end_turn", calls.length % 2 === 1 ? ANSWER : items),
+  );
+  return calls;
+};
+
+/** 1 回目は release を呼ぶまで返さず、2 回目はすぐ部品を返す Claude */
+const heldClaude = () => {
+  let release: () => void = () => {};
+  const calls = stubClaude(() =>
+    calls.length === 1
+      ? new Promise<Response>((resolve) => {
+          release = () => resolve(claudeMessage("end_turn", ANSWER));
+        })
+      : claudeMessage("end_turn", ITEMS),
+  );
+  return { calls, release: () => release() };
 };
 
 /** 止められるまで返さない Claude */
@@ -89,13 +101,13 @@ const stateOf = (storage: Map<string, unknown>) =>
   storage.get("state") as RoomState;
 
 test("生成が on なら generating を配ってから AI の場面でラウンドを始め、配置を部屋に置く", async () => {
-  const calls = stubClaude(() => claudeMessage("end_turn"));
+  const calls = sceneClaude();
   const { room, host, others, storage } = await openRoom(ON);
   const [b] = others;
 
-  await send(room, host, { type: "start", difficulty: "easy" });
+  await send(room, host, { type: "start", difficulty: GRADE });
 
-  assert.equal(calls.length, 1, "Claude を 1 回だけ呼ぶ");
+  assert.equal(calls.length, 2, "Claude を 2 回（英文 → 部品）呼ぶ");
   for (const ws of [host, b]) {
     assert.deepEqual(phases(ws).slice(-2), ["generating", "playing"]);
     const rounds = received(ws, "round");
@@ -104,21 +116,21 @@ test("生成が on なら generating を配ってから AI の場面でラウン
     assert.equal(received(ws, "progress").length > 0, true);
   }
   const sceneId = String(received(b, "round")[0].sceneId);
-  assert.ok(!poolCandidates("easy").includes(sceneId), "作り置きではない");
-  const stored = storage.get(`layout:${sceneId}`) as SceneLayout;
+  assert.ok(!poolCandidates(GRADE).includes(sceneId), "作り置きではない");
+  const stored = storage.get(`layout:${sceneId}`) as SceneLayoutV2;
   assert.equal(stored.id, sceneId);
-  assert.equal(stored.name, PLAN.name);
+  assert.equal(stored.name, SENTENCES.name);
   const state = stateOf(storage);
   assert.equal(state.phase, "playing");
   assert.equal(state.generationCount, 1);
   assert.equal(state.generating, null);
-  assert.equal(state.current?.sceneName, PLAN.name);
+  assert.equal(state.current?.sceneName, SENTENCES.name);
   assert.deepEqual(await room.sceneLayout(sceneId), stored);
 });
 
 test("生成に失敗したら、黙って同じ難易度の作り置きの場面で始める", async () => {
   for (const reply of [
-    () => claudeMessage("refusal"),
+    () => claudeMessage("refusal", ANSWER),
     () => claudeMessage("end_turn", { nope: true }),
     () => new Response("oops", { status: 500 }),
     () => {
@@ -127,10 +139,10 @@ test("生成に失敗したら、黙って同じ難易度の作り置きの場�
   ]) {
     const calls = stubClaude(reply);
     const { room, host, others, storage } = await openRoom(ON);
-    await send(room, host, { type: "start", difficulty: "normal" });
+    await send(room, host, { type: "start", difficulty: GRADE });
     assert.equal(calls.length, 1, "やり直さない");
     const [round] = received(others[0], "round");
-    assert.ok(poolCandidates("normal").includes(String(round.sceneId)));
+    assert.ok(poolCandidates(GRADE).includes(String(round.sceneId)));
     assert.equal(received(others[0], "error").length, 0, "エラーは出さない");
     assert.deepEqual(phases(others[0]).slice(-2), ["generating", "playing"]);
     assert.equal(stateOf(storage).generationCount, 1, "失敗も数える");
@@ -138,43 +150,58 @@ test("生成に失敗したら、黙って同じ難易度の作り置きの場�
   }
 });
 
+test("裏取りで落ちたら、作り直さずに作り置きの場面で始める", async () => {
+  // checklist が指す部品（bench）が無い場面
+  const calls = sceneClaude({
+    items: EXAMPLE_ITEMS.filter((i) => i.key !== "bench" && i.key !== "man"),
+  });
+  const { room, host, others, storage } = await openRoom(ON);
+  await send(room, host, { type: "start", difficulty: GRADE });
+  assert.equal(calls.length, 2, "作り直さない");
+  const [round] = received(others[0], "round");
+  assert.ok(poolCandidates(GRADE).includes(String(round.sceneId)));
+  assert.equal(received(others[0], "error").length, 0);
+  assert.ok(![...storage.keys()].some((k) => k.startsWith("layout:")));
+});
+
 test("生成が off なら今までどおり作り置きの場面ですぐ始める（generating は出さない）", async () => {
-  const calls = stubClaude(() => claudeMessage("end_turn"));
+  const calls = sceneClaude();
   const { room, host, others } = await openRoom(OFF);
-  await send(room, host, { type: "start", difficulty: "hard" });
+  await send(room, host, { type: "start", difficulty: "eiken-2" });
   assert.equal(calls.length, 0);
   assert.ok(!phases(others[0]).includes("generating"));
   const [round] = received(others[0], "round");
-  assert.ok(poolCandidates("hard").includes(String(round.sceneId)));
+  assert.ok(poolCandidates("eiken-2").includes(String(round.sceneId)));
 });
 
 test("sceneId を指定したスタートは生成しない", async () => {
-  const calls = stubClaude(() => claudeMessage("end_turn"));
+  const calls = sceneClaude();
   const { room, host, others } = await openRoom(ON);
-  await send(room, host, { type: "start", sceneId: "park" });
+  const sceneId = poolCandidates("eiken-2")[0];
+  await send(room, host, { type: "start", sceneId });
   assert.equal(calls.length, 0);
-  assert.equal(received(others[0], "round")[0].sceneId, "park");
+  assert.equal(received(others[0], "round")[0].sceneId, sceneId);
 });
 
 test("その部屋で 20 回試したら、それ以降は作り置きの場面から選ぶ", async () => {
-  const calls = stubClaude(() => claudeMessage("end_turn"));
+  const calls = sceneClaude();
   const { ctx, storage, sockets } = await openRoom(ON);
   storage.set("state", { ...stateOf(storage), generationCount: 20 });
   const room = reopen(ctx, ON);
   const [host, b] = sockets;
-  await send(room, host, { type: "start", difficulty: "easy" });
+  await send(room, host, { type: "start", difficulty: GRADE });
   assert.equal(calls.length, 0);
   assert.ok(!phases(b).includes("generating"));
   const [round] = received(b, "round");
-  assert.ok(poolCandidates("easy").includes(String(round.sceneId)));
+  assert.ok(poolCandidates(GRADE).includes(String(round.sceneId)));
 });
 
 test("作っている間の 2 回目の start は not_in_lobby で断る", async () => {
   hangingClaude();
   const { room, host, others } = await openRoom(ON);
-  const first = send(room, host, { type: "start", difficulty: "easy" });
+  const first = send(room, host, { type: "start", difficulty: GRADE });
   await new Promise((r) => setTimeout(r, 10));
-  await send(room, host, { type: "start", difficulty: "easy" });
+  await send(room, host, { type: "start", difficulty: GRADE });
   assert.equal(received(host, "error").at(-1)?.code, "not_in_lobby");
   // 片付け: ホストが抜けて止める
   await send(room, host, { type: "leave" });
@@ -189,7 +216,7 @@ test("作っている間にホストが抜けたら、生成を止めて残っ�
     "C",
   ]);
   const [b, c] = others;
-  const first = send(room, host, { type: "start", difficulty: "easy" });
+  const first = send(room, host, { type: "start", difficulty: GRADE });
   await new Promise((r) => setTimeout(r, 10));
   assert.equal(stateOf(storage).phase, "generating");
   const signal = calls[0].signal;
@@ -206,7 +233,7 @@ test("作っている間にホストが抜けたら、生成を止めて残っ�
   for (const ws of [b, c]) {
     const rounds = received(ws, "round");
     assert.equal(rounds.length, 1);
-    assert.ok(poolCandidates("easy").includes(String(rounds[0].sceneId)));
+    assert.ok(poolCandidates(GRADE).includes(String(rounds[0].sceneId)));
   }
 
   await first;
@@ -215,35 +242,23 @@ test("作っている間にホストが抜けたら、生成を止めて残っ�
 });
 
 test("ホストが切断しただけでは生成を止めない", async () => {
-  let release: (r: Response) => void = () => {};
-  const calls = stubClaude(
-    () =>
-      new Promise<Response>((resolve) => {
-        release = resolve;
-      }),
-  );
+  const { calls, release } = heldClaude();
   const { room, host, others } = await openRoom(ON);
-  const first = send(room, host, { type: "start", difficulty: "easy" });
+  const first = send(room, host, { type: "start", difficulty: GRADE });
   await new Promise((r) => setTimeout(r, 10));
   host.close();
   await room.webSocketClose(host);
   assert.equal(calls[0].signal?.aborted, false);
-  release(claudeMessage("end_turn"));
+  release();
   await first;
   const [round] = received(others[0], "round");
   assert.match(String(round.sceneId), /^gen-/);
 });
 
 test("作っている間に戻ってきた人には generating の room が届く", async () => {
-  let release: (r: Response) => void = () => {};
-  stubClaude(
-    () =>
-      new Promise<Response>((resolve) => {
-        release = resolve;
-      }),
-  );
+  const { release } = heldClaude();
   const { room, host, others, sockets, welcomes } = await openRoom(ON);
-  const first = send(room, host, { type: "start", difficulty: "easy" });
+  const first = send(room, host, { type: "start", difficulty: GRADE });
   await new Promise((r) => setTimeout(r, 10));
   const [b] = others;
   b.close();
@@ -261,7 +276,7 @@ test("作っている間に戻ってきた人には generating の room が届�
   assert.equal(received(again, "room").at(-1)?.phase, "generating");
   assert.equal(received(again, "round").length, 0);
 
-  release(claudeMessage("end_turn"));
+  release();
   await first;
   assert.equal(received(again, "round").length, 1);
 });
@@ -269,7 +284,7 @@ test("作っている間に戻ってきた人には generating の room が届�
 test("DO が作り直されて生成が途切れていたら、次のメッセージで作り置きの場面にする", async () => {
   hangingClaude();
   const { room, host, ctx, storage, sockets } = await openRoom(ON);
-  void send(room, host, { type: "start", difficulty: "easy" });
+  void send(room, host, { type: "start", difficulty: GRADE });
   await new Promise((r) => setTimeout(r, 10));
   assert.equal(stateOf(storage).phase, "generating");
 
@@ -277,16 +292,59 @@ test("DO が作り直されて生成が途切れていたら、次のメッセ�
   await send(fresh, sockets[1], { type: "skip", round: 1 });
   const state = stateOf(storage);
   assert.ok(state.phase === "playing" || state.phase === "waiting");
-  assert.ok(poolCandidates("easy").includes(String(state.current?.sceneId)));
+  assert.ok(poolCandidates(GRADE).includes(String(state.current?.sceneId)));
   // 古い DO の生成は 10 秒の timeout まで残るので止めておく
   // biome-ignore lint/suspicious/noExplicitAny: 片付けのために private を触る
   (room as any).generation?.controller.abort();
 });
 
+test("前の版で easy のまま generating で保存された部屋も、既定の級（eiken-3）の作り置きで始める", async () => {
+  hangingClaude();
+  const { ctx, storage, sockets } = await openRoom(ON);
+  storage.set("state", {
+    ...stateOf(storage),
+    phase: "generating",
+    generating: { id: "old-generation", difficulty: "easy" },
+  });
+  const fresh = reopen(ctx, ON);
+  await send(fresh, sockets[1], { type: "skip", round: 1 });
+  const state = stateOf(storage);
+  assert.ok(state.phase === "playing" || state.phase === "waiting");
+  assert.ok(poolCandidates("eiken-3").includes(String(state.current?.sceneId)));
+  assert.equal(received(sockets[1], "round").length, 1);
+});
+
+test("2 段の合計が待ち時間の上限を超えたら、各段が上限の中でも作り置きの場面で始める", async () => {
+  // 各段は 40 ms で返す。上限を 60 ms にすると、1 段目は間に合い、2 段目の途中で合計の上限に届く
+  const calls = stubClaude(
+    (init) =>
+      new Promise<Response>((resolve, reject) => {
+        const n = calls.length;
+        const timer = setTimeout(
+          () => resolve(claudeMessage("end_turn", n === 1 ? ANSWER : ITEMS)),
+          40,
+        );
+        init?.signal?.addEventListener("abort", () => {
+          clearTimeout(timer);
+          reject(new DOMException("aborted", "AbortError"));
+        });
+      }),
+  );
+  const { room, host, others, storage } = await openRoom(ON);
+  // biome-ignore lint/suspicious/noExplicitAny: テストのために待ち時間を短くする
+  (room as any).generationTimeoutMs = 60;
+  await send(room, host, { type: "start", difficulty: GRADE });
+  assert.equal(calls.length, 2, "2 段目まで呼んだ");
+  assert.equal(calls[1].signal?.aborted, true, "2 段目を止めた");
+  const [round] = received(others[0], "round");
+  assert.ok(poolCandidates(GRADE).includes(String(round.sceneId)));
+  assert.ok(![...storage.keys()].some((k) => k.startsWith("layout:")));
+});
+
 test("GET /scenes/{sceneId}/layout?room= で部屋が作った場面の配置を返す", async () => {
-  stubClaude(() => claudeMessage("end_turn"));
+  sceneClaude();
   const { room, host, others } = await openRoom(ON);
-  await send(room, host, { type: "start", difficulty: "easy" });
+  await send(room, host, { type: "start", difficulty: GRADE });
   const sceneId = String(received(others[0], "round")[0].sceneId);
   const env = {
     ROOM: { getByName: (code: string) => (code === "0427" ? room : null) },
@@ -294,9 +352,9 @@ test("GET /scenes/{sceneId}/layout?room= で部屋が作った場面の配置を
 
   const res = await app.request(`/scenes/${sceneId}/layout?room=0427`, {}, env);
   assert.equal(res.status, 200);
-  const body = (await res.json()) as SceneLayout;
+  const body = (await res.json()) as SceneLayoutV2;
   assert.equal(body.id, sceneId);
-  assert.equal(body.name, PLAN.name);
+  assert.equal(body.name, SENTENCES.name);
 
   const missing = await app.request(
     "/scenes/gen-zzzzzzzzzz/layout?room=0427",
@@ -309,7 +367,7 @@ test("GET /scenes/{sceneId}/layout?room= で部屋が作った場面の配置を
   const bad = await app.request(`/scenes/${sceneId}/layout?room=abc`, {}, env);
   assert.equal(bad.status, 400);
   // 作り置きの場面は room を付けてもそのまま返す
-  const pool = poolCandidates("easy")[0];
+  const pool = poolCandidates(GRADE)[0];
   const poolRes = await app.request(
     `/scenes/${pool}/layout?room=0427`,
     {},
@@ -326,9 +384,9 @@ const wav = () => {
 };
 
 test("AI で作った場面は、beginGrading が返す部屋の配置で採点する", async () => {
-  stubClaude(() => claudeMessage("end_turn"));
+  sceneClaude();
   const { room, host, others, welcomes } = await openRoom(ON);
-  await send(room, host, { type: "start", difficulty: "easy" });
+  await send(room, host, { type: "start", difficulty: GRADE });
   const sceneId = String(received(others[0], "round")[0].sceneId);
 
   const begun = await room.beginGrading({
@@ -340,7 +398,7 @@ test("AI で作った場面は、beginGrading が返す部屋の配置で採点�
   assert.equal(begun.value.sceneId, sceneId);
   assert.equal(begun.value.layout?.id, sceneId);
 
-  const layout = begun.value.layout as SceneLayout;
+  const layout = begun.value.layout as SceneLayoutV2;
   const fixed = await score(
     { SCORING_MODE: "fixed" },
     wav(),
@@ -364,7 +422,7 @@ test("AI で作った場面は、beginGrading が返す部屋の配置で採点�
         RecognitionStatus: "Success",
         NBest: [
           {
-            Display: "A man is walking in the park",
+            Display: "A girl is holding an umbrella",
             AccuracyScore: 90,
             FluencyScore: 80,
             ProsodyScore: 80,
@@ -375,10 +433,18 @@ test("AI で作った場面は、beginGrading が返す部屋の配置で採点�
     }
     bodies.push(String(init?.body));
     return claudeMessage("end_turn", {
-      content: 70,
+      claims: [
+        {
+          quote: "A girl is holding an umbrella",
+          verdict: "correct",
+          item: "girl_umbrella",
+          level: "full",
+          note: null,
+        },
+      ],
+      expressionBasis: "Correct present continuous.",
       expression: 60,
-      strength: { quote: "walking", text: "動作を言えた" },
-      nextStep: { kind: "content", text: "ボールも足そう" },
+      nextStep: { kind: "content", text: "男の子も足そう", item: "boy_run" },
       rewrite: null,
     });
   }) as typeof fetch;
@@ -391,20 +457,29 @@ test("AI で作った場面は、beginGrading が返す部屋の配置で採点�
     },
     wav(),
     sceneId,
-    "A man is walking in the park",
+    "A girl is holding an umbrella",
     layout,
   );
   assert.ok(live.ok, JSON.stringify(live));
-  assert.equal(live.content, 70);
+  // 部屋の配置の checklist で採点する（中心 1 つ = 2 / 10、正しさ 1 / 1）
+  assert.deepEqual(live.breakdown.recall, { earned: 2, max: 10 });
+  assert.equal(live.content, 33);
+  assert.equal(live.feedback.nextStep.item, "boy_run");
   const user = JSON.parse(bodies[0]).messages[0].content as string;
-  assert.ok(user.includes(PLAN.description));
+  assert.ok(user.includes(SENTENCES.description));
+  assert.ok(user.includes("Grade: eiken-pre2"));
+  assert.ok(user.includes("- girl_umbrella [center]"));
 });
 
 test("部屋の結果発表には AI で作った場面の名前を出す", async () => {
-  stubClaude(() => claudeMessage("end_turn"));
+  sceneClaude();
   const { room, host, others } = await openRoom(ON);
-  await send(room, host, { type: "start", difficulty: "easy" });
-  await send(room, host, { type: "close" });
+  await send(room, host, { type: "start", difficulty: GRADE });
+  // 誰も音声を送らないまま、音声の締め切りを過ぎる
+  const startAt = Number(received(others[0], "round")[0].startAt);
+  // biome-ignore lint/suspicious/noExplicitAny: テストのために時計を進める
+  (room as any).clock = () => roundDeadlines({ startAt }).audio;
+  await room.alarm();
   const [results] = received(others[0], "results");
-  assert.equal(results.sceneName, PLAN.name);
+  assert.equal(results.sceneName, SENTENCES.name);
 });

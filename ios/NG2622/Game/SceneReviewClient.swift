@@ -1,10 +1,8 @@
 import Foundation
 
-/// シーンの評価（★とコメント）をやりとりする口。バックエンドの /scenes に合わせる。
+/// シーンの評価（★とコメント）をやりとりする口。バックエンドの /scenes/:id/reviews に合わせる。
 /// 部屋とは関係なく、シーンごとに全員の評価がたまる
 protocol SceneReviewClient: AnyObject {
-  /// シーンごとの★の平均と人数（GET /scenes）。キーはシーンの ID
-  func ratings() async throws -> [String: SceneRating]
   /// 評価の一覧。新しい順（GET /scenes/:id/reviews）
   func reviews(sceneID: String) async throws -> [SceneReview]
   /// 評価する。同じ端末から送り直すと上書きになる（PUT /scenes/:id/reviews）。新しい平均と人数を返す
@@ -58,16 +56,6 @@ final class HTTPSceneReviewClient: SceneReviewClient {
     self.baseURL = baseURL
   }
 
-  func ratings() async throws -> [String: SceneRating] {
-    struct Scene: Decodable {
-      let id: String
-      let rating: SceneRating
-    }
-    struct Response: Decodable { let scenes: [Scene] }
-    let response: Response = try await send(URLRequest(url: baseURL.appending(path: "scenes")))
-    return Dictionary(uniqueKeysWithValues: response.scenes.map { ($0.id, $0.rating) })
-  }
-
   func reviews(sceneID: String) async throws -> [SceneReview] {
     struct Response: Decodable { let reviews: [SceneReview] }
     let url = baseURL.appending(path: "scenes/\(sceneID)/reviews")
@@ -101,28 +89,16 @@ final class HTTPSceneReviewClient: SceneReviewClient {
 
 /// 仮のデータ。通信せず、アプリを閉じるまで覚えておく
 final class MockSceneReviewClient: SceneReviewClient {
-  private var stored: [String: [SceneReview]] = [
-    "park": [
-      SceneReview(name: "けんた", rating: 5, comment: "犬とボールが言いやすい", updatedAt: "2026-10-24T10:00:00Z"),
-      SceneReview(name: "みさき", rating: 4, comment: nil, updatedAt: "2026-10-24T09:00:00Z"),
-    ],
-    "classroom": [
-      SceneReview(name: "ゆうと", rating: 3, comment: "黒板の言い方が分からなかった", updatedAt: "2026-10-24T09:30:00Z")
-    ],
+  /// ほかの人の評価。どの場面にも同じものがあることにする
+  private let others: [SceneReview] = [
+    SceneReview(name: "けんた", rating: 5, comment: "人の動きが言いやすい", updatedAt: "2026-10-24T10:00:00Z"),
+    SceneReview(name: "みさき", rating: 4, comment: nil, updatedAt: "2026-10-24T09:00:00Z"),
   ]
   /// 自分の評価（上書きするため分けて持つ）
   private var mine: [String: SceneReview] = [:]
 
-  func ratings() async throws -> [String: SceneRating] {
-    var result: [String: SceneRating] = [:]
-    for id in Set(stored.keys).union(mine.keys) {
-      result[id] = rating(of: id)
-    }
-    return result
-  }
-
   func reviews(sceneID: String) async throws -> [SceneReview] {
-    ([mine[sceneID]].compactMap { $0 } + (stored[sceneID] ?? [])).sorted { $0.updatedAt > $1.updatedAt }
+    ([mine[sceneID]].compactMap { $0 } + others).sorted { $0.updatedAt > $1.updatedAt }
   }
 
   func submit(sceneID: String, name: String, rating: Int, comment: String?) async throws -> SceneRating {
@@ -132,7 +108,7 @@ final class MockSceneReviewClient: SceneReviewClient {
   }
 
   private func rating(of sceneID: String) -> SceneRating {
-    let all = [mine[sceneID]].compactMap { $0 } + (stored[sceneID] ?? [])
+    let all = [mine[sceneID]].compactMap { $0 } + others
     guard !all.isEmpty else { return SceneRating(average: nil, count: 0) }
     let average = Double(all.map(\.rating).reduce(0, +)) / Double(all.count)
     return SceneRating(average: (average * 10).rounded() / 10, count: all.count)

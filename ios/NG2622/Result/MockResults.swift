@@ -1,217 +1,198 @@
 import Foundation
 
 extension RoundResults {
-  /// 仮の結果。シーンと、参加者の名前・色・自分かどうか・採点できたかを受け取り、点数・文字起こし・講評を作る
+  /// 仮の結果。シーンと、参加者の名前・色・自分かどうか・採点できたかを受け取り、
+  /// 場面のチェックリストと見本の答え（同梱の配置の JSON）から、描写・項目の達成・点数・講評を作る。
+  /// 自分は振り返りの部品（下線・チップ・見本の印・合わない描写・次の一つ・言い直し・話し方の一言）が全部出る例にし、
+  /// ほかの人は並び順で、項目が少ない例・3 語未満の例・合わない描写の無い例を順に割り当てる
   static func mock(
     sceneID: String,
-    players: [(id: String, name: String, color: UInt32, isSelf: Bool, graded: Bool)]
+    players: [(id: String, name: String, color: UInt32, isSelf: Bool, graded: Bool)],
+    layout: SceneLayout? = nil
   ) -> RoundResults {
+    let layout = layout ?? (try? MockSceneLayoutClient.read(sceneID))
+    let checklist = layout?.checklist ?? []
     var graded: [PlayerResult] = []
     var ungraded: [PlayerResult] = []
     var myReview: Review?
+    var otherIndex = 0
 
-    for (i, p) in players.enumerated() {
+    for p in players {
       guard p.graded else {
         ungraded.append(
-          PlayerResult(id: p.id, name: p.name, color: p.color, isSelf: p.isSelf, score: nil, transcript: "", comment: ""))
+          PlayerResult(id: p.id, name: p.name, color: p.color, isSelf: p.isSelf, score: nil, transcript: "", content: nil))
         continue
       }
-      // 並び順で文例を割り当てる（プレビューで毎回同じになるように）
-      let samples = MockSample.samples(for: sceneID)
-      let sample = samples[i % samples.count]
+      let variant: MockVariant
+      if p.isSelf {
+        variant = .rich
+      } else {
+        variant = MockVariant.others[otherIndex % MockVariant.others.count]
+        otherIndex += 1
+      }
+      let sample = MockSample(variant: variant, checklist: checklist)
       graded.append(
         PlayerResult(
-          id: p.id, name: p.name, color: p.color, isSelf: p.isSelf,
-          score: sample.score, transcript: sample.transcript, comment: sample.review.strength))
+          id: p.id, name: p.name, color: p.color, isSelf: p.isSelf, score: sample.score, transcript: sample.transcript,
+          content: sample.content))
       if p.isSelf { myReview = sample.review }
     }
 
     // 点数の高い順。採点できなかった人は最後
     graded.sort { ($0.score?.total ?? 0) > ($1.score?.total ?? 0) }
     return RoundResults(
-      sceneID: sceneID, sceneName: SceneCatalog.name(of: sceneID), players: graded + ungraded, myReview: myReview)
+      sceneID: sceneID, sceneName: layout?.name ?? SceneLayouts.store.name(of: sceneID) ?? sceneID,
+      players: graded + ungraded, myReview: myReview)
   }
 }
 
-/// 仮の文例（シーンごと）。上手さに幅を持たせる
+/// 仮の結果の作り方
+private enum MockVariant {
+  /// ほとんど言えた。一部・言えていない項目、おまけ、場面に無い物が 1 つずつ
+  case rich
+  /// 半分ほど言えた。場面と矛盾する描写が 1 つ
+  case half
+  /// 3 語未満
+  case short
+  /// 合わない描写なし。理由が一部だけ
+  case clean
+
+  static let others: [MockVariant] = [.half, .short, .clean]
+}
+
 private struct MockSample {
-  let content: Int
-  let expression: Int
-  let speaking: Int
   let transcript: String
+  let content: ContentBreakdown
+  let score: PlayerResult.Score
   let review: RoundResults.Review
 
-  /// 合計は 内容 50%・表現 25%・話し方 25% で四捨五入（仮の重み。本物はバックエンドが決める）
-  var score: PlayerResult.Score {
-    let total = (Double(content) * 0.5 + Double(expression) * 0.25 + Double(speaking) * 0.25).rounded()
-    return PlayerResult.Score(content: content, expression: expression, speaking: speaking, total: Int(total))
-  }
+  init(variant: MockVariant, checklist: [SceneLayout.ChecklistItem]) {
+    var levels: [String: ContentBreakdown.Level] = [:]
+    var claims: [ContentBreakdown.Claim] = []
+    let n = checklist.count
+    // 一部にする項目（理由・つながりがあればそれ）と、言えていない項目（最後の中心か、最後の項目）
+    let partialID = (checklist.first { $0.kind == .reason || $0.kind == .link } ?? checklist.dropFirst().first)?.id
+    let missingID = checklist.last { $0.kind == .center && $0.id != partialID }?.id ?? checklist.last?.id
 
-  static func samples(for sceneID: String) -> [MockSample] {
-    switch sceneID {
-    case "classroom": classroom
-    case "station": station
-    default: park
+    func say(_ item: SceneLayout.ChecklistItem, _ level: ContentBreakdown.Level) {
+      levels[item.id] = level
+      let quote = level == .partial ? Self.partialQuote(item.firstAccept) : Self.sentence(item.firstAccept)
+      claims.append(.init(quote: quote, verdict: .correct, item: item.id, level: level, note: nil))
     }
+    let bonus = ContentBreakdown.Claim(
+      quote: "There are some people here.", verdict: .correct, item: nil, level: nil, note: nil)
+    let absent = ContentBreakdown.Claim(
+      quote: "A cat is under the bench.", verdict: .absent, item: nil, level: nil, note: "場面に猫はいません。")
+    let contradiction = ContentBreakdown.Claim(
+      quote: "It is night.", verdict: .contradiction, item: nil, level: nil, note: "場面は昼です。")
+
+    var expression = 78
+    var speaking = 80
+    var nextStep: RoundResults.Review.NextStep
+    var rewrite: RoundResults.Review.Rewrite?
+    var tip: RoundResults.Review.SpeechTip
+    var shortText: String?
+
+    switch variant {
+    case .rich:
+      claims.append(bonus)
+      for item in checklist where item.id != missingID {
+        say(item, item.id == partialID ? .partial : .full)
+        // 2 つ目の描写のあとに、場面に無い物を言う
+        if claims.count == 3 { claims.append(absent) }
+      }
+      if let partial = checklist.first(where: { $0.id == partialID }) {
+        rewrite = .init(
+          before: Self.partialQuote(partial.firstAccept), after: Self.sentence(partial.firstAccept),
+          reason: partial.firstAccept.contains("because") ? "because の後ろに、場面で見える理由を言おう。" : "動きをくわしく言うと、場面がもっと伝わります。")
+      }
+      nextStep = Self.contentStep(checklist.first { $0.id == missingID }, gain: 6)
+      tip = .init(aspect: .fluency, text: "文と文の間で止まりすぎないように、続けて言ってみよう。")
+    case .half:
+      for (i, item) in checklist.enumerated() where i < max(1, n / 2) { say(item, .full) }
+      claims.insert(contradiction, at: min(1, claims.count))
+      expression = 70
+      speaking = 86
+      nextStep = Self.contentStep(checklist.dropFirst(max(1, n / 2)).first, gain: 9)
+      tip = .init(aspect: .prosody, text: "文の終わりを少し下げると、抑揚が伝わりやすくなります。")
+    case .short:
+      // 3 語未満はバックエンドが Claude を呼ばず、内容・表現を 0 点にする（docs/design/usecase.md）
+      shortText = "A girl."
+      expression = 0
+      speaking = 55
+      nextStep = .init(kind: .content, text: "もう少し長く、文にして話してみよう。", item: nil, gain: nil)
+      tip = .init(aspect: .accuracy, text: "一語ずつ、はっきり発音してみよう。")
+    case .clean:
+      for item in checklist { say(item, item.id == partialID ? .partial : .full) }
+      expression = 64
+      speaking = 74
+      rewrite = .init(
+        before: "There is a boy. He is running.", after: "A boy is running.", reason: "二文を一文にまとめると、なめらかになります。")
+      nextStep = .init(kind: .expression, text: "二つの文を and や because でつないでみよう。", item: nil, gain: nil)
+      tip = .init(aspect: .accuracy, text: "“th” の音を、舌を歯にあてて言ってみよう。")
+    }
+
+    let items = checklist.map { ContentBreakdown.Item(id: $0.id, kind: $0.kind, label: $0.label, level: levels[$0.id] ?? .none) }
+    // 言えた重み: 中心・理由・つながり 2、細部 1、一部は半分、おまけ 1 件 0.5（満点で頭打ち）
+    let weight: (SceneLayout.ChecklistItem) -> Double = { $0.kind == .detail ? 1 : 2 }
+    let maxWeight = checklist.map(weight).reduce(0, +)
+    let others = claims.filter { $0.verdict == .correct && $0.item == nil }.count
+    let earned = Swift.min(
+      maxWeight,
+      checklist.map { item -> Double in
+        switch levels[item.id] ?? .none {
+        case .full: weight(item)
+        case .partial: weight(item) / 2
+        case .none: 0
+        }
+      }.reduce(0, +) + Double(others) * 0.5)
+    let correct = claims.filter { $0.verdict == .correct }.count
+    content = ContentBreakdown(
+      claims: claims, items: items, others: others, recall: .init(earned: earned, max: maxWeight),
+      precision: .init(correct: correct, said: claims.count))
+    let r = maxWeight > 0 ? earned / maxWeight : 0
+    let p = claims.isEmpty ? 0 : Double(correct) / Double(claims.count)
+    let contentScore = p + r > 0 ? Int((100 * 2 * p * r / (p + r)).rounded()) : 0
+    let total =
+      (Double(contentScore * RoundResults.Weights.content + expression * RoundResults.Weights.expression
+        + speaking * RoundResults.Weights.speech) / 100).rounded()
+    score = .init(content: contentScore, expression: expression, speaking: speaking, total: Int(total))
+    transcript = shortText ?? claims.map(\.quote).joined(separator: " ")
+    review = .init(nextStep: nextStep, rewrite: rewrite, speechTip: tip)
   }
-}
 
-/// 講評を短く書くための入れ物
-private func mockReview(
-  _ quote: String, _ strength: String,
-  next: String, gain: Int? = nil,
-  rewrite: (String, String, String)? = nil,
-  speech: String
-) -> RoundResults.Review {
-  RoundResults.Review(
-    strengthQuote: quote, strength: strength,
-    nextStep: next, nextStepGain: gain,
-    rewrite: rewrite.map { RoundResults.Review.Rewrite(before: $0.0, after: $0.1, reason: $0.2) },
-    speechTip: speech)
-}
+  static func contentStep(_ item: SceneLayout.ChecklistItem?, gain: Int) -> RoundResults.Review.NextStep {
+    guard let item else {
+      return .init(kind: .expression, text: "文をつなぐ言葉を変えてみよう。", item: nil, gain: nil)
+    }
+    return .init(kind: .content, text: "次は「\(item.label)」を足してみよう。", item: item.id, gain: gain)
+  }
 
-private let tipSteady = "発音・なめらかさ・抑揚ともに安定しています。この調子です。"
-private let tipFluency = "言葉の間を短くして、ひと続きで言ってみよう。"
-private let tipProsody = "文の終わりを少し下げると、抑揚が伝わりやすくなります。"
+  /// 文の頭を大文字にして、終わりに . を付ける
+  static func sentence(_ phrase: String) -> String {
+    phrase.prefix(1).uppercased() + phrase.dropFirst() + "."
+  }
 
-extension MockSample {
-  static let park: [MockSample] = [
-    MockSample(
-      content: 76, expression: 70, speaking: 88,
-      transcript: "There is a bench in the park. There is a tree. A dog is near the bench.",
-      review: mockReview(
-        "A dog is near the bench", "犬の位置を、ベンチとの関係で言えています。",
-        next: "次は男の子がボールを投げているところを足してみよう。\"A boy is throwing a ball.\"", gain: 10,
-        speech: tipSteady)),
-    MockSample(
-      content: 92, expression: 88, speaking: 85,
-      transcript:
-        "A little boy is throwing a red ball, and a brown dog is running after it. Behind them, there is a wooden bench under a big tree.",
-      review: mockReview(
-        "a brown dog is running after it", "犬の動きまで、文でいきいきと伝えられています。",
-        next: "文をつなぐ言葉を変えてみよう。\"while\" を使うと、二つの動きを一文で言えます。",
-        speech: tipSteady)),
-    MockSample(
-      content: 84, expression: 78, speaking: 80,
-      transcript: "There is a wooden bench under a big tree. A dog is next to the bench, and a boy is playing with a ball.",
-      review: mockReview(
-        "a wooden bench under a big tree", "ベンチと木の位置関係を一度に言えています。",
-        next: "次はボールの色を足してみよう。\"a red ball\"", gain: 5,
-        rewrite: ("a boy is playing with a ball", "a boy is about to throw a red ball", "動きを具体的にすると、場面がもっと伝わります。"),
-        speech: tipProsody)),
-    MockSample(
-      content: 65, expression: 72, speaking: 79,
-      transcript: "Bench, tree, and, um, dog. A boy... red ball.",
-      review: mockReview(
-        "red ball", "ボールの色まで見て言えています。",
-        next: "次は男の子が何をしているかを文で言ってみよう。\"A boy is throwing a red ball.\"", gain: 10,
-        rewrite: ("A boy... red ball.", "A boy has a red ball.", "動詞を入れると文になります。"),
-        speech: tipFluency)),
-    MockSample(
-      content: 88, expression: 82, speaking: 74,
-      transcript: "In the park, a boy and his dog are playing with a red ball. An empty bench is under the tree.",
-      review: mockReview(
-        "a boy and his dog are playing with a red ball", "男の子と犬の関係を一文で言えています。",
-        next: "次は犬の色を足してみよう。\"a brown dog\"", gain: 5,
-        speech: "“empty” を一音ずつはっきり発音してみよう。")),
-    MockSample(
-      content: 58, expression: 60, speaking: 66,
-      transcript: "A dog. The dog is play. Ball is red.",
-      review: mockReview(
-        "Ball is red", "ボールの色を文で言えています。",
-        next: "次はベンチと木を足してみよう。\"There is a bench under a tree.\"", gain: 10,
-        rewrite: ("The dog is play", "The dog is playing", "「is」のあとは -ing の形にします。"),
-        speech: tipFluency)),
-    MockSample(
-      content: 80, expression: 86, speaking: 90,
-      transcript: "It's a sunny day. A boy is playing catch with his dog, and the dog looks really happy.",
-      review: mockReview(
-        "the dog looks really happy", "犬の様子まで、自然な表現で言えています。",
-        next: "次は背景のベンチと木を足してみよう。\"near a bench under a tree\"", gain: 10,
-        speech: tipSteady)),
-    MockSample(
-      content: 70, expression: 64, speaking: 72,
-      transcript: "I can see a tree and a bench. There is a boy. He has a ball.",
-      review: mockReview(
-        "I can see a tree and a bench", "見えるものを順に、文で言えています。",
-        next: "次は犬を足してみよう。\"A dog is next to the boy.\"", gain: 10,
-        rewrite: ("There is a boy. He has a ball.", "There is a boy with a ball.", "二文を一文にまとめると、なめらかになります。"),
-        speech: tipProsody)),
-  ]
-
-  static let classroom: [MockSample] = [
-    MockSample(
-      content: 90, expression: 86, speaking: 84,
-      transcript:
-        "A teacher is pointing at the blackboard, and a boy in a yellow shirt is raising his hand. The other students are writing in their notebooks.",
-      review: mockReview(
-        "a boy in a yellow shirt is raising his hand", "服の色と動きまで、一文で言えています。",
-        next: "次は先生の机の上にある物を足してみよう。\"There is an apple on the desk.\"", gain: 5,
-        speech: tipSteady)),
-    MockSample(
-      content: 74, expression: 70, speaking: 82,
-      transcript: "There is a classroom. There are many desks. There is a clock on the wall.",
-      review: mockReview(
-        "There is a clock on the wall", "時計の場所まで言えています。",
-        next: "次は先生が何をしているかを足してみよう。\"A teacher is pointing at the blackboard.\"", gain: 10,
-        speech: tipSteady)),
-    MockSample(
-      content: 62, expression: 64, speaking: 70,
-      transcript: "Teacher, blackboard. A boy... hand up. Apple.",
-      review: mockReview(
-        "hand up", "手を挙げている様子に気づけています。",
-        next: "次は先生の動きを文で言ってみよう。\"A teacher is pointing at the blackboard.\"", gain: 10,
-        rewrite: ("A boy... hand up.", "A boy is raising his hand.", "動詞を入れると文になります。"),
-        speech: tipFluency)),
-    MockSample(
-      content: 82, expression: 80, speaking: 76,
-      transcript: "In the classroom, the teacher is standing by the blackboard. I can see two windows with yellow curtains and a bookshelf.",
-      review: mockReview(
-        "two windows with yellow curtains", "数と色まで細かく言えています。",
-        next: "次は生徒の動きを足してみよう。\"A boy is raising his hand.\"", gain: 10,
-        speech: tipProsody)),
-  ]
-
-  static let station: [MockSample] = [
-    MockSample(
-      content: 88, expression: 84, speaking: 86,
-      transcript:
-        "A woman is walking out of the station with a pink suitcase. A man in a suit is looking at his phone at the bus stop.",
-      review: mockReview(
-        "A man in a suit is looking at his phone", "男性の服装と動きを一文で言えています。",
-        next: "次は黄色いタクシーを足してみよう。\"A yellow taxi is waiting.\"", gain: 8,
-        speech: tipSteady)),
-    MockSample(
-      content: 72, expression: 68, speaking: 80,
-      transcript: "There is a station. There is a clock. There is a yellow taxi.",
-      review: mockReview(
-        "There is a yellow taxi", "タクシーの色まで言えています。",
-        next: "次は女性がスーツケースを引いているところを足してみよう。\"A woman is pulling a suitcase.\"", gain: 10,
-        rewrite: ("There is a station. There is a clock.", "There is a big clock on the station.", "同じ形が続くときは一文にまとめると自然です。"),
-        speech: tipSteady)),
-    MockSample(
-      content: 60, expression: 62, speaking: 68,
-      transcript: "Station, big clock. Taxi is yellow. Man phone.",
-      review: mockReview(
-        "Taxi is yellow", "タクシーの色を文で言えています。",
-        next: "次は女性がスーツケースを引いているところを足してみよう。\"A woman is pulling a suitcase.\"", gain: 10,
-        rewrite: ("Man phone.", "A man is looking at his phone.", "誰が何をしているかを文にすると伝わります。"),
-        speech: tipFluency)),
-    MockSample(
-      content: 80, expression: 82, speaking: 74,
-      transcript: "In front of the station, there is a red vending machine and a blue bicycle. A taxi is next to the crosswalk.",
-      review: mockReview(
-        "A taxi is next to the crosswalk", "物の位置の関係を言えています。",
-        next: "次はスマホを見ている男性を足してみよう。\"A man is looking at his phone.\"", gain: 10,
-        speech: "“vending” を一音ずつはっきり発音してみよう。")),
-  ]
+  /// 一部だけ言えた言い方。理由（because のあと）があれば理由をぼかし、無ければ後ろを削る
+  static func partialQuote(_ phrase: String) -> String {
+    if let r = phrase.range(of: " because ") {
+      return sentence(String(phrase[..<r.lowerBound]) + " because he wants to")
+    }
+    let words = phrase.split(separator: " ")
+    return sentence(words.prefix(Swift.max(3, words.count - 2)).joined(separator: " "))
+  }
 }
 
 extension RoundResults {
+  /// プレビュー用の場面（同梱の作り置きの、最初の難易度の出題の候補）
+  private static var previewSceneID: String {
+    ScenePool.bundled.candidates(of: .eikenPre2).first ?? ScenePool.bundled.randomCandidate() ?? ""
+  }
+
   /// プレビュー用（5 人、全員採点できた）
   static var previewFive: RoundResults {
     .mock(
-      sceneID: "park",
+      sceneID: previewSceneID,
       players: [
         ("me", "ゆうき", 0x5B5BE6, true, true),
         ("p0", "たろう", 0xF29A3A, false, true),
@@ -224,7 +205,7 @@ extension RoundResults {
   /// プレビュー用（8 人、2 人は採点できなかった）
   static var previewEight: RoundResults {
     .mock(
-      sceneID: "park",
+      sceneID: previewSceneID,
       players: [
         ("me", "ゆうき", 0x5B5BE6, true, true),
         ("p0", "たろう", 0xF29A3A, false, true),
@@ -240,7 +221,7 @@ extension RoundResults {
   /// プレビュー用（自分が採点できなかった）
   static var previewSelfUngraded: RoundResults {
     .mock(
-      sceneID: "park",
+      sceneID: previewSceneID,
       players: [
         ("me", "ゆうき", 0x5B5BE6, true, false),
         ("p0", "たろう", 0xF29A3A, false, true),

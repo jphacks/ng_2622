@@ -11,18 +11,13 @@ import {
   GenerateSceneRequest,
   ListReviewsQuery,
   ListReviewsResponse,
-  ListScenesResponse,
   SceneIdParam,
   SceneLayout,
   SceneLayoutQuery,
   SubmitReviewRequest,
   SubmitReviewResponse,
 } from "../schemas/http";
-import {
-  listReviews,
-  listScenesWithRatings,
-  submitReview,
-} from "../usecases/sceneReviews";
+import { listReviews, submitReview } from "../usecases/sceneReviews";
 import { generateScene } from "../usecases/scenes";
 import { type AppEnv, errorBody, jsonContent } from "./shared";
 
@@ -76,7 +71,7 @@ export const sceneRoutes = new Hono<AppEnv>()
       tags: ["scenes"],
       summary: "AI で場面を作る（作り置き用）",
       description:
-        "難易度（とテーマ）から、今ある部品だけで配置の JSON（scenenglish.scene/1、id は gen- ＋ 10 文字）を作って返す。保存はしない。作り置きのスクリプトが手元の wrangler dev に向けて呼び、アプリは呼ばない。形が違う・途中で止まった・5xx・接続の失敗のときだけ 1 回やり直す（各回 60 秒まで）。合言葉（Authorization: Bearer <SCENE_WRITE_TOKEN>）が要る。",
+        "級（とテーマ）から、今ある部品だけで配置の JSON（scenenglish.scene/2、id は gen- ＋ 10 文字）を作って返す。保存はしない。Claude を 2 回呼ぶ（1 回目に見本の答えとチェックリスト、2 回目に部品と関係）。裏取り（チェックリストと場面の照らし合わせ）で落ちたら、理由を指示に足して 2 回まで作り直す。作り置きのスクリプトが手元の wrangler dev に向けて呼び、アプリは呼ばない。合言葉（Authorization: Bearer <SCENE_WRITE_TOKEN>）が要る。",
       security: [{ sceneWriteToken: [] }],
       responses: {
         200: {
@@ -86,7 +81,7 @@ export const sceneRoutes = new Hono<AppEnv>()
         400: errorResponse("本文の形が違う（invalid_message）"),
         401: errorResponse("合言葉が違う（unauthorized）"),
         422: errorResponse(
-          "作れなかった。Claude が断った（generation_refused）か、応答の形が違った（generation_failed）",
+          "作れなかった。Claude が断った（generation_refused）か、応答の形が違った・作り直しても裏取りを通らなかった（generation_failed）",
         ),
         503: errorResponse(
           "Claude を呼べない（generation_unavailable。タイムアウト・API の失敗・止めてある）",
@@ -99,7 +94,7 @@ export const sceneRoutes = new Hono<AppEnv>()
         return c.json(
           errorBody(
             "invalid_message",
-            "difficulty は easy・normal・hard、theme は 1〜50 文字（任意）",
+            "difficulty は eiken-3・eiken-pre2・eiken-2、theme は 1〜50 文字（任意）",
           ),
           400,
         );
@@ -108,10 +103,11 @@ export const sceneRoutes = new Hono<AppEnv>()
     async (c) => {
       const body = c.req.valid("json");
       try {
-        const layout = await generateScene(c.env, {
-          difficulty: body.difficulty,
-          theme: body.theme,
-        });
+        const layout = await generateScene(
+          c.env,
+          { grade: body.difficulty, theme: body.theme },
+          { remake: true },
+        );
         return c.json(layout, 200);
       } catch (e) {
         if (!(e instanceof SceneGenerationError)) throw e;
@@ -124,29 +120,13 @@ export const sceneRoutes = new Hono<AppEnv>()
     },
   )
   .get(
-    "/scenes",
-    describeRoute({
-      operationId: "listScenes",
-      tags: ["scenes"],
-      summary: "シーンの一覧と★の平均",
-      description: "選べるシーンと、それぞれの★の平均と評価した人数を返す。",
-      responses: {
-        200: { description: "一覧", content: jsonContent(ListScenesResponse) },
-      },
-    }),
-    async (c) => {
-      const repository = createSceneReviewRepository(c.env.SCENE_REVIEWS);
-      return c.json({ scenes: await listScenesWithRatings(repository) });
-    },
-  )
-  .get(
     "/scenes/:sceneId/layout",
     describeRoute({
       operationId: "getSceneLayout",
       tags: ["scenes"],
       summary: "場面の配置の JSON",
       description:
-        "作り置きの場面（gen-…）か、部屋が AI で作った場面の配置の JSON をそのまま返す。round で届いた sceneId の場面を組み立てるのに使う。作り置きに無い場面は room（部屋のコード）を付けると、その部屋が作って置いた配置を返す（部屋が消えると無くなる）。手作りの場面には無い（404）",
+        "作り置きの場面か、部屋が AI で作った場面の配置の JSON をそのまま返す。round で届いた sceneId の場面を組み立てるのに使う。作り置きに無い場面は room（部屋のコード）を付けると、その部屋が作って置いた配置を返す（部屋が消えると無くなる）",
       responses: {
         200: { description: "配置の JSON", content: jsonContent(SceneLayout) },
         400: errorResponse("room の形が違う（invalid_message）"),

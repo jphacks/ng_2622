@@ -12,6 +12,11 @@ final class MockGameClient: GameClient {
     var hostStartDelay: TimeInterval = 6
     /// 難易度でスタートしてから、場面を作り終えてラウンドが始まるまで（秒）。本物は部屋が AI で場面を作る
     var generatingDuration: TimeInterval = 3
+    /// 録音が終わるはずの時刻から、音声を送っていない人を「採点できませんでした」にするまで（秒）。
+    /// 本物の部屋は 15 秒。Mock は短くする
+    var submitGrace: TimeInterval = 3
+    /// 録音が終わるはずの時刻から、採点がそろっていなくても結果を出すまで（秒）。本物の部屋は 30 秒。Mock は短くする
+    var gradingGrace: TimeInterval = 8
   }
 
   /// このコードだけ「部屋が見つかりません」になる
@@ -20,9 +25,8 @@ final class MockGameClient: GameClient {
   let events: AsyncStream<GameEvent>
   private let continuation: AsyncStream<GameEvent>.Continuation
   private let options: Options
-  /// 難易度で選ぶときの作り置きの場面（SCENE_PICK = difficulty）。nil なら手作りのシーンから選ぶ。
-  /// 部屋ごとに作るので、出た場面もこの部屋の分だけを数える
-  private var pool: ScenePool?
+  /// 出題する作り置きの場面。部屋ごとに作るので、出た場面もこの部屋の分だけを数える
+  private var pool: ScenePool
 
   private var code = ""
   private var isHost = false
@@ -60,7 +64,7 @@ final class MockGameClient: GameClient {
   /// ほかの参加者の色。自分の色は除いて使う
   private static let colors: [UInt32] = PlayerProfile.colors + [0x5FAE3C, 0xE5484D]
 
-  init(options: Options, pool: ScenePool? = nil) {
+  init(options: Options, pool: ScenePool = .bundled) {
     self.options = options
     self.pool = pool
     (events, continuation) = AsyncStream.makeStream()
@@ -92,12 +96,12 @@ final class MockGameClient: GameClient {
     // ホストは先にいる。ほかの人は後から入ってくる
     let others = makeOthers(for: player, count: max(1, options.otherPlayers), hostFirst: true)
     enter(as: player, present: Array(others.prefix(1)), joining: Array(others.dropFirst()))
-    // ホストは「おまかせ」でスタートする（シーンはスタートのときに決まる）。難易度で選ぶときは、難易度もランダム
+    // ホストは難易度をランダムに選んでスタートする（場面はスタートのときに決まる）
     let delay = options.hostStartDelay
     hostTask = Task { [weak self] in
       try? await Task.sleep(for: .seconds(delay))
       guard let self, !Task.isCancelled else { return }
-      if let difficulty = pool?.difficulties.randomElement() {
+      if let difficulty = pool.difficulties.randomElement() {
         try? await beginRound(difficulty: difficulty)
       } else {
         try? await beginRound(sceneID: nil)
@@ -168,7 +172,7 @@ final class MockGameClient: GameClient {
   // MARK: - ラウンド
 
   /// 場面を作っているふりをしてから（generatingDuration 秒）、作り置きの場面からこの部屋でまだ出ていないものを選んで始める。
-  /// 本物は部屋が AI で場面を作る。作り置きが無ければ、手作りのシーンからランダムに選ぶ
+  /// 本物は部屋が AI で場面を作る
   private func beginRound(difficulty: SceneDifficulty) async throws {
     guard !roundRunning, !generating, !left else { return }
     generating = true
@@ -179,13 +183,14 @@ final class MockGameClient: GameClient {
     try? await Task.sleep(for: .seconds(options.generatingDuration))
     generating = false
     guard !left else { return }
-    try await beginRound(sceneID: pool?.draw(difficulty))
+    try await beginRound(sceneID: pool.draw(difficulty))
   }
 
   /// sceneID が nil なら「おまかせ」で、ここでランダムに選ぶ（本物は部屋の側が選ぶ）
   private func beginRound(sceneID: String?) async throws {
     guard !roundRunning else { return }
-    roundSceneID = sceneID ?? SceneCatalog.randomID()
+    guard let sceneID = sceneID ?? pool.randomCandidate() else { return }
+    roundSceneID = sceneID
     // まだ入ってきていない人は、このラウンドには入れない
     joinTask?.cancel()
     hostTask?.cancel()
@@ -218,11 +223,6 @@ final class MockGameClient: GameClient {
     publish()
   }
 
-  func closeRound() async throws {
-    guard isHost else { return }
-    finish()
-  }
-
   private func elapsed() -> TimeInterval? {
     roundStart.map { Date().timeIntervalSince($0) }
   }
@@ -247,8 +247,15 @@ final class MockGameClient: GameClient {
       lastSent = list
       continuation.yield(.participantsChanged(list))
     }
-    // 全員の採点がそろったら終わる。切断中の人がいるときは、ホストが締め切る
-    if list.allSatisfy({ $0.status == .done }) {
+    // 全員の採点がそろったら終わる。そろわないときは、部屋と同じ決まりで時間で締め切る:
+    // 録音が終わるはずの時刻から submitGrace たって、残りが音声を送っていない人（切断中）だけなら、
+    // gradingGrace たったら採点中の人がいても、結果を出す（採点が終わっていない人は「採点できませんでした」）
+    let deadline = RoundTiming.intro + RoundTiming.recording
+    let onlyUnsent = list.allSatisfy { $0.status == .done || $0.status == .offline }
+    if list.allSatisfy({ $0.status == .done })
+      || (r >= deadline + options.submitGrace && onlyUnsent)
+      || r >= deadline + options.gradingGrace
+    {
       finish()
     }
   }

@@ -9,7 +9,7 @@ nonisolated private let liveBackendURL = ProcessInfo.processInfo.environment["LI
 /// 手元のバックエンド（cd backend && pnpm dev）に LiveGameClient を 2 つつなぎ、1 ラウンドを通す。
 /// ふだんは飛ばす。URL を渡したときだけ動く（xcodebuild の前に TEST_RUNNER_ を付けた環境変数で渡す）:
 ///   TEST_RUNNER_LIVE_BACKEND_URL=http://localhost:8787 xcodebuild test -scheme "NG2622 Live" ...
-@Suite(.enabled(if: liveBackendURL != nil), .timeLimit(.minutes(1)))
+@Suite(.enabled(if: liveBackendURL != nil), .timeLimit(.minutes(2)))
 struct LiveGameClientIntegrationTests {
 
   /// 条件に合うできごとが来るまで読み進める
@@ -51,10 +51,12 @@ struct LiveGameClientIntegrationTests {
     _ = try await next(&hostEvents) { if case .room(let r) = $0 { r.members.last?.status == .offline } else { false } }
     _ = try await next(&hostEvents) { if case .room(let r) = $0 { r.members.last?.status == .connected } else { false } }
 
-    try await host.startRound(sceneID: "park")
+    // 手作りの場面（park など）は外したので、同梱の作り置きの場面を指す
+    let sceneID = try #require(ScenePool.bundled.randomCandidate())
+    try await host.startRound(sceneID: sceneID)
     let started = try await next(&guestEvents) { if case .roundStarted = $0 { true } else { false } }
     guard case .roundStarted(let info) = started else { return }
-    #expect(info.sceneID == "park")
+    #expect(info.sceneID == sceneID)
 
     // ホストは WAV を送り（POST の音声）、参加者は録れなかったことにする（skip）
     try await host.finishSpeaking(audio: try silentWAV())
@@ -75,7 +77,8 @@ struct LiveGameClientIntegrationTests {
     host.leaveRoom()
   }
 
-  /// ラウンド中にホストが抜けると、残った参加者がホストになり、締め切りともう一度を押せる
+  /// ラウンド中にホストが抜けると、残った参加者がホストになり、もう一度を押せる。
+  /// 結果は部屋が時間で締め切って届く（録音が終わるはずの時刻から最長 30 秒）
   @Test func hostLeavesDuringRound() async throws {
     let url = try #require(liveBackendURL)
     let host = LiveGameClient(baseURL: url)
@@ -91,7 +94,7 @@ struct LiveGameClientIntegrationTests {
     let changed = try await next(&guestEvents) { if case .hostChanged = $0 { true } else { false } }
     #expect(changed == .hostChanged(isSelf: true))
 
-    try await guest.closeRound()
+    try await guest.finishSpeaking(audio: nil)
     _ = try await next(&guestEvents) { if case .results = $0 { true } else { false } }
     try await guest.playAgain()
     let lobby = try await next(&guestEvents) { if case .returnedToLobby = $0 { true } else { false } }

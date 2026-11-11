@@ -912,6 +912,14 @@ export const verifyHeld = (
   );
   for (const p of partList)
     for (const w of wordsOf(p.holds ?? "")) thingWords.add(w);
+  // 同じ部品の言い換え（smartphone と phone）を同じ物とみる
+  const sameThing = (word: string) =>
+    new Set([
+      word,
+      ...partList
+        .filter((p) => !isLiving(p) && p.words.some((w) => w.word === word))
+        .flatMap((p) => p.words.map((w) => w.word)),
+    ]);
   const items = placedItems
     .map((i) => ({ ...i, info: parts.get(i.part.split("@")[0]) }))
     .filter((i): i is typeof i & { info: Part } => !!i.info);
@@ -927,8 +935,11 @@ export const verifyHeld = (
     for (const m of clause.toLowerCase().matchAll(HELD)) {
       const word = plural(m[1]).find((w) => thingWords.has(w));
       if (!word) continue;
+      const same = sameThing(word);
       const holds = (i: (typeof items)[number]) =>
-        wordsOf(i.info.holds ?? "").some((w) => plural(w).includes(word)) ||
+        wordsOf(i.info.holds ?? "").some((w) =>
+          plural(w).some((v) => same.has(v)),
+        ) ||
         items.some(
           (t) =>
             !isLiving(t.info) &&
@@ -947,7 +958,9 @@ export const verifyHeld = (
         (p) =>
           isLiving(p) &&
           nounFits(found.noun, p) &&
-          wordsOf(p.holds ?? "").some((w) => plural(w).includes(word)),
+          wordsOf(p.holds ?? "").some((w) =>
+            plural(w).some((v) => same.has(v)),
+          ),
       );
       problems.push({
         code: "held_missing",

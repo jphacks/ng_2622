@@ -74,18 +74,6 @@ extension RoundResults {
   var me: PlayerResult? { players.first(where: \.isSelf) }
 }
 
-/// 「あなた」の印
-struct SelfBadge: View {
-  var body: some View {
-    Text("あなた")
-      .font(Theme.font(11, .heavy))
-      .foregroundStyle(Theme.accent)
-      .padding(.horizontal, 8)
-      .padding(.vertical, 2)
-      .background(Theme.accentSoft, in: Capsule())
-  }
-}
-
 /// 「84 点」の表示
 struct PointsText: View {
   let total: Int

@@ -27,11 +27,6 @@ final class RoomSession {
   /// 自分の声の録音。ラウンドが始まると用意し、録音中の画面で録り始める
   let recorder = VoiceRecorder()
 
-  /// 完了していない人（話している・採点中・切断中）の数
-  var remainingCount: Int {
-    participants.filter { $0.status != .done }.count
-  }
-
   var isRoundOver: Bool {
     if case .results = phase { true } else { false }
   }
@@ -67,13 +62,6 @@ final class RoomSession {
     client.leaveRoom()
   }
 
-  /// ホストがラウンドを始める。sceneID が nil なら「おまかせ」（部屋の側がランダムに選ぶ）。
-  /// 選んだシーンは参加者には前もって伝えず、ラウンドが始まったときに round で届く
-  func start(sceneID: String?) {
-    guard isHost, phase == .lobby, !isGenerating else { return }
-    Task { try? await client.startRound(sceneID: sceneID) }
-  }
-
   /// ホストが難易度だけを選んでラウンドを始める。どの場面かはホストにも前もって伝えず、round で届く
   func start(difficulty: SceneDifficulty) {
     guard isHost, phase == .lobby, !isGenerating else { return }
@@ -86,11 +74,6 @@ final class RoomSession {
     phase = .waiting(enteredAt: Date())
     let audio = recorder.stop()
     Task { try? await client.finishSpeaking(audio: audio) }
-  }
-
-  /// ホストが締め切る
-  func close() {
-    Task { try? await client.closeRound() }
   }
 
   /// ホストの「同じ顔ぶれでもう一度」
