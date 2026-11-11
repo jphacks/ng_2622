@@ -21,11 +21,11 @@ import {
 export const DEFAULT_SCENE_MODEL = "claude-sonnet-5-5";
 const DEFAULT_SCENE_EFFORT = "low";
 
-type Effort = "low" | "medium" | "high" | "xhigh" | "max";
+export type Effort = "low" | "medium" | "high" | "xhigh" | "max";
 const EFFORTS: readonly string[] = ["low", "medium", "high", "xhigh", "max"];
 
 // 知らない値は既定に戻す（採点の claude.ts と同じ）
-const effortOf = (raw: string | undefined): Effort =>
+export const effortOf = (raw: string | undefined): Effort =>
   raw && EFFORTS.includes(raw) ? (raw as Effort) : DEFAULT_SCENE_EFFORT;
 
 export type GenerateEnv = {
@@ -221,13 +221,8 @@ const EXAMPLE_NORMAL = {
   ],
 };
 
-export const buildSystem = (
-  parts: Part[],
-) => `You design small 3D scenes for an English speaking game for Japanese learners.
-Players look at the scene for a few seconds and describe it in English. They score points for each "element" they describe.
-Build one scene of the requested difficulty and theme, using only the parts listed below. If no theme is given, choose one from the theme list. You do not write coordinates: you choose parts and how they relate to each other, and the program computes the positions.
-
-# Scene
+/** 場面・関係・向き・動きの決まり。2 段の生成の 2 回目（generate-v2.ts）でも同じ文を使う */
+export const SCENE_RULES = `# Scene
 - The scene is an 8 m x 8 m square seen from the front (the camera side). Always start with exactly one ground part (category ground, 8 m x 8 m) placed with relation "ground" and no zone.
 - Pick the ground that fits the place:
   - indoors: floor_wood (a home, a living room, a cafe, a restaurant, an office), floor_tile (a kitchen, a bathroom, a supermarket, a store, a hospital), floor_carpet (a bedroom, a hotel, a library), floor_classroom (a classroom, a school).
@@ -262,7 +257,15 @@ camera (default), left, right, away, or the key of an item to face (e.g. a chair
 - move: moves in a straight line. toward: the key of an item or a zone to move to. path: "across" crosses the toward item (a road), "along" moves along it.
 - rotate: spins around. sway: sways from side to side (a tree in the wind).
 duration is seconds (fall about 1.2, move 4-8, rotate 3-6, sway 2).
-Actions of people come from their pose (see the pose column, e.g. walk, run, sit, read, eat, carry, phone, hold, put, drink, write, look). Pick the part whose pose matches the action.
+Actions of people come from their pose (see the pose column, e.g. walk, run, sit, read, eat, carry, phone, hold, put, drink, write, look). Pick the part whose pose matches the action.`;
+
+export const buildSystem = (
+  parts: Part[],
+) => `You design small 3D scenes for an English speaking game for Japanese learners.
+Players look at the scene for a few seconds and describe it in English. They score points for each "element" they describe.
+Build one scene of the requested difficulty and theme, using only the parts listed below. If no theme is given, choose one from the theme list. You do not write coordinates: you choose parts and how they relate to each other, and the program computes the positions.
+
+${SCENE_RULES}
 
 # Order of writing: description first, then elements, then items
 - name: a short Japanese title of the scene.
@@ -291,6 +294,54 @@ ${JSON.stringify(EXAMPLE_EASY)}
 Request: 難しさ: normal / テーマ: カフェ
 ${JSON.stringify(EXAMPLE_NORMAL)}`;
 
+/** items の形。2 段の生成の 2 回目でも同じ形を書かせる */
+export const itemsSchema = (parts: Part[]) => ({
+  type: "array",
+  items: {
+    type: "object",
+    properties: {
+      key: { type: "string" },
+      part: { type: "string", enum: parts.map((p) => p.id) },
+      place: {
+        type: "object",
+        properties: {
+          relation: { type: "string", enum: [...RELATIONS] },
+          target: { type: "string" },
+          target2: { type: "string" },
+          zone: { type: "string", enum: [...ZONES] },
+          spot: { type: "string" },
+          link: { type: "string", enum: [...LINKS] },
+          side: { type: "string", enum: [...SIDES] },
+          distance: { type: "string", enum: [...DISTANCES] },
+          turn: { type: "string", enum: [...TURNS] },
+        },
+        required: ["relation"],
+        additionalProperties: false,
+      },
+      facing: {
+        type: "string",
+        description: `${FACINGS.join(", ")}, or the key of an item to face`,
+      },
+      motion: {
+        type: "object",
+        properties: {
+          type: { type: "string", enum: [...MOTIONS] },
+          toward: {
+            type: "string",
+            description: "the key of an item or a zone",
+          },
+          path: { type: "string", enum: [...PATHS] },
+          duration: { type: "number" },
+        },
+        required: ["type", "duration"],
+        additionalProperties: false,
+      },
+    },
+    required: ["key", "part", "place"],
+    additionalProperties: false,
+  },
+});
+
 /** Claude に書かせる形。部品の ID は enum にして、一覧に無い部品が返らないようにする */
 export const planSchema = (parts: Part[]) => ({
   type: "object",
@@ -312,89 +363,47 @@ export const planSchema = (parts: Part[]) => ({
         additionalProperties: false,
       },
     },
-    items: {
-      type: "array",
-      items: {
-        type: "object",
-        properties: {
-          key: { type: "string" },
-          part: { type: "string", enum: parts.map((p) => p.id) },
-          place: {
-            type: "object",
-            properties: {
-              relation: { type: "string", enum: [...RELATIONS] },
-              target: { type: "string" },
-              target2: { type: "string" },
-              zone: { type: "string", enum: [...ZONES] },
-              spot: { type: "string" },
-              link: { type: "string", enum: [...LINKS] },
-              side: { type: "string", enum: [...SIDES] },
-              distance: { type: "string", enum: [...DISTANCES] },
-              turn: { type: "string", enum: [...TURNS] },
-            },
-            required: ["relation"],
-            additionalProperties: false,
-          },
-          facing: {
-            type: "string",
-            description: `${FACINGS.join(", ")}, or the key of an item to face`,
-          },
-          motion: {
-            type: "object",
-            properties: {
-              type: { type: "string", enum: [...MOTIONS] },
-              toward: {
-                type: "string",
-                description: "the key of an item or a zone",
-              },
-              path: { type: "string", enum: [...PATHS] },
-              duration: { type: "number" },
-            },
-            required: ["type", "duration"],
-            additionalProperties: false,
-          },
-        },
-        required: ["key", "part", "place"],
-        additionalProperties: false,
-      },
-    },
+    items: itemsSchema(parts),
   },
   required: ["name", "description", "elements", "items"],
   additionalProperties: false,
 });
 
+/** 返ってきた items を確かめる形（itemsSchema と同じ） */
+export const PlanItems = z
+  .array(
+    z.object({
+      key: z.string().min(1),
+      part: z.string(),
+      place: z.object({
+        relation: z.enum(RELATIONS),
+        target: z.string().optional(),
+        target2: z.string().optional(),
+        zone: z.enum(ZONES).optional(),
+        spot: z.string().optional(),
+        link: z.enum(LINKS).optional(),
+        side: z.enum(SIDES).optional(),
+        distance: z.enum(DISTANCES).optional(),
+        turn: z.enum(TURNS).optional(),
+      }),
+      facing: z.string().optional(),
+      motion: z
+        .object({
+          type: z.enum(MOTIONS),
+          toward: z.string().optional(),
+          path: z.enum(PATHS).optional(),
+          duration: z.number(),
+        })
+        .optional(),
+    }),
+  )
+  .min(1);
+
 // 返ってきた JSON を確かめる形（schema と同じ。部品の ID は compose.ts が一覧と突き合わせる）
 const Plan = z.object({
   name: z.string().trim().min(1),
   description: z.string().trim().min(1),
-  items: z
-    .array(
-      z.object({
-        key: z.string().min(1),
-        part: z.string(),
-        place: z.object({
-          relation: z.enum(RELATIONS),
-          target: z.string().optional(),
-          target2: z.string().optional(),
-          zone: z.enum(ZONES).optional(),
-          spot: z.string().optional(),
-          link: z.enum(LINKS).optional(),
-          side: z.enum(SIDES).optional(),
-          distance: z.enum(DISTANCES).optional(),
-          turn: z.enum(TURNS).optional(),
-        }),
-        facing: z.string().optional(),
-        motion: z
-          .object({
-            type: z.enum(MOTIONS),
-            toward: z.string().optional(),
-            path: z.enum(PATHS).optional(),
-            duration: z.number(),
-          })
-          .optional(),
-      }),
-    )
-    .min(1),
+  items: PlanItems,
   elements: z
     .array(
       z.object({
@@ -454,7 +463,7 @@ export const classify = (
   };
 };
 
-type CreateMessage = (
+export type CreateMessage = (
   params: Anthropic.MessageCreateParamsNonStreaming,
   options: { timeout: number; signal?: AbortSignal },
 ) => Promise<Anthropic.Message>;
