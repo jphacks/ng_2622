@@ -317,23 +317,47 @@ const isVerb = (word: string): word is Verb => word in VERB_LEVELS;
 export const verbLevel = (verb: string): CefrLevel =>
   isVerb(verb) ? VERB_LEVELS[verb] : "B2";
 
+type Posed = Pick<Part, "pose" | "words"> &
+  Partial<Pick<Part, "category" | "anchors">>;
+
+// 立っているとは言えないポーズ（走る・歩く・地面に座り込む・ひざをつく）。名前の先頭で見分ける
+const NOT_STANDING = ["run", "walk", "fallen", "kneel"];
+
 /**
- * 部品のポーズで言える動詞と段階。
+ * 部品の姿勢。座るポーズは腰の基準点（anchors.hip）を持つ人、立つポーズはそれ以外の人のうち
+ * 走る・歩く・座り込む・ひざをつくポーズでないもの。動物には付けない。
+ * 立っている人は何をしていても「立っている」と言えるので、姿勢の動詞（stand・sit）は表に 1 行ずつ書かずここで足す
+ */
+export const postureOf = (
+  part: Partial<Pick<Part, "category" | "anchors" | "pose">>,
+): "sit" | "stand" | null => {
+  if (part.category !== "person") return null;
+  if (part.anchors?.hip) return "sit";
+  const pose = part.pose ?? "";
+  return NOT_STANDING.some((n) => pose === n || pose.startsWith(`${n}_`))
+    ? null
+    : "stand";
+};
+
+/**
+ * 部品のポーズで言える動詞と段階。表の動詞に、姿勢の動詞（stand・sit）を足す。
  * ポーズが表に無いとき（部品を足して表を直し忘れたとき）は、部品の words の動詞を使う。
  * その動詞も表に無ければ B2 になり、裏取りで中心の動作としては落ちる（test/pose-verbs.test.ts が表の漏れを見つける）
  */
 export const poseVerbsOf = (
-  part: Pick<Part, "pose" | "words">,
+  part: Posed,
 ): { verb: string; level: CefrLevel }[] => {
   const known = part.pose ? POSE_VERBS[part.pose] : undefined;
-  const verbs = known
-    ? known.verbs
+  const verbs: string[] = known
+    ? [...known.verbs]
     : part.words.filter((w) => w.pos === "verb").map((w) => w.word);
+  const posture = postureOf(part);
+  if (posture && !verbs.includes(posture)) verbs.push(posture);
   return verbs.map((verb) => ({ verb, level: verbLevel(verb) }));
 };
 
 /** ポーズのいちばんやさしい動詞の段階（そのポーズを中心に使える、いちばん下の級を決める） */
-export const poseLevel = (part: Pick<Part, "pose" | "words">): CefrLevel =>
+export const poseLevel = (part: Posed): CefrLevel =>
   poseVerbsOf(part).reduce<CefrLevel>(
     (low, v) => (withinLevel(v.level, low) ? v.level : low),
     "B2",
@@ -411,7 +435,7 @@ export const wordsOf = (text: string): string[] =>
 /** 文の中に出てくる、その部品のポーズの動詞 */
 export const poseVerbsIn = (
   text: string,
-  part: Pick<Part, "pose" | "words">,
+  part: Posed,
 ): { verb: string; level: CefrLevel }[] => {
   const words = new Set(wordsOf(text));
   return poseVerbsOf(part).filter((v) =>
@@ -450,4 +474,19 @@ export const thingVocabulary = (parts: Part[]): string => {
     if (noun) things.add(`${noun} (${p.label})`);
   }
   return [...things].join(", ");
+};
+
+/**
+ * 動作の語彙に出てくる動詞のうち、その段階では中心に使えないもの（段階が上のもの）。
+ * 1 回目の指示で、級ごとに名指しする
+ */
+export const verbsAbove = (level: CefrLevel, parts: Part[]): string[] => {
+  const verbs = new Set<string>();
+  for (const p of parts) {
+    if (p.category !== "person" && p.category !== "animal") continue;
+    for (const v of poseVerbsOf(p)) {
+      if (!withinLevel(v.level, level)) verbs.add(v.verb);
+    }
+  }
+  return [...verbs].sort();
 };

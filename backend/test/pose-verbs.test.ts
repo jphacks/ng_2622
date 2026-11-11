@@ -15,10 +15,12 @@ import {
   poseLevel,
   poseVerbsIn,
   poseVerbsOf,
+  postureOf,
   thingVocabulary,
   VERB_LEVELS,
   verbForms,
   verbLevel,
+  verbsAbove,
 } from "../src/scenes/pose-verbs";
 import { GRADE_IDS } from "../src/scenes/types";
 
@@ -219,4 +221,95 @@ test("1 回目に渡す語彙: 動作ごとに動詞・段階・できる人が�
     actions.length + things.length < JSON.stringify(PARTS).length / 5,
     "語彙が大きすぎる",
   );
+});
+
+test("姿勢: 座るポーズは腰の基準点を持つ人、立つポーズは走る・歩く・座り込む・ひざをつく以外の人", () => {
+  const poses = (posture: "sit" | "stand" | null) =>
+    [
+      ...new Set(
+        living.filter((p) => postureOf(p) === posture).map((p) => p.pose),
+      ),
+    ].sort();
+  assert.deepEqual(poses("sit"), [
+    "blow",
+    "clap",
+    "raise_hand",
+    "read_sit",
+    "sit",
+    "sit_look_l",
+    "sit_look_r",
+    "sleep",
+    "write",
+  ]);
+  // 立ちでも座りでもない: 動物と、走る・歩く・座り込む・ひざをつく人
+  assert.deepEqual(poses(null), [
+    "fallen",
+    "kneel_build",
+    "peck",
+    "rest",
+    "run",
+    "run_bag",
+    "run_phone",
+    "run_umbrella",
+    "walk",
+  ]);
+  // 残りは全部立ち。どのポーズも 1 つの姿勢に決まる
+  const standing = poses("stand");
+  assert.equal(standing.length, Object.keys(POSE_VERBS).length - 9 - 9);
+  for (const pose of ["stand", "look", "phone", "wipe", "throw", "cook"]) {
+    assert.ok(standing.includes(pose), pose);
+  }
+  // 犬の run は動物なので null、人の run も null
+  assert.equal(postureOf(part("animal_sit_dog_a")), null);
+  assert.equal(postureOf(part("person_run_boy_a")), null);
+});
+
+test("姿勢の動詞（stand・sit）は、表に書いていなくても言える動詞に入る", () => {
+  const verbs = (id: string) => poseVerbsOf(part(id)).map((v) => v.verb);
+  assert.ok(!POSE_VERBS.look.verbs.includes("stand"));
+  assert.ok(verbs("person_look_girl_a").includes("stand"));
+  assert.ok(verbs("person_phone_adult_a").includes("stand"));
+  assert.ok(verbs("person_clap_adult_a").includes("sit"));
+  assert.ok(verbs("person_sleep_teen_a").includes("sit"));
+  // 表に元からあれば重ねない
+  assert.equal(
+    verbs("person_stand_boy_a").filter((v) => v === "stand").length,
+    1,
+  );
+  // 走る人・転んだ人・動物には stand を足さない
+  for (const id of [
+    "person_run_boy_a",
+    "person_walk_adult_a",
+    "person_fallen_woman_a",
+    "person_kneel_build_boy_a",
+    "animal_run_dog_a",
+  ]) {
+    assert.ok(!verbs(id).includes("stand"), id);
+  }
+  // stand は A2 のまま
+  assert.deepEqual(
+    poseVerbsIn("a girl is standing", part("person_look_girl_a")),
+    [{ verb: "stand", level: "A2" }],
+  );
+});
+
+test("級で中心に使えない動詞の一覧は、上の級ほど短い", () => {
+  const [low, mid, high] = (["A1", "A2", "B1"] as const).map((l) =>
+    verbsAbove(l, PARTS),
+  );
+  for (const v of ["stand", "throw", "hold", "wipe"])
+    assert.ok(low.includes(v));
+  assert.ok(!low.includes("run") && !low.includes("wait"));
+  assert.ok(!mid.includes("stand") && mid.includes("wake"));
+  assert.deepEqual(high, [
+    "chase",
+    "clap",
+    "kneel",
+    "peck",
+    "poke",
+    "sweep",
+    "trip",
+    "wipe",
+  ]);
+  assert.ok(low.length > mid.length && mid.length > high.length);
 });
