@@ -3,7 +3,7 @@
   "id": "test-eiken-2-street",
   "name": "歩道で転んだ人を助ける",
   "difficulty": "eiken-2",
-  "description": "A woman has fallen on the street because her bicycle fell over. A man is helping her stand up. A girl saw the accident, so she is running with her smartphone to call for help. An old man is standing near the bench. The bicycle is lying next to the woman. There is a bag on the bench.",
+  "description": "A woman has fallen on the street because her bicycle fell over. A man is helping her stand up. A girl is running with her smartphone to call for help because she saw the accident. An old man is standing near the bench. The bicycle is lying next to the woman. There is a bag on the bench.",
   "checklist": [
     {
       "id": "woman_fall",
@@ -23,7 +23,7 @@
       "id": "girl_run",
       "kind": "center",
       "label": "女の子が走っている",
-      "accept": "she is running",
+      "accept": "a girl is running",
       "refs": ["girl"]
     },
     {
@@ -44,7 +44,7 @@
       "id": "girl_call",
       "kind": "link",
       "label": "女の子は事故を見て、助けを呼ぶために走っている",
-      "accept": "a girl saw the accident, so she is running with her smartphone to call for help",
+      "accept": "a girl is running with her smartphone to call for help because she saw the accident",
       "refs": ["woman", "girl"]
     },
     {

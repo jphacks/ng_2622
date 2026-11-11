@@ -69,12 +69,13 @@ Split what the player said into claims and judge each one. Do not give a content
     - "partial": the claim says in a sentence that the thing is there, but leaves out the position or state accept asks for (for accept "there is a plant next to the boy": "There is a plant").
     - A bare name ("juice", "plant" in a list of nouns) does not hit a detail item whose accept asks for a position or a state: item null. It hits the item (full) only when accept asks for nothing more than the thing being there.
   - A claim that is only a position ("near the bench", "next to the boy"): when a detail item asks about that position, it hits that item (full when the position matches accept). Otherwise item null. A position claim never hits a center item.
-  - reason item: any reason that does not contradict the scene is "full", even if it differs from accept. Saying the action without any reason does not hit the reason item. Naming things does not hit it.
-  - link item: "full" when two steps are connected: a cause, the action, and its result or purpose (e.g. "The boy threw a ball, so the dog is running across the grass to get it."). "partial" when only one step is connected (a single "because" or "so"). Naming things does not hit it.
+  - reason item: its accept is a whole sentence, an action with its cause ("a boy is running because it is raining"). "full" when the claim says that action together with a reason that does not contradict the scene; the reason may differ from the one in accept. "partial" when a reason is given but the action it explains is wrong or unclear. Saying only the action, without a reason, does not hit the reason item (it hits the center item about that action). A reason for a different action does not hit it. Naming things does not hit it.
+  - link item: its accept is a whole sentence with a chain. "full" when two steps are connected: a cause, the action, and its result or purpose (e.g. "The boy threw a ball, so the dog is running across the grass to get it."). "partial" when only one step is connected to that action (a single "because", "so" or "to ..."). Saying only the action does not hit it. Naming things does not hit it.
   - A reason or a chain that hits a reason or link item is "correct" with that item, not "ignored".
 - note: for "contradiction", "absent" and "offtopic", one short sentence in Japanese saying what is wrong. Otherwise null.
 
 # Expression
+Fill in every field after the claims too; never leave expressionBasis or the feedback texts empty.
 First write expressionBasis: one English sentence saying which forms the player used correctly and what errors there are. Then give expression a score from 0 to 100 that follows from it, using the bands below. Pick the band that fits best; scores between bands are fine.
 
 ${EXPRESSION_BANDS}
@@ -123,7 +124,7 @@ const schemaFor = (checklist: ChecklistItem[], withSpeech: boolean) => {
       expressionBasis: {
         type: "string",
         description:
-          "One English sentence: which forms the player used correctly, and what errors there are",
+          "One English sentence, never empty: which forms the player used correctly, and what errors there are",
       },
       expression: {
         type: "integer",
@@ -132,7 +133,11 @@ const schemaFor = (checklist: ChecklistItem[], withSpeech: boolean) => {
       },
       strength: {
         type: "object",
-        properties: { quote: { type: "string" }, text: { type: "string" } },
+        properties: {
+          quote: { type: "string" },
+          // minLength は使わない（SDK の transform-json-schema.ts は文字列の制約を format しか通さず、残りを説明文に移している）
+          text: { type: "string", description: "Japanese, never empty" },
+        },
         required: ["quote", "text"],
         additionalProperties: false,
       },
@@ -205,7 +210,7 @@ export type ChecklistScore = {
   expression: number;
   // 表現の点の根拠（記録用。アプリには送らない）
   expressionBasis: string;
-  // 表現が 0 点で返ったために Claude を呼び直した回数（0 か 1）
+  // 表現が 0 点か根拠が空で返ったために Claude を呼び直した回数（0〜2）
   expressionRetries: number;
   // 描写の一覧・項目ごとの達成・言えたと正しさの内訳
   breakdown: ContentBreakdown;
@@ -279,13 +284,23 @@ export const scoreJudgment = (
   };
 };
 
-// これより短い発話は、表現が 0 点でも呼び直さない（index.ts の MIN_WORDS と同じ。3 語未満は呼ぶ側が Claude を呼ばずに 0 点にする）
+// これより短い発話は呼び直さない（index.ts の MIN_WORDS と同じ。3 語未満は呼ぶ側が Claude を呼ばずに 0 点にする）
 const RETRY_MIN_WORDS = 3;
+// 呼び直しの上限（初めの 1 回と合わせて 3 回まで呼ぶ）
+const MAX_RETRIES = 2;
+
+type Scored = Omit<ChecklistScore, "expressionRetries">;
+const hasBasis = (s: Scored) => s.expressionBasis.trim() !== "";
+// Claude が描写を書いたあと、残りの欄を空の値（""・0）で埋めて終えることがある。そういう応答は使わず呼び直す
+const incomplete = (s: Scored) => s.expression === 0 || !hasBasis(s);
+// どれも不完全なときに選ぶ順。根拠のあるもの（本当に 0 点と判定したもの）、次に点のあるもの
+const rank = (s: Scored) => (hasBasis(s) ? 2 : 0) + (s.expression > 0 ? 1 : 0);
 
 /**
  * チェックリストで採点する。create を渡すと Claude の呼び出しを差し替えられる（そのとき CLAUDE_API_KEY は要らない）。
- * 3 語以上の発話に表現 0 点が返ったら、同じ入力で 1 回だけ呼び直す（正しい英文に 0 が返る回があるため）。
- * 呼び直しが 0 点でなければ、その応答の全部（描写・講評も）を使う。呼び直しも 0 点か失敗なら、初めの応答のまま。
+ * 3 語以上の発話に、表現 0 点か空の根拠が返ったら、同じ入力で 2 回まで呼び直す。
+ * 完全な応答が得られたら、その応答の全部（描写・講評も）を使う。得られなければ、根拠が空でない応答を優先し、同じなら先のものを使う。
+ * 呼び直しが失敗したら、そこでやめて、それまでの応答から選ぶ。
  * 3 語未満の発話を 0 点にするのと、strength・rewrite の引用の確かめ（feedback.ts の checkedNotes）は、呼ぶ側で行う
  */
 export async function gradeWithChecklist(
@@ -316,20 +331,24 @@ export async function gradeWithChecklist(
   };
   const first = scoreJudgment(input, await judge(create, params));
   const words = input.transcript.split(/\s+/).filter(Boolean).length;
-  if (first.expression > 0 || words < RETRY_MIN_WORDS) {
+  if (!incomplete(first) || words < RETRY_MIN_WORDS) {
     return { ...first, expressionRetries: 0 };
   }
-  try {
-    const second = scoreJudgment(input, await judge(create, params));
-    return {
-      ...(second.expression > 0 ? second : first),
-      expressionRetries: 1,
-    };
-  } catch (e) {
-    // 呼び直しの失敗で採点を落とさない
-    console.error("表現 0 点の呼び直しに失敗", e);
-    return { ...first, expressionRetries: 1 };
+  let best = first;
+  let retries = 0;
+  while (retries < MAX_RETRIES) {
+    retries++;
+    try {
+      const next = scoreJudgment(input, await judge(create, params));
+      if (rank(next) > rank(best)) best = next;
+      if (!incomplete(next)) break;
+    } catch (e) {
+      // 呼び直しの失敗で採点を落とさない
+      console.error("採点の呼び直しに失敗", e);
+      break;
+    }
   }
+  return { ...best, expressionRetries: retries };
 }
 
 const judge = async (

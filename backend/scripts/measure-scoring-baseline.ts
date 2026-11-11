@@ -155,7 +155,7 @@ const SCENES: { scene: Fixture; cases: Case[] }[] = [
     cases: [
       {
         kind: "見本どおり",
-        text: "A woman has fallen on the street because her bicycle fell over. A man is helping her stand up. A girl saw the accident, so she is running with her smartphone to call for help. An old man is standing near the bench. The bicycle is lying next to the woman. There is a bag on the bench.",
+        text: "A woman has fallen on the street because her bicycle fell over. A man is helping her stand up. A girl is running with her smartphone to call for help because she saw the accident. An old man is standing near the bench. The bicycle is lying next to the woman. There is a bag on the bench.",
       },
       {
         kind: "複文で全部",
@@ -222,7 +222,7 @@ type Row = {
   | {
       content: number;
       expression: number;
-      // 表現の点の根拠と、表現 0 点で呼び直した回数
+      // 表現の点の根拠と、呼び直した回数（表現 0 点か根拠が空）
       expressionBasis: string;
       expressionRetries: number;
       recall: string;
@@ -262,7 +262,7 @@ const summarize = () =>
         contentRange: done.length ? range(content) : null,
         expression,
         expressionRange: done.length ? range(expression) : null,
-        // 表現 0 点で呼び直した回数（その分 Claude を 2 回呼んでいて、時間も 2 回分）
+        // 表現 0 点か根拠が空で呼び直した回数（1 回の採点で 2 回まで。その分 Claude を余計に呼んでいて、時間も延びる）
         retries: done.reduce((n, r) => n + r.expressionRetries, 0),
         meanMs: done.length
           ? Math.round(done.reduce((s, r) => s + r.ms, 0) / done.length)
@@ -386,6 +386,6 @@ console.log(
     zeros.length === 0
       ? "なし"
       : zeros.map((s) => `${s.grade}「${s.kind}」`).join("、")
-  }。表現 0 点で呼び直した回数: ${summary.reduce((n, s) => n + s.retries, 0)}`,
+  }。呼び直した回数（表現 0 点か根拠が空）: ${summary.reduce((n, s) => n + s.retries, 0)}`,
 );
 if (failed.length > 0) process.exitCode = 1;

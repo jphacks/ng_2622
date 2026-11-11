@@ -702,63 +702,107 @@ const fakeSeq = (
   }) as CreateMessage;
 const ZERO = { ...JUDGED, expression: 0, expressionBasis: "" };
 
-test("3 語以上の発話に表現 0 点が返ったら、同じ入力で 1 回だけ呼び直し、その応答を使う", async () => {
+const GOOD = {
+  ...JUDGED,
+  expression: 80,
+  expressionBasis: "Correct present continuous.",
+  strength: { quote: "A boy is sitting", text: "良い応答" },
+};
+const tagged = (judged: typeof ZERO, text: string) => ({
+  ...judged,
+  strength: { quote: "", text },
+});
+const retry = async (responses: unknown[], transcript?: string) => {
   const calls: Parameters<CreateMessage>[0][] = [];
-  const second = {
-    ...JUDGED,
-    expression: 80,
-    expressionBasis: "Correct present continuous.",
-    strength: { quote: "A boy is sitting", text: "2 回目" },
-  };
-  const r = await gradeWithChecklist({}, inputFor(), {
-    create: fakeSeq([ZERO, second], calls),
+  const r = await gradeWithChecklist({}, inputFor(transcript), {
+    create: fakeSeq(responses, calls),
   });
+  return { r, calls };
+};
+
+test("3 語以上の発話に表現 0 点が返ったら、同じ入力で呼び直し、その応答を使う", async () => {
+  const { r, calls } = await retry([ZERO, GOOD, JUDGED]);
   assert.equal(calls.length, 2);
   assert.deepEqual(calls[1], calls[0]);
   assert.equal(r.expression, 80);
   assert.equal(r.expressionRetries, 1);
   assert.equal(r.expressionBasis, "Correct present continuous.");
-  assert.equal(r.strength.text, "2 回目");
+  assert.equal(r.strength.text, "良い応答");
 });
 
-test("呼び直しも 0 点・失敗なら、初めの応答のまま 0 点（3 回目は呼ばない）", async () => {
-  const calls: Parameters<CreateMessage>[0][] = [];
-  const first = { ...ZERO, strength: { quote: "", text: "1 回目" } };
-  const r = await gradeWithChecklist({}, inputFor(), {
-    create: fakeSeq(
-      [first, { ...ZERO, strength: { quote: "", text: "2 回目" } }, JUDGED],
-      calls,
-    ),
-  });
+test("根拠が空（空白だけも含む）なら、点が 0 でなくても呼び直す", async () => {
+  for (const expressionBasis of ["", "  \n"]) {
+    const { r, calls } = await retry([
+      tagged({ ...JUDGED, expression: 70, expressionBasis }, "空の根拠"),
+      GOOD,
+    ]);
+    assert.equal(calls.length, 2);
+    assert.equal(r.expression, 80);
+    assert.equal(r.strength.text, "良い応答");
+  }
+});
+
+test("呼び直しは 2 回まで（計 3 回）。3 回目で直ればそれを使う", async () => {
+  const { r, calls } = await retry([ZERO, ZERO, GOOD, JUDGED]);
+  assert.equal(calls.length, 3);
+  assert.equal(r.expression, 80);
+  assert.equal(r.expressionRetries, 2);
+});
+
+test("どれも不完全なら、根拠が空でない応答を優先し、同じなら先の応答を使う", async () => {
+  // 根拠つきの 0 点（本当に 0 と判定した）を、空で埋めた応答より優先する
+  const real = tagged(
+    { ...ZERO, expressionBasis: "No English." },
+    "根拠つきの 0",
+  );
+  const a = await retry([tagged(ZERO, "1 回目"), real, tagged(ZERO, "3 回目")]);
+  assert.equal(a.calls.length, 3);
+  assert.equal(a.r.expression, 0);
+  assert.equal(a.r.expressionRetries, 2);
+  assert.equal(a.r.strength.text, "根拠つきの 0");
+
+  // 全部が空で埋めた応答なら、初めの応答のまま
+  const b = await retry([
+    tagged(ZERO, "1 回目"),
+    tagged(ZERO, "2 回目"),
+    tagged(ZERO, "3 回目"),
+  ]);
+  assert.equal(b.calls.length, 3);
+  assert.equal(b.r.strength.text, "1 回目");
+  assert.equal(b.r.content, 60);
+
+  // 根拠がどれも空なら、点のある応答を使う
+  const c = await retry([
+    tagged(ZERO, "1 回目"),
+    tagged({ ...ZERO, expression: 70 }, "点だけある"),
+    tagged(ZERO, "3 回目"),
+  ]);
+  assert.equal(c.r.expression, 70);
+  assert.equal(c.r.strength.text, "点だけある");
+});
+
+test("呼び直しが失敗したら、そこでやめて、それまでの応答を使う", async () => {
+  const { r, calls } = await retry([
+    tagged(ZERO, "1 回目"),
+    new Error("API が落ちた"),
+    GOOD,
+  ]);
   assert.equal(calls.length, 2);
   assert.equal(r.expression, 0);
   assert.equal(r.expressionRetries, 1);
   assert.equal(r.strength.text, "1 回目");
-  assert.equal(r.content, 60);
-
-  const failed = await gradeWithChecklist({}, inputFor(), {
-    create: fakeSeq([first, new Error("API が落ちた")]),
-  });
-  assert.equal(failed.expression, 0);
-  assert.equal(failed.expressionRetries, 1);
-  assert.equal(failed.strength.text, "1 回目");
 });
 
-test("3 語未満の発話は、表現が 0 点でも呼び直さない。0 点でなければ呼び直さない", async () => {
-  const calls: Parameters<CreateMessage>[0][] = [];
-  const short = await gradeWithChecklist({}, inputFor("A dog"), {
-    create: fakeSeq([ZERO, JUDGED], calls),
-  });
-  assert.equal(calls.length, 1);
-  assert.equal(short.expression, 0);
-  assert.equal(short.expressionRetries, 0);
+test("3 語未満の発話は呼び直さない。根拠があり 0 点でなければ呼び直さない", async () => {
+  const short = await retry([ZERO, GOOD], "A dog");
+  assert.equal(short.calls.length, 1);
+  assert.equal(short.r.expression, 0);
+  assert.equal(short.r.expressionRetries, 0);
 
-  const calls2: Parameters<CreateMessage>[0][] = [];
-  const low = await gradeWithChecklist({}, inputFor(), {
-    create: fakeSeq([{ ...JUDGED, expression: 20 }, JUDGED], calls2),
-  });
-  assert.equal(calls2.length, 1);
-  assert.equal(low.expression, 20);
+  const low = await retry([{ ...JUDGED, expression: 20 }, GOOD]);
+  assert.equal(low.calls.length, 1);
+  assert.equal(low.r.expression, 20);
+  assert.equal(low.r.expressionRetries, 0);
 });
 
 test("指示に、描写の分け方・名前だけの扱い・accept の区切り・表現の見方が書いてある", async () => {
@@ -774,6 +818,8 @@ test("指示に、描写の分け方・名前だけの扱い・accept の区切�
     '"A woman is wiping under the table." is "A woman is wiping" and "under the table"',
     "A position claim never hits a center item",
     "First write expressionBasis",
+    "never leave expressionBasis or the feedback texts empty",
+    "its accept is a whole sentence, an action with its cause",
     "Judge the English of the whole transcript",
     "0: Only when the transcript has no English words to judge.",
   ]) {
