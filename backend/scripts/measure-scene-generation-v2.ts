@@ -1,7 +1,9 @@
 // 英文を先に書く 2 段の場面の生成（src/scenes/generate-v2.ts）を級ごとに何度も動かし、
 // 各回の時間（1 回目・2 回目・合計）と裏取りの結果を記録して、級ごとの第 3 四分位数を出す。
 // 部屋での生成の上限（10 秒）に収まるかを見るためのもの。Claude を実際に呼ぶので費用がかかる。
-//   CLAUDE_API_KEY=... pnpm tsx scripts/measure-scene-generation-v2.ts [1 級あたりの回数（既定 20）] [結果の JSON の書き出し先]
+//   CLAUDE_API_KEY=... pnpm tsx scripts/measure-scene-generation-v2.ts [1 級あたりの回数（既定 20）] [結果の JSON の書き出し先] [--avoid]
+// --avoid を付けると、同じ級で先に作った場面の要約を次の回に渡し、違う場面を書かせる（作り置きをまとめて作るときと同じ条件）。
+// 最後に、級ごとに理由の原因（rain・fallen など）が何場面で使われたかを出す。
 // 各段は 1 回だけ呼び（やり直さない）、裏取りで落ちても作り直さない（部屋での生成と同じ条件）。
 // 失敗した回は、理由と種類、形が違う応答なら Claude の生の本文の先頭を JSON に残す。
 // 時間の分布を見るため、各段の timeout は 10 秒で切らず 60 秒にしてある。
@@ -13,6 +15,11 @@ import { generateSceneV2, SceneResponseError } from "../src/scenes/generate-v2";
 import { newSceneId } from "../src/scenes/id";
 import { PARTS } from "../src/scenes/parts";
 import { GRADE_IDS, type ScenePlanV2 } from "../src/scenes/types";
+import {
+  countCauses,
+  overusedCauses,
+  summarizeScene,
+} from "../src/scenes/variety";
 
 const PRICE = { input: 2, cacheWrite: 2.5, cacheRead: 0.2, output: 10 };
 // 部屋での生成の上限（backend/src/durable-objects/room.ts の GENERATION_TIMEOUT_MS）
@@ -56,8 +63,10 @@ const quantile = (values: number[], q: number) => {
 };
 const sec = (ms: number) => (ms / 1000).toFixed(2);
 
-const n = Number(process.argv[2] ?? 20);
-const out = process.argv[3];
+const args = process.argv.slice(2).filter((a) => !a.startsWith("--"));
+const useAvoid = process.argv.includes("--avoid");
+const n = Number(args[0] ?? 20);
+const out = args[1];
 const env = {
   CLAUDE_API_KEY: process.env.CLAUDE_API_KEY,
   CLAUDE_SCENE_MODEL: process.env.CLAUDE_SCENE_MODEL,
@@ -66,6 +75,8 @@ const env = {
 const runs: Run[] = [];
 
 for (const grade of GRADE_IDS) {
+  // この級で先に作った場面の要約（--avoid のときだけ次の回に渡す）
+  const made: string[] = [];
   for (let index = 0; index < n; index++) {
     // テーマは一覧を順に回す（どの級も同じ並び）
     const theme = THEMES[index % THEMES.length];
@@ -90,7 +101,7 @@ for (const grade of GRADE_IDS) {
       const result = await generateSceneV2(
         env,
         PARTS,
-        { grade, theme },
+        { grade, theme, avoid: useAvoid ? [...made] : undefined },
         {},
         { timeoutMs: STAGE_TIMEOUT_MS, maxAttempts: 1 },
       );
@@ -112,6 +123,7 @@ for (const grade of GRADE_IDS) {
           run.output * PRICE.output) /
         1e6;
       run.plan = result.plan;
+      made.push(summarizeScene(result.plan));
       try {
         composeLayoutV2(result.plan, PARTS, { id: newSceneId(), grade });
         run.composed = true;
@@ -142,6 +154,9 @@ for (const grade of GRADE_IDS) {
 const summary = GRADE_IDS.map((grade) => {
   const all = runs.filter((r) => r.grade === grade);
   const done = all.filter((r) => r.ok);
+  const passed = done
+    .filter((r) => r.problems.length === 0)
+    .flatMap((r) => (r.plan ? [r.plan] : []));
   const q = (pick: (r: Run) => number, at: number) =>
     Math.round(quantile(done.map(pick), at));
   return {
@@ -165,6 +180,9 @@ const summary = GRADE_IDS.map((grade) => {
       max: Math.round(Math.max(...done.map((r) => r.totalMs))),
     },
     usdPerRun: done.reduce((a, r) => a + r.usd, 0) / (done.length || 1),
+    // 裏取りを通った場面で、理由の原因が何場面で使われたか。overused は上限（3 場面）を超えた原因
+    causes: Object.fromEntries(countCauses(passed, PARTS)),
+    overused: overusedCauses(passed, PARTS),
   };
 });
 
@@ -187,6 +205,19 @@ for (const s of summary) {
   }
 }
 
-const result = { summary, runs };
+for (const s of summary) {
+  const causes = Object.entries(s.causes)
+    .sort((a, b) => b[1] - a[1])
+    .map(([cause, count]) => `${cause} ${count}`)
+    .join(", ");
+  console.error(`${s.grade} の理由の原因: ${causes || "（無し）"}`);
+  for (const o of s.overused) {
+    console.error(
+      `${s.grade}: 原因 ${o.cause} が ${o.count} 場面で使われている（目安は 3 場面まで）`,
+    );
+  }
+}
+
+const result = { avoid: useAvoid, summary, runs };
 if (out) await writeFile(out, `${JSON.stringify(result, null, 2)}\n`);
 console.log(JSON.stringify(result));
