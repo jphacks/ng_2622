@@ -99,9 +99,14 @@ struct MarkedTextRenderer: TextRenderer {
 // MARK: - 下線と強調の位置
 
 enum TranscriptMarks {
-  /// 描写の印。探す順はバックエンドの verifyClaims（backend/src/scoring/checklist.ts）と同じで、
-  /// 前の描写の終わりから先 → 見つからなければ前の描写の始まりから → それでも無ければ頭から、quote をそのまま探す。
-  /// 文字起こしに無い描写には線を引かない。描写が重なった所は、強い印を 1 つだけ付ける（strength）
+  /// 描写の印。届いた順（バックエンドが位置の順に並べ替えた順）に、前の描写の終わりから先 → 見つからなければ
+  /// 前の描写の始まりから → それでも無ければ頭から、quote をそのまま探す（探し方は verifyClaims にならう）。
+  /// 文字起こしに無い描写には線を引かない。描写が重なった所は、強い印を 1 つだけ付ける（strength）。
+  ///
+  /// 既知の限界: バックエンドは Claude の返した順で位置を決めてから並べ替えて送り、位置そのものは送らない。
+  /// そのため同じ言い回しが 2 回出る文字起こしでは、バックエンドと別の場所に線が付くことがある
+  /// （例: `A boy has a ball. A girl has a ball.` で Claude の順が a ball → A boy has a ball → A girl has a ball）。
+  /// 直すには、バックエンドが描写の位置も送る形にする
   static func marks(transcript: String, claims: [ContentBreakdown.Claim]) -> [MarkedRange] {
     var cursor = transcript.startIndex
     var previous = transcript.startIndex
