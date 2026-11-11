@@ -14,6 +14,8 @@ import { poolCandidates } from "../src/scenes/pool";
 import { openRoom, received, send, type Welcome } from "./helpers/room-harness";
 
 const ENV = { SCORING_MODE: "fixed" };
+// 部屋の片付けの時刻（durable-objects/room.ts の IDLE_TTL_MS と同じ）
+const IDLE_TTL_MS = 2 * 60 * 60 * 1000;
 const SCENE = poolCandidates("eiken-3")[0];
 const T0 = 1_800_000_000_000;
 
@@ -113,6 +115,7 @@ test("(a) 1 人が送らないまま音声の締め切りが来たら、その�
     round: 1,
   });
   assert.ok(!late.ok);
+  assert.equal(late.error.code, "deadline_passed");
 });
 
 test("(b) 送った人の採点が遅いと、採点の締め切りで結果を出し、遅れて届いた採点は捨てる", async () => {
@@ -224,4 +227,107 @@ test("切断中の人も、音声の締め切りで採点できなかった扱�
 test("expireRound は、ラウンド中でなければ何もしない", () => {
   const state = { phase: "lobby", current: null } as never;
   assert.equal(expireRound(state, Number.MAX_SAFE_INTEGER), state);
+});
+
+// ---- alarm の予約 ----
+
+test("誰かがつながったまま片付けの時刻を過ぎたら、部屋は消さず、次の予約を未来へ延ばす", async () => {
+  const { room, storage, alarm, time, deadlines } = await startedRoom();
+  // 先にラウンドを締め切り、結果発表のまま保存が無い部屋にする
+  time.now = deadlines.grading;
+  await room.alarm();
+  assert.equal((storage.get("state") as { phase: string }).phase, "results");
+  const stateBefore = structuredClone(storage.get("state"));
+  // 片付けの時刻を過ぎて alarm が来る（状態は変わらない alarm）
+  time.now = Number(storage.get("idleAt")) + 1;
+  await room.alarm();
+  assert.deepEqual(storage.get("state"), stateBefore);
+  assert.ok(
+    alarm.at !== null && alarm.at > time.now,
+    "過去の時刻で繰り返さない",
+  );
+  assert.equal(storage.get("idleAt"), time.now + IDLE_TTL_MS);
+});
+
+test("誰もいないまま片付けの時刻を過ぎたら部屋を消す。時刻を持っていない前の版の部屋は、すぐには消さず延ばす", async () => {
+  const gone = await startedRoom();
+  for (const ws of gone.sockets) ws.close();
+  gone.time.now = Number(gone.storage.get("idleAt"));
+  await gone.room.alarm();
+  assert.equal(gone.storage.size, 0);
+
+  const old = await startedRoom();
+  for (const ws of old.sockets) ws.close();
+  old.storage.delete("idleAt");
+  old.time.now = T0 + 1000;
+  await old.room.alarm();
+  assert.ok(old.storage.has("state"));
+  assert.equal(old.storage.get("idleAt"), old.time.now + IDLE_TTL_MS);
+  assert.ok(old.alarm.at !== null && old.alarm.at > old.time.now);
+});
+
+test("音声の締め切りの後は採点の締め切りへ、結果発表の後は片付けの時刻へ、予約が移る", async () => {
+  const { room, welcomes, time, deadlines, alarm, storage } =
+    await startedRoom();
+  await submit(room, welcomes[0]);
+  assert.equal(alarm.at, deadlines.audio, "B の音声を待つ");
+  time.now = deadlines.audio;
+  await room.alarm();
+  assert.equal(
+    (storage.get("state") as { phase: string }).phase,
+    "waiting",
+    "ホストの採点を待つ",
+  );
+  assert.equal(alarm.at, deadlines.grading);
+  time.now = deadlines.grading;
+  await room.alarm();
+  assert.equal((storage.get("state") as { phase: string }).phase, "results");
+  assert.equal(alarm.at, storage.get("idleAt"));
+  assert.equal(alarm.at, time.now + IDLE_TTL_MS);
+});
+
+test("ホストの交代と音声の締め切りが同じ alarm に重なっても、両方を当てる", async () => {
+  const { room, host, others, welcomes, time, deadlines, storage, alarm } =
+    await startedRoom();
+  // B は音声を送って採点も終わる。ホストは送らないまま、締め切りのちょうど HOST_GRACE（30 秒）前に切断する
+  await submit(room, welcomes[1]);
+  await room.recordGrade({
+    playerId: welcomes[1].playerId,
+    round: 1,
+    grade: done(70),
+  });
+  time.now = deadlines.audio - 30_000;
+  host.close();
+  await room.webSocketClose(host);
+  assert.equal(alarm.at, deadlines.audio);
+  time.now = deadlines.audio;
+  await room.alarm();
+  const state = storage.get("state") as { phase: string; hostId: string };
+  assert.equal(state.phase, "results");
+  assert.equal(state.hostId, welcomes[1].playerId, "B がホストになる");
+  const [results] = resultsOf(others[0]);
+  assert.deepEqual(
+    results.players.map((p) => [p.id, p.rank]),
+    [
+      [welcomes[1].playerId, 1],
+      [welcomes[0].playerId, null],
+    ],
+  );
+});
+
+test("alarm が来なくても、締め切りの後に届いた WebSocket のメッセージで結果を出す。締め切りの後の skip は deadline_passed", async () => {
+  const { room, others, welcomes, time, deadlines } = await startedRoom();
+  await submit(room, welcomes[0]);
+  await room.recordGrade({
+    playerId: welcomes[0].playerId,
+    round: 1,
+    grade: done(70),
+  });
+  time.now = deadlines.audio + 1;
+  const [b] = others;
+  await send(room, b, { type: "skip", round: 1 });
+  const [results] = resultsOf(b);
+  assert.ok(results, "メッセージを受けた時点で締め切った");
+  assert.equal(results.players[1].rank, null);
+  assert.equal(received(b, "error").at(-1)?.code, "deadline_passed");
 });

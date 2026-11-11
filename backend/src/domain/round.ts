@@ -28,7 +28,11 @@ export type Grade =
       content: SentContent;
       feedback: Feedback;
     }
-  | { status: "failed" };
+  | {
+      status: "failed";
+      /** deadline: 音声の締め切りまでに送らなかった（締め切りの後の音声と skip を deadline_passed で断るため） */
+      reason?: "deadline";
+    };
 
 export type Round = {
   round: number;
@@ -141,13 +145,15 @@ export const expireRound = (state: RoomState, now: number): RoomState => {
     return state;
   }
   const deadlines = roundDeadlines(current);
-  if (now >= deadlines.grading) return { ...state, phase: "results" };
   if (now < deadlines.audio) return state;
   const missing = roundPlayers(state).filter((p) => !current.grades[p.id]);
-  if (missing.length === 0) return state;
   const grades = { ...current.grades };
-  for (const p of missing) grades[p.id] = { status: "failed" };
-  return settleRound({ ...state, current: { ...current, grades } });
+  for (const p of missing)
+    grades[p.id] = { status: "failed", reason: "deadline" };
+  const next: RoomState = { ...state, current: { ...current, grades } };
+  if (now >= deadlines.grading) return { ...next, phase: "results" };
+  if (missing.length === 0) return state;
+  return settleRound(next);
 };
 
 /**
@@ -236,17 +242,21 @@ const submittableRound = (
   input: { playerId: string; round: number },
 ): Result<Round> => {
   const current = state.current;
-  if (
-    !current ||
-    (state.phase !== "playing" && state.phase !== "waiting") ||
-    current.round !== input.round
-  ) {
+  if (!current || current.round !== input.round) {
     return fail("not_playing", `ラウンド ${input.round} は進行中でない`);
   }
   if (!current.playerIds.includes(input.playerId)) {
     return fail("not_playing", "このラウンドに参加していない");
   }
-  if (current.grades[input.playerId]) {
+  const grade = current.grades[input.playerId];
+  // 音声の締め切りまでに送らず、採点できなかった扱いになった（もう送っても採点しない）
+  if (grade?.status === "failed" && grade.reason === "deadline") {
+    return fail("deadline_passed", "このラウンドの音声の締め切りを過ぎた");
+  }
+  if (state.phase !== "playing" && state.phase !== "waiting") {
+    return fail("not_playing", `ラウンド ${input.round} は進行中でない`);
+  }
+  if (grade) {
     return fail("already_submitted", "このラウンドの音声はもう受け取った");
   }
   return ok(current);

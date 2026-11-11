@@ -67,7 +67,7 @@ export const SkipMessage = z
   .meta({
     ref: "SkipMessage",
     description:
-      "音声を送らずにこのラウンドを終える（マイクが使えない・録れなかったとき）。その人は done になり、結果では「採点できませんでした」（rank・score が null）になる。音声を送った後は already_submitted",
+      "音声を送らずにこのラウンドを終える（マイクが使えない・録れなかったとき）。その人は done になり、結果では「採点できませんでした」（rank・score が null）になる。音声を送った後は already_submitted、音声の締め切りを過ぎた後は deadline_passed",
   });
 
 export const LeaveMessage = z.object({ type: z.literal("leave") }).meta({

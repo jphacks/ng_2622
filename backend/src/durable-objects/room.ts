@@ -204,20 +204,21 @@ export class Room extends DurableObject<CloudflareBindings> {
    */
   async alarm() {
     const state = await this.load();
-    const now = this.clock();
-    const connected = this.openSockets().length > 0;
-    if (state && !connected) {
-      const idleAt = await this.ctx.storage.get<number>(IDLE_AT_KEY);
-      if (idleAt === undefined || now >= idleAt) {
-        await this.ctx.storage.deleteAll();
-        this.state = null;
-        return;
-      }
-    }
     if (!state) {
       await this.ctx.storage.deleteAll();
       this.state = null;
       return;
+    }
+    const now = this.clock();
+    const connected = this.openSockets().length > 0;
+    if (!connected) {
+      // 片付けの時刻を持っていない前の版の部屋は、scheduleAlarm がここから IDLE_TTL_MS 後にする
+      const idleAt = await this.ctx.storage.get<number>(IDLE_AT_KEY);
+      if (idleAt !== undefined && now >= idleAt) {
+        await this.ctx.storage.deleteAll();
+        this.state = null;
+        return;
+      }
     }
     let next = expireRound(state, now);
     if (connected) {
@@ -527,7 +528,8 @@ export class Room extends DurableObject<CloudflareBindings> {
    * 次の alarm を決める。次のうち最も早い時刻にする。
    * - ラウンドの締め切り（音声がまだの人がいれば音声の締め切り、いなければ採点の締め切り。domain/round.ts）
    * - ホストが切断中なら、切断から HOST_GRACE_MS 後（ホストを替える）
-   * - IDLE_TTL_MS 後（誰もつながっていなければ部屋を消す）。refreshIdle が false なら延ばさない
+   * - IDLE_TTL_MS 後（誰もつながっていなければ部屋を消す）。refreshIdle が false なら延ばさないが、
+   *   まだ持っていないか、もう過ぎている（誰かがつながったまま保存が無かった）ときは延ばす（過去の時刻で alarm を繰り返さない）
    */
   private async scheduleAlarm(
     state: RoomState,
@@ -536,7 +538,11 @@ export class Room extends DurableObject<CloudflareBindings> {
     const now = this.clock();
     const times: number[] = [];
     let idleAt = await this.ctx.storage.get<number>(IDLE_AT_KEY);
-    if (options.refreshIdle !== false || idleAt === undefined) {
+    if (
+      options.refreshIdle !== false ||
+      idleAt === undefined ||
+      idleAt <= now
+    ) {
       idleAt = now + IDLE_TTL_MS;
       await this.ctx.storage.put(IDLE_AT_KEY, idleAt);
     }
