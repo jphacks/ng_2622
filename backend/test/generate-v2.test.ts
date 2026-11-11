@@ -3,7 +3,6 @@ import assert from "node:assert/strict";
 import { test } from "node:test";
 import type Anthropic from "@anthropic-ai/sdk";
 import {
-  buildSystem,
   SCENE_RULES,
   SceneGenerationError,
   THEMES,
@@ -147,14 +146,11 @@ test("1 回目の指示: 級の表・語彙・テーマ・例があり、部品�
     assert.ok(!system.includes(p.id), `${p.id} が出ている`);
   }
   assert.ok(!system.includes("# Parts"));
-  // 今の 1 回の生成の指示の 2/3 より小さい
-  assert.ok(system.length < (buildSystem(PARTS).length * 2) / 3);
 });
 
 test("2 回目の指示: 今の生成の決まりをそのまま使い、候補の部品と例を載せる", () => {
   const system = buildItemsSystem(PARTS);
   assert.ok(system.includes(SCENE_RULES));
-  assert.ok(buildSystem(PARTS).includes(SCENE_RULES));
   for (const word of ["relate", "seat_at", "thrown_by", '"auto"']) {
     assert.ok(system.includes(word), `${word} の説明が無い`);
   }

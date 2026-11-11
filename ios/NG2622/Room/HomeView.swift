@@ -14,7 +14,7 @@ struct HomeView: View {
 
   var body: some View {
     VStack(spacing: 0) {
-      SpinningPark()
+      SpinningScene()
         .frame(maxWidth: .infinity, minHeight: 160, maxHeight: 340)
         .contentShape(Rectangle())
         .onTapGesture { editing = false }
@@ -87,17 +87,21 @@ struct HomeView: View {
   }
 }
 
-/// ゆっくり回り続ける公園（触れない）
-private struct SpinningPark: View {
+/// ゆっくり回り続ける場面（触れない）。同梱の作り置きの場面のうち、かんたんの例の場面を部品で組んで出す
+/// （配置の JSON はアプリに同梱なので、通信せずに Mock でも Live でも出る）
+private struct SpinningScene: View {
   /// 1 周の秒数
   private static let period: TimeInterval = 24
+  /// 出す場面。かんたんの例が無ければ、どれか 1 つの出題の候補
+  static let sceneID = ScenePool.bundled.example(of: .eiken3) ?? ScenePool.bundled.randomCandidate() ?? ""
   @State private var start = Date()
 
   var body: some View {
     TimelineView(.animation) { context in
       let t = context.date.timeIntervalSince(start)
       DioramaView(
-        sceneID: "park", yaw: (t / Self.period * 360).truncatingRemainder(dividingBy: 360), tilt: SceneOrbit.defaultTilt)
+        sceneID: Self.sceneID, yaw: (t / Self.period * 360).truncatingRemainder(dividingBy: 360),
+        tilt: SceneOrbit.defaultTilt)
     }
     .allowsHitTesting(false)
     .accessibilityHidden(true)

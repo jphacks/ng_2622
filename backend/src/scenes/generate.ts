@@ -2,21 +2,19 @@ import Anthropic from "@anthropic-ai/sdk";
 import { z } from "zod";
 import {
   DISTANCES,
-  type Difficulty,
   FACINGS,
   LINKS,
   MOTIONS,
   PATHS,
   type Part,
   RELATIONS,
-  type ScenePlan,
   SIDES,
   TURNS,
   ZONES,
 } from "./types";
 
-// POST /scenes/generate の中身。Claude に「関係」を JSON Schema の形で書かせる（座標は compose.ts が計算する）。
-// 呼び方の正本は docs/design/scene-protocol.md の「Claude に書かせる形と呼び方」
+// 場面の生成で使う共通の物（モデルと effort・失敗の種類・テーマ・場面の決まり・items の形・呼び方の上書き）。
+// 生成の本体は generate-v2.ts（英文を先に書く 2 段の生成）。座標は compose.ts が計算する
 
 export const DEFAULT_SCENE_MODEL = "claude-sonnet-5-5";
 const DEFAULT_SCENE_EFFORT = "low";
@@ -47,14 +45,6 @@ export class SceneGenerationError extends Error {
   }
 }
 
-// 難易度の中身（docs/design/scene-protocol.md の「難易度の中身（推測）」）
-const LEVELS: Record<Difficulty, string> = {
-  easy: "level A (beginner). Verbs like stand, walk, run, sit, eat, read. 4 sentences in the description, 4 elements, 4-6 items (including the ground and the wall). Simple relations (on, under, next_to).",
-  normal:
-    "level B (intermediate). Verbs like lean, reach, pick up, check a watch, talk on the phone, carry. 6 sentences, 6 elements, 6-10 items. Use several different relations.",
-  hard: "level C (advanced). Verbs like glance, stroll, crouch, wait, push. 8 sentences, 8 elements, 10-15 items. Several people doing different things, relations such as between, across, along and behind, and some motion.",
-};
-
 // テーマを省いたときに Claude が選ぶ一覧。今の部品で作れる場所だけ
 export const THEMES = [
   "公園（park）",
@@ -71,157 +61,7 @@ export const THEMES = [
   "校庭（playground）",
 ] as const;
 
-const describePart = (p: Part) => {
-  const fields = [
-    p.id,
-    p.label,
-    p.category,
-    `words: ${p.words.map((w) => w.word).join(", ")}`,
-    p.pose ? `pose: ${p.pose}` : null,
-    `size(w,h,d): ${p.size.join(", ")}`,
-    p.anchors ? `anchors: ${JSON.stringify(p.anchors)}` : null,
-  ];
-  return `- ${fields.filter(Boolean).join(" | ")}`;
-};
-
-const EXAMPLE_EASY = {
-  name: "リンゴが落ちる公園",
-  description:
-    "A sunny park. A red apple is falling from a tree. A man is walking past the tree, and a red ball is on the grass.",
-  elements: [
-    {
-      id: "place",
-      label: "公園で",
-      points: 15,
-      accept: "park, garden, lawn, grass",
-    },
-    {
-      id: "apple_fall",
-      label: "リンゴが木から落ちている",
-      points: 35,
-      accept: "an apple is falling from the tree",
-      partial: "mentions an apple or the tree, without saying it is falling",
-    },
-    {
-      id: "man_walk",
-      label: "男の人が歩いている",
-      points: 25,
-      accept: "a man is walking (past the tree)",
-      partial: "mentions a man or a person, without saying he is walking",
-    },
-    {
-      id: "ball",
-      label: "赤いボール",
-      points: 15,
-      accept: "a red ball (on the grass)",
-      partial: "a ball, without the color",
-    },
-  ],
-  items: [
-    { key: "grass", part: "grass_patch", place: { relation: "ground" } },
-    {
-      key: "tree",
-      part: "tree",
-      place: { relation: "ground", zone: "back" },
-    },
-    {
-      key: "apple",
-      part: "apple_red",
-      place: { relation: "under", target: "tree" },
-      motion: { type: "fall", duration: 1.2 },
-    },
-    {
-      key: "man",
-      part: "person_walk_adult_a",
-      place: { relation: "in_front_of", target: "tree" },
-      motion: { type: "move", toward: "left", duration: 6 },
-    },
-    {
-      key: "ball",
-      part: "ball_red",
-      place: { relation: "ground", zone: "front_right" },
-    },
-  ],
-};
-
-const EXAMPLE_NORMAL = {
-  name: "カフェで本を読む女の人",
-  description:
-    "A small cafe. A woman is sitting on a chair at a table. A book and a cup of coffee are on the table. A man is standing next to the table, talking on the phone.",
-  elements: [
-    { id: "place", label: "カフェで", points: 10, accept: "cafe, coffee shop" },
-    {
-      id: "woman_sit",
-      label: "女の人が椅子に座っている",
-      points: 20,
-      accept: "a woman is sitting on a chair (at the table)",
-      partial: "mentions a woman or a person, without saying she is sitting",
-    },
-    {
-      id: "book_on_table",
-      label: "テーブルの上に本がある",
-      points: 15,
-      accept: "a book is on the table",
-      partial: "mentions a book, without saying where it is",
-    },
-    {
-      id: "cup",
-      label: "コーヒーのカップ",
-      points: 10,
-      accept: "a cup of coffee (on the table)",
-      partial: "a cup or a drink",
-    },
-    {
-      id: "man_phone",
-      label: "男の人が電話をしている",
-      points: 20,
-      accept: "a man is talking on the phone",
-      partial: "mentions a man standing, without the phone",
-    },
-    {
-      id: "machine",
-      label: "自動販売機",
-      points: 15,
-      accept: "a vending machine",
-      partial: "a machine or a box",
-    },
-  ],
-  items: [
-    { key: "floor", part: "floor_wood", place: { relation: "ground" } },
-    { key: "wall", part: "wall_window", place: { relation: "ground" } },
-    {
-      key: "table",
-      part: "table",
-      place: { relation: "ground", zone: "center" },
-    },
-    {
-      key: "chair",
-      part: "chair",
-      place: { relation: "behind", target: "table" },
-      facing: "table",
-    },
-    {
-      key: "woman",
-      part: "person_sit_woman_a",
-      place: { relation: "sit_on", target: "chair" },
-    },
-    { key: "book", part: "book", place: { relation: "on", target: "table" } },
-    { key: "cup", part: "cup", place: { relation: "on", target: "table" } },
-    {
-      key: "man",
-      part: "person_phone_adult_a",
-      place: { relation: "next_to", target: "table" },
-      facing: "camera",
-    },
-    {
-      key: "machine",
-      part: "vending_machine",
-      place: { relation: "ground", zone: "back_left" },
-    },
-  ],
-};
-
-/** 場面・関係・向き・動きの決まり。2 段の生成の 2 回目（generate-v2.ts）でも同じ文を使う */
+/** 場面・関係・向き・動きの決まり。2 段の生成の 2 回目（generate-v2.ts）の指示に入れる */
 export const SCENE_RULES = `# Scene
 - The scene is an 8 m x 8 m square seen from the front (the camera side). Always start with exactly one ground part (category ground, 8 m x 8 m) placed with relation "ground" and no zone.
 - Pick the ground that fits the place:
@@ -259,42 +99,7 @@ camera (default), left, right, away, or the key of an item to face (e.g. a chair
 duration is seconds (fall about 1.2, move 4-8, rotate 3-6, sway 2).
 Actions of people come from their pose (see the pose column, e.g. walk, run, sit, read, eat, carry, phone, hold, put, drink, write, look). Pick the part whose pose matches the action.`;
 
-export const buildSystem = (
-  parts: Part[],
-) => `You design small 3D scenes for an English speaking game for Japanese learners.
-Players look at the scene for a few seconds and describe it in English. They score points for each "element" they describe.
-Build one scene of the requested difficulty and theme, using only the parts listed below. If no theme is given, choose one from the theme list. You do not write coordinates: you choose parts and how they relate to each other, and the program computes the positions.
-
-${SCENE_RULES}
-
-# Order of writing: description first, then elements, then items
-- name: a short Japanese title of the scene.
-- description: write it first. Plain English sentences that a player should say about the scene, one fact or action per sentence (the number of sentences depends on the difficulty). Every sentence must be true in the scene you then build: each person, animal, thing and relation it mentions must be an item. The grader uses it.
-- elements: what players should describe, made from the description. id: short snake_case. label: short Japanese. accept: English wording that gets full points. partial (optional): English wording for half points.
-  Give relations and actions (a dog running to a ball) more points than single nouns. Points are relative weights; the program scales them to a total of 90.
-- items: last, the parts and relations that show exactly the description. Do not add people or actions that the description does not mention; a few background things are fine.
-
-# Difficulty
-${Object.entries(LEVELS)
-  .map(([d, c]) => `- ${d}: ${c}`)
-  .join("\n")}
-The verbs a scene can show come from the poses of the people and animal parts. When no pose fits a verb of the level, make the scene harder with more complex relations (between, across, along, behind) and more sentences instead of using a verb the scene does not show.
-
-# Themes (choose one when the request has no theme)
-${THEMES.map((t) => `- ${t}`).join("\n")}
-If the theme cannot be made with these parts, make the closest everyday scene you can with them.
-
-# Parts (id | label | category | words | pose | size in meters | anchors)
-${parts.map(describePart).join("\n")}
-
-# Examples
-Request: 難しさ: easy / テーマ: 公園
-${JSON.stringify(EXAMPLE_EASY)}
-
-Request: 難しさ: normal / テーマ: カフェ
-${JSON.stringify(EXAMPLE_NORMAL)}`;
-
-/** items の形。2 段の生成の 2 回目でも同じ形を書かせる */
+/** items の形。2 段の生成の 2 回目に書かせる */
 export const itemsSchema = (parts: Part[]) => ({
   type: "array",
   items: {
@@ -342,33 +147,6 @@ export const itemsSchema = (parts: Part[]) => ({
   },
 });
 
-/** Claude に書かせる形。部品の ID は enum にして、一覧に無い部品が返らないようにする */
-export const planSchema = (parts: Part[]) => ({
-  type: "object",
-  properties: {
-    name: { type: "string" },
-    description: { type: "string" },
-    elements: {
-      type: "array",
-      items: {
-        type: "object",
-        properties: {
-          id: { type: "string" },
-          label: { type: "string" },
-          points: { type: "integer" },
-          accept: { type: "string" },
-          partial: { type: "string" },
-        },
-        required: ["id", "label", "points", "accept"],
-        additionalProperties: false,
-      },
-    },
-    items: itemsSchema(parts),
-  },
-  required: ["name", "description", "elements", "items"],
-  additionalProperties: false,
-});
-
 /** 返ってきた items を確かめる形（itemsSchema と同じ） */
 export const PlanItems = z
   .array(
@@ -398,37 +176,6 @@ export const PlanItems = z
     }),
   )
   .min(1);
-
-// 返ってきた JSON を確かめる形（schema と同じ。部品の ID は compose.ts が一覧と突き合わせる）
-const Plan = z.object({
-  name: z.string().trim().min(1),
-  description: z.string().trim().min(1),
-  items: PlanItems,
-  elements: z
-    .array(
-      z.object({
-        id: z.string().min(1),
-        label: z.string().trim().min(1),
-        points: z.number(),
-        accept: z.string().trim().min(1),
-        partial: z.string().optional(),
-      }),
-    )
-    .min(1),
-});
-
-/** 生成の口への入力。theme を省けば、指示の中のテーマの一覧から Claude が選ぶ */
-export type GenerateInput = { difficulty: Difficulty; theme?: string };
-
-export const userMessage = (input: GenerateInput) =>
-  `難しさ: ${input.difficulty}\nテーマ: ${input.theme ?? "一覧から選ぶ"}`;
-
-export type GenerateResult = {
-  plan: ScenePlan;
-  model: string;
-  attempts: number;
-  usage: Anthropic.Usage[];
-};
 
 /** 失敗を種類に分け、やり直すかを決める。やり直すのは、形が違う・途中で止まった・5xx・接続の失敗だけ。
  * 断られた（refusal）・4xx（429 を含む）・タイムアウトはやり直さない */
@@ -468,57 +215,6 @@ export type CreateMessage = (
   options: { timeout: number; signal?: AbortSignal },
 ) => Promise<Anthropic.Message>;
 
-const callOnce = async (
-  create: CreateMessage,
-  timeout: number,
-  signal: AbortSignal | undefined,
-  model: string,
-  effort: Effort,
-  system: string,
-  schema: Record<string, unknown>,
-  input: GenerateInput,
-) => {
-  const response = await create(
-    {
-      model,
-      max_tokens: 8000,
-      output_config: {
-        effort,
-        format: { type: "json_schema", schema },
-      },
-      system: [
-        { type: "text", text: system, cache_control: { type: "ephemeral" } },
-      ],
-      messages: [{ role: "user", content: userMessage(input) }],
-    },
-    { timeout, signal },
-  );
-  if (response.stop_reason === "refusal") {
-    throw new SceneGenerationError("refused", "Claude が断った");
-  }
-  if (response.stop_reason !== "end_turn") {
-    throw new SceneGenerationError(
-      "invalid",
-      `Claude が途中で止まった（${response.stop_reason}）`,
-    );
-  }
-  const text = response.content.find((b) => b.type === "text");
-  if (text?.type !== "text") {
-    throw new SceneGenerationError("invalid", "Claude の応答に本文が無い");
-  }
-  let json: unknown;
-  try {
-    json = JSON.parse(text.text);
-  } catch {
-    throw new SceneGenerationError("invalid", "Claude の応答が JSON でない");
-  }
-  const parsed = Plan.safeParse(json);
-  if (!parsed.success) {
-    throw new SceneGenerationError("invalid", "Claude の応答の形が違う");
-  }
-  return { plan: parsed.data as ScenePlan, usage: response.usage };
-};
-
 /** 各回の timeout（ms）。待合で待たせないので短くしない */
 export const ATTEMPT_TIMEOUT_MS = 60_000;
 
@@ -533,67 +229,3 @@ export type GenerateOptions = {
   maxAttempts?: number;
   signal?: AbortSignal;
 };
-
-/**
- * 難易度（とテーマ）から場面の関係を書かせる。各回の timeout は 60 秒。
- * 形が違う・途中で止まった・5xx・接続の失敗のときだけ 1 回やり直す。だめなら SceneGenerationError を投げる。
- * options で timeout・回数・止める signal を変えられる。deps はテストで Claude を差し替えるためのもの
- */
-export async function generatePlan(
-  env: GenerateEnv,
-  parts: Part[],
-  input: GenerateInput,
-  deps: { create?: CreateMessage } = {},
-  options: GenerateOptions = {},
-): Promise<GenerateResult> {
-  if (!env.CLAUDE_API_KEY) {
-    throw new SceneGenerationError("unavailable", "CLAUDE_API_KEY が要る");
-  }
-  const model = env.CLAUDE_SCENE_MODEL || DEFAULT_SCENE_MODEL;
-  const effort = effortOf(env.CLAUDE_SCENE_EFFORT);
-  // SDK の再送は使わない（maxRetries 0）。やり直しはここで決める
-  const create =
-    deps.create ??
-    (() => {
-      const client = new Anthropic({
-        apiKey: env.CLAUDE_API_KEY,
-        maxRetries: 0,
-      });
-      return (
-        params: Anthropic.MessageCreateParamsNonStreaming,
-        callOptions: { timeout: number; signal?: AbortSignal },
-      ) => client.messages.create(params, callOptions);
-    })();
-  const system = buildSystem(parts);
-  const schema = planSchema(parts);
-  const timeout = options.timeoutMs ?? ATTEMPT_TIMEOUT_MS;
-  const maxAttempts = options.maxAttempts ?? 2;
-  let last: SceneGenerationError | undefined;
-  for (let attempt = 1; attempt <= maxAttempts; attempt++) {
-    try {
-      const result = await callOnce(
-        create,
-        timeout,
-        options.signal,
-        model,
-        effort,
-        system,
-        schema,
-        input,
-      );
-      return {
-        plan: result.plan,
-        model,
-        attempts: attempt,
-        usage: [result.usage],
-      };
-    } catch (e) {
-      const { error, retry } = classify(e);
-      last = error;
-      console.error(`場面の生成に失敗（${attempt} 回目）`, error.message);
-      // 止められたら（APIUserAbortError は status が無く、やり直す側に分かれる）やり直さない
-      if (!retry || options.signal?.aborted) break;
-    }
-  }
-  throw last as SceneGenerationError;
-}

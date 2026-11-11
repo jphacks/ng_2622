@@ -158,10 +158,6 @@ final class LiveGameClient: GameClient {
     }
   }
 
-  func closeRound() async throws {
-    try await send(.close(.init(_type: .close)))
-  }
-
   func playAgain() async throws {
     try await send(.again(.init(_type: .again)))
   }
@@ -179,7 +175,7 @@ final class LiveGameClient: GameClient {
     case .accepted:
       return
     case .conflict(let conflict):
-      // もう送った（already_submitted）か、締め切られた（not_playing）。どちらも skip は要らない
+      // もう送った（already_submitted）か、締め切りを過ぎた（deadline_passed）。どちらも skip は要らない（送っても断られる）
       let reason = (try? conflict.body.json).map { "\($0.error.code.rawValue) \($0.error.message)" } ?? ""
       liveLog.notice("音声は受け付けられませんでした: \(reason, privacy: .public)")
     default:

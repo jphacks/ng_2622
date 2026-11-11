@@ -3,6 +3,7 @@
 ## Status
 - accepted
 - 部分 supersede: 内容を 6 段階で付けること、引き算の減点をしないこと、要素（`elements`）を渡さないことは、[20261110-score-content-with-checklist-f1](./20261110-score-content-with-checklist-f1.md) で「チェックリストの達成率と正しさの F1 で付ける」に置き換えた。表現を IELTS の考え方で段階にすることは、[20261110-align-scoring-with-eiken-speaking-viewpoints](./20261110-align-scoring-with-eiken-speaking-viewpoints.md) で「級ごとの文法と語彙の範囲（CEFR-J）で段階にする」に置き換えた。配置の情報と説明文を渡すこと、1 人 1 回の呼び出し、左右・前後の扱い、「次に伸ばす一つ」を Claude が選ぶことは存続する。置き換えが本番に入るのは、30 場面を作り直して採点の関数を切り替えたとき。
+- 部分 supersede: 手作りの 6 場面を部品の配置で作り直し、同じ形で採点すること（Decision）は、[20261111-score-only-with-checklist-and-drop-handmade-scenes](./20261111-score-only-with-checklist-and-drop-handmade-scenes.md) で「作り直さず、遊べる場面から外す。採点はチェックリストの 1 通りにする」に置き換えた。
 
 ## Situation
 - Hack Day の 2 日目。Code Freeze は 10/25 15:00。

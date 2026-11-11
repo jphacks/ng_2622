@@ -1,6 +1,6 @@
 import SwiftUI
 
-/// みんなの描写。上にこのラウンドの場面を出し、全員の文字起こしを点数順に並べ、講評の一言を添える
+/// みんなの描写。上にこのラウンドの場面を出し、全員の文字起こしと合計の点を点数順に並べる
 struct EveryoneView: View {
   let results: RoundResults
   let onBack: () -> Void
@@ -59,7 +59,6 @@ private struct TranscriptCard: View {
         Text(player.name)
           .font(Theme.font(17, .heavy))
           .lineLimit(1)
-        if player.isSelf { SelfBadge() }
         Spacer(minLength: 8)
         if let score = player.score {
           PointsText(total: score.total, size: 22)
@@ -74,16 +73,6 @@ private struct TranscriptCard: View {
           .font(Theme.font(17, .semibold))
           .lineSpacing(3)
           .fixedSize(horizontal: false, vertical: true)
-        if !player.comment.isEmpty {
-          Text(player.comment)
-            .font(Theme.font(14, .bold))
-            .foregroundStyle(Theme.muted)
-            .padding(.leading, 10)
-            .overlay(alignment: .leading) {
-              Capsule().fill(Theme.accentSoft).frame(width: 3)
-            }
-            .fixedSize(horizontal: false, vertical: true)
-        }
       }
     }
     .padding(18)

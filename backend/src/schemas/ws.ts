@@ -1,5 +1,6 @@
 import { z } from "zod";
 import {
+  ChecklistKind,
   Difficulty,
   ErrorCode,
   MAX_PLAYERS,
@@ -39,7 +40,7 @@ export const StartMessage = z
     type: z.literal("start"),
     sceneId: SceneId.optional().meta({
       description:
-        "省くと「おまかせ」（部屋の側で手作りの場面からランダムに選ぶ）。difficulty と一緒には送れない",
+        "作り置きの場面の ID を指定して始める（手元で試すとき用）。sceneId も difficulty も省くと「おまかせ」で、部屋が全部の級の作り置きの場面からランダムに選ぶ。difficulty と一緒には送れない",
     }),
     difficulty: Difficulty.optional().meta({
       description:
@@ -51,12 +52,6 @@ export const StartMessage = z
     description:
       "ホストだけが送れる。待合のときだけ有効（generating の間に送ると not_in_lobby）。ラウンドが始まったときにつながっている人がラウンドの参加者になる（切断中の人は入らない）。generating の間にホストが leave すると、生成をやめて作り置きの場面でラウンドを始める",
   });
-
-export const CloseMessage = z.object({ type: z.literal("close") }).meta({
-  ref: "CloseMessage",
-  description:
-    "ホストだけが送れる。ラウンドを締め切って結果発表に進む。採点がまだの人は「採点できませんでした」になる",
-});
 
 export const AgainMessage = z.object({ type: z.literal("again") }).meta({
   ref: "AgainMessage",
@@ -72,7 +67,7 @@ export const SkipMessage = z
   .meta({
     ref: "SkipMessage",
     description:
-      "音声を送らずにこのラウンドを終える（マイクが使えない・録れなかったとき）。その人は done になり、結果では「採点できませんでした」（rank・score が null）になる。音声を送った後は already_submitted",
+      "音声を送らずにこのラウンドを終える（マイクが使えない・録れなかったとき）。その人は done になり、結果では「採点できませんでした」（rank・score が null）になる。音声を送った後は already_submitted、音声の締め切りを過ぎた後は deadline_passed",
   });
 
 export const LeaveMessage = z.object({ type: z.literal("leave") }).meta({
@@ -85,7 +80,6 @@ export const ClientMessage = z
   .discriminatedUnion("type", [
     JoinMessage,
     StartMessage,
-    CloseMessage,
     AgainMessage,
     SkipMessage,
     LeaveMessage,
@@ -97,7 +91,6 @@ export const ClientMessage = z
       mapping: {
         join: "#/components/schemas/JoinMessage",
         start: "#/components/schemas/StartMessage",
-        close: "#/components/schemas/CloseMessage",
         again: "#/components/schemas/AgainMessage",
         skip: "#/components/schemas/SkipMessage",
         leave: "#/components/schemas/LeaveMessage",
@@ -185,28 +178,107 @@ export const Rewrite = z
   })
   .meta({ ref: "Rewrite", description: "本人の一文の言い換え" });
 
+export const ContentClaim = z
+  .object({
+    quote: z.string().meta({
+      description:
+        "発話からの引用。文字起こし（transcript）に書かれているとおりの文字列。前の描写が終わった位置から先を、そのままの文字列で探すと下線を引ける（1 つの文が 2 つの項目に当たるときは、引用が重なることがある）",
+    }),
+    verdict: z.enum(["correct", "contradiction", "absent", "offtopic"]).meta({
+      description:
+        "correct: 場面と合う・contradiction: 場面と矛盾する・absent: 場面に無い物や人・offtopic: 場面と関係が無い。数えない描写（推測やつなぎの言葉）は送らない",
+    }),
+    item: z.string().nullable().meta({
+      description:
+        "当たったチェックリストの項目の id（items の id）。correct で null なら、一覧に無い正しい描写（その他）。correct 以外は null",
+    }),
+    level: z.enum(["full", "partial"]).nullable().meta({
+      description:
+        "項目に当たったときの達成（full: 言えた・partial: 一部）。item が null なら null",
+    }),
+    note: z.string().nullable().meta({
+      description: "間違いの理由（日本語）。correct のときは null",
+    }),
+  })
+  .meta({
+    ref: "ContentClaim",
+    description: "発話を事実 1 つずつに分けた描写と、その判定",
+  });
+
+export const ContentItem = z
+  .object({
+    id: z.string(),
+    kind: ChecklistKind,
+    label: z.string().meta({ description: "振り返りに出す日本語" }),
+    level: z.enum(["full", "partial", "none"]).meta({
+      description: "full: 言えた・partial: 一部・none: 言えていない",
+    }),
+  })
+  .meta({
+    ref: "ContentItem",
+    description: "チェックリストの項目ごとの達成",
+  });
+
+const Count = z.number().min(0);
+
+export const PlayerContent = z
+  .object({
+    claims: z
+      .array(ContentClaim)
+      .meta({ description: "話した順。数えない描写は入らない" }),
+    items: z
+      .array(ContentItem)
+      .meta({ description: "場面のチェックリストの順" }),
+    others: z.int().min(0).meta({
+      description: "その他（一覧に無い正しい描写）として数えた件数。2 件まで",
+    }),
+    recall: z
+      .object({
+        earned: Count.meta({
+          description:
+            "言えた重み（中心・理由・つながり 2、細部 1、一部は半分、その他 1 件 0.5。max で頭打ち）",
+        }),
+        max: Count.meta({ description: "満点の重み（項目だけの合計）" }),
+      })
+      .meta({ description: "言えた（再現率）の分子と分母" }),
+    precision: z
+      .object({
+        correct: z.int().min(0).meta({ description: "正しい描写の数" }),
+        said: z
+          .int()
+          .min(0)
+          .meta({ description: "言った描写の数（claims の数と同じ）" }),
+      })
+      .meta({ description: "正しさ（適合率）の分子と分母" }),
+  })
+  .meta({
+    ref: "PlayerContent",
+    description:
+      "内容の点の内訳。内容 = 100 × 2PR / (P + R)、R = recall.earned ÷ recall.max、P = precision.correct ÷ precision.said（どちらも分母が 0 なら 0）",
+  });
+
+export const FeedbackNextStep = z
+  .object({
+    kind: z.enum(["content", "expression", "speech"]),
+    text: z.string(),
+    item: z.string().nullable().meta({
+      description:
+        "kind が content のとき、勧めるチェックリストの項目の id（content.items の id）。項目を全部言えているとき・短すぎる発話のとき・content 以外は null",
+    }),
+    gain: z.int().nullable().meta({
+      description:
+        "その項目を言えたら、合計の点（score.total）が何点伸びるか。item が null のときは null",
+    }),
+  })
+  .meta({
+    ref: "FeedbackNextStep",
+    description:
+      "次に伸ばす一つ。内容・表現・話し方のどれを勧めるかは採点の Claude が選ぶ",
+  });
+
 export const Feedback = z
   .object({
-    strength: z
-      .object({
-        quote: z.string().meta({
-          description: "根拠にした本人の発話（文字起こしから引用）。無ければ空",
-        }),
-        text: z.string(),
-      })
-      .meta({ ref: "FeedbackStrength", description: "できたこと" }),
-    nextStep: z
-      .object({
-        kind: z.enum(["content", "expression", "speech"]),
-        gain: z.int().nullable().meta({
-          description: "足すと合計点が何点伸びるか。内容の要素のときだけ",
-        }),
-        text: z.string(),
-      })
-      .meta({
-        ref: "FeedbackNextStep",
-        description: "次に伸ばす一つ。言えなかった要素のうち配点が最も高いもの",
-      }),
+    nextStep: FeedbackNextStep,
     rewrite: Rewrite.nullable().meta({
       description: "直す所が無ければ null",
     }),
@@ -238,9 +310,9 @@ export const PlayerResult = z
     transcript: z
       .string()
       .meta({ description: "文字起こし。採点できなかった人は空" }),
-    comment: z.string().meta({
+    content: PlayerContent.nullable().meta({
       description:
-        "講評の一言（できたこと。feedback.strength.text と同じ）。採点できなかった人は空",
+        "内容の点の内訳（描写の一覧・項目ごとの達成・言えたと正しさ）。全員分が届く。採点できなかった人は null",
     }),
     feedback: Feedback.nullable().meta({
       description:
@@ -254,7 +326,7 @@ export const ResultsMessage = z
     type: z.literal("results"),
     round: z.int().min(1),
     sceneId: SceneId,
-    sceneName: z.string().meta({ example: "公園" }),
+    sceneName: z.string().meta({ example: "雨のバス停" }),
     players: z.array(PlayerResult).meta({
       description:
         "順位の順（1 位が先頭）。採点できなかった人は最後。全員分の内訳を載せるので、自分の分は playerId で選ぶ",
@@ -263,7 +335,7 @@ export const ResultsMessage = z
   .meta({
     ref: "ResultsMessage",
     description:
-      "全員の採点がそろうか、ホストが締め切ったら全員へ送る。結果発表のときに戻ってきた人にも送り直す",
+      "全員の採点がそろうか、締め切りの時刻が来たら全員へ送る。締め切りは、録音が終わるはずの時刻（round の startAt + 回転 3 秒 + 録音 20 秒）から、音声が 15 秒・採点が 30 秒。音声を送っていない人と、採点が間に合わなかった人は「採点できませんでした」（rank・score が null）。結果発表のときに戻ってきた人にも送り直す",
   });
 
 export const ErrorMessage = z

@@ -13,6 +13,9 @@ enum Theme {
   static let offlineIcon = Color(hex: 0xE3E4EE)
   static let disabledBorder = Color(hex: 0xC9CBE0)
   static let red = Color(hex: 0xEF2B2B)
+  /// 紫（accent）の補色のオレンジ。振り返りの「場面と合わない描写」（波線・×）に使う。
+  /// 参加者の色のオレンジ（0xF29A3A）より少し濃くし、白の上の細い線でも見えるようにする
+  static let mismatch = Color(hex: 0xE8771E)
   static let card = Color.white
 
   /// 丸い太字（モックの Hiragino Maru Gothic の代わり）
@@ -31,7 +34,7 @@ extension Color {
   }
 }
 
-/// 横いっぱいの大きなボタン（「話し終えた」「締め切って発表する」など）
+/// 横いっぱいの大きなボタン（「話し終えた」「スタート」など）
 struct BigButtonStyle: ButtonStyle {
   enum Kind { case primary, outlined, plain }
   var kind: Kind = .primary

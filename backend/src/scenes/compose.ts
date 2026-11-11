@@ -1,17 +1,6 @@
-import type {
-  Difficulty,
-  LayoutItem,
-  Motion,
-  Part,
-  PlanItem,
-  SceneElementInput,
-  SceneLayout,
-  ScenePlan,
-  Vec3,
-  Zone,
-} from "./types";
+import type { LayoutItem, Motion, Part, PlanItem, Vec3, Zone } from "./types";
 
-// Claude が書いた「関係」（ScenePlan）を、部品の size と anchors から座標に直して配置の JSON にする。
+// Claude が書いた「関係」（PlanItem）を、部品の size と anchors から座標に直す。配置の JSON にまとめるのは compose-v2.ts。
 // 規則の正本は docs/design/scene-protocol.md の「Claude に書かせる形と呼び方」。Cloudflare に依存しない純粋な関数
 
 /** 場面の半分の幅（m）。場面は一辺 8 m で、x・z は -4〜4 */
@@ -20,9 +9,6 @@ export const HALF = 4;
 export const GAP = 0.1;
 /** above で相手の上に空ける高さ（m） */
 export const ABOVE_GAP = 0.3;
-/** 要素の配点の合計と、一覧に無い描写の点の上限（足して 100） */
-export const ELEMENT_POINTS = 90;
-export const EXTRA_MAX = 10;
 export const MAX_ITEMS = 40;
 /** 区画の真ん中どうしの間隔（8 m を 3 つに分ける） */
 const ZONE_STEP = (HALF * 2) / 3;
@@ -140,33 +126,6 @@ const isBackdrop = (part: Part) =>
   part.category === "building" &&
   Math.max(part.size[0], part.size[2]) >= HALF * 2 - EPS;
 
-/** 要素の配点を合計 90 の整数に直す（どれも 1 点以上。端数は小数部の大きい順に配る） */
-export const normalizePoints = (
-  elements: SceneElementInput[],
-): SceneElementInput[] => {
-  // 90 個を超える要素は 1 点ずつも配れないので落とす
-  const list = elements.slice(0, ELEMENT_POINTS);
-  if (list.length === 0) return [];
-  // どの要素も 1 点は持つ。0 点や負の点は 1 の重みとして扱う
-  const weights = list.map((e) =>
-    Number.isFinite(e.points) ? Math.max(1, e.points) : 1,
-  );
-  const total = weights.reduce((a, b) => a + b, 0);
-  const spare = ELEMENT_POINTS - list.length;
-  const exact = weights.map((w) => (w * spare) / total);
-  const points = exact.map((v) => 1 + Math.floor(v));
-  let rest = ELEMENT_POINTS - points.reduce((a, b) => a + b, 0);
-  const order = exact
-    .map((v, i) => ({ i, frac: v - Math.floor(v) }))
-    .sort((a, b) => b.frac - a.frac || a.i - b.i);
-  for (const { i } of order) {
-    if (rest <= 0) break;
-    points[i] += 1;
-    rest -= 1;
-  }
-  return list.map((e, i) => ({ ...e, points: points[i] }));
-};
-
 /** 重ならない名前にする（同じ名前には _2、_3 を付ける） */
 const uniqueNames = <T>(list: T[], get: (t: T) => string) => {
   const seen = new Set<string>();
@@ -177,23 +136,6 @@ const uniqueNames = <T>(list: T[], get: (t: T) => string) => {
     seen.add(name);
     return name;
   });
-};
-
-const cleanElements = (elements: SceneElementInput[]) => {
-  const ids = uniqueNames(elements, (e) => e.id);
-  return normalizePoints(
-    elements.map((e, i) => {
-      const element: SceneElementInput = {
-        id: ids[i],
-        label: e.label.trim(),
-        points: e.points,
-        accept: e.accept.trim(),
-      };
-      const partial = e.partial?.trim();
-      if (partial) element.partial = partial;
-      return element;
-    }),
-  );
 };
 
 /** 場面の中で、gx・gz を中心に近い順に並べた地面の点 */
@@ -1292,21 +1234,20 @@ const gazePart = (c: Composer, p: Placed) => {
 };
 
 /**
- * Claude が書いた関係（plan）を、配置の JSON（scenenglish.scene/1）にする。
- * 一覧に無い部品は飛ばす。items は 40 個まで。配点は合計 90、extraMax は 10 にする
+ * Claude が書いた関係（items）を、座標つきの部品の並びにする。
+ * 一覧に無い部品は飛ばす。items は 40 個まで。同じ key には _2、_3 を付ける
  */
-export const composeLayout = (
-  plan: ScenePlan,
+export const composeItems = (
+  planItems: PlanItem[],
   partList: Part[],
-  meta: { id: string; difficulty: Difficulty },
-): SceneLayout => {
+): LayoutItem[] => {
   const parts = new Map(partList.map((p) => [p.id, p]));
-  const known = plan.items.filter((i) => parts.has(i.part)).slice(0, MAX_ITEMS);
+  const known = planItems.filter((i) => parts.has(i.part)).slice(0, MAX_ITEMS);
   const keys = uniqueNames(known, (i) => i.key);
   const items = known.map((i, n) => ({ ...i, key: keys[n] }));
   const c = solve(items, parts);
 
-  const layoutItems: LayoutItem[] = items.map((item) => {
+  return items.map((item) => {
     const p = c.placed.get(item.key) as Placed;
     const moved = composeMotion(c, item, p);
     const position = moved?.position ?? p.position;
@@ -1325,15 +1266,4 @@ export const composeLayout = (
     }
     return out;
   });
-
-  return {
-    protocol: "scenenglish.scene/1",
-    id: meta.id,
-    name: plan.name.trim(),
-    difficulty: meta.difficulty,
-    description: plan.description.trim(),
-    elements: cleanElements(plan.elements),
-    extraMax: EXTRA_MAX,
-    items: layoutItems,
-  };
 };

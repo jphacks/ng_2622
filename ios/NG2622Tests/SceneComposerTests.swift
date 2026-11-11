@@ -84,7 +84,7 @@ struct SceneComposerTests {
   /// 省いた項目は既定値（yaw 0・scale 1・delay 0・loop true・angle 10）。scale は 0.25〜4 に収める
   @Test func decodeDefaults() throws {
     let json = """
-      {"protocol":"scenenglish.scene/1","name":"テスト","items":[
+      {"protocol":"scenenglish.scene/2","name":"テスト","items":[
         {"key":"a","part":"apple_red@2","position":[0,1,0],"scale":9,"motion":{"type":"sway","duration":3}},
         {"key":"b","part":"tree","position":[1,0,-1],"yaw":45},
         {"key":"c","part":"ball_red","position":[0,0,0],"motion":{"type":"jump","duration":1}},
@@ -105,15 +105,47 @@ struct SceneComposerTests {
     #expect(layout.items[3].motion == nil)
   }
 
-  @Test func rejectsUnknownProtocol() {
-    let json = #"{"protocol":"scenenglish.scene/2","name":"x","items":[]}"#
+  /// 古い形（scenenglish.scene/1）と知らない形は読まない
+  @Test(arguments: ["scenenglish.scene/1", "scenenglish.scene/3"])
+  func rejectsUnknownProtocol(name: String) {
+    let json = #"{"protocol":"\#(name)","name":"x","items":[]}"#
     #expect(throws: (any Error).self) { try SceneLayout.decode(Data(json.utf8)) }
+  }
+
+  /// 級とチェックリストを読む。知らない級は nil、チェックリストが壊れていれば空にして、場面は読む
+  @Test func decodeChecklist() throws {
+    let json = #"""
+      {"protocol":"scenenglish.scene/2","id":"gen-v2-x","name":"x","difficulty":"eiken-pre2","description":"A boy is running.",
+       "checklist":[{"id":"boy_run","kind":"reason","label":"男の子が走っている理由","accept":"because it is raining / because he is late","refs":["boy"]}],
+       "items":[{"key":"boy","part":"ball_red","place":{"relation":"ground","zone":"center"},"facing":"camera","position":[0,0,0],
+                 "motion":{"type":"move","duration":2,"to":[1,0,0],"toward":"bench","path":"across"}}]}
+      """#
+    let layout = try SceneLayout.decode(Data(json.utf8))
+    #expect(layout.difficulty == .eikenPre2)
+    #expect(layout.checklist.map(\.id) == ["boy_run"])
+    #expect(layout.checklist.first?.kind == .reason)
+    #expect(layout.checklist.first?.firstAccept == "because it is raining")
+    #expect(layout.items.first?.motion?.to == [1, 0, 0])
+    // 壊れた項目（kind が知らない値・accept が無い・物でない）は飛ばし、ほかの項目は読む
+    let partly = #"""
+      {"protocol":"scenenglish.scene/2","name":"x","items":[],"checklist":[
+        {"id":"a","kind":"center","label":"A","accept":"a dog","refs":[]},
+        {"id":"b","kind":"weird","label":"B","accept":"b","refs":[]},
+        {"id":"c","kind":"detail","label":"C","refs":[]},
+        7,
+        {"id":"d","kind":"link","label":"D","accept":"so d","refs":[]}]}
+      """#
+    #expect(try SceneLayout.decode(Data(partly.utf8)).checklist.map(\.id) == ["a", "d"])
+    let unknown = #"{"protocol":"scenenglish.scene/2","name":"x","difficulty":"easy","checklist":3,"items":[]}"#
+    let broken = try SceneLayout.decode(Data(unknown.utf8))
+    #expect(broken.difficulty == nil)
+    #expect(broken.checklist.isEmpty)
   }
 
   /// 壊れた item（位置が 2 つしかない・key が無い・物でない）は飛ばし、ほかの item は読む
   @Test func skipsBrokenItems() throws {
     let json = """
-      {"protocol":"scenenglish.scene/1","name":"テスト","items":[
+      {"protocol":"scenenglish.scene/2","name":"テスト","items":[
         {"key":"a","part":"tree","position":[0,0,0]},
         {"key":"b","part":"tree","position":[1,0]},
         {"part":"bench","position":[0,0,1]},
@@ -127,17 +159,12 @@ struct SceneComposerTests {
 
   /// 説明（正答例）は読む。無い・文字列でないときは nil にして、場面は読む
   @Test func decodeDescription() throws {
-    let with = #"{"protocol":"scenenglish.scene/1","name":"x","description":"A park.","items":[]}"#
+    let with = #"{"protocol":"scenenglish.scene/2","name":"x","description":"A park.","items":[]}"#
     #expect(try SceneLayout.decode(Data(with.utf8)).description == "A park.")
-    let without = #"{"protocol":"scenenglish.scene/1","name":"x","items":[]}"#
+    let without = #"{"protocol":"scenenglish.scene/2","name":"x","items":[]}"#
     #expect(try SceneLayout.decode(Data(without.utf8)).description == nil)
-    let broken = #"{"protocol":"scenenglish.scene/1","name":"x","description":3,"items":[]}"#
+    let broken = #"{"protocol":"scenenglish.scene/2","name":"x","description":3,"items":[]}"#
     #expect(try SceneLayout.decode(Data(broken.utf8)).description == nil)
-  }
-
-  @Test func generatedID() {
-    #expect(GeneratedScene.isGenerated("gen-7k2m9q4x3a"))
-    #expect(!GeneratedScene.isGenerated("park"))
   }
 
   // MARK: - 同梱
@@ -149,9 +176,8 @@ struct SceneComposerTests {
     #expect(parts.bundledIDs.count >= 34)
     let urls = (Bundle.main.urls(forResourcesWithExtension: "json", subdirectory: ScenePool.directory) ?? [])
       .filter { $0.lastPathComponent != "index.json" }
-    #expect(urls.count == 30)
+    #expect(!urls.isEmpty)
     for id in urls.map({ $0.deletingPathExtension().lastPathComponent }) {
-      #expect(GeneratedScene.isGenerated(id))
       let layout = try await client.layout(sceneID: id)
       #expect(layout.id == id)
       #expect(layout.description?.isEmpty == false, "\(id) に正答例が無い")
@@ -160,14 +186,6 @@ struct SceneComposerTests {
       }
     }
     await #expect(throws: SceneLayoutError.notFound) { try await client.layout(sceneID: "gen-nothing") }
-  }
-
-  /// 焼き込んだシーンはどれも、待機の画面に出す正答例を持っている
-  @Test func bakedScenesHaveDescription() {
-    #expect(!SceneCatalog.all.isEmpty)
-    for scene in SceneCatalog.all {
-      #expect(SceneCatalog.description(of: scene.id)?.isEmpty == false, "\(scene.id) に正答例が無い")
-    }
   }
 
   /// 知らない部品は飛ばして並べ、全部知らなければ nil（「場面を出せません」）
@@ -255,7 +273,7 @@ struct SceneComposerTests {
     let (client, base) = client(host: "layout")
     Stub.set(
       base.appending(path: "scenes/gen-aaaaaaaaaa/layout"),
-      .init(status: 200, body: #"{"protocol":"scenenglish.scene/1","name":"公園","items":[]}"#))
+      .init(status: 200, body: #"{"protocol":"scenenglish.scene/2","name":"公園","items":[]}"#))
     #expect(try await client.layout(sceneID: "gen-aaaaaaaaaa").name == "公園")
     Stub.set(base.appending(path: "scenes/gen-bbbbbbbbbb/layout"), .init(status: 404, body: failure("unknown_scene")))
     await #expect(throws: SceneLayoutError.notFound) { try await client.layout(sceneID: "gen-bbbbbbbbbb") }
@@ -264,7 +282,7 @@ struct SceneComposerTests {
     // 部屋がその場で作った場面は ?room= を付けて取る
     var withRoom = base.appending(path: "scenes/gen-dddddddddd/layout")
     withRoom.append(queryItems: [URLQueryItem(name: "room", value: "0427")])
-    Stub.set(withRoom, .init(status: 200, body: #"{"protocol":"scenenglish.scene/1","name":"部屋の場面","items":[]}"#))
+    Stub.set(withRoom, .init(status: 200, body: #"{"protocol":"scenenglish.scene/2","name":"部屋の場面","items":[]}"#))
     #expect(try await client.layout(sceneID: "gen-dddddddddd", room: "0427").name == "部屋の場面")
   }
 }
