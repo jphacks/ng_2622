@@ -16,9 +16,10 @@ struct ReviewView: View {
       ResultSubHeader(title: "振り返り", onBack: onBack)
         .resultColumn()
         .padding(.top, 8)
-      if let me = results.me, let score = me.score, let review = results.myReview {
+      // 点数があれば出す。講評（feedback）が届かなかったときは、講評のカード（次の一つ・言い直し・話し方）だけ出さない
+      if let me = results.me, let score = me.score {
         ScrollView {
-          content(me: me, score: score, review: review)
+          content(me: me, score: score, review: results.myReview)
             .resultColumn()
             .padding(.top, 12)
             .padding(.bottom, 24)
@@ -37,7 +38,7 @@ struct ReviewView: View {
     }
   }
 
-  private func content(me: PlayerResult, score: PlayerResult.Score, review: RoundResults.Review) -> some View {
+  private func content(me: PlayerResult, score: PlayerResult.Score, review: RoundResults.Review?) -> some View {
     VStack(spacing: 16) {
       VStack(spacing: 4) {
         if let difficulty = layout?.difficulty {
@@ -72,7 +73,9 @@ struct ReviewView: View {
         }
       }
 
-      NextStepCard(step: review.nextStep)
+      if let review {
+        NextStepCard(step: review.nextStep)
+      }
 
       if let layout, let description = layout.description, !description.isEmpty {
         ModelAnswerCard(
@@ -80,14 +83,16 @@ struct ReviewView: View {
             description: description, checklist: layout.checklist, items: me.content?.items ?? []))
       }
 
-      if let rewrite = review.rewrite {
+      if let rewrite = review?.rewrite {
         RewriteCard(rewrite: rewrite)
       }
 
-      ReviewCard(title: "話し方の一言", chip: review.speechTip.aspect.label) {
-        Text(review.speechTip.text)
-          .font(Theme.font(18, .heavy))
-          .lineSpacing(3)
+      if let tip = review?.speechTip {
+        ReviewCard(title: "話し方の一言", chip: tip.aspect.label) {
+          Text(tip.text)
+            .font(Theme.font(18, .heavy))
+            .lineSpacing(3)
+        }
       }
     }
   }
