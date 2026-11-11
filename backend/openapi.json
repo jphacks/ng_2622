@@ -797,7 +797,7 @@
           "players"
         ],
         "additionalProperties": false,
-        "description": "全員の採点がそろうか、締め切りの時刻が来たら全員へ送る。締め切りは、録音が終わるはずの時刻（round の startAt + 回転 3 秒 + 録音 20 秒）から、音声が 10 秒・採点が 30 秒。音声を送っていない人と、採点が間に合わなかった人は「採点できませんでした」（rank・score が null）。結果発表のときに戻ってきた人にも送り直す"
+        "description": "全員の採点がそろうか、締め切りの時刻が来たら全員へ送る。締め切りは、録音が終わるはずの時刻（round の startAt + 回転 3 秒 + 録音 20 秒）から、音声が 15 秒・採点が 30 秒。音声を送っていない人と、採点が間に合わなかった人は「採点できませんでした」（rank・score が null）。結果発表のときに戻ってきた人にも送り直す"
       },
       "ErrorCode": {
         "type": "string",
@@ -820,7 +820,7 @@
           "generation_failed",
           "generation_unavailable"
         ],
-        "description": "room_not_found: 部屋が無い\nroom_full: 満員\ninvalid_message: メッセージの形が違う\nunauthorized: 参加者の ID と合言葉が合わない（POST /scenes/generate では SCENE_WRITE_TOKEN が違う）\nnot_host: ホストだけができる操作\nnot_in_lobby: 待合でしかできない操作\nunknown_scene: シーンの ID が無い\nserver_busy: 空いている部屋のコードが無い\nnot_playing: ラウンド中でない、ラウンドの番号が違う、またはそのラウンドに参加していない\nalready_submitted: このラウンドの音声はもう受け取った\ndeadline_passed: このラウンドの音声の締め切り（録音が終わるはずの時刻から 10 秒）を過ぎた。その人は採点できなかった扱いになっている\ninvalid_audio: 音声が 1 MB までの WAV でない\nnot_in_results: 結果発表のときにしかできない操作\nscoring_failed: 採点の途中で失敗した（Claude の呼び出しなど）\ngeneration_refused: Claude が断った\ngeneration_failed: Claude の応答が途中で止まった・形が違った・作り直しても裏取りを通らなかった\ngeneration_unavailable: Claude を呼べない（タイムアウト・API の失敗・止めてある）"
+        "description": "room_not_found: 部屋が無い\nroom_full: 満員\ninvalid_message: メッセージの形が違う\nunauthorized: 参加者の ID と合言葉が合わない（POST /scenes/generate では SCENE_WRITE_TOKEN が違う）\nnot_host: ホストだけができる操作\nnot_in_lobby: 待合でしかできない操作\nunknown_scene: シーンの ID が無い\nserver_busy: 空いている部屋のコードが無い\nnot_playing: ラウンド中でない、ラウンドの番号が違う、またはそのラウンドに参加していない\nalready_submitted: このラウンドの音声はもう受け取った\ndeadline_passed: このラウンドの音声の締め切り（録音が終わるはずの時刻から 15 秒）を過ぎた。その人は採点できなかった扱いになっている\ninvalid_audio: 音声が 1 MB までの WAV でない\nnot_in_results: 結果発表のときにしかできない操作\nscoring_failed: 採点の途中で失敗した（Claude の呼び出しなど）\ngeneration_refused: Claude が断った\ngeneration_failed: Claude の応答が途中で止まった・形が違った・作り直しても裏取りを通らなかった\ngeneration_unavailable: Claude を呼べない（タイムアウト・API の失敗・止めてある）"
       },
       "ErrorMessage": {
         "type": "object",

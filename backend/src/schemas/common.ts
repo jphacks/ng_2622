@@ -97,7 +97,7 @@ export const ErrorCode = z
       "server_busy: 空いている部屋のコードが無い",
       "not_playing: ラウンド中でない、ラウンドの番号が違う、またはそのラウンドに参加していない",
       "already_submitted: このラウンドの音声はもう受け取った",
-      "deadline_passed: このラウンドの音声の締め切り（録音が終わるはずの時刻から 10 秒）を過ぎた。その人は採点できなかった扱いになっている",
+      "deadline_passed: このラウンドの音声の締め切り（録音が終わるはずの時刻から 15 秒）を過ぎた。その人は採点できなかった扱いになっている",
       "invalid_audio: 音声が 1 MB までの WAV でない",
       "not_in_results: 結果発表のときにしかできない操作",
       "scoring_failed: 採点の途中で失敗した（Claude の呼び出しなど）",

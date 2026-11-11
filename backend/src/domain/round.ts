@@ -106,7 +106,7 @@ export const INTRO_MS = 3 * 1000;
 /** 録音の最長 */
 export const RECORDING_MS = 20 * 1000;
 /** 録音が終わるはずの時刻から、音声を待つ長さ。過ぎても送っていない人（切断中を含む）は採点できなかった扱い */
-export const AUDIO_GRACE_MS = 10 * 1000;
+export const AUDIO_GRACE_MS = 15 * 1000;
 /** 録音が終わるはずの時刻から、採点を待つ長さ。過ぎたら、そろっていなくても結果を出す */
 export const GRADING_GRACE_MS = 30 * 1000;
 
