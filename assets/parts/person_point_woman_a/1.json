@@ -1,0 +1,25 @@
+{
+  "id": "person_point_woman_a",
+  "version": 1,
+  "file": "parts/person_point_woman_a/1.usdz",
+  "category": "person",
+  "words": [
+    {
+      "word": "woman",
+      "pos": "noun"
+    },
+    {
+      "word": "point",
+      "pos": "verb"
+    }
+  ],
+  "pose": "point",
+  "size": [0.597, 1.695, 1.008],
+  "label": "女の人（正面を指さす）",
+  "anchors": {
+    "hand_l": [-0.253, 0.78, -0.264],
+    "hand_r": [0.157, 1.34, 0.456],
+    "feet": [0.017, 0.0, -0.264],
+    "head": [0.017, 1.52, -0.264]
+  }
+}

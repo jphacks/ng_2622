@@ -1,0 +1,25 @@
+{
+  "id": "person_fallen_woman_a",
+  "version": 1,
+  "file": "parts/person_fallen_woman_a/1.usdz",
+  "category": "person",
+  "words": [
+    {
+      "word": "woman",
+      "pos": "noun"
+    },
+    {
+      "word": "fall",
+      "pos": "verb"
+    }
+  ],
+  "pose": "fallen",
+  "size": [0.607, 1.401, 0.948],
+  "label": "女の人（転んで地面に座り込む）",
+  "anchors": {
+    "hand_l": [-0.258, 0.15, -0.114],
+    "hand_r": [0.202, 0.78, 0.426],
+    "feet": [0.022, 0.0, 0.006],
+    "head": [0.022, 1.22, 0.006]
+  }
+}

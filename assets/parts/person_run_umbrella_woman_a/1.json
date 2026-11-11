@@ -1,0 +1,30 @@
+{
+  "id": "person_run_umbrella_woman_a",
+  "version": 1,
+  "file": "parts/person_run_umbrella_woman_a/1.usdz",
+  "category": "person",
+  "words": [
+    {
+      "word": "woman",
+      "pos": "noun"
+    },
+    {
+      "word": "run",
+      "pos": "verb"
+    },
+    {
+      "word": "umbrella",
+      "pos": "noun"
+    }
+  ],
+  "pose": "run_umbrella",
+  "size": [0.564, 1.925, 1.334],
+  "label": "女の人（閉じた傘を持って走る）",
+  "holds": "umbrella",
+  "anchors": {
+    "hand_l": [-0.22, 0.92, -0.397],
+    "hand_r": [0.2, 1.23, 0.303],
+    "feet": [0.0, 0.0, -0.197],
+    "head": [0.0, 1.5, -0.197]
+  }
+}

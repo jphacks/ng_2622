@@ -1,0 +1,30 @@
+{
+  "id": "person_try_jacket_adult_a",
+  "version": 1,
+  "file": "parts/person_try_jacket_adult_a/1.usdz",
+  "category": "person",
+  "words": [
+    {
+      "word": "man",
+      "pos": "noun"
+    },
+    {
+      "word": "try",
+      "pos": "verb"
+    },
+    {
+      "word": "jacket",
+      "pos": "noun"
+    }
+  ],
+  "pose": "try_jacket",
+  "size": [0.571, 1.695, 0.476],
+  "label": "男の人（上着を試着する）",
+  "holds": "jacket",
+  "anchors": {
+    "hand_l": [-0.24, 1.18, 0.19],
+    "hand_r": [0.24, 1.18, 0.19],
+    "feet": [0.0, 0.0, -0.01],
+    "head": [0.0, 1.52, -0.01]
+  }
+}

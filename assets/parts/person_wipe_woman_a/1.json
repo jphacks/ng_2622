@@ -1,0 +1,27 @@
+{
+  "id": "person_wipe_woman_a",
+  "version": 1,
+  "file": "parts/person_wipe_woman_a/1.usdz",
+  "category": "person",
+  "words": [
+    {
+      "word": "woman",
+      "pos": "noun"
+    },
+    {
+      "word": "wipe",
+      "pos": "verb"
+    }
+  ],
+  "pose": "wipe",
+  "size": [0.563, 1.695, 0.88],
+  "label": "女の人（机を拭く）",
+  "holds": "cloth",
+  "uses": ["table"],
+  "anchors": {
+    "hand_l": [-0.219, 0.77, 0.1],
+    "hand_r": [0.101, 0.77, 0.36],
+    "feet": [0.001, 0.0, -0.2],
+    "head": [0.001, 1.52, -0.2]
+  }
+}

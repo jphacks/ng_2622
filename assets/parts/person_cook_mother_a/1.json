@@ -1,0 +1,26 @@
+{
+  "id": "person_cook_mother_a",
+  "version": 1,
+  "file": "parts/person_cook_mother_a/1.usdz",
+  "category": "person",
+  "words": [
+    {
+      "word": "woman",
+      "pos": "noun"
+    },
+    {
+      "word": "cook",
+      "pos": "verb"
+    }
+  ],
+  "pose": "cook",
+  "size": [0.564, 1.695, 0.748],
+  "label": "お母さん（料理する）",
+  "uses": ["kitchen_counter", "pan"],
+  "anchors": {
+    "hand_l": [-0.2, 0.94, 0.246],
+    "hand_r": [0.2, 1.0, 0.326],
+    "feet": [0.0, 0.0, -0.134],
+    "head": [0.0, 1.52, -0.134]
+  }
+}

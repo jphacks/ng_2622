@@ -1,0 +1,18 @@
+{
+  "id": "rain",
+  "version": 1,
+  "file": "parts/rain/1.usdz",
+  "category": "thing",
+  "words": [
+    {
+      "word": "rain",
+      "pos": "noun"
+    },
+    {
+      "word": "rain",
+      "pos": "verb"
+    }
+  ],
+  "size": [7.776, 3.5, 7.711],
+  "label": "雨"
+}

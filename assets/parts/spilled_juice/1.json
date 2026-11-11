@@ -1,0 +1,18 @@
+{
+  "id": "spilled_juice",
+  "version": 1,
+  "file": "parts/spilled_juice/1.usdz",
+  "category": "thing",
+  "words": [
+    {
+      "word": "juice",
+      "pos": "noun"
+    },
+    {
+      "word": "spill",
+      "pos": "verb"
+    }
+  ],
+  "size": [0.496, 0.084, 0.357],
+  "label": "こぼれたジュース"
+}

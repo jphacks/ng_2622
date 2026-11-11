@@ -1,0 +1,25 @@
+{
+  "id": "person_look_boy_a",
+  "version": 1,
+  "file": "parts/person_look_boy_a/1.usdz",
+  "category": "person",
+  "words": [
+    {
+      "word": "boy",
+      "pos": "noun"
+    },
+    {
+      "word": "look",
+      "pos": "verb"
+    }
+  ],
+  "pose": "look",
+  "size": [0.444, 1.271, 0.329],
+  "label": "男の子（手をかざして見る）",
+  "anchors": {
+    "hand_l": [-0.188, 0.585, -0.022],
+    "hand_r": [0.052, 1.2, 0.128],
+    "feet": [0.015, 0.0, -0.022],
+    "head": [0.015, 1.14, -0.022]
+  }
+}

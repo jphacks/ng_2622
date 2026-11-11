@@ -33,7 +33,7 @@ import bpy
 from mathutils import Euler, Matrix, Vector
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-from common import REPO, Part, _heights, export_usdz, material, materials, person  # noqa: E402
+from common import REPO, Part, _heights, export_usdz, hand_points, material, materials, person  # noqa: E402
 
 VERSION = 1
 
@@ -75,7 +75,13 @@ def make_materials() -> None:
         "cup": ("#ffffff", 0.3), "coffee": ("#4a2a17", 0.15),
         # 人物
         "skin": ("#f6caa6", 0.55), "eye": ("#2a211c", 0.3), "cheek": ("#f59a9a", 0.7), "mouth": ("#a8463d", 0.5),
-        "hair_black": ("#2a1f1a", 0.6), "hair_brown": ("#5a3a22", 0.6),
+        "hair_black": ("#2a1f1a", 0.6), "hair_brown": ("#5a3a22", 0.6), "hair_gray": ("#c4c4c4", 0.6),
+        "knit_brown": ("#8a6a4a", 0.75), "juice": ("#f29a2e", 0.2), "cloth": ("#f4f4f0", 0.8), "tray": ("#6b4a2f", 0.4),
+        "cafe_wall": ("#c98f63", 0.8), "cafe_wood": ("#8a5a35", 0.5), "marble": ("#ece6dc", 0.3), "cake": ("#f0d9a8", 0.6),
+        "cake_pink": ("#f5a8b8", 0.5), "cake_choco": ("#6b4028", 0.5), "pot": ("#e8e2d6", 0.6),
+        "vest_black": ("#23262b", 0.6), "button_gold": ("#e0b84a", 0.3), "apron": ("#5fb89a", 0.7), "apron_pocket": ("#fff1cf", 0.7), "shirt_green": ("#3f9d6b", 0.7), "pants_beige": ("#c2a36f", 0.7),
+        "bill": ("#7fbf7a", 0.7), "rain": ("#6ea6dc", 0.3), "puddle": ("#a3b6c6", 0.15),
+        "book_blue": ("#7f9ab8", 0.6), "book_green": ("#93ad90", 0.6), "book_yellow": ("#d8c79a", 0.6), "book_purple": ("#a79cc0", 0.6), "book_brown": ("#b09880", 0.6),
         "shirt_blue": ("#5a8fd6", 0.7), "pants_gray": ("#4a4f5a", 0.7), "shoe_brown": ("#6b4428", 0.5),
         "knit_rose": ("#e07a8a", 0.8), "skirt_navy": ("#2f3b63", 0.8), "shoe_white": ("#f2f2f2", 0.5),
         "shirt_yellow": ("#ffcf3a", 0.7), "shorts_blue": ("#3d6fb6", 0.7), "shoe_red": ("#e3483c", 0.5),
@@ -86,6 +92,15 @@ def make_materials() -> None:
         # 店（レジ・棚・かご・カート）
         "counter": ("#ece7dd", 0.6), "counter_top": ("#6b5a4a", 0.4), "register": ("#3a3f4a", 0.4), "receipt": ("#ffffff", 0.8),
         "shelf": ("#a46d40", 0.6), "basket": ("#d9352b", 0.5), "basket_rim": ("#a8261f", 0.5),
+        # M1〜M10 の場面の物
+        "jacket": ("#3f6d5c", 0.7), "jacket2": ("#8a5a3a", 0.7), "knife": ("#c9ced4", 0.25), "bird": ("#8d7a66", 0.7), "bird_belly": ("#efe6d6", 0.7),
+        "bird_beak": ("#e8a33c", 0.5), "balloon": ("#e8453c", 0.3), "candle": ("#f7e7a0", 0.5), "flame": ("#ffb52e", 0.3),
+        "ticket_body": ("#5c7f9e", 0.5), "ticket_screen": ("#1f3a52", 0.3), "stick": ("#9a7248", 0.7), "castle": ("#e3c98f", 0.9), "water": ("#7fc6de", 0.2),
+        # 破片（材質ごとの色。形は shards() が作る）と掃除の道具
+        "shard_glass": ("#7fc6de", 0.12), "shard_metal": ("#8d96a0", 0.3), "broom_straw": ("#c9a55c", 0.8),
+        # 店員のエプロン、メモ帳、バスの中
+        "apron_green": ("#3f8f5f", 0.75), "apron_green_pocket": ("#2f7349", 0.75), "notepad": ("#f2c94c", 0.7),
+        "bus_wall": ("#e9eaea", 0.8), "bus_floor": ("#6d7680", 0.8), "bus_line": ("#e8c33c", 0.7), "bus_rail": ("#d9b23a", 0.35), "bus_sill": ("#9aa3ab", 0.5),
         # 台所と家の物（皿・フライパン・シャツ・ノートパソコン・時計・ベッド）
         "dish": ("#ffffff", 0.25), "dish_rim": ("#3f6fc8", 0.4),
         "pan": ("#2b2b30", 0.35), "pan_inside": ("#55585f", 0.5), "pan_handle": ("#5a3a24", 0.6),
@@ -154,6 +169,8 @@ def make_materials() -> None:
     M["price_rail"] = material("price_rail", "#ffe27a", 0.5)             # 商品棚の値札の帯（向きの目印）
     M["kitchen_front"] = material("kitchen_front", "#d8b07c", 0.5)       # 流しとコンロの扉（向きの目印）
     M["shelter_back"] = material("shelter_back", "#cfe3f0", 0.2)         # バス停の後ろの板（向きの目印）
+    M["cafe_groove"] = material("cafe_groove", "#6e4427", 0.6)           # カフェのカウンターの前板の溝（向きの目印）
+    M["cafe_lamp"] = material("cafe_lamp", "#ffd98a", 0.3, emit=1.2)
     M["shelter_bench"] = material("shelter_bench", "#a8683a", 0.55)      # バス停のベンチの板（check_parts.py が座る確かめに使う）
 
 
@@ -269,9 +286,9 @@ def build_road_patch(root):
     p = Part("road_patch")
     p.slab((length, width), thick, thick, 0.05, M["asphalt"], segments=2)
     top = thick + MARK_THICK / 2   # 白線の中心の高さ（白線の底は板の上面）
-    # 横断歩道（白い帯。道路を横切る向きに長い）
-    for k in range(7):
-        p.box((0.45, width - 1.0, MARK_THICK), ((k - 3) * 0.9, 0, top), M["stripe"])
+    # 横断歩道（白い帯。車の進む向き（X）に長く、道路の幅の向きに並ぶ。人は帯をまたいで渡る）
+    for k in range(6):
+        p.box((3.0, 0.45, MARK_THICK), (0, (k - 2.5) * 0.85, top), M["stripe"])
     # 端の白線と、横断歩道の外の中央線（破線）
     for sy in (-1, 1):
         p.box((length - 0.1, 0.12, MARK_THICK), (0, sy * (width / 2 - 0.25), top), M["stripe"])
@@ -301,18 +318,45 @@ def build_bench(root):
     return {"seat": (0, (slat_y[0] + slat_y[-1]) / 2, slat_z + slat_t / 2)}
 
 
-@part("table", "furniture", "テーブル", [("table", "noun")])
-def build_table(root):
-    """四角い木のテーブル。天板は 1.2 m × 0.75 m、高さ 0.72 m（椅子の座面 0.46 m に合う）。"""
-    w, d, h = 1.2, 0.75, 0.72
-    p = Part("table")
+def table_shape(p, w, d, h=0.72):
+    """四角い木のテーブル（高さ 0.72 m は椅子の座面 0.46 m に合う）。"""
     p.box((w, d, 0.04), (0, 0, h - 0.02), M["table"], bevel=0.012)
     p.box((w - 0.12, d - 0.12, 0.08), (0, 0, h - 0.08), M["table_leg"], bevel=0.01)   # 天板の下の枠
     for sx in (-1, 1):
         for sy in (-1, 1):
             p.box((0.05, 0.05, h - 0.04), (sx * (w / 2 - 0.08), sy * (d / 2 - 0.08), (h - 0.04) / 2), M["table_leg"], bevel=0.008)
+
+
+def table_seats(w, d, n):
+    """テーブルの席（床の上の椅子の位置）。名前は seat_<front|back|end>_<番号>で、front は正面（カメラ）側、end は短い辺。"""
+    seats = {}
+    for side, y in (("front", -(d / 2 + 0.22)), ("back", d / 2 + 0.22)):
+        for k in range(n):
+            seats[f"seat_{side}_{k + 1}"] = (-w / 2 + w / n * (k + 0.5), y, 0.0)
+    for k, x in enumerate((-(w / 2 + 0.22), w / 2 + 0.22)):   # 短い辺の席
+        seats[f"seat_end_{k + 1}"] = (x, 0.0, 0.0)
+    return seats
+
+
+@part("table", "furniture", "テーブル", [("table", "noun")])
+def build_table(root):
+    """四角い木のテーブル。天板は 1.2 m × 0.75 m。"""
+    p = Part("table")
+    table_shape(p, 1.2, 0.75)
     p.finish(root)
-    return {"top": h}   # 天板の上面
+    return {"top": 0.72, "seats": table_seats(1.2, 0.75, 2)}   # 天板の上面と席
+
+
+# 人数に合わせた大きさのテーブル
+for _pid, _label, _w, _d, _n in (("table_small", "2 人用の小さなテーブル", 0.8, 0.75, 1),
+                                 ("table_long", "3〜6 人用の長いテーブル", 2.1, 0.9, 3),
+                                 ("table_party", "8 人以上の大きなテーブル", 3.6, 1.0, 5)):
+    def _build(root, pid=_pid, w=_w, d=_d, n=_n):
+        p = Part(pid)
+        table_shape(p, w, d)
+        p.finish(root)
+        return {"top": 0.72, "seats": table_seats(w, d, n)}
+    part(_pid, "furniture", _label, [("table", "noun")])(_build)
 
 
 @part("chair", "furniture", "椅子", [("chair", "noun")], front=("chair_back", -1))
@@ -526,10 +570,10 @@ def build_bag(root):
     p.finish(root)
 
 
-def book_open(p, loc, tilt=-0.6, cover="book_red"):
+def book_open(p, loc, tilt=0.9, cover="book_red"):
     """開いた本。loc は背の位置。背から左右に開き、ページを読む人（+Y）に向ける。
 
-    tilt は X 軸まわりの傾き。負にすると上の端が前（-Y）へ倒れ、ページが上の顔のほうを向く。
+    tilt は X 軸まわりの傾き。正にすると上の端が前（-Y）へ倒れ、ページが上の顔のほうを向く。
     """
     x, y, z = Vector(loc)
     for sx in (-1, 1):
@@ -683,7 +727,8 @@ def build_checkout_counter(root):
     p.box((0.1, 0.006, 0.05), (rx, -0.117, h + 0.135), M["screen"])
     p.box((0.08, 0.01, 0.12), (rx + 0.12, -0.08, h + 0.13), M["receipt"])
     p.finish(root)
-    return {"top": h}   # 天板の上面（レジの無いところに物を置く）
+    # 天板の上面（レジの無いところに物を置く）と、レジの客の側の場所
+    return {"top": h, "spots": {"register": (rx, -d / 2, h + 0.05)}}
 
 
 @part("shelf", "furniture", "棚（商品棚・本棚）", [("shelf", "noun"), ("bookshelf", "noun")], front=("shelf_back", -1))
@@ -702,11 +747,17 @@ def build_shelf(root):
     return {"top": boards[-1] + t / 2}   # いちばん上の板（天板）の上面
 
 
-@part("basket", "thing", "買い物かご", [("basket", "noun"), ("shopping basket", "noun")])
+@part("basket", "thing", "手提げの買い物かご（床に置かず手に持つ）", [("basket", "noun"), ("shopping basket", "noun")])
 def build_basket(root):
     """スーパーの赤い買い物かご。上の口は 0.48 m × 0.33 m、高さ 0.24 m。持ち手 2 本を立てた形。左右・前後とも対称。"""
-    hw, hd, h = 0.24, 0.165, 0.24
     p = Part("basket")
+    basket_shape(p)
+    p.finish(root)
+
+
+def basket_shape(p):
+    """買い物かごの形。底の真ん中が原点で、持ち手のいちばん上は 0.36 m。"""
+    hw, hd, h = 0.24, 0.165, 0.24
     r = math.sqrt(2)   # 4 角の lathe で、半径 √2 の点が (±1, ±1) に来る
     lathe(p, [(0, 0), (r * 0.86, 0), (r, h), (r * 0.955, h), (r * 0.82, 0.012), (0, 0.012)],
           [M["basket"], M["basket"], M["basket_rim"], M["basket"], M["basket"]], segs=4, scale=(hw, hd), angle0=math.pi / 4, smooth=False)
@@ -726,7 +777,6 @@ def build_basket(root):
         pts = [Vector((-0.12, sy * hd, h)), Vector((-0.1, sy * hd * 0.7, h + 0.12)), Vector((0.1, sy * hd * 0.7, h + 0.12)), Vector((0.12, sy * hd, h))]
         for a, b in zip(pts, pts[1:]):
             p.limb(a, b, 0.009, 0.009, M["dark"], segs=8)
-    p.finish(root)
 
 
 @part("plate", "thing", "皿", [("plate", "noun"), ("dish", "noun")])
@@ -819,7 +869,7 @@ def build_clock(root):
     p.finish(root)
 
 
-@part("cart", "thing", "ショッピングカート", [("cart", "noun"), ("shopping cart", "noun")], front=("cart_handle", -1))
+@part("cart", "thing", "車輪つきのショッピングカート（押して使う）", [("cart", "noun"), ("shopping cart", "noun")], front=("cart_handle", -1))
 def build_cart(root):
     """スーパーのショッピングカート。長さ 0.9 m・幅 0.55 m・高さ 1.0 m。押す人の側の取っ手（赤）が奥（-Z）。"""
     p = Part("cart")
@@ -877,6 +927,63 @@ def build_pan(root):
     p.finish(root)
 
 
+@part("spilled_juice", "thing", "こぼれたジュース", [("juice", "noun"), ("spill", "verb")])
+def build_spilled_juice(root):
+    """倒れたコップと、広がったオレンジのジュース。机の上に置く。幅 0.5 m。"""
+    p = Part("spilled_juice")
+    p.sphere(0.2, (0.03, 0, 0.004), M["juice"], scale=(1.25, 0.9, 0.03))
+    p.cyl(0.04, 0.034, 0.11, (-0.14, 0, 0.042), M["cup"], rot=(0, math.pi / 2, 0), segs=16)
+    p.finish(root)
+
+
+@part("rain", "thing", "雨", [("rain", "noun"), ("rain", "verb")])
+def build_rain(root):
+    """外の場面に重ねる雨。8 m 四方・高さ 3.5 m の空間に落ちる筋と、地面の水たまり。原点に置くだけでよい。"""
+    rng = random.Random(11)
+    p = Part("rain")
+    for _ in range(170):
+        x, y, z = rng.uniform(-3.9, 3.9), rng.uniform(-3.9, 3.9), rng.uniform(0.3, 3.3)
+        p.cyl(0.006, 0.006, rng.uniform(0.28, 0.45), (x, y, z), M["rain"], rot=(0, 0.12, 0), segs=4, smooth=False)
+    for _ in range(7):
+        x, y, r = rng.uniform(-3.5, 3.5), rng.uniform(-3.5, 3.5), rng.uniform(0.15, 0.32)
+        p.sphere(r, (x, y, 0.006), M["puddle"], scale=(1.3, 0.9, 0.012 / r), segs=20)
+    p.finish(root)
+
+
+@part("bookshelf", "furniture", "本の詰まった本棚", [("bookshelf", "noun"), ("book", "noun"), ("shelf", "noun")], front=("shelf_back", -1))
+def build_bookshelf(root):
+    """本の詰まった背の高い本棚。幅 1.4 m・高さ 2.3 m・奥行き 0.36 m。背板は奥（-Z）。
+
+    いちばん上の段は高さ 1.86〜2.27 m で、子どもの手は届かず大人の手は届く。その段の真ん中の赤い本だけ前に出ている。
+    """
+    w, h, d, t = 1.4, 2.3, 0.36, 0.03
+    p = Part("bookshelf")
+    for sx in (-1, 1):
+        p.box((t, d, h), (sx * (w / 2 - t / 2), 0, h / 2), M["shelf"], bevel=0.004)
+    p.box((w - 2 * t, 0.015, h - 0.01), (0, d / 2 - 0.0075, h / 2), M["shelf_back"])
+    p.box((w - 2 * t, 0.02, 0.08), (0, -d / 2 + 0.03, 0.04), M["shelf"])   # 下の幕板
+    rows = 5
+    step = (h - 0.08 - t) / rows
+    boards = [0.08 + t / 2 + k * step for k in range(rows + 1)]
+    for z in boards:
+        p.box((w - 2 * t, d - 0.02, t), (0, 0.005, z), M["shelf"], bevel=0.003)
+    rng = random.Random(7)
+    colors = ["book_blue", "book_green", "book_yellow", "book_purple", "book_brown"]   # 落ち着いた色にして、取りたい赤い本を目立たせる
+    depth = 0.24
+    for row, z in enumerate(boards[:-1]):
+        x = -w / 2 + t + 0.01
+        while x < w / 2 - t - 0.08:
+            thick, tall = rng.uniform(0.04, 0.075), rng.uniform(0.26, 0.36)
+            top_center = row == rows - 1 and abs(x + thick / 2) < 0.09   # 飛び出した本の場所は空けておく
+            if not top_center:
+                p.box((thick, depth, tall), (x + thick / 2, -d / 2 + 0.04 + depth / 2, z + t / 2 + tall / 2), M[rng.choice(colors)])
+            x += thick + 0.002
+    book_front = -d / 2 - 0.08
+    p.box((0.1, depth, 0.34), (0, book_front + depth / 2, boards[-2] + t / 2 + 0.17), M["book_red"])   # 取りたい本
+    p.finish(root)
+    return {"spots": {"top_book": (0, book_front, boards[-2] + t / 2 + 0.17)}}
+
+
 @part("bed", "furniture", "ベッド（1 人用）", [("bed", "noun")])
 def build_bed(root):
     """1 人用のベッド。長さ 2.0 m を左右（X）に置き、頭の側の板（高さ 0.9 m）は -X。長い辺が正面（+Z）。
@@ -898,6 +1005,95 @@ def build_bed(root):
     p.box((1.35, 0.015, 0.2), (length / 2 - 0.08 - 0.675, -(width / 2 + 0.015), blanket_top - 0.1), M["blanket"], bevel=0.007)  # 前に垂れた布団
     p.finish(root)
     return {"top": blanket_top, "seat": (0.2, -(width / 2) + 0.2, blanket_top)}   # 布団の上面、正面の縁から 0.2 m の点
+
+
+# ---------- M1〜M10 で足した物 ----------
+
+@part("cake", "food", "丸いケーキ", [("cake", "noun")])
+def build_cake(root):
+    """台の皿にのった丸いケーキ。ろうそくは candles を上に置いて足す。"""
+    p = Part("cake")
+    p.cyl(0.2, 0.2, 0.012, (0, 0, 0.006), M["dish"], segs=24, smooth=False)
+    p.cyl(0.16, 0.16, 0.1, (0, 0, 0.062), M["cake"], segs=24)
+    for k in range(6):
+        a = k / 6 * math.tau
+        p.sphere(0.022, (0.12 * math.cos(a), 0.12 * math.sin(a), 0.122), M["apple"], segs=10)
+    p.finish(root)
+    return {"top": 0.112}
+
+
+@part("candles", "thing", "火のついたろうそく（ケーキの上に置く）", [("candle", "noun")])
+def build_candles(root):
+    p = Part("candles")
+    for k in range(5):
+        a = k / 5 * math.tau
+        x, y = 0.06 * math.cos(a), 0.06 * math.sin(a)
+        p.cyl(0.008, 0.008, 0.08, (x, y, 0.04), M["candle"], segs=8)
+        p.sphere(0.012, (x, y, 0.094), M["flame"], scale=(1, 1, 1.6), segs=8)
+    p.finish(root)
+
+
+@part("ticket_machine", "furniture", "切符の券売機", [("ticket machine", "noun"), ("machine", "noun")], front=("ticket_screen", 1))
+def build_ticket_machine(root):
+    """駅の券売機。正面の画面に手を伸ばして買う。"""
+    p = Part("ticket_machine")
+    p.box((0.9, 0.5, 1.7), (0, 0, 0.85), M["ticket_body"], bevel=0.03)
+    p.box((0.56, 0.02, 0.4), (0, -0.26, 1.2), M["ticket_screen"], bevel=0.008)
+    p.box((0.3, 0.02, 0.06), (0, -0.26, 0.86), M["dark"])
+    p.finish(root)
+    return {"spots": {"screen": (0, -0.26, 1.2)}}
+
+
+@part("sand_castle", "thing", "砂の城", [("sand castle", "noun"), ("castle", "noun")])
+def build_sand_castle(root):
+    p = Part("sand_castle")
+    p.cyl(0.42, 0.34, 0.2, (0, 0, 0.1), M["castle"], segs=16)
+    p.cyl(0.24, 0.2, 0.2, (0, 0, 0.3), M["castle"], segs=14)
+    for k in range(4):
+        a = k / 4 * math.tau + 0.78
+        p.cyl(0.08, 0.06, 0.16, (0.28 * math.cos(a), 0.28 * math.sin(a), 0.28), M["castle"], segs=10)
+    p.finish(root)
+
+
+@part("balloon", "thing", "風船", [("balloon", "noun")])
+def build_balloon(root):
+    p = Part("balloon")
+    p.sphere(0.22, (0, 0, 0.75), M["balloon"], scale=(1, 1, 1.15))
+    p.limb((0, 0, 0.5), (0.03, 0.02, 0.0), 0.004, 0.004, M["dark"], segs=6)
+    p.finish(root)
+
+
+@part("bicycle_down", "vehicle", "倒れた自転車", [("bicycle", "noun"), ("bike", "noun")])
+def build_bicycle_down(root):
+    """自転車を横に倒したもの。形は bicycle と同じ。"""
+    PARTS["bicycle"]["build"](root)
+    for child in root.children:
+        child.rotation_euler = (0, math.pi / 2, 0)
+        child.location = (0, 0, 0.32)
+
+
+# ---------- 破片 ----------
+#
+# 物が割れたことは、割れた物を 1 つずつ作らず、材質ごとの破片を置いて表す。材質を足すときは下の表に 1 行足す。
+
+def shards(p, mat, seed, count=18, radius=0.45):
+    """床に散らばった破片。三角の薄い板を、真ん中ほど大きく多く散らす。"""
+    rng = random.Random(seed)
+    for k in range(count):
+        d = radius * rng.random() ** 0.7
+        a = rng.uniform(0, math.tau)
+        r = rng.uniform(0.05, 0.11) * (1.25 - d / radius * 0.75)
+        tilt = (rng.uniform(-0.15, 0.15), rng.uniform(-0.15, 0.15), rng.uniform(0, math.tau))
+        p.cyl(r, r * 0.9, 0.012, (d * math.cos(a), d * math.sin(a), 0.02), M[mat], rot=tilt, segs=3, smooth=False)
+
+
+for _pid, _label, _word, _mat, _seed in (("shards_glass", "ガラスの破片", "glass", "shard_glass", 11),
+                                         ("shards_metal", "金属の破片", "metal", "shard_metal", 12)):
+    def _build(root, mat=_mat, seed=_seed, pid=_pid):
+        p = Part(pid)
+        shards(p, mat, seed)
+        p.finish(root)
+    part(_pid, "thing", f"{_label}（床に散らばる）", [(_word, "noun"), ("pieces", "noun")])(_build)
 
 
 # ---------- 動物 ----------
@@ -928,6 +1124,43 @@ def build_dog(root):
     p.finish(root)
 
 
+@part("animal_sit_dog_a", "animal", "座って見ている犬", [("dog", "noun"), ("sit", "verb"), ("watch", "verb")], pose="rest", front=("dog_dark", 1))
+def build_dog_sit(root):
+    """おすわりの犬。頭が正面（+Z）。"""
+    p = Part("dog")
+    p.sphere(0.19, (0, 0.14, 0.2), M["dog"], scale=(1, 1.15, 1))                  # 腰
+    p.sphere(0.17, (0, -0.02, 0.4), M["dog"], scale=(1, 1, 1.35))                  # 胴
+    p.sphere(0.13, (0, -0.13, 0.42), M["dog_white"], scale=(1, 0.7, 1.2))          # 胸
+    p.sphere(0.17, (0, -0.1, 0.72), M["dog"])                                      # 頭
+    p.sphere(0.09, (0, -0.24, 0.67), M["dog_white"], scale=(1, 1.15, 0.8))         # 鼻先
+    p.sphere(0.03, (0, -0.345, 0.7), M["dog_dark"], segs=10)                       # 鼻
+    for sx in (-1, 1):
+        p.sphere(0.024, (sx * 0.075, -0.23, 0.77), M["dog_dark"], segs=10)         # 目
+        p.cyl(0.065, 0.0, 0.13, (sx * 0.09, -0.08, 0.89), M["dog"], rot=(-0.15, sx * 0.3, 0), segs=4, smooth=False)  # 耳
+        p.cyl(0.045, 0.04, 0.3, (sx * 0.08, -0.12, 0.15), M["dog"], segs=10)       # 前脚
+        p.sphere(0.05, (sx * 0.08, -0.15, 0.04), M["dog_white"], segs=10)
+        p.sphere(0.1, (sx * 0.14, 0.16, 0.1), M["dog"], scale=(0.7, 1.25, 1))      # 後ろ脚
+        p.sphere(0.05, (sx * 0.13, 0.0, 0.04), M["dog_white"], segs=10)
+    for k in range(5):                                                             # しっぽ
+        p.sphere(0.05 - k * 0.005, (0, 0.33 + k * 0.05, 0.08 + k * 0.03), M["dog"] if k < 4 else M["dog_white"], segs=10)
+    p.finish(root)
+
+
+@part("animal_bird_a", "animal", "地面をつつく小鳥", [("bird", "noun"), ("eat", "verb")], pose="peck", front=("bird_beak", 1))
+def build_bird(root):
+    """小鳥。頭が正面（+Z）。"""
+    p = Part("bird")
+    p.sphere(0.1, (0, 0.02, 0.14), M["bird"], scale=(0.85, 1.25, 0.85))
+    p.sphere(0.07, (0, -0.02, 0.1), M["bird_belly"], scale=(0.85, 1.1, 0.7))
+    p.sphere(0.06, (0, -0.12, 0.12), M["bird"])
+    p.cyl(0.018, 0.0, 0.05, (0, -0.19, 0.1), M["bird_beak"], rot=(math.pi / 2 + 0.4, 0, 0), segs=8)
+    p.box((0.06, 0.16, 0.02), (0, 0.17, 0.17), M["bird"], rot=(0.3, 0, 0))
+    for sx in (-1, 1):
+        p.sphere(0.01, (sx * 0.04, -0.15, 0.135), M["dark"], segs=8)
+        p.limb((sx * 0.03, 0.02, 0.08), (sx * 0.03, 0.02, 0.0), 0.006, 0.006, M["bird_beak"], segs=6)
+    p.finish(root)
+
+
 # ---------- 人物 ----------
 #
 # 人物は「ポーズの表（POSES）」と「見た目の表（LOOKS）」の組み合わせ（PEOPLE）から作る。
@@ -936,10 +1169,54 @@ def build_dog(root):
 # 見た目の表。adult_a は男の人（今ある部品の id に合わせて man_a とは呼ばない）。服と髪の色は outfits()
 LOOKS = {
     "adult_a": {"noun": "man", "label": "男の人", "scale": 1.0},
+    "old_a": {"noun": "old man", "label": "おじいさん", "scale": 0.95},
     "woman_a": {"noun": "woman", "label": "女の人", "scale": 1.0},
+    "waiter_a": {"noun": "waiter", "label": "店員", "scale": 1.0, "wear": lambda p, hip, sh: wear_waiter(p, hip, sh)},
+    "mother_a": {"noun": "woman", "label": "お母さん", "scale": 1.0, "wear": lambda p, hip, sh: wear_mother(p, hip, sh)},
+    "old_woman_a": {"noun": "old woman", "label": "おばあさん", "scale": 0.92},
+    "clerk_a": {"noun": "clerk", "label": "店の店員", "scale": 1.0,
+                "wear": lambda p, hip, sh: wear_mother(p, hip, sh, "apron_green", "apron_green_pocket")},
+    "doctor_a": {"noun": "doctor", "label": "医者", "scale": 1.0, "wear": lambda p, hip, sh: shell(p, 0.27, 0.205, 0.42, hip + 0.02, math.pi, M["white"])},
+    "teen_a": {"noun": "boy", "label": "背の高い男の子", "scale": 1.0},
     "boy_a": {"noun": "boy", "label": "男の子", "scale": CHILD_SCALE},
     "girl_a": {"noun": "girl", "label": "女の子", "scale": CHILD_SCALE},
 }
+
+
+def shell(p, r0, r1, z0, z1, half, mat, top=None, steps=28):
+    """体に沿う布。正面（-Y）から左右に half ラジアンの筒の面を張る。top は角度から上の端の高さを返す（V 字の襟）。"""
+    def ring(z_of, k):
+        a = -half + 2 * half * k / steps
+        z = z_of(a)
+        r = r0 + (r1 - r0) * (z - z0) / (z1 - z0)
+        return Vector((r * math.sin(a), -r * math.cos(a), z))
+    upper = top or (lambda a: z1)
+    for k in range(steps):
+        p.poly((ring(lambda a: z0, k), ring(lambda a: z0, k + 1), ring(upper, k + 1), ring(upper, k)), mat)
+
+
+def wear_waiter(p, hip_z, sh_z):
+    """店員の制服。V 字に開いた黒いベスト、金のボタン、黒い蝶ネクタイ、すねまでの長い白のエプロン。"""
+    shell(p, 0.178, 0.204, hip_z - 0.02, sh_z - 0.01, math.pi, M["vest_black"],
+          top=lambda a: sh_z - 0.01 - 0.27 * max(0.0, 1 - abs(a) / 0.6))
+    for k in range(3):
+        p.sphere(0.014, (0, -0.186, sh_z - 0.33 - k * 0.07), M["button_gold"], segs=8)
+    for sx in (-1, 1):
+        p.sphere(0.04, (sx * 0.045, -0.15, sh_z + 0.015), M["vest_black"], scale=(1.2, 0.4, 0.8), segs=10)
+    p.sphere(0.018, (0, -0.164, sh_z + 0.015), M["vest_black"], segs=8)
+    shell(p, 0.27, 0.205, 0.28, hip_z + 0.02, 2.4, M["white"])
+    p.cyl(0.196, 0.196, 0.045, (0, 0, hip_z + 0.02), M["white"], segs=20)
+
+
+def wear_mother(p, hip_z, sh_z, apron="apron", pocket="apron_pocket"):
+    """お母さんのエプロン。胸当てと腰から下の布、肩ひも、腰のひもと後ろのちょう結び。"""
+    shell(p, 0.246, 0.186, 0.6, hip_z + 0.05, 2.4, M[apron])
+    shell(p, 0.186, 0.204, hip_z + 0.05, sh_z - 0.1, 1.25, M[apron])
+    p.cyl(0.19, 0.19, 0.035, (0, 0, hip_z + 0.06), M[apron], segs=20)
+    for sx in (-1, 1):
+        p.limb((sx * 0.13, -0.15, sh_z - 0.1), (sx * 0.1, -0.09, sh_z + 0.07), 0.014, 0.014, M[apron], segs=6)
+        p.sphere(0.05, (sx * 0.06, 0.2, hip_z + 0.06), M[apron], scale=(1.2, 0.5, 0.7), segs=10)
+    p.box((0.2, 0.012, 0.12), (0, -0.232, 0.72), M[pocket], rot=(0.24, 0, 0), bevel=0.004)
 
 
 def props_read(p):
@@ -977,6 +1254,138 @@ def props_write(p):
     p.limb((0.115, -0.43, 0.72), (0.085, -0.37, 0.84), 0.006, 0.006, M["pen"], segs=8)
 
 
+SH_RUN = _heights("run")[1]   # 走るポーズの肩の高さ
+
+
+def props_read_sit(p):
+    book_open(p, (0, -0.36, SH_SIT - 0.15))
+
+
+def props_umbrella(p):
+    """前へ伸ばした左手（-X 側）の傘。向かいの人に掛かるよう先を前へ傾ける。"""
+    umbrella(p, hand=(-0.12, -0.36, SH_STAND + 0.42), top=(-0.04, -0.62, SH_STAND + 1.4), radius=0.9, drop=0.2)
+
+
+def props_run_bag(p):
+    """右手（+X 側）に提げた大きなかばん。"""
+    p.box((0.2, 0.5, 0.34), (0.3, 0.05, SH_RUN - 0.62), M["bag"], bevel=0.03)
+    p.limb((0.26, 0.05, SH_RUN - 0.45), (0.26, 0.05, SH_RUN - 0.4), 0.012, 0.012, M["bag_strap"], segs=6)
+
+
+def props_wipe(p):
+    """右手の下の白いふきん。机の面（高さ 0.72 m）に接する。"""
+    p.box((0.2, 0.16, 0.02), (0.1, -0.56, 0.73), M["cloth"], bevel=0.005)
+
+
+def props_serve(p):
+    """右手に載せたお盆と新しいコップ。"""
+    p.cyl(0.17, 0.17, 0.015, (0.2, -0.42, SH_STAND - 0.17), M["tray"], segs=24)
+    p.cyl(0.04, 0.034, 0.11, (0.2, -0.42, SH_STAND - 0.1), M["cup"], segs=16)
+
+
+def props_run_phone(p):
+    """高く上げた右手のスマホ。横（+X）から画面が見えるよう、面を体の横へ向ける。読めるように大きめに作る。"""
+    x, y, z = 0.2, -0.5, SH_RUN + 0.34
+    p.box((0.024, 0.13, 0.24), (x, y, z), M["dark"], bevel=0.008)
+    p.box((0.004, 0.105, 0.2), (x + 0.014, y, z), M["screen"])
+
+
+def props_basket(p):
+    """右手に提げた、品物の入った赤い買い物かご。長い辺を体の前後に向ける。"""
+    basket_shape(p)
+    apple_shape(p, (-0.11, 0.03, 0.2), r=0.065)
+    apple_shape(p, (0.0, -0.05, 0.2), r=0.065)
+    p.cyl(0.04, 0.04, 0.26, (0.13, 0.02, 0.22), M["leaf"], rot=(0, 0.25, 0), segs=12)
+    return {"loc": (0.38, -0.02, SH_STAND - 0.52 - 0.36), "rot_z": math.pi / 2}
+
+
+def props_pay(p):
+    """右手で差し出すお札と、左手の財布。"""
+    p.box((0.2, 0.1, 0.006), (0.1, -0.68, SH_STAND - 0.27), M["bill"])
+    p.box((0.13, 0.04, 0.1), (-0.14, -0.34, SH_STAND - 0.3), M["shoe_brown"], bevel=0.008)
+
+
+def props_plates(p):
+    """両手で持つ重ねた皿 3 枚（子どもの倍率で机の上の皿と同じ大きさになる）。"""
+    for k in range(3):
+        z = SH_STAND - 0.25 + k * 0.024
+        p.cyl(0.11, 0.16, 0.02, (0, -0.5, z), M["dish"], segs=24)
+    p.cyl(0.16, 0.16, 0.003, (0, -0.5, z + 0.011), M["dish_rim"], segs=24)
+    p.cyl(0.14, 0.14, 0.003, (0, -0.5, z + 0.013), M["dish"], segs=24)
+
+
+def props_write_board(p):
+    """右手のチョーク。"""
+    p.limb((0.16, -0.5, SH_STAND + 0.32), (0.16, -0.58, SH_STAND + 0.34), 0.012, 0.012, M["white"], segs=8)
+
+
+def props_carry_veg(p):
+    """野菜の入った箱。運ぶ箱（props_carry）の上に、りんごと葉物をのぞかせる。"""
+    w, d, h = CARRY_BOX
+    z = SH_STAND + CARRY_HAND_Z - h / 2
+    box_shape(p, (w, d, h), (0, -0.4, z))
+    top = z + h   # box_shape の loc は底面
+    for x, y in ((-0.12, -0.46), (0.02, -0.34), (0.13, -0.47)):
+        apple_shape(p, (x, y, top), r=0.06)
+    for x, y in ((-0.1, -0.32), (0.12, -0.32)):
+        p.sphere(0.075, (x, y, top + 0.04), M["leaf"], scale=(1, 1, 1.3), segs=10)
+
+
+def props_take_order(p):
+    """左手のメモ帳と右手のペン。"""
+    p.box((0.13, 0.17, 0.012), (-0.08, -0.36, SH_STAND - 0.1), M["notepad"], rot=(0.5, 0, 0), bevel=0.003)
+    p.limb((0.08, -0.36, SH_STAND - 0.08), (0.0, -0.38, SH_STAND - 0.06), 0.006, 0.006, M["pen"], segs=8)
+
+
+def props_run_umbrella(p):
+    """右手で前へ差し出す、閉じた傘。"""
+    grip = Vector((0.2, -0.5, SH_RUN - 0.05))
+    tip = grip + Vector((0.0, -0.32, 0.62))
+    tail = grip - (tip - grip).normalized() * 0.12
+    p.limb(tail, grip + (tip - grip) * 0.2, 0.012, 0.012, M["dark"], segs=6)
+    p.limb(grip + (tip - grip) * 0.2, tip, 0.05, 0.012, M["umbrella"], segs=10)
+    p.limb(tip, tip + (tip - grip).normalized() * 0.08, 0.008, 0.008, M["dark"], segs=6)
+
+
+def props_sweep(p):
+    """両手で持つほうき。穂先は床に付く。"""
+    top, foot = Vector((-0.1, -0.2, SH_STAND + 0.05)), Vector((0.22, -0.72, 0.16))
+    p.limb(top, foot, 0.014, 0.014, M["pan_handle"], segs=8)
+    p.cyl(0.05, 0.13, 0.18, (foot.x, foot.y, 0.09), M["broom_straw"], segs=10)
+
+
+def props_cut(p):
+    """右手の包丁。"""
+    p.box((0.03, 0.2, 0.006), (0.12, -0.62, SH_STAND - 0.48), M["knife"], rot=(0.5, 0, 0))
+
+
+def props_bucket(p):
+    """右手に提げた水の入ったバケツ。"""
+    x, y, z = 0.3, -0.1, SH_STAND - 0.8
+    p.cyl(0.09, 0.12, 0.2, (x, y, z), M["basket"], segs=16)
+    p.cyl(0.11, 0.11, 0.004, (x, y, z + 0.09), M["water"], segs=16)
+    p.limb((x - 0.1, y, z + 0.1), (x, y, z + 0.3), 0.006, 0.006, M["dark"], segs=6)
+    p.limb((x + 0.1, y, z + 0.1), (x, y, z + 0.3), 0.006, 0.006, M["dark"], segs=6)
+
+
+def props_try_jacket(p):
+    """試着している上着。"""
+    shell(p, 0.215, 0.228, 0.78, SH_STAND - 0.02, math.pi, M["jacket"])
+
+
+def props_show_jacket(p):
+    """両手で広げて見せる上着。"""
+    z = SH_STAND - 0.3
+    p.box((0.42, 0.03, 0.62), (0, -0.5, z), M["jacket2"], bevel=0.01)
+    for sx in (-1, 1):
+        p.limb((sx * 0.21, -0.5, z + 0.26), (sx * 0.34, -0.5, z - 0.16), 0.05, 0.045, M["jacket2"], segs=8)
+
+
+def props_stick(p):
+    """両手で上へ伸ばした長い棒。"""
+    p.limb((-0.08, -0.2, SH_STAND - 0.3), (0.3, -0.75, 3.2), 0.015, 0.012, M["stick"], segs=8)
+
+
 # ポーズの表。base は common.py の person() のポーズ（脚と体の高さ）。hands は手の位置 [(x, y, dz), ...]
 # （dz は肩からの高さ。None ならポーズのまま）。props は持たせる物を作る関数（Part を受け取る）と、その Part の名前。
 # words は人の名詞のあとに足す語。base が sit のポーズには、腰の点（hip）を付ける。
@@ -1011,6 +1420,115 @@ POSES = {
     # 立って、右手をひさしにして遠く（上）を見る。person() は頭の向きを変えられないので、手で表す
     "look": {"base": "stand", "label": "手をかざして見る", "words": [("look", "verb")],
              "hands": [(-0.27, 0.0, -0.52), (0.05, -0.2, 0.3)]},
+    # 座って、右手（+X 側）を高く上げる（授業で発言を求める）。手の位置は common.py の raise_hand のまま
+    "raise_hand": {"base": "raise_hand", "label": "座って手を上げる", "words": [("raise", "verb"), ("hand", "noun")]},
+    # 立って、右手（+X 側）で正面（相手）を指さす。向きは配置の yaw で相手へ回す
+    "point": {"base": "stand", "label": "正面を指さす", "words": [("point", "verb")],
+              "hands": [(-0.27, 0.0, -0.52), (0.14, -0.72, 0.04)]},
+    "read_sit": {"base": "sit", "label": "座って本を読む", "words": [("read", "verb"), ("book", "noun")],
+                 "hands": [(-0.16, -0.3, -0.22), (0.16, -0.3, -0.22)], "props": ("book", props_read_sit)},
+    # 立って、両手を腰の高さの前へ出す（台の上のフライパンは配置で置く）
+    "cook": {"base": "stand", "label": "料理する", "words": [("cook", "verb")],
+             "hands": [(-0.2, -0.38, -0.36), (0.2, -0.46, -0.3)]},
+    # 踏み出して、右手を前の上へ振り抜く（ボールは配置で宙に置く）
+    "throw": {"base": "walk", "label": "投げる", "words": [("throw", "verb")],
+              "hands": [(-0.26, 0.2, -0.42), (0.2, -0.5, 0.42)]},
+    # 立って、左手の傘を向かいの人へ差しかける
+    "umbrella": {"base": "stand", "label": "傘を差しかける", "words": [("umbrella", "noun"), ("share", "verb")],
+                 "hands": [(-0.12, -0.36, 0.42), (0.27, 0.0, -0.52)], "props": ("umbrella", props_umbrella),
+                 "canopy": (-0.04, -0.62, SH_STAND + 1.2)},
+    "run_bag": {"base": "run", "label": "かばんを持って走る", "words": [("run", "verb"), ("bag", "noun")],
+                "hands": [(-0.22, -0.3, -0.3), (0.28, 0.05, -0.42)], "props": ("bag", props_run_bag)},
+    "wipe": {"base": "stand", "label": "机を拭く", "words": [("wipe", "verb")],
+             "hands": [(-0.22, -0.3, -0.53), (0.1, -0.56, -0.53)], "props": ("cloth", props_wipe)},
+    "serve": {"base": "walk", "label": "お盆で運ぶ", "words": [("bring", "verb"), ("cup", "noun")],
+              "hands": [(-0.26, -0.17, -0.5), (0.2, -0.42, -0.2)], "props": ("tray", props_serve)},
+    # 立って、右手を真上へ伸ばす（高い所の物を取る）
+    "reach": {"base": "stand", "label": "手を伸ばす", "words": [("reach", "verb")],
+              "hands": [(-0.27, 0.0, -0.52), (0.1, -0.22, 0.78)]},
+    # 立って、右手を斜め上の前へ差し出す（手伝おうとする）
+    "offer": {"base": "stand", "label": "手を差し出す", "words": [("help", "verb")],
+              "hands": [(-0.27, 0.0, -0.52), (0.14, -0.5, 0.3)]},
+    "run_phone": {"base": "run", "label": "スマホを持って走る", "words": [("run", "verb"), ("phone", "noun")],
+                  "hands": [(-0.22, 0.2, -0.36), (0.2, -0.5, 0.24)], "props": ("phone", props_run_phone)},
+    "basket": {"base": "stand", "label": "かごを持つ", "words": [("basket", "noun"), ("wait", "verb")],
+               "hands": [(-0.27, 0.0, -0.52), (0.36, -0.02, -0.52)], "props": ("basket", props_basket)},
+    # 立って、左手の財布から右手でお札を前へ差し出す
+    "pay": {"base": "stand", "label": "お金を払う", "words": [("pay", "verb"), ("money", "noun")],
+            "hands": [(-0.16, -0.3, -0.3), (0.1, -0.6, -0.27)], "props": ("money", props_pay)},
+    # 立って、重ねた皿を両手で前へ持つ（机の縁の上に来る）
+    "set_plates": {"base": "stand", "label": "皿を並べる", "words": [("put", "verb"), ("plate", "noun")],
+                   "hands": [(-0.17, -0.5, -0.23), (0.17, -0.5, -0.23)], "props": ("plates", props_plates)},
+    # 立って、右手を高い所の本へ伸ばす（手の高さは大人で 2.0 m）
+    "take_book": {"base": "stand", "label": "高い所の本を取る", "words": [("reach", "verb"), ("book", "noun")],
+                  "hands": [(-0.27, 0.0, -0.52), (0.12, -0.4, 0.7)]},
+    # 立って、相手のほうを向き、左手で横の高い所を指して頼む
+    "ask": {"base": "stand", "label": "指さして頼む", "words": [("ask", "verb"), ("point", "verb")],
+            "hands": [(-0.66, -0.15, 0.5), (0.16, -0.28, -0.25)]},
+    # 立って、右手のチョークで黒板に書く。黒板のほうを向くので、見る人には背中が見える
+    "blackboard": {"base": "stand", "label": "黒板に書く", "words": [("write", "verb"), ("blackboard", "noun")],
+                    "hands": [(-0.27, 0.0, -0.52), (0.16, -0.5, 0.32)], "props": ("chalk", props_write_board)},
+    # 立って、両手を胸の高さの前へ出して球を受ける
+    "catch": {"base": "stand", "label": "捕る", "words": [("catch", "verb")],
+              "hands": [(-0.22, -0.46, 0.12), (0.22, -0.46, 0.12)]},
+    "carry_veg": {"base": "walk", "label": "野菜の箱を運ぶ", "words": [("carry", "verb"), ("box", "noun"), ("vegetable", "noun")],
+                  "hands": [(-CARRY_BOX[0] / 2 - 0.03, -0.38, CARRY_HAND_Z), (CARRY_BOX[0] / 2 + 0.03, -0.38, CARRY_HAND_Z)],
+                  "props": ("box of vegetables", props_carry_veg)},
+    # 立って、左手のメモ帳に右手のペンで書く
+    "take_order": {"base": "stand", "label": "注文を取る", "words": [("take", "verb"), ("order", "noun")],
+                   "hands": [(-0.1, -0.34, -0.12), (0.08, -0.36, -0.08)], "props": ("notepad", props_take_order)},
+    "run_umbrella": {"base": "run", "label": "閉じた傘を持って走る", "words": [("run", "verb"), ("umbrella", "noun")],
+                     "hands": [(-0.22, 0.2, -0.36), (0.2, -0.5, -0.05)], "props": ("umbrella", props_run_umbrella)},
+    # 座って、机に重ねた腕の上に伏せて眠る。顔は下を向く
+    "sleep": {"base": "sit", "label": "机に伏せて眠る", "words": [("sleep", "verb")],
+              "head": {"at": (0, -0.34, 0.9), "pitch": 1.3},
+              "hands": [(-0.13, -0.42, 0.76 - SH_SIT), (0.13, -0.42, 0.76 - SH_SIT)]},
+    # 座って、手はももの上のまま、横の人のほうへ顔を向ける。_r は hand_r の側、_l は hand_l の側
+    "sit_look_r": {"base": "sit", "label": "座って横を見る", "words": [("sit", "verb"), ("look", "verb"), ("listen", "verb")],
+                   "head": {"yaw": 0.9, "pitch": 0.3}, "hands": [(-0.17, -0.3, -0.42), (0.17, -0.3, -0.42)], "mirror": "sit_look_l"},
+    "sit_look_l": {"base": "sit", "label": "座って横を見る", "words": [("sit", "verb"), ("look", "verb"), ("listen", "verb")],
+                   "head": {"yaw": -0.9, "pitch": 0.3}, "hands": [(-0.17, -0.3, -0.42), (0.17, -0.3, -0.42)], "mirror": "sit_look_r"},
+    # 立って、片手を胸の前で開いて話しかける（ask の指さしより小さな動き）
+    "question": {"base": "stand", "label": "話しかける", "words": [("ask", "verb"), ("talk", "verb")],
+                 "hands": [(-0.27, 0.0, -0.52), (0.2, -0.34, -0.2)]},
+    # 立って、片手を前へ差し出して見せる
+    "show_hand": {"base": "stand", "label": "手を差し出して見せる", "words": [("show", "verb"), ("hand", "noun")],
+                  "head": {"pitch": 0.35}, "hands": [(-0.27, 0.0, -0.52), (0.04, -0.44, -0.24)]},
+    # 立って、子どもの手の高さへ両手を下ろし、のぞき込む
+    "check_hand": {"base": "stand", "label": "手を確かめる", "words": [("check", "verb"), ("hand", "noun")],
+                   "head": {"pitch": 0.5}, "hands": [(-0.07, -0.5, -0.5), (0.09, -0.5, -0.5)]},
+    # 立って、右手を座った人の肩の高さへ伸ばして起こす
+    "wake": {"base": "stand", "label": "肩に手を置く", "words": [("wake", "verb"), ("touch", "verb")],
+             "hands": [(-0.27, 0.0, -0.52), (0.1, -0.5, -0.32)]},
+    # M1〜M10 で足したポーズ
+    "feed": {"base": "stand", "label": "鳥にえさをやる", "words": [("feed", "verb")], "head": {"pitch": 0.35},
+             "hands": [(-0.27, 0.0, -0.52), (0.12, -0.5, -0.55)]},
+    "lift_desk": {"base": "stand", "label": "机を両手で持って運ぶ", "words": [("carry", "verb"), ("move", "verb")],
+                  "hands": [(-0.24, -0.4, -0.34), (0.24, -0.4, -0.34)]},
+    "cut": {"base": "stand", "label": "ケーキを切る", "words": [("cut", "verb")], "head": {"pitch": 0.3},
+            "hands": [(-0.2, -0.42, -0.5), (0.12, -0.5, -0.46)], "props": ("knife", props_cut)},
+    "press": {"base": "stand", "label": "機械のボタンを押す", "words": [("buy", "verb"), ("press", "verb")],
+              "hands": [(-0.27, 0.0, -0.52), (0.12, -0.55, -0.12)]},
+    "kneel_build": {"base": "kneel", "label": "ひざをついて砂で作る", "words": [("build", "verb"), ("make", "verb")], "head": {"pitch": 0.35},
+                    "hands": [(-0.2, -0.42, -0.72), (0.2, -0.42, -0.72)]},
+    "bucket": {"base": "walk", "label": "水のバケツを運ぶ", "words": [("bring", "verb"), ("water", "noun"), ("bucket", "noun")],
+               "hands": [(-0.27, 0.0, -0.52), (0.3, -0.1, -0.5)], "props": ("bucket", props_bucket)},
+    "try_jacket": {"base": "stand", "label": "上着を試着する", "words": [("try", "verb"), ("jacket", "noun")],
+                   "hands": [(-0.24, -0.2, -0.12), (0.24, -0.2, -0.12)], "props": ("jacket", props_try_jacket)},
+    "show_jacket": {"base": "stand", "label": "上着を広げて見せる", "words": [("show", "verb"), ("jacket", "noun")],
+                    "hands": [(-0.2, -0.46, -0.05), (0.2, -0.46, -0.05)], "props": ("jacket", props_show_jacket)},
+    "poke": {"base": "stand", "label": "長い棒で高い所をつつく", "words": [("reach", "verb"), ("stick", "noun")],
+             "hands": [(-0.05, -0.27, -0.12), (0.1, -0.4, 0.28)], "props": ("stick", props_stick)},
+    "blow": {"base": "sit", "label": "座ってろうそくを吹き消す", "words": [("blow", "verb")], "head": {"pitch": 0.25},
+             "hands": [(-0.2, -0.42, 0.74 - SH_SIT), (0.2, -0.42, 0.74 - SH_SIT)]},
+    "clap": {"base": "sit", "label": "座って拍手する", "words": [("clap", "verb")],
+             "hands": [(-0.03, -0.34, -0.2), (0.05, -0.36, -0.16)]},
+    "fallen": {"base": "kneel", "label": "転んで地面に座り込む", "words": [("fall", "verb")], "head": {"pitch": 0.2},
+                   "hands": [(-0.28, 0.12, -0.85), (0.18, -0.42, -0.22)]},
+    "help_up": {"base": "stand", "label": "手を差しのべて助け起こす", "words": [("help", "verb")], "head": {"pitch": 0.4},
+                "hands": [(-0.27, 0.0, -0.52), (0.1, -0.55, -0.5)]},
+    "sweep": {"base": "stand", "label": "ほうきで掃く", "words": [("sweep", "verb"), ("clean", "verb"), ("broom", "noun")],
+              "hands": [(-0.06, -0.28, -0.1), (0.08, -0.46, -0.5)], "props": ("broom", props_sweep)},
 }
 
 # 作る組み合わせ（ポーズ, 見た目）。この順で一覧に並ぶ
@@ -1023,6 +1541,23 @@ PEOPLE = [
     ("drink", "woman_a"), ("drink", "adult_a"), ("write", "boy_a"), ("write", "girl_a"), ("look", "girl_a"),
     # 今あるポーズを別の見た目に広げたもの
     ("carry", "boy_a"), ("carry", "woman_a"), ("carry", "girl_a"), ("sit", "girl_a"), ("sit", "boy_a"),
+    # 関係した数文の場面の PoC（poc/scene-story）で足したもの
+    ("raise_hand", "boy_a"), ("point", "woman_a"),
+    ("read_sit", "adult_a"), ("cook", "mother_a"), ("throw", "boy_a"), ("umbrella", "girl_a"), ("stand", "old_a"),
+    ("run_bag", "adult_a"), ("wipe", "woman_a"), ("serve", "adult_a"), ("reach", "girl_a"), ("offer", "boy_a"),
+    ("run_phone", "girl_a"), ("basket", "adult_a"),
+    ("stand", "woman_a"), ("stand", "boy_a"), ("pay", "woman_a"), ("set_plates", "boy_a"), ("serve", "waiter_a"), ("take_book", "teen_a"), ("ask", "girl_a"),
+    # 新しい確認用の 10 文（N1〜N10）で足したもの。多くは今あるポーズと見た目の組み合わせ
+    ("basket", "woman_a"), ("question", "woman_a"), ("stand", "old_woman_a"), ("blackboard", "woman_a"), ("catch", "boy_a"),
+    ("carry_veg", "clerk_a"), ("take_order", "waiter_a"), ("run_umbrella", "woman_a"), ("sleep", "teen_a"), ("wake", "woman_a"),
+    ("sweep", "adult_a"),
+    # N1〜N10 の判定を受けて足したもの
+    ("sit_look_r", "boy_a"), ("sit_look_l", "boy_a"), ("show_hand", "boy_a"), ("check_hand", "mother_a"),
+    # 次の確認用の 10 文（M1〜M10）で足したもの
+    ("feed", "old_a"), ("lift_desk", "boy_a"), ("lift_desk", "girl_a"), ("cut", "mother_a"), ("press", "woman_a"),
+    ("kneel_build", "boy_a"), ("bucket", "girl_a"), ("check_hand", "doctor_a"), ("show_hand", "girl_a"),
+    ("try_jacket", "adult_a"), ("show_jacket", "clerk_a"), ("poke", "adult_a"), ("look", "boy_a"),
+    ("blow", "girl_a"), ("clap", "adult_a"), ("clap", "woman_a"), ("clap", "boy_a"), ("fallen", "woman_a"), ("help_up", "adult_a"),
 ]
 
 
@@ -1031,8 +1566,17 @@ def outfits() -> dict:
     face = {"skin": M["skin"], "eye": M["eye"], "cheek": M["cheek"], "mouth": M["mouth"]}
     return {
         "adult_a": {**face, "hair": M["hair_black"], "top": M["shirt_blue"], "bottom": M["pants_gray"], "shoe": M["shoe_brown"]},
+        "old_a": {**face, "hair": M["hair_gray"], "top": M["knit_brown"], "bottom": M["pants_gray"], "shoe": M["shoe_brown"]},
         "woman_a": {**face, "hair": M["hair_brown"], "top": M["knit_rose"], "bottom": M["skirt_navy"], "shoe": M["shoe_white"],
                     "skirt": True, "hair_style": "long"},
+        "waiter_a": {**face, "hair": M["hair_black"], "top": M["white"], "sleeve": M["white"], "bottom": M["vest_black"], "shoe": M["dark"]},
+        "mother_a": {**face, "hair": M["hair_brown"], "top": M["knit_rose"], "bottom": M["skirt_navy"], "shoe": M["shoe_white"],
+                     "skirt": True, "hair_style": "long"},
+        "old_woman_a": {**face, "hair": M["hair_gray"], "top": M["knit_brown"], "bottom": M["skirt_navy"], "shoe": M["shoe_brown"],
+                        "skirt": True, "hair_style": "bun"},
+        "clerk_a": {**face, "hair": M["hair_black"], "top": M["white"], "bottom": M["pants_gray"], "shoe": M["shoe_brown"]},
+        "doctor_a": {**face, "hair": M["hair_black"], "top": M["white"], "sleeve": M["white"], "bottom": M["pants_gray"], "shoe": M["shoe_brown"]},
+        "teen_a": {**face, "hair": M["hair_black"], "top": M["shirt_green"], "bottom": M["pants_beige"], "shoe": M["shoe_white"]},
         "boy_a": {**face, "hair": M["hair_black"], "top": M["shirt_yellow"], "bottom": M["shorts_blue"], "shoe": M["shoe_red"]},
         "girl_a": {**face, "hair": M["hair_brown"], "top": M["dress_pink"], "bottom": M["dress_pink"], "shoe": M["shoe_red"],
                    "skirt": True, "hair_style": "bun"},
@@ -1043,15 +1587,27 @@ def person_builder(pose: str, look: str):
     spec, scale = POSES[pose], LOOKS[look]["scale"]
 
     def build(root):
-        person(root, "person", (0, 0), 0.0, outfits()[look], pose=spec["base"], scale=scale, hands=spec.get("hands"))
+        person(root, "person", (0, 0), 0.0, outfits()[look], pose=spec["base"], scale=scale, hands=spec.get("hands"), head=spec.get("head"))
         if "props" in spec:   # 持たせる物も人と同じ倍率にする（手の位置は人の倍率をかける前の座標）
             name, fn = spec["props"]
             p = Part(name)
-            fn(p)
+            place = fn(p) or {}   # 持つ物を回して置くときは loc・rot_z を返す（loc は人の倍率をかける前の座標）
+            p.finish(root, loc=Vector(place.get("loc", (0, 0, 0))) * scale, rot_z=place.get("rot_z", 0.0), scale=scale)
+        if "wear" in LOOKS[look]:
+            p = Part("wear")
+            LOOKS[look]["wear"](p, *_heights(spec["base"]))
             p.finish(root, scale=scale)
-        if spec["base"] == "sit":   # 腰の点（common.py の person() の腰の球の中心）
-            return {"hip": (0, 0, _heights("sit")[0] * scale)}
-        return None
+        # 手・足元・頭の点。配置の計算と検査が使う。手は人の倍率をかけた位置
+        sh = _heights(spec["base"])[1]
+        given = spec.get("hands")
+        points = [Vector((x, y, sh + dz)) for x, y, dz in given] if given else hand_points(spec["base"])
+        anchors = {"hand_l": tuple(points[0] * scale), "hand_r": tuple(points[1] * scale),
+                   "feet": (0, 0, 0), "head": tuple(Vector(spec.get("head", {}).get("at", (0, 0, sh + 0.22))) * scale)}
+        if "canopy" in spec:   # 持った傘の布の真ん中
+            anchors["canopy"] = tuple(Vector(spec["canopy"]) * scale)
+        if spec["base"] in ("sit", "raise_hand"):   # 腰の点（common.py の person() の腰の球の中心）
+            anchors["hip"] = (0, 0, _heights("sit")[0] * scale)
+        return anchors
     build.__doc__ = f"{LOOKS[look]['label']}（{spec['label']}）"
     return build
 
@@ -1159,6 +1715,33 @@ def build_floor_carpet(root):
         for s in (-1, 1):
             mark(p, (span, band), (0, s * c), mat)
             mark(p, (band, span - 2 * band), (s * c, 0), mat)
+    p.finish(root)
+
+
+@part("floor_bus", "ground", "バスの床（8 m 四方）", [("floor", "noun"), ("bus", "noun")])
+def build_floor_bus(root):
+    """バスの中の床。灰色の地に、すべり止めの点と、手前の黄色い線。"""
+    p = Part("floor_bus")
+    floor_plate(p, M["bus_floor"])
+    mark(p, (FLOOR, 0.12), (0, -2.2), M["bus_line"])
+    p.finish(root)
+
+
+@part("wall_bus", "building", "バスの中の壁（窓の列と手すり）", [("bus", "noun"), ("window", "noun"), ("wall", "noun")], front=("bus_rail", 1))
+def build_wall_bus(root):
+    """バスの中の奥の壁。横に長い窓が 4 つと、窓の上の手すり、縦の棒。"""
+    p = Part("wall_bus")
+    wall_board(p, M["bus_wall"], M["dark"])
+    w, h, z0, y = 1.7, 0.85, 1.0, WALL_FRONT
+    for cx in (-3.0, -1.0, 1.0, 3.0):
+        p.box((w, 0.01, h), (cx, y - 0.005, z0 + h / 2), M["window_glass"])
+        p.box((w + 0.1, 0.1, 0.05), (cx, y - 0.05, z0 - 0.025), M["bus_sill"], bevel=0.008)
+        for sx in (-1, 1):
+            p.box((0.05, 0.04, h), (cx + sx * (w / 2 + 0.025), y - 0.02, z0 + h / 2), M["bus_sill"])
+        p.box((w + 0.1, 0.04, 0.05), (cx, y - 0.02, z0 + h + 0.025), M["bus_sill"])
+    p.limb((-3.9, y - 0.14, 2.1), (3.9, y - 0.14, 2.1), 0.02, 0.02, M["bus_rail"], segs=8)
+    for x in (-2.0, 0.0, 2.0):
+        p.limb((x, y - 0.14, 0.0), (x, y - 0.14, 2.1), 0.02, 0.02, M["bus_rail"], segs=8)
     p.finish(root)
 
 
@@ -1317,6 +1900,77 @@ def build_wall_blackboard(root):
     for k, mat in enumerate((M["chalk"], M["chalk"], M["chalk_pink"], M["chalk_yellow"])):
         p.limb((1.2 + k * 0.12, WALL_FRONT - 0.08, bz + 0.012), (1.28 + k * 0.12, WALL_FRONT - 0.09, bz + 0.012), 0.008, 0.008, mat, segs=6)
     p.finish(root)
+    return {"spots": {"board": (-0.9, WALL_FRONT - 0.05, 1.5)}}   # 人が書く所。真ん中を空ける
+
+
+@part("wall_cafe", "building", "カフェの奥の壁（カウンターつき）",
+      [("cafe", "noun"), ("counter", "noun"), ("menu", "noun"), ("wall", "noun")], front=("cafe_groove", 1))
+def build_wall_cafe(root):
+    """カフェの奥の壁。幅 5 m のカウンターに、コーヒーマシンとケーキの棚。壁に黒板のメニューとカップの棚、上につり下げたランプ。"""
+    p = Part("wall_cafe")
+    wall_board(p, M["cafe_wall"], M["cafe_wood"])
+    cx, w, d, h = -0.4, 5.0, 0.7, 1.0
+    cy = WALL_FRONT - d / 2
+    p.box((w, d, h), (cx, cy, h / 2), M["cafe_wood"], bevel=0.02)
+    p.box((w + 0.08, d + 0.08, 0.06), (cx, cy, h + 0.03), M["marble"], bevel=0.015)
+    for k in range(int(w / 0.3)):   # 前板の縦の溝
+        p.box((0.03, 0.02, 0.85), (cx - w / 2 + 0.15 + k * 0.3, cy - d / 2 - 0.005, 0.5), M["cafe_groove"])
+    top = h + 0.06
+    # コーヒーマシン
+    mx = 0.9
+    p.box((0.75, 0.45, 0.5), (mx, cy, top + 0.25), M["steel"], bevel=0.03)
+    p.box((0.77, 0.47, 0.06), (mx, cy, top + 0.53), M["dark"], bevel=0.02)
+    p.box((0.65, 0.02, 0.18), (mx, cy - 0.23, top + 0.39), M["dark"], bevel=0.01)
+    for sx in (-1, 1):
+        p.cyl(0.04, 0.035, 0.08, (mx + sx * 0.17, cy - 0.18, top + 0.22), M["dark"], segs=12)
+        p.cyl(0.04, 0.05, 0.08, (mx + sx * 0.17, cy - 0.2, top + 0.04), M["cup"], segs=14)
+    for k in range(5):
+        p.cyl(0.04, 0.05, 0.07, (mx - 0.26 + k * 0.13, cy, top + 0.595), M["cup"], segs=14)
+    # ケーキの棚（ガラスは描かず、枠と台の上にケーキを並べる）
+    kx = -1.5
+    for sx in (-1, 1):
+        p.box((0.03, 0.4, 0.5), (kx + sx * 0.6, cy, top + 0.25), M["cafe_groove"])
+    for z in (0.02, 0.27, 0.49):
+        p.box((1.22, 0.42, 0.025), (kx, cy, top + z), M["cafe_groove"] if z > 0.4 else M["marble"])
+    colors = ["cake", "cake_pink", "cake_choco", "cake", "cake_choco", "cake_pink", "cake", "cake_pink"]
+    for k, c in enumerate(colors):
+        x, z = kx - 0.39 + (k % 4) * 0.26, top + (0.035 if k < 4 else 0.285)
+        p.cyl(0.1, 0.1, 0.012, (x, cy, z + 0.006), M["dish"], segs=20, smooth=False)
+        p.cyl(0.08, 0.08, 0.1, (x, cy, z + 0.062), M[c], segs=20)
+        p.sphere(0.022, (x, cy, z + 0.125), M["apple"], segs=10)
+    # 黒板のメニュー（文字の代わりの線）
+    bx, bz, bw, bh = -1.5, 1.95, 1.5, 0.95
+    p.box((bw + 0.1, 0.03, bh + 0.1), (bx, WALL_FRONT - 0.015, bz), M["cafe_groove"], bevel=0.01)
+    p.box((bw, 0.01, bh), (bx, WALL_FRONT - 0.035, bz), M["blackboard"])
+    p.box((0.7, 0.008, 0.06), (bx, WALL_FRONT - 0.042, bz + 0.34), M["chalk_yellow"])
+    for row in range(5):
+        z = bz + 0.18 - row * 0.13
+        p.box((0.75, 0.008, 0.025), (bx - 0.22, WALL_FRONT - 0.042, z), M["chalk"])
+        p.box((0.18, 0.008, 0.025), (bx + 0.5, WALL_FRONT - 0.042, z), M["chalk_pink"])
+    # カップの棚
+    for z in (1.75, 2.1):
+        p.box((1.5, 0.22, 0.04), (1.1, WALL_FRONT - 0.11, z), M["cafe_groove"])
+        for k in range(8):
+            p.cyl(0.04, 0.05, 0.1, (0.5 + k * 0.17, WALL_FRONT - 0.11, z + 0.07), M["cup"] if k % 3 else M["mug"], segs=14)
+    # つり下げたランプ
+    for x in (-2.2, -0.4, 1.4, 3.0):
+        p.limb((x, WALL_FRONT, 2.52), (x, cy, 2.52), 0.015, 0.015, M["dark"], segs=6)
+        p.limb((x, cy, 2.52), (x, cy, 2.22), 0.008, 0.008, M["dark"], segs=6)
+        p.cyl(0.24, 0.05, 0.22, (x, cy, 2.13), M["dark"], segs=20)
+        p.sphere(0.09, (x, cy, 2.02), M["cafe_lamp"], segs=14)
+    p.finish(root)
+
+
+@part("plant_pot", "plant", "鉢植えの木", [("plant", "noun")])
+def build_plant_pot(root):
+    """店の隅に置く鉢植え。高さ 1.5 m。"""
+    p = Part("plant_pot")
+    p.cyl(0.18, 0.24, 0.42, (0, 0, 0.21), M["pot"], segs=18)
+    p.cyl(0.22, 0.22, 0.03, (0, 0, 0.41), M["bark"], segs=18)
+    p.cyl(0.03, 0.03, 0.6, (0, 0, 0.7), M["bark"], segs=8)
+    for i, (x, y, z, r) in enumerate([(0, 0, 1.15, 0.36), (0.22, 0.08, 0.95, 0.28), (-0.2, -0.1, 1.0, 0.28), (0.02, 0.1, 1.3, 0.24)]):
+        p.blob(r, (x, y, z), M["leaf"] if i % 2 else M["leaf2"], bumpy=0.3, subdiv=3, seed=i * 2.7)
+    p.finish(root)
 
 
 @part("wall_store_shelves", "building", "商品棚が並ぶ壁（店、幅 8 m）",
@@ -1392,7 +2046,8 @@ def build_kitchen_counter(root):
         p.cyl(0.05, 0.05, 0.016, (cx + bx, -0.03, h + 0.02), M["stove"], segs=12, smooth=False)
         p.cyl(0.025, 0.025, 0.03, (cx + bx, front - 0.035, 0.76), M["dark"], rot=(math.pi / 2, 0, 0), segs=10, smooth=False)
     p.finish(root)
-    return {"top": h}   # 天板の上面（流しとコンロの無いところに物を置く）
+    # 天板の上面（流しとコンロの無いところに物を置く）と、物を載せるコンロ・流しの場所
+    return {"top": h, "spots": {"stove": (cx - 0.15, -0.03, h + 0.025), "sink": (sx, -0.02, h)}}
 
 
 TRAIN_LEN, TRAIN_W = 8.0, 2.6   # 電車の長さ（X）と幅。実物（約 20 m）を縮め、8 m 四方に収める
@@ -1532,15 +2187,29 @@ def to_protocol(anchors: dict | None, shift: Vector) -> dict | None:
         return round(v, 3) + 0.0   # -0.0 を 0.0 にする
 
     out = {}
-    for key in ("top", "seat", "hip"):
-        if key not in anchors:
-            continue
+    def point(v) -> list[float]:
+        x, y, z = Vector(v) - shift
+        return [num(x), num(z), num(-y)]
+
+    for key, value in anchors.items():
         if key == "top":
-            out[key] = num(anchors[key] - shift.z)
+            out[key] = num(value - shift.z)
+        elif key in ("spots", "seats"):   # 名前付きの場所（コンロ・レジ、テーブルの席など）
+            out[key] = {name: point(v) for name, v in value.items()}
         else:
-            x, y, z = Vector(anchors[key]) - shift
-            out[key] = [num(x), num(z), num(-y)]
+            out[key] = point(value)
     return out
+
+
+# ポーズが場面に求める部品。AI が場面を組むときの手がかりにする
+POSE_USES = {"feed": ["animal_bird_a"], "lift_desk": ["table"], "cut": ["table", "cake"], "press": ["ticket_machine"],
+             "kneel_build": ["sand_castle"], "poke": ["tree"], "blow": ["table", "chair", "cake", "candles"], "clap": ["chair"], "blackboard": ["wall_blackboard"], "sleep": ["table", "chair"], "take_order": ["table"], "cook": ["kitchen_counter", "pan"], "set_plates": ["table", "plate"], "put": ["table"], "wipe": ["table"],
+             "pay": ["checkout_counter"], "take_book": ["bookshelf"], "write": ["table", "chair"],
+             "raise_hand": ["chair"], "sit": ["chair"], "read_sit": ["chair"]}
+
+
+# 離れて相手とやり取りするポーズの間合い。両方がこのポーズなら、配置はこの距離で向かい合わせる
+POSE_RANGE = {"throw": "far", "catch": "far"}
 
 
 def metadata(pid: str, spec: dict, size: list[float], anchors: dict | None = None) -> dict:
@@ -1550,6 +2219,16 @@ def metadata(pid: str, spec: dict, size: list[float], anchors: dict | None = Non
         meta["pose"] = spec["pose"]
     meta["size"] = size
     meta["label"] = spec["label"]
+    pose = POSES.get(spec["pose"]) if spec["pose"] else None
+    if pose and "props" in pose:   # 部品に含まれる持ち物。別の部品を足さなくてよい
+        meta["holds"] = pose["props"][0]
+    if spec["pose"] in POSE_USES:
+        meta["uses"] = POSE_USES[spec["pose"]]
+    if spec["pose"] in POSE_RANGE:
+        meta["range"] = POSE_RANGE[spec["pose"]]
+    if pose and "mirror" in pose:   # 顔を向ける側と、反対側を向く部品。配置が相手のいる側を選ぶ
+        meta["gaze"] = "r" if spec["pose"].endswith("_r") else "l"
+        meta["mirror"] = pid.replace(spec["pose"], pose["mirror"])
     if anchors:
         meta["anchors"] = anchors
     return meta

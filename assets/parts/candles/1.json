@@ -1,0 +1,14 @@
+{
+  "id": "candles",
+  "version": 1,
+  "file": "parts/candles/1.usdz",
+  "category": "thing",
+  "words": [
+    {
+      "word": "candle",
+      "pos": "noun"
+    }
+  ],
+  "size": [0.133, 0.113, 0.138],
+  "label": "火のついたろうそく（ケーキの上に置く）"
+}

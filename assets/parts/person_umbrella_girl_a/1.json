@@ -1,0 +1,31 @@
+{
+  "id": "person_umbrella_girl_a",
+  "version": 1,
+  "file": "parts/person_umbrella_girl_a/1.usdz",
+  "category": "person",
+  "words": [
+    {
+      "word": "girl",
+      "pos": "noun"
+    },
+    {
+      "word": "umbrella",
+      "pos": "noun"
+    },
+    {
+      "word": "share",
+      "pos": "verb"
+    }
+  ],
+  "pose": "umbrella",
+  "size": [1.311, 2.085, 1.267],
+  "label": "女の子（傘を差しかける）",
+  "holds": "umbrella",
+  "anchors": {
+    "hand_l": [-0.048, 1.29, -0.157],
+    "hand_r": [0.244, 0.585, -0.427],
+    "feet": [0.042, 0.0, -0.427],
+    "head": [0.042, 1.14, -0.427],
+    "canopy": [0.012, 1.875, 0.038]
+  }
+}

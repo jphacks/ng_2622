@@ -1,0 +1,23 @@
+{
+  "id": "table_small",
+  "version": 1,
+  "file": "parts/table_small/1.usdz",
+  "category": "furniture",
+  "words": [
+    {
+      "word": "table",
+      "pos": "noun"
+    }
+  ],
+  "size": [0.8, 0.72, 0.75],
+  "label": "2 人用の小さなテーブル",
+  "anchors": {
+    "top": 0.72,
+    "seats": {
+      "seat_front_1": [0.0, 0.0, 0.595],
+      "seat_back_1": [0.0, 0.0, -0.595],
+      "seat_end_1": [-0.62, 0.0, 0.0],
+      "seat_end_2": [0.62, 0.0, 0.0]
+    }
+  }
+}

@@ -1,0 +1,22 @@
+{
+  "id": "wall_bus",
+  "version": 1,
+  "file": "parts/wall_bus/1.usdz",
+  "category": "building",
+  "words": [
+    {
+      "word": "bus",
+      "pos": "noun"
+    },
+    {
+      "word": "window",
+      "pos": "noun"
+    },
+    {
+      "word": "wall",
+      "pos": "noun"
+    }
+  ],
+  "size": [8.0, 2.6, 0.28],
+  "label": "バスの中の壁（窓の列と手すり）"
+}

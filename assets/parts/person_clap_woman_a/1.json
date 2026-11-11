@@ -1,0 +1,27 @@
+{
+  "id": "person_clap_woman_a",
+  "version": 1,
+  "file": "parts/person_clap_woman_a/1.usdz",
+  "category": "person",
+  "words": [
+    {
+      "word": "woman",
+      "pos": "noun"
+    },
+    {
+      "word": "clap",
+      "pos": "verb"
+    }
+  ],
+  "pose": "clap",
+  "size": [0.55, 1.375, 0.83],
+  "label": "女の人（座って拍手する）",
+  "uses": ["chair"],
+  "anchors": {
+    "hand_l": [-0.031, 0.78, 0.165],
+    "hand_r": [0.049, 0.82, 0.185],
+    "feet": [-0.001, 0.0, -0.175],
+    "head": [-0.001, 1.2, -0.175],
+    "hip": [-0.001, 0.48, -0.175]
+  }
+}

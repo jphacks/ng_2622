@@ -36,6 +36,8 @@ TILT = 28.0                   # 見下ろす角度（度。アプリの SceneOrb
 DISTANCE = 17.5               # 注視点からカメラまで（m）
 TARGET = (0.0, 0.6, 0.0)      # 注視点（プロトコルの座標）
 FONT = Path("/System/Library/Fonts/ヒラギノ角ゴシック W5.ttc")
+CAM_DISTANCE = DISTANCE       # --distance で変える（人を大きく見せて読みやすさを確かめるため）
+CLEAN = False                 # --clean: key の文字と下の欄を描かない（絵だけで英文に読めるかを判定するため）
 
 
 def to_blender(p) -> Vector:
@@ -251,7 +253,7 @@ def setup_scene(font):
     scene.collection.objects.link(cam)
     t = math.radians(TILT)
     target = to_blender(TARGET)
-    cam.location = target + to_blender((0, DISTANCE * math.sin(t), DISTANCE * math.cos(t)))
+    cam.location = target + to_blender((0, CAM_DISTANCE * math.sin(t), CAM_DISTANCE * math.cos(t)))
     cam.rotation_euler = (target - cam.location).to_track_quat("-Z", "Y").to_euler()
     cam.data.sensor_fit = "VERTICAL"
     cam.data.angle_y = math.radians(FOV_Y)
@@ -349,7 +351,7 @@ def render_layout(src: Path, out_dir: Path, parts: Path) -> list[str]:
         if any(abs(v) > SIZE / 2 for v in (pos[0], pos[2])):
             notes.append(f"{key}: 位置 {pos} が場面（±4 m）の外")
         root = place_part(path, key, pos, item.get("yaw", 0), scale)
-        if index.get(pid, {}).get("category") != "ground":
+        if not CLEAN and index.get(pid, {}).get("category") != "ground":
             bounds = world_bounds(root)
             top_z = bounds[1].z if bounds else pos[1]
             label = text(f"key_{key}", key, 0.26, label_mat, font, None,
@@ -369,7 +371,8 @@ def render_layout(src: Path, out_dir: Path, parts: Path) -> list[str]:
             segment(f"fall_{key}", start, ground, 0.025, fall_mat, dashed=True)
             ring(f"fall_{key}_end", ground + Vector((0, 0, 0.13)), 0.18, fall_mat)
     ground_plane()
-    info_panel(cam, layout, notes, motions, font)
+    if not CLEAN:
+        info_panel(cam, layout, notes, motions, font)
 
     out = out_dir / f"{src.stem}.png"
     bpy.context.scene.render.filepath = str(out)
@@ -386,7 +389,12 @@ def main() -> None:
     ap.add_argument("layouts", nargs="+", type=Path, help="配置の JSON（いくつでも）")
     ap.add_argument("--out", type=Path, required=True, help="PNG を書き出す場所")
     ap.add_argument("--parts", type=Path, default=REPO / "assets" / "parts", help="部品の場所（既定 assets/parts）")
+    ap.add_argument("--distance", type=float, default=DISTANCE, help="カメラまでの距離（m）")
+    ap.add_argument("--clean", action="store_true", help="key の文字と下の欄を描かない")
     args = ap.parse_args(argv)
+    global CLEAN, CAM_DISTANCE
+    CLEAN = args.clean
+    CAM_DISTANCE = args.distance
     args.out.mkdir(parents=True, exist_ok=True)
     for src in args.layouts:
         render_layout(src.resolve(), args.out.resolve(), args.parts.resolve())

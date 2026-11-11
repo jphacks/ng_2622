@@ -55,6 +55,14 @@ EXPECTED = [
     "wall_window", "wall_kitchen_tile", "wall_blackboard", "wall_store_shelves",
     # 場面らしさを出す大物
     "kitchen_counter", "train", "station_sign", "bus_shelter",
+    # 関係した数文の場面の PoC（poc/scene-story）で足したもの
+    "spilled_juice", "rain", "bookshelf", "wall_cafe", "plant_pot",
+    "person_raise_hand_boy_a", "person_point_woman_a", "person_read_sit_adult_a", "person_cook_mother_a", "person_throw_boy_a",
+    "person_umbrella_girl_a", "person_stand_old_a", "person_run_bag_adult_a", "person_wipe_woman_a", "person_serve_adult_a",
+    "person_reach_girl_a", "person_offer_boy_a", "person_run_phone_girl_a", "person_basket_adult_a",
+    "person_stand_woman_a", "person_stand_boy_a", "person_pay_woman_a", "person_set_plates_boy_a", "person_serve_waiter_a", "person_take_book_teen_a", "person_ask_girl_a",
+    # 新しい確認用の 10 文（N1〜N10）で足したもの
+    "person_basket_woman_a", "person_question_woman_a", "person_stand_old_woman_a", "person_blackboard_woman_a", "person_catch_boy_a", "person_carry_veg_clerk_a", "person_take_order_waiter_a", "person_run_umbrella_woman_a", "person_sleep_teen_a", "person_wake_woman_a", "person_sweep_adult_a", "person_sit_look_r_boy_a", "person_sit_look_l_boy_a", "person_show_hand_boy_a", "person_check_hand_mother_a", "table_small", "table_long", "table_party", "person_feed_old_a", "person_lift_desk_boy_a", "person_lift_desk_girl_a", "person_cut_mother_a", "person_press_woman_a", "person_kneel_build_boy_a", "person_bucket_girl_a", "person_check_hand_doctor_a", "person_show_hand_girl_a", "person_try_jacket_adult_a", "person_show_jacket_clerk_a", "person_poke_adult_a", "person_look_boy_a", "person_blow_girl_a", "person_clap_adult_a", "person_clap_woman_a", "person_clap_boy_a", "person_fallen_woman_a", "person_help_up_adult_a", "animal_bird_a", "cake", "candles", "ticket_machine", "sand_castle", "balloon", "bicycle_down", "animal_sit_dog_a", "floor_bus", "wall_bus", "shards_glass", "shards_metal",
 ]
 
 # 向きの目印（parts.py の front と同じ）。(マテリアル名, 向き, 比べる相手)。向きが 1 なら相手より +Z 側、
@@ -62,20 +70,29 @@ EXPECTED = [
 # （人物は手や持ち物・座った脚が前に出て外接箱の中心がずれるので、目を髪と比べる）
 FRONT = {"bench": ("bench_back", -1, None), "chair": ("chair_back", -1, None), "sofa": ("sofa_back", -1, None),
          "bicycle": ("bike_basket", 1, None), "car": ("headlight", 1, None), "vending_machine": ("vending_glow", 1, None),
-         "animal_run_dog_a": ("dog_dark", 1, None),
-         "window": ("window_sill", 1, None), "checkout_counter": ("counter_front", 1, None), "shelf": ("shelf_back", -1, None),
+         "animal_run_dog_a": ("dog_dark", 1, None), "animal_sit_dog_a": ("dog_dark", 1, None), "animal_bird_a": ("bird_beak", 1, None), "ticket_machine": ("ticket_screen", 1, None), "wall_bus": ("bus_rail", 1, None),
+         "window": ("window_sill", 1, None), "checkout_counter": ("counter_front", 1, None), "shelf": ("shelf_back", -1, None), "bookshelf": ("shelf_back", -1, None), "wall_cafe": ("cafe_groove", 1, None),
          "shirt": ("shirt_collar", 1, None), "seat": ("seat_back", -1, None), "laptop": ("trackpad", 1, None),
          "cart": ("cart_handle", -1, None), "platform_station": ("platform_edge", -1, None),
          "wall_window": ("wall_window_sill", 1, None), "wall_kitchen_tile": ("kitchen_cabinet", 1, None),
          "wall_blackboard": ("chalk_tray", 1, None), "wall_store_shelves": ("price_rail", 1, None),
          "kitchen_counter": ("kitchen_front", 1, None), "bus_shelter": ("shelter_back", -1, None)}
 FRONT.update({pid: ("eye", 1, "hair") for pid in EXPECTED if pid.startswith("person_")})
+FRONT["person_sleep_teen_a"] = ("shoe_white", 1, "hair_black")   # 伏せて目が見えないので、足と髪で見る
 
 # anchors を付けるはずの部品と、その種類（scene-protocol.md の「部品のメタデータ」）
 ANCHORS = {"table": {"top"}, "box": {"top"}, "chair": {"seat"}, "bench": {"seat"}, "sofa": {"seat"},
            "checkout_counter": {"top"}, "shelf": {"top"}, "plate": {"top"}, "seat": {"seat"}, "bed": {"top", "seat"},
            "kitchen_counter": {"top"}, "bus_shelter": {"seat"}}
-ANCHORS.update({pid: {"hip"} for pid in EXPECTED if pid.startswith(("person_sit_", "person_write_"))})
+ANCHORS.update({"table": {"top", "seats"}, "table_small": {"top", "seats"}, "table_long": {"top", "seats"}, "table_party": {"top", "seats"},
+                "wall_blackboard": {"spots"}, "ticket_machine": {"spots"}, "cake": {"top"}})
+ANCHORS.update({"checkout_counter": {"top", "spots"}, "kitchen_counter": {"top", "spots"}, "bookshelf": {"spots"}})
+BODY = {"hand_l", "hand_r", "feet", "head"}   # 人の手・足元・頭の点
+ANCHORS.update({pid: set(BODY) for pid in EXPECTED if pid.startswith("person_")})
+for pid in EXPECTED:
+    if pid.startswith(("person_sit_", "person_write_", "person_raise_hand_", "person_read_sit_", "person_sleep_", "person_blow_", "person_clap_")):
+        ANCHORS[pid] = BODY | {"hip"}
+ANCHORS["person_umbrella_girl_a"] = BODY | {"canopy"}
 # 座る面が外接箱の前後の端に無い部品（屋根が前に張り出したバス停など）。座る確かめでは、外接箱の代わりに
 # このマテリアルの前後の端を家具の前と後ろにする
 SEAT_BOX = {"bus_shelter": "shelter_bench"}
@@ -128,6 +145,8 @@ def check_anchors(pid: str, meta: dict) -> list[str]:
         if key == "top":
             if not isinstance(v, (int, float)) or not lo[1] <= v <= hi[1]:
                 errs.append(f"anchors.top {v!r} が高さ 0〜{size[1]} の外")
+        elif key in ("spots", "seats"):
+            continue   # 名前付きの場所（数値の形は parts.py が作る）
         elif not (isinstance(v, list) and len(v) == 3 and all(isinstance(c, (int, float)) for c in v)):
             errs.append(f"anchors.{key} が {v!r}")
         elif not all(lo[i] <= v[i] <= hi[i] for i in range(3)):

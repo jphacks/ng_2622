@@ -1,0 +1,31 @@
+{
+  "id": "person_raise_hand_boy_a",
+  "version": 1,
+  "file": "parts/person_raise_hand_boy_a/1.usdz",
+  "category": "person",
+  "words": [
+    {
+      "word": "boy",
+      "pos": "noun"
+    },
+    {
+      "word": "raise",
+      "pos": "verb"
+    },
+    {
+      "word": "hand",
+      "pos": "noun"
+    }
+  ],
+  "pose": "raise_hand",
+  "size": [0.516, 1.266, 0.585],
+  "label": "男の子（座って手を上げる）",
+  "uses": ["chair"],
+  "anchors": {
+    "hand_l": [-0.196, 0.562, 0.09],
+    "hand_r": [0.224, 1.23, -0.105],
+    "feet": [-0.046, 0.0, -0.15],
+    "head": [-0.046, 0.9, -0.15],
+    "hip": [-0.046, 0.36, -0.15]
+  }
+}

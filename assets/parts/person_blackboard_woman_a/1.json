@@ -1,0 +1,31 @@
+{
+  "id": "person_blackboard_woman_a",
+  "version": 1,
+  "file": "parts/person_blackboard_woman_a/1.usdz",
+  "category": "person",
+  "words": [
+    {
+      "word": "woman",
+      "pos": "noun"
+    },
+    {
+      "word": "write",
+      "pos": "verb"
+    },
+    {
+      "word": "blackboard",
+      "pos": "noun"
+    }
+  ],
+  "pose": "blackboard",
+  "size": [0.597, 1.695, 0.823],
+  "label": "女の人（黒板に書く）",
+  "holds": "chalk",
+  "uses": ["wall_blackboard"],
+  "anchors": {
+    "hand_l": [-0.253, 0.78, -0.171],
+    "hand_r": [0.177, 1.62, 0.329],
+    "feet": [0.017, 0.0, -0.171],
+    "head": [0.017, 1.52, -0.171]
+  }
+}

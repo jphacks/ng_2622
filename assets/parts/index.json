@@ -94,7 +94,96 @@
     "size": [1.2, 0.72, 0.75],
     "label": "テーブル",
     "anchors": {
-      "top": 0.72
+      "top": 0.72,
+      "seats": {
+        "seat_front_1": [-0.3, 0.0, 0.595],
+        "seat_front_2": [0.3, 0.0, 0.595],
+        "seat_back_1": [-0.3, 0.0, -0.595],
+        "seat_back_2": [0.3, 0.0, -0.595],
+        "seat_end_1": [-0.82, 0.0, 0.0],
+        "seat_end_2": [0.82, 0.0, 0.0]
+      }
+    }
+  },
+  {
+    "id": "table_small",
+    "version": 1,
+    "file": "parts/table_small/1.usdz",
+    "category": "furniture",
+    "words": [
+      {
+        "word": "table",
+        "pos": "noun"
+      }
+    ],
+    "size": [0.8, 0.72, 0.75],
+    "label": "2 人用の小さなテーブル",
+    "anchors": {
+      "top": 0.72,
+      "seats": {
+        "seat_front_1": [0.0, 0.0, 0.595],
+        "seat_back_1": [0.0, 0.0, -0.595],
+        "seat_end_1": [-0.62, 0.0, 0.0],
+        "seat_end_2": [0.62, 0.0, 0.0]
+      }
+    }
+  },
+  {
+    "id": "table_long",
+    "version": 1,
+    "file": "parts/table_long/1.usdz",
+    "category": "furniture",
+    "words": [
+      {
+        "word": "table",
+        "pos": "noun"
+      }
+    ],
+    "size": [2.1, 0.72, 0.9],
+    "label": "3〜6 人用の長いテーブル",
+    "anchors": {
+      "top": 0.72,
+      "seats": {
+        "seat_front_1": [-0.7, 0.0, 0.67],
+        "seat_front_2": [0.0, 0.0, 0.67],
+        "seat_front_3": [0.7, 0.0, 0.67],
+        "seat_back_1": [-0.7, 0.0, -0.67],
+        "seat_back_2": [0.0, 0.0, -0.67],
+        "seat_back_3": [0.7, 0.0, -0.67],
+        "seat_end_1": [-1.27, 0.0, 0.0],
+        "seat_end_2": [1.27, 0.0, 0.0]
+      }
+    }
+  },
+  {
+    "id": "table_party",
+    "version": 1,
+    "file": "parts/table_party/1.usdz",
+    "category": "furniture",
+    "words": [
+      {
+        "word": "table",
+        "pos": "noun"
+      }
+    ],
+    "size": [3.6, 0.72, 1.0],
+    "label": "8 人以上の大きなテーブル",
+    "anchors": {
+      "top": 0.72,
+      "seats": {
+        "seat_front_1": [-1.44, 0.0, 0.72],
+        "seat_front_2": [-0.72, 0.0, 0.72],
+        "seat_front_3": [0.0, 0.0, 0.72],
+        "seat_front_4": [0.72, 0.0, 0.72],
+        "seat_front_5": [1.44, 0.0, 0.72],
+        "seat_back_1": [-1.44, 0.0, -0.72],
+        "seat_back_2": [-0.72, 0.0, -0.72],
+        "seat_back_3": [0.0, 0.0, -0.72],
+        "seat_back_4": [0.72, 0.0, -0.72],
+        "seat_back_5": [1.44, 0.0, -0.72],
+        "seat_end_1": [-2.02, 0.0, 0.0],
+        "seat_end_2": [2.02, 0.0, 0.0]
+      }
     }
   },
   {
@@ -400,7 +489,10 @@
     "size": [1.5, 1.199, 0.65],
     "label": "レジのカウンター",
     "anchors": {
-      "top": 0.9
+      "top": 0.9,
+      "spots": {
+        "register": [0.45, 0.95, 0.325]
+      }
     }
   },
   {
@@ -440,7 +532,7 @@
       }
     ],
     "size": [0.497, 0.369, 0.347],
-    "label": "買い物かご"
+    "label": "手提げの買い物かご（床に置かず手に持つ）"
   },
   {
     "id": "plate",
@@ -542,7 +634,7 @@
       }
     ],
     "size": [0.58, 1.02, 0.898],
-    "label": "ショッピングカート"
+    "label": "車輪つきのショッピングカート（押して使う）"
   },
   {
     "id": "pan",
@@ -563,6 +655,69 @@
     "label": "フライパン"
   },
   {
+    "id": "spilled_juice",
+    "version": 1,
+    "file": "parts/spilled_juice/1.usdz",
+    "category": "thing",
+    "words": [
+      {
+        "word": "juice",
+        "pos": "noun"
+      },
+      {
+        "word": "spill",
+        "pos": "verb"
+      }
+    ],
+    "size": [0.496, 0.084, 0.357],
+    "label": "こぼれたジュース"
+  },
+  {
+    "id": "rain",
+    "version": 1,
+    "file": "parts/rain/1.usdz",
+    "category": "thing",
+    "words": [
+      {
+        "word": "rain",
+        "pos": "noun"
+      },
+      {
+        "word": "rain",
+        "pos": "verb"
+      }
+    ],
+    "size": [7.776, 3.5, 7.711],
+    "label": "雨"
+  },
+  {
+    "id": "bookshelf",
+    "version": 1,
+    "file": "parts/bookshelf/1.usdz",
+    "category": "furniture",
+    "words": [
+      {
+        "word": "bookshelf",
+        "pos": "noun"
+      },
+      {
+        "word": "book",
+        "pos": "noun"
+      },
+      {
+        "word": "shelf",
+        "pos": "noun"
+      }
+    ],
+    "size": [1.4, 2.3, 0.44],
+    "label": "本の詰まった本棚",
+    "anchors": {
+      "spots": {
+        "top_book": [0.0, 2.032, 0.22]
+      }
+    }
+  },
+  {
     "id": "bed",
     "version": 1,
     "file": "parts/bed/1.usdz",
@@ -579,6 +734,146 @@
       "top": 0.49,
       "seat": [0.2, 0.49, 0.296]
     }
+  },
+  {
+    "id": "cake",
+    "version": 1,
+    "file": "parts/cake/1.usdz",
+    "category": "food",
+    "words": [
+      {
+        "word": "cake",
+        "pos": "noun"
+      }
+    ],
+    "size": [0.4, 0.144, 0.4],
+    "label": "丸いケーキ",
+    "anchors": {
+      "top": 0.112
+    }
+  },
+  {
+    "id": "candles",
+    "version": 1,
+    "file": "parts/candles/1.usdz",
+    "category": "thing",
+    "words": [
+      {
+        "word": "candle",
+        "pos": "noun"
+      }
+    ],
+    "size": [0.133, 0.113, 0.138],
+    "label": "火のついたろうそく（ケーキの上に置く）"
+  },
+  {
+    "id": "ticket_machine",
+    "version": 1,
+    "file": "parts/ticket_machine/1.usdz",
+    "category": "furniture",
+    "words": [
+      {
+        "word": "ticket machine",
+        "pos": "noun"
+      },
+      {
+        "word": "machine",
+        "pos": "noun"
+      }
+    ],
+    "size": [0.9, 1.7, 0.52],
+    "label": "切符の券売機",
+    "anchors": {
+      "spots": {
+        "screen": [0.0, 1.2, 0.25]
+      }
+    }
+  },
+  {
+    "id": "sand_castle",
+    "version": 1,
+    "file": "parts/sand_castle/1.usdz",
+    "category": "thing",
+    "words": [
+      {
+        "word": "sand castle",
+        "pos": "noun"
+      },
+      {
+        "word": "castle",
+        "pos": "noun"
+      }
+    ],
+    "size": [0.84, 0.4, 0.84],
+    "label": "砂の城"
+  },
+  {
+    "id": "balloon",
+    "version": 1,
+    "file": "parts/balloon/1.usdz",
+    "category": "thing",
+    "words": [
+      {
+        "word": "balloon",
+        "pos": "noun"
+      }
+    ],
+    "size": [0.437, 1.003, 0.437],
+    "label": "風船"
+  },
+  {
+    "id": "bicycle_down",
+    "version": 1,
+    "file": "parts/bicycle_down/1.usdz",
+    "category": "vehicle",
+    "words": [
+      {
+        "word": "bicycle",
+        "pos": "noun"
+      },
+      {
+        "word": "bike",
+        "pos": "noun"
+      }
+    ],
+    "size": [0.99, 0.5, 1.66],
+    "label": "倒れた自転車"
+  },
+  {
+    "id": "shards_glass",
+    "version": 1,
+    "file": "parts/shards_glass/1.usdz",
+    "category": "thing",
+    "words": [
+      {
+        "word": "glass",
+        "pos": "noun"
+      },
+      {
+        "word": "pieces",
+        "pos": "noun"
+      }
+    ],
+    "size": [0.951, 0.046, 0.674],
+    "label": "ガラスの破片（床に散らばる）"
+  },
+  {
+    "id": "shards_metal",
+    "version": 1,
+    "file": "parts/shards_metal/1.usdz",
+    "category": "thing",
+    "words": [
+      {
+        "word": "metal",
+        "pos": "noun"
+      },
+      {
+        "word": "pieces",
+        "pos": "noun"
+      }
+    ],
+    "size": [0.732, 0.04, 0.621],
+    "label": "金属の破片（床に散らばる）"
   },
   {
     "id": "animal_run_dog_a",
@@ -600,6 +895,48 @@
     "label": "走る犬"
   },
   {
+    "id": "animal_sit_dog_a",
+    "version": 1,
+    "file": "parts/animal_sit_dog_a/1.usdz",
+    "category": "animal",
+    "words": [
+      {
+        "word": "dog",
+        "pos": "noun"
+      },
+      {
+        "word": "sit",
+        "pos": "verb"
+      },
+      {
+        "word": "watch",
+        "pos": "verb"
+      }
+    ],
+    "pose": "rest",
+    "size": [0.419, 0.961, 0.935],
+    "label": "座って見ている犬"
+  },
+  {
+    "id": "animal_bird_a",
+    "version": 1,
+    "file": "parts/animal_bird_a/1.usdz",
+    "category": "animal",
+    "words": [
+      {
+        "word": "bird",
+        "pos": "noun"
+      },
+      {
+        "word": "eat",
+        "pos": "verb"
+      }
+    ],
+    "pose": "peck",
+    "size": [0.169, 0.225, 0.462],
+    "label": "地面をつつく小鳥"
+  },
+  {
     "id": "person_stand_adult_a",
     "version": 1,
     "file": "parts/person_stand_adult_a/1.usdz",
@@ -616,7 +953,13 @@
     ],
     "pose": "stand",
     "size": [0.631, 1.695, 0.38],
-    "label": "男の人（立つ）"
+    "label": "男の人（立つ）",
+    "anchors": {
+      "hand_l": [-0.27, 0.78, 0.0],
+      "hand_r": [0.27, 0.78, 0.0],
+      "feet": [0.0, 0.0, 0.0],
+      "head": [0.0, 1.52, 0.0]
+    }
   },
   {
     "id": "person_walk_adult_a",
@@ -635,7 +978,13 @@
     ],
     "pose": "walk",
     "size": [0.611, 1.695, 0.606],
-    "label": "男の人（歩く）"
+    "label": "男の人（歩く）",
+    "anchors": {
+      "hand_l": [-0.26, 0.8, 0.123],
+      "hand_r": [0.26, 0.8, -0.217],
+      "feet": [0.0, 0.0, -0.047],
+      "head": [0.0, 1.52, -0.047]
+    }
   },
   {
     "id": "person_run_adult_a",
@@ -654,7 +1003,13 @@
     ],
     "pose": "run",
     "size": [0.568, 1.675, 0.836],
-    "label": "男の人（走る）"
+    "label": "男の人（走る）",
+    "anchors": {
+      "hand_l": [-0.222, 0.98, 0.352],
+      "hand_r": [0.238, 0.86, -0.188],
+      "feet": [-0.002, 0.0, 0.052],
+      "head": [-0.002, 1.5, 0.052]
+    }
   },
   {
     "id": "person_sit_adult_a",
@@ -674,7 +1029,12 @@
     "pose": "sit",
     "size": [0.564, 1.375, 0.78],
     "label": "男の人（座る）",
+    "uses": ["chair"],
     "anchors": {
+      "hand_l": [-0.2, 0.75, 0.12],
+      "hand_r": [0.2, 0.75, 0.12],
+      "feet": [0.0, 0.0, -0.2],
+      "head": [0.0, 1.2, -0.2],
       "hip": [0.0, 0.48, -0.2]
     }
   },
@@ -699,7 +1059,13 @@
     ],
     "pose": "phone",
     "size": [0.551, 1.695, 0.514],
-    "label": "男の人（スマホを見る）"
+    "label": "男の人（スマホを見る）",
+    "anchors": {
+      "hand_l": [-0.08, 1.08, 0.193],
+      "hand_r": [0.08, 1.08, 0.193],
+      "feet": [0.0, 0.0, -0.067],
+      "head": [0.0, 1.52, -0.067]
+    }
   },
   {
     "id": "person_walk_woman_a",
@@ -718,7 +1084,13 @@
     ],
     "pose": "walk",
     "size": [0.611, 1.695, 0.606],
-    "label": "女の人（歩く）"
+    "label": "女の人（歩く）",
+    "anchors": {
+      "hand_l": [-0.26, 0.8, 0.123],
+      "hand_r": [0.26, 0.8, -0.217],
+      "feet": [0.0, 0.0, -0.047],
+      "head": [0.0, 1.52, -0.047]
+    }
   },
   {
     "id": "person_sit_woman_a",
@@ -738,7 +1110,12 @@
     "pose": "sit",
     "size": [0.564, 1.375, 0.83],
     "label": "女の人（座る）",
+    "uses": ["chair"],
     "anchors": {
+      "hand_l": [-0.2, 0.75, 0.145],
+      "hand_r": [0.2, 0.75, 0.145],
+      "feet": [0.0, 0.0, -0.175],
+      "head": [0.0, 1.2, -0.175],
       "hip": [0.0, 0.48, -0.175]
     }
   },
@@ -759,7 +1136,13 @@
     ],
     "pose": "run",
     "size": [0.426, 1.256, 0.627],
-    "label": "男の子（走る）"
+    "label": "男の子（走る）",
+    "anchors": {
+      "hand_l": [-0.166, 0.735, 0.264],
+      "hand_r": [0.179, 0.645, -0.141],
+      "feet": [-0.001, 0.0, 0.039],
+      "head": [-0.001, 1.125, 0.039]
+    }
   },
   {
     "id": "person_stand_girl_a",
@@ -778,7 +1161,13 @@
     ],
     "pose": "stand",
     "size": [0.473, 1.305, 0.36],
-    "label": "女の子（立つ）"
+    "label": "女の子（立つ）",
+    "anchors": {
+      "hand_l": [-0.203, 0.585, 0.0],
+      "hand_r": [0.203, 0.585, 0.0],
+      "feet": [0.0, 0.0, 0.0],
+      "head": [0.0, 1.14, 0.0]
+    }
   },
   {
     "id": "person_read_adult_a",
@@ -800,8 +1189,15 @@
       }
     ],
     "pose": "read",
-    "size": [0.562, 1.695, 0.618],
-    "label": "男の人（本を読む）"
+    "size": [0.562, 1.695, 0.643],
+    "label": "男の人（本を読む）",
+    "holds": "book",
+    "anchors": {
+      "hand_l": [-0.16, 1.08, 0.169],
+      "hand_r": [0.16, 1.08, 0.169],
+      "feet": [0.0, 0.0, -0.131],
+      "head": [0.0, 1.52, -0.131]
+    }
   },
   {
     "id": "person_eat_adult_a",
@@ -824,7 +1220,14 @@
     ],
     "pose": "eat",
     "size": [0.587, 1.695, 0.475],
-    "label": "男の人（リンゴを食べる）"
+    "label": "男の人（リンゴを食べる）",
+    "holds": "apple",
+    "anchors": {
+      "hand_l": [-0.248, 0.78, -0.047],
+      "hand_r": [0.092, 1.4, 0.173],
+      "feet": [0.022, 0.0, -0.047],
+      "head": [0.022, 1.52, -0.047]
+    }
   },
   {
     "id": "person_carry_adult_a",
@@ -847,7 +1250,14 @@
     ],
     "pose": "carry",
     "size": [0.571, 1.695, 0.819],
-    "label": "男の人（箱を運ぶ）"
+    "label": "男の人（箱を運ぶ）",
+    "holds": "box",
+    "anchors": {
+      "hand_l": [-0.24, 0.88, 0.226],
+      "hand_r": [0.24, 0.88, 0.226],
+      "feet": [0.0, 0.0, -0.154],
+      "head": [0.0, 1.52, -0.154]
+    }
   },
   {
     "id": "person_hold_woman_a",
@@ -866,7 +1276,13 @@
     ],
     "pose": "hold",
     "size": [0.555, 1.695, 0.588],
-    "label": "女の人（両手で持つ）"
+    "label": "女の人（両手で持つ）",
+    "anchors": {
+      "hand_l": [-0.1, 1.03, 0.246],
+      "hand_r": [0.1, 1.03, 0.246],
+      "feet": [0.0, 0.0, -0.054],
+      "head": [0.0, 1.52, -0.054]
+    }
   },
   {
     "id": "person_hold_girl_a",
@@ -885,7 +1301,13 @@
     ],
     "pose": "hold",
     "size": [0.416, 1.305, 0.441],
-    "label": "女の子（両手で持つ）"
+    "label": "女の子（両手で持つ）",
+    "anchors": {
+      "hand_l": [-0.075, 0.772, 0.185],
+      "hand_r": [0.075, 0.772, 0.185],
+      "feet": [0.0, 0.0, -0.041],
+      "head": [0.0, 1.14, -0.041]
+    }
   },
   {
     "id": "person_put_adult_a",
@@ -904,7 +1326,14 @@
     ],
     "pose": "put",
     "size": [0.563, 1.695, 0.658],
-    "label": "男の人（物を置く）"
+    "label": "男の人（物を置く）",
+    "uses": ["table"],
+    "anchors": {
+      "hand_l": [-0.17, 0.86, 0.281],
+      "hand_r": [0.17, 0.86, 0.281],
+      "feet": [0.0, 0.0, -0.139],
+      "head": [0.0, 1.52, -0.139]
+    }
   },
   {
     "id": "person_put_woman_a",
@@ -923,7 +1352,14 @@
     ],
     "pose": "put",
     "size": [0.563, 1.695, 0.708],
-    "label": "女の人（物を置く）"
+    "label": "女の人（物を置く）",
+    "uses": ["table"],
+    "anchors": {
+      "hand_l": [-0.17, 0.86, 0.306],
+      "hand_r": [0.17, 0.86, 0.306],
+      "feet": [0.0, 0.0, -0.114],
+      "head": [0.0, 1.52, -0.114]
+    }
   },
   {
     "id": "person_put_boy_a",
@@ -942,7 +1378,14 @@
     ],
     "pose": "put",
     "size": [0.422, 1.271, 0.493],
-    "label": "男の子（物を置く）"
+    "label": "男の子（物を置く）",
+    "uses": ["table"],
+    "anchors": {
+      "hand_l": [-0.127, 0.645, 0.211],
+      "hand_r": [0.127, 0.645, 0.211],
+      "feet": [0.0, 0.0, -0.104],
+      "head": [0.0, 1.14, -0.104]
+    }
   },
   {
     "id": "person_drink_woman_a",
@@ -965,7 +1408,14 @@
     ],
     "pose": "drink",
     "size": [0.587, 1.695, 0.51],
-    "label": "女の人（飲む）"
+    "label": "女の人（飲む）",
+    "holds": "cup",
+    "anchors": {
+      "hand_l": [-0.248, 0.78, -0.015],
+      "hand_r": [0.092, 1.39, 0.205],
+      "feet": [0.022, 0.0, -0.015],
+      "head": [0.022, 1.52, -0.015]
+    }
   },
   {
     "id": "person_drink_adult_a",
@@ -988,7 +1438,14 @@
     ],
     "pose": "drink",
     "size": [0.587, 1.695, 0.46],
-    "label": "男の人（飲む）"
+    "label": "男の人（飲む）",
+    "holds": "cup",
+    "anchors": {
+      "hand_l": [-0.248, 0.78, -0.04],
+      "hand_r": [0.092, 1.39, 0.18],
+      "feet": [0.022, 0.0, -0.04],
+      "head": [0.022, 1.52, -0.04]
+    }
   },
   {
     "id": "person_write_boy_a",
@@ -1012,7 +1469,13 @@
     "pose": "write",
     "size": [0.42, 1.031, 0.585],
     "label": "男の子（座って書く）",
+    "holds": "pen",
+    "uses": ["table", "chair"],
     "anchors": {
+      "hand_l": [-0.104, 0.555, 0.15],
+      "hand_r": [0.076, 0.57, 0.15],
+      "feet": [0.001, 0.0, -0.15],
+      "head": [0.001, 0.9, -0.15],
       "hip": [0.001, 0.36, -0.15]
     }
   },
@@ -1038,7 +1501,13 @@
     "pose": "write",
     "size": [0.42, 1.065, 0.623],
     "label": "女の子（座って書く）",
+    "holds": "pen",
+    "uses": ["table", "chair"],
     "anchors": {
+      "hand_l": [-0.104, 0.555, 0.169],
+      "hand_r": [0.076, 0.57, 0.169],
+      "feet": [0.001, 0.0, -0.131],
+      "head": [0.001, 0.9, -0.131],
       "hip": [0.001, 0.36, -0.131]
     }
   },
@@ -1059,7 +1528,13 @@
     ],
     "pose": "look",
     "size": [0.444, 1.305, 0.366],
-    "label": "女の子（手をかざして見る）"
+    "label": "女の子（手をかざして見る）",
+    "anchors": {
+      "hand_l": [-0.188, 0.585, -0.003],
+      "hand_r": [0.052, 1.2, 0.147],
+      "feet": [0.015, 0.0, -0.003],
+      "head": [0.015, 1.14, -0.003]
+    }
   },
   {
     "id": "person_carry_boy_a",
@@ -1082,7 +1557,14 @@
     ],
     "pose": "carry",
     "size": [0.428, 1.271, 0.614],
-    "label": "男の子（箱を運ぶ）"
+    "label": "男の子（箱を運ぶ）",
+    "holds": "box",
+    "anchors": {
+      "hand_l": [-0.18, 0.66, 0.17],
+      "hand_r": [0.18, 0.66, 0.17],
+      "feet": [0.0, 0.0, -0.115],
+      "head": [0.0, 1.14, -0.115]
+    }
   },
   {
     "id": "person_carry_woman_a",
@@ -1105,7 +1587,14 @@
     ],
     "pose": "carry",
     "size": [0.571, 1.695, 0.819],
-    "label": "女の人（箱を運ぶ）"
+    "label": "女の人（箱を運ぶ）",
+    "holds": "box",
+    "anchors": {
+      "hand_l": [-0.24, 0.88, 0.226],
+      "hand_r": [0.24, 0.88, 0.226],
+      "feet": [0.0, 0.0, -0.154],
+      "head": [0.0, 1.52, -0.154]
+    }
   },
   {
     "id": "person_carry_girl_a",
@@ -1128,7 +1617,14 @@
     ],
     "pose": "carry",
     "size": [0.428, 1.305, 0.614],
-    "label": "女の子（箱を運ぶ）"
+    "label": "女の子（箱を運ぶ）",
+    "holds": "box",
+    "anchors": {
+      "hand_l": [-0.18, 0.66, 0.17],
+      "hand_r": [0.18, 0.66, 0.17],
+      "feet": [0.0, 0.0, -0.115],
+      "head": [0.0, 1.14, -0.115]
+    }
   },
   {
     "id": "person_sit_girl_a",
@@ -1148,7 +1644,12 @@
     "pose": "sit",
     "size": [0.423, 1.065, 0.623],
     "label": "女の子（座る）",
+    "uses": ["chair"],
     "anchors": {
+      "hand_l": [-0.15, 0.562, 0.109],
+      "hand_r": [0.15, 0.562, 0.109],
+      "feet": [0.0, 0.0, -0.131],
+      "head": [0.0, 0.9, -0.131],
       "hip": [0.0, 0.36, -0.131]
     }
   },
@@ -1170,8 +1671,1602 @@
     "pose": "sit",
     "size": [0.423, 1.031, 0.585],
     "label": "男の子（座る）",
+    "uses": ["chair"],
     "anchors": {
+      "hand_l": [-0.15, 0.562, 0.09],
+      "hand_r": [0.15, 0.562, 0.09],
+      "feet": [0.0, 0.0, -0.15],
+      "head": [0.0, 0.9, -0.15],
       "hip": [0.0, 0.36, -0.15]
+    }
+  },
+  {
+    "id": "person_raise_hand_boy_a",
+    "version": 1,
+    "file": "parts/person_raise_hand_boy_a/1.usdz",
+    "category": "person",
+    "words": [
+      {
+        "word": "boy",
+        "pos": "noun"
+      },
+      {
+        "word": "raise",
+        "pos": "verb"
+      },
+      {
+        "word": "hand",
+        "pos": "noun"
+      }
+    ],
+    "pose": "raise_hand",
+    "size": [0.516, 1.266, 0.585],
+    "label": "男の子（座って手を上げる）",
+    "uses": ["chair"],
+    "anchors": {
+      "hand_l": [-0.196, 0.562, 0.09],
+      "hand_r": [0.224, 1.23, -0.105],
+      "feet": [-0.046, 0.0, -0.15],
+      "head": [-0.046, 0.9, -0.15],
+      "hip": [-0.046, 0.36, -0.15]
+    }
+  },
+  {
+    "id": "person_point_woman_a",
+    "version": 1,
+    "file": "parts/person_point_woman_a/1.usdz",
+    "category": "person",
+    "words": [
+      {
+        "word": "woman",
+        "pos": "noun"
+      },
+      {
+        "word": "point",
+        "pos": "verb"
+      }
+    ],
+    "pose": "point",
+    "size": [0.597, 1.695, 1.008],
+    "label": "女の人（正面を指さす）",
+    "anchors": {
+      "hand_l": [-0.253, 0.78, -0.264],
+      "hand_r": [0.157, 1.34, 0.456],
+      "feet": [0.017, 0.0, -0.264],
+      "head": [0.017, 1.52, -0.264]
+    }
+  },
+  {
+    "id": "person_read_sit_adult_a",
+    "version": 1,
+    "file": "parts/person_read_sit_adult_a/1.usdz",
+    "category": "person",
+    "words": [
+      {
+        "word": "man",
+        "pos": "noun"
+      },
+      {
+        "word": "read",
+        "pos": "verb"
+      },
+      {
+        "word": "book",
+        "pos": "noun"
+      }
+    ],
+    "pose": "read_sit",
+    "size": [0.562, 1.375, 0.78],
+    "label": "男の人（座って本を読む）",
+    "holds": "book",
+    "uses": ["chair"],
+    "anchors": {
+      "hand_l": [-0.16, 0.76, 0.1],
+      "hand_r": [0.16, 0.76, 0.1],
+      "feet": [0.0, 0.0, -0.2],
+      "head": [0.0, 1.2, -0.2],
+      "hip": [0.0, 0.48, -0.2]
+    }
+  },
+  {
+    "id": "person_cook_mother_a",
+    "version": 1,
+    "file": "parts/person_cook_mother_a/1.usdz",
+    "category": "person",
+    "words": [
+      {
+        "word": "woman",
+        "pos": "noun"
+      },
+      {
+        "word": "cook",
+        "pos": "verb"
+      }
+    ],
+    "pose": "cook",
+    "size": [0.564, 1.695, 0.748],
+    "label": "お母さん（料理する）",
+    "uses": ["kitchen_counter", "pan"],
+    "anchors": {
+      "hand_l": [-0.2, 0.94, 0.246],
+      "hand_r": [0.2, 1.0, 0.326],
+      "feet": [0.0, 0.0, -0.134],
+      "head": [0.0, 1.52, -0.134]
+    }
+  },
+  {
+    "id": "person_throw_boy_a",
+    "version": 1,
+    "file": "parts/person_throw_boy_a/1.usdz",
+    "category": "person",
+    "words": [
+      {
+        "word": "boy",
+        "pos": "noun"
+      },
+      {
+        "word": "throw",
+        "pos": "verb"
+      }
+    ],
+    "pose": "throw",
+    "size": [0.441, 1.326, 0.603],
+    "label": "男の子（投げる）",
+    "range": "far",
+    "anchors": {
+      "hand_l": [-0.186, 0.66, -0.26],
+      "hand_r": [0.159, 1.29, 0.265],
+      "feet": [0.009, 0.0, -0.11],
+      "head": [0.009, 1.14, -0.11]
+    }
+  },
+  {
+    "id": "person_umbrella_girl_a",
+    "version": 1,
+    "file": "parts/person_umbrella_girl_a/1.usdz",
+    "category": "person",
+    "words": [
+      {
+        "word": "girl",
+        "pos": "noun"
+      },
+      {
+        "word": "umbrella",
+        "pos": "noun"
+      },
+      {
+        "word": "share",
+        "pos": "verb"
+      }
+    ],
+    "pose": "umbrella",
+    "size": [1.311, 2.085, 1.267],
+    "label": "女の子（傘を差しかける）",
+    "holds": "umbrella",
+    "anchors": {
+      "hand_l": [-0.048, 1.29, -0.157],
+      "hand_r": [0.244, 0.585, -0.427],
+      "feet": [0.042, 0.0, -0.427],
+      "head": [0.042, 1.14, -0.427],
+      "canopy": [0.012, 1.875, 0.038]
+    }
+  },
+  {
+    "id": "person_stand_old_a",
+    "version": 1,
+    "file": "parts/person_stand_old_a/1.usdz",
+    "category": "person",
+    "words": [
+      {
+        "word": "old man",
+        "pos": "noun"
+      },
+      {
+        "word": "stand",
+        "pos": "verb"
+      }
+    ],
+    "pose": "stand",
+    "size": [0.6, 1.61, 0.361],
+    "label": "おじいさん（立つ）",
+    "anchors": {
+      "hand_l": [-0.257, 0.741, 0.0],
+      "hand_r": [0.257, 0.741, 0.0],
+      "feet": [0.0, 0.0, 0.0],
+      "head": [0.0, 1.444, 0.0]
+    }
+  },
+  {
+    "id": "person_run_bag_adult_a",
+    "version": 1,
+    "file": "parts/person_run_bag_adult_a/1.usdz",
+    "category": "person",
+    "words": [
+      {
+        "word": "man",
+        "pos": "noun"
+      },
+      {
+        "word": "run",
+        "pos": "verb"
+      },
+      {
+        "word": "bag",
+        "pos": "noun"
+      }
+    ],
+    "pose": "run_bag",
+    "size": [0.682, 1.675, 0.836],
+    "label": "男の人（かばんを持って走る）",
+    "holds": "bag",
+    "anchors": {
+      "hand_l": [-0.279, 0.98, 0.352],
+      "hand_r": [0.221, 0.86, 0.002],
+      "feet": [-0.059, 0.0, 0.052],
+      "head": [-0.059, 1.5, 0.052]
+    }
+  },
+  {
+    "id": "person_wipe_woman_a",
+    "version": 1,
+    "file": "parts/person_wipe_woman_a/1.usdz",
+    "category": "person",
+    "words": [
+      {
+        "word": "woman",
+        "pos": "noun"
+      },
+      {
+        "word": "wipe",
+        "pos": "verb"
+      }
+    ],
+    "pose": "wipe",
+    "size": [0.563, 1.695, 0.88],
+    "label": "女の人（机を拭く）",
+    "holds": "cloth",
+    "uses": ["table"],
+    "anchors": {
+      "hand_l": [-0.219, 0.77, 0.1],
+      "hand_r": [0.101, 0.77, 0.36],
+      "feet": [0.001, 0.0, -0.2],
+      "head": [0.001, 1.52, -0.2]
+    }
+  },
+  {
+    "id": "person_serve_adult_a",
+    "version": 1,
+    "file": "parts/person_serve_adult_a/1.usdz",
+    "category": "person",
+    "words": [
+      {
+        "word": "man",
+        "pos": "noun"
+      },
+      {
+        "word": "bring",
+        "pos": "verb"
+      },
+      {
+        "word": "cup",
+        "pos": "noun"
+      }
+    ],
+    "pose": "serve",
+    "size": [0.676, 1.695, 0.846],
+    "label": "男の人（お盆で運ぶ）",
+    "holds": "tray",
+    "anchors": {
+      "hand_l": [-0.292, 0.8, 0.003],
+      "hand_r": [0.168, 1.1, 0.253],
+      "feet": [-0.032, 0.0, -0.167],
+      "head": [-0.032, 1.52, -0.167]
+    }
+  },
+  {
+    "id": "person_reach_girl_a",
+    "version": 1,
+    "file": "parts/person_reach_girl_a/1.usdz",
+    "category": "person",
+    "words": [
+      {
+        "word": "girl",
+        "pos": "noun"
+      },
+      {
+        "word": "reach",
+        "pos": "verb"
+      }
+    ],
+    "pose": "reach",
+    "size": [0.448, 1.596, 0.381],
+    "label": "女の子（手を伸ばす）",
+    "anchors": {
+      "hand_l": [-0.19, 0.585, -0.011],
+      "hand_r": [0.088, 1.56, 0.154],
+      "feet": [0.013, 0.0, -0.011],
+      "head": [0.013, 1.14, -0.011]
+    }
+  },
+  {
+    "id": "person_offer_boy_a",
+    "version": 1,
+    "file": "parts/person_offer_boy_a/1.usdz",
+    "category": "person",
+    "words": [
+      {
+        "word": "boy",
+        "pos": "noun"
+      },
+      {
+        "word": "help",
+        "pos": "verb"
+      }
+    ],
+    "pose": "offer",
+    "size": [0.448, 1.271, 0.553],
+    "label": "男の子（手を差し出す）",
+    "anchors": {
+      "hand_l": [-0.19, 0.585, -0.134],
+      "hand_r": [0.118, 1.2, 0.241],
+      "feet": [0.013, 0.0, -0.134],
+      "head": [0.013, 1.14, -0.134]
+    }
+  },
+  {
+    "id": "person_run_phone_girl_a",
+    "version": 1,
+    "file": "parts/person_run_phone_girl_a/1.usdz",
+    "category": "person",
+    "words": [
+      {
+        "word": "girl",
+        "pos": "noun"
+      },
+      {
+        "word": "run",
+        "pos": "verb"
+      },
+      {
+        "word": "phone",
+        "pos": "noun"
+      }
+    ],
+    "pose": "run_phone",
+    "size": [0.423, 1.305, 0.776],
+    "label": "女の子（スマホを持って走る）",
+    "holds": "phone",
+    "anchors": {
+      "hand_l": [-0.165, 0.69, -0.186],
+      "hand_r": [0.15, 1.14, 0.339],
+      "feet": [0.0, 0.0, -0.036],
+      "head": [0.0, 1.125, -0.036]
+    }
+  },
+  {
+    "id": "person_basket_adult_a",
+    "version": 1,
+    "file": "parts/person_basket_adult_a/1.usdz",
+    "category": "person",
+    "words": [
+      {
+        "word": "man",
+        "pos": "noun"
+      },
+      {
+        "word": "basket",
+        "pos": "noun"
+      },
+      {
+        "word": "wait",
+        "pos": "verb"
+      }
+    ],
+    "pose": "basket",
+    "size": [0.869, 1.695, 0.497],
+    "label": "男の人（かごを持つ）",
+    "holds": "basket",
+    "anchors": {
+      "hand_l": [-0.389, 0.78, -0.02],
+      "hand_r": [0.241, 0.78, 0.0],
+      "feet": [-0.119, 0.0, -0.02],
+      "head": [-0.119, 1.52, -0.02]
+    }
+  },
+  {
+    "id": "person_stand_woman_a",
+    "version": 1,
+    "file": "parts/person_stand_woman_a/1.usdz",
+    "category": "person",
+    "words": [
+      {
+        "word": "woman",
+        "pos": "noun"
+      },
+      {
+        "word": "stand",
+        "pos": "verb"
+      }
+    ],
+    "pose": "stand",
+    "size": [0.631, 1.695, 0.48],
+    "label": "女の人（立つ）",
+    "anchors": {
+      "hand_l": [-0.27, 0.78, 0.0],
+      "hand_r": [0.27, 0.78, 0.0],
+      "feet": [0.0, 0.0, 0.0],
+      "head": [0.0, 1.52, 0.0]
+    }
+  },
+  {
+    "id": "person_stand_boy_a",
+    "version": 1,
+    "file": "parts/person_stand_boy_a/1.usdz",
+    "category": "person",
+    "words": [
+      {
+        "word": "boy",
+        "pos": "noun"
+      },
+      {
+        "word": "stand",
+        "pos": "verb"
+      }
+    ],
+    "pose": "stand",
+    "size": [0.473, 1.271, 0.285],
+    "label": "男の子（立つ）",
+    "anchors": {
+      "hand_l": [-0.203, 0.585, 0.0],
+      "hand_r": [0.203, 0.585, 0.0],
+      "feet": [0.0, 0.0, 0.0],
+      "head": [0.0, 1.14, 0.0]
+    }
+  },
+  {
+    "id": "person_pay_woman_a",
+    "version": 1,
+    "file": "parts/person_pay_woman_a/1.usdz",
+    "category": "person",
+    "words": [
+      {
+        "word": "woman",
+        "pos": "noun"
+      },
+      {
+        "word": "pay",
+        "pos": "verb"
+      },
+      {
+        "word": "money",
+        "pos": "noun"
+      }
+    ],
+    "pose": "pay",
+    "size": [0.562, 1.695, 0.97],
+    "label": "女の人（お金を払う）",
+    "holds": "money",
+    "uses": ["checkout_counter"],
+    "anchors": {
+      "hand_l": [-0.16, 1.0, 0.055],
+      "hand_r": [0.1, 1.03, 0.355],
+      "feet": [0.0, 0.0, -0.245],
+      "head": [0.0, 1.52, -0.245]
+    }
+  },
+  {
+    "id": "person_set_plates_boy_a",
+    "version": 1,
+    "file": "parts/person_set_plates_boy_a/1.usdz",
+    "category": "person",
+    "words": [
+      {
+        "word": "boy",
+        "pos": "noun"
+      },
+      {
+        "word": "put",
+        "pos": "verb"
+      },
+      {
+        "word": "plate",
+        "pos": "noun"
+      }
+    ],
+    "pose": "set_plates",
+    "size": [0.423, 1.271, 0.637],
+    "label": "男の子（皿を並べる）",
+    "holds": "plates",
+    "uses": ["table", "plate"],
+    "anchors": {
+      "hand_l": [-0.127, 0.803, 0.199],
+      "hand_r": [0.127, 0.803, 0.199],
+      "feet": [0.0, 0.0, -0.176],
+      "head": [0.0, 1.14, -0.176]
+    }
+  },
+  {
+    "id": "person_serve_waiter_a",
+    "version": 1,
+    "file": "parts/person_serve_waiter_a/1.usdz",
+    "category": "person",
+    "words": [
+      {
+        "word": "waiter",
+        "pos": "noun"
+      },
+      {
+        "word": "bring",
+        "pos": "verb"
+      },
+      {
+        "word": "cup",
+        "pos": "noun"
+      }
+    ],
+    "pose": "serve",
+    "size": [0.676, 1.695, 0.846],
+    "label": "店員（お盆で運ぶ）",
+    "holds": "tray",
+    "anchors": {
+      "hand_l": [-0.292, 0.8, 0.003],
+      "hand_r": [0.168, 1.1, 0.253],
+      "feet": [-0.032, 0.0, -0.167],
+      "head": [-0.032, 1.52, -0.167]
+    }
+  },
+  {
+    "id": "person_take_book_teen_a",
+    "version": 1,
+    "file": "parts/person_take_book_teen_a/1.usdz",
+    "category": "person",
+    "words": [
+      {
+        "word": "boy",
+        "pos": "noun"
+      },
+      {
+        "word": "reach",
+        "pos": "verb"
+      },
+      {
+        "word": "book",
+        "pos": "noun"
+      }
+    ],
+    "pose": "take_book",
+    "size": [0.596, 2.048, 0.638],
+    "label": "背の高い男の子（高い所の本を取る）",
+    "uses": ["bookshelf"],
+    "anchors": {
+      "hand_l": [-0.252, 0.78, -0.129],
+      "hand_r": [0.138, 2.0, 0.271],
+      "feet": [0.018, 0.0, -0.129],
+      "head": [0.018, 1.52, -0.129]
+    }
+  },
+  {
+    "id": "person_ask_girl_a",
+    "version": 1,
+    "file": "parts/person_ask_girl_a/1.usdz",
+    "category": "person",
+    "words": [
+      {
+        "word": "girl",
+        "pos": "noun"
+      },
+      {
+        "word": "ask",
+        "pos": "verb"
+      },
+      {
+        "word": "point",
+        "pos": "verb"
+      }
+    ],
+    "pose": "ask",
+    "size": [0.74, 1.386, 0.426],
+    "label": "女の子（指さして頼む）",
+    "anchors": {
+      "hand_l": [-0.336, 1.35, 0.079],
+      "hand_r": [0.279, 0.787, 0.177],
+      "feet": [0.159, 0.0, -0.033],
+      "head": [0.159, 1.14, -0.033]
+    }
+  },
+  {
+    "id": "person_basket_woman_a",
+    "version": 1,
+    "file": "parts/person_basket_woman_a/1.usdz",
+    "category": "person",
+    "words": [
+      {
+        "word": "woman",
+        "pos": "noun"
+      },
+      {
+        "word": "basket",
+        "pos": "noun"
+      },
+      {
+        "word": "wait",
+        "pos": "verb"
+      }
+    ],
+    "pose": "basket",
+    "size": [0.869, 1.695, 0.509],
+    "label": "女の人（かごを持つ）",
+    "holds": "basket",
+    "anchors": {
+      "hand_l": [-0.389, 0.78, -0.014],
+      "hand_r": [0.241, 0.78, 0.006],
+      "feet": [-0.119, 0.0, -0.014],
+      "head": [-0.119, 1.52, -0.014]
+    }
+  },
+  {
+    "id": "person_question_woman_a",
+    "version": 1,
+    "file": "parts/person_question_woman_a/1.usdz",
+    "category": "person",
+    "words": [
+      {
+        "word": "woman",
+        "pos": "noun"
+      },
+      {
+        "word": "ask",
+        "pos": "verb"
+      },
+      {
+        "word": "talk",
+        "pos": "verb"
+      }
+    ],
+    "pose": "question",
+    "size": [0.598, 1.695, 0.628],
+    "label": "女の人（話しかける）",
+    "anchors": {
+      "hand_l": [-0.253, 0.78, -0.074],
+      "hand_r": [0.217, 1.1, 0.266],
+      "feet": [0.017, 0.0, -0.074],
+      "head": [0.017, 1.52, -0.074]
+    }
+  },
+  {
+    "id": "person_stand_old_woman_a",
+    "version": 1,
+    "file": "parts/person_stand_old_woman_a/1.usdz",
+    "category": "person",
+    "words": [
+      {
+        "word": "old woman",
+        "pos": "noun"
+      },
+      {
+        "word": "stand",
+        "pos": "verb"
+      }
+    ],
+    "pose": "stand",
+    "size": [0.581, 1.601, 0.442],
+    "label": "おばあさん（立つ）",
+    "anchors": {
+      "hand_l": [-0.248, 0.718, 0.0],
+      "hand_r": [0.248, 0.718, 0.0],
+      "feet": [0.0, 0.0, 0.0],
+      "head": [0.0, 1.398, 0.0]
+    }
+  },
+  {
+    "id": "person_blackboard_woman_a",
+    "version": 1,
+    "file": "parts/person_blackboard_woman_a/1.usdz",
+    "category": "person",
+    "words": [
+      {
+        "word": "woman",
+        "pos": "noun"
+      },
+      {
+        "word": "write",
+        "pos": "verb"
+      },
+      {
+        "word": "blackboard",
+        "pos": "noun"
+      }
+    ],
+    "pose": "blackboard",
+    "size": [0.597, 1.695, 0.823],
+    "label": "女の人（黒板に書く）",
+    "holds": "chalk",
+    "uses": ["wall_blackboard"],
+    "anchors": {
+      "hand_l": [-0.253, 0.78, -0.171],
+      "hand_r": [0.177, 1.62, 0.329],
+      "feet": [0.017, 0.0, -0.171],
+      "head": [0.017, 1.52, -0.171]
+    }
+  },
+  {
+    "id": "person_catch_boy_a",
+    "version": 1,
+    "file": "parts/person_catch_boy_a/1.usdz",
+    "category": "person",
+    "words": [
+      {
+        "word": "boy",
+        "pos": "noun"
+      },
+      {
+        "word": "catch",
+        "pos": "verb"
+      }
+    ],
+    "pose": "catch",
+    "size": [0.423, 1.271, 0.524],
+    "label": "男の子（捕る）",
+    "range": "far",
+    "anchors": {
+      "hand_l": [-0.165, 1.065, 0.226],
+      "hand_r": [0.165, 1.065, 0.226],
+      "feet": [0.0, 0.0, -0.119],
+      "head": [0.0, 1.14, -0.119]
+    }
+  },
+  {
+    "id": "person_carry_veg_clerk_a",
+    "version": 1,
+    "file": "parts/person_carry_veg_clerk_a/1.usdz",
+    "category": "person",
+    "words": [
+      {
+        "word": "clerk",
+        "pos": "noun"
+      },
+      {
+        "word": "carry",
+        "pos": "verb"
+      },
+      {
+        "word": "box",
+        "pos": "noun"
+      },
+      {
+        "word": "vegetable",
+        "pos": "noun"
+      }
+    ],
+    "pose": "carry_veg",
+    "size": [0.571, 1.695, 0.819],
+    "label": "店の店員（野菜の箱を運ぶ）",
+    "holds": "box of vegetables",
+    "anchors": {
+      "hand_l": [-0.24, 0.88, 0.226],
+      "hand_r": [0.24, 0.88, 0.226],
+      "feet": [0.0, 0.0, -0.154],
+      "head": [0.0, 1.52, -0.154]
+    }
+  },
+  {
+    "id": "person_take_order_waiter_a",
+    "version": 1,
+    "file": "parts/person_take_order_waiter_a/1.usdz",
+    "category": "person",
+    "words": [
+      {
+        "word": "waiter",
+        "pos": "noun"
+      },
+      {
+        "word": "take",
+        "pos": "verb"
+      },
+      {
+        "word": "order",
+        "pos": "noun"
+      }
+    ],
+    "pose": "take_order",
+    "size": [0.556, 1.695, 0.64],
+    "label": "店員（注文を取る）",
+    "holds": "notepad",
+    "uses": ["table"],
+    "anchors": {
+      "hand_l": [-0.1, 1.18, 0.224],
+      "hand_r": [0.08, 1.22, 0.244],
+      "feet": [0.0, 0.0, -0.116],
+      "head": [0.0, 1.52, -0.116]
+    }
+  },
+  {
+    "id": "person_run_umbrella_woman_a",
+    "version": 1,
+    "file": "parts/person_run_umbrella_woman_a/1.usdz",
+    "category": "person",
+    "words": [
+      {
+        "word": "woman",
+        "pos": "noun"
+      },
+      {
+        "word": "run",
+        "pos": "verb"
+      },
+      {
+        "word": "umbrella",
+        "pos": "noun"
+      }
+    ],
+    "pose": "run_umbrella",
+    "size": [0.564, 1.925, 1.334],
+    "label": "女の人（閉じた傘を持って走る）",
+    "holds": "umbrella",
+    "anchors": {
+      "hand_l": [-0.22, 0.92, -0.397],
+      "hand_r": [0.2, 1.23, 0.303],
+      "feet": [0.0, 0.0, -0.197],
+      "head": [0.0, 1.5, -0.197]
+    }
+  },
+  {
+    "id": "person_sleep_teen_a",
+    "version": 1,
+    "file": "parts/person_sleep_teen_a/1.usdz",
+    "category": "person",
+    "words": [
+      {
+        "word": "boy",
+        "pos": "noun"
+      },
+      {
+        "word": "sleep",
+        "pos": "verb"
+      }
+    ],
+    "pose": "sleep",
+    "size": [0.561, 1.096, 0.78],
+    "label": "背の高い男の子（机に伏せて眠る）",
+    "uses": ["table", "chair"],
+    "anchors": {
+      "hand_l": [-0.13, 0.76, 0.22],
+      "hand_r": [0.13, 0.76, 0.22],
+      "feet": [0.0, 0.0, -0.2],
+      "head": [0.0, 0.9, 0.14],
+      "hip": [0.0, 0.48, -0.2]
+    }
+  },
+  {
+    "id": "person_wake_woman_a",
+    "version": 1,
+    "file": "parts/person_wake_woman_a/1.usdz",
+    "category": "person",
+    "words": [
+      {
+        "word": "woman",
+        "pos": "noun"
+      },
+      {
+        "word": "wake",
+        "pos": "verb"
+      },
+      {
+        "word": "touch",
+        "pos": "verb"
+      }
+    ],
+    "pose": "wake",
+    "size": [0.596, 1.695, 0.788],
+    "label": "女の人（肩に手を置く）",
+    "anchors": {
+      "hand_l": [-0.252, 0.78, -0.154],
+      "hand_r": [0.118, 0.98, 0.346],
+      "feet": [0.018, 0.0, -0.154],
+      "head": [0.018, 1.52, -0.154]
+    }
+  },
+  {
+    "id": "person_sweep_adult_a",
+    "version": 1,
+    "file": "parts/person_sweep_adult_a/1.usdz",
+    "category": "person",
+    "words": [
+      {
+        "word": "man",
+        "pos": "noun"
+      },
+      {
+        "word": "sweep",
+        "pos": "verb"
+      },
+      {
+        "word": "clean",
+        "pos": "verb"
+      },
+      {
+        "word": "broom",
+        "pos": "noun"
+      }
+    ],
+    "pose": "sweep",
+    "size": [0.617, 1.695, 1.04],
+    "label": "男の人（ほうきで掃く）",
+    "holds": "broom",
+    "anchors": {
+      "hand_l": [-0.095, 1.2, -0.05],
+      "hand_r": [0.045, 0.8, 0.13],
+      "feet": [-0.035, 0.0, -0.33],
+      "head": [-0.035, 1.52, -0.33]
+    }
+  },
+  {
+    "id": "person_sit_look_r_boy_a",
+    "version": 1,
+    "file": "parts/person_sit_look_r_boy_a/1.usdz",
+    "category": "person",
+    "words": [
+      {
+        "word": "boy",
+        "pos": "noun"
+      },
+      {
+        "word": "sit",
+        "pos": "verb"
+      },
+      {
+        "word": "look",
+        "pos": "verb"
+      },
+      {
+        "word": "listen",
+        "pos": "verb"
+      }
+    ],
+    "pose": "sit_look_r",
+    "size": [0.422, 1.037, 0.585],
+    "label": "男の子（座って横を見る）",
+    "gaze": "r",
+    "mirror": "person_sit_look_l_boy_a",
+    "anchors": {
+      "hand_l": [-0.127, 0.42, 0.075],
+      "hand_r": [0.127, 0.42, 0.075],
+      "feet": [0.0, 0.0, -0.15],
+      "head": [0.0, 0.9, -0.15],
+      "hip": [0.0, 0.36, -0.15]
+    }
+  },
+  {
+    "id": "person_sit_look_l_boy_a",
+    "version": 1,
+    "file": "parts/person_sit_look_l_boy_a/1.usdz",
+    "category": "person",
+    "words": [
+      {
+        "word": "boy",
+        "pos": "noun"
+      },
+      {
+        "word": "sit",
+        "pos": "verb"
+      },
+      {
+        "word": "look",
+        "pos": "verb"
+      },
+      {
+        "word": "listen",
+        "pos": "verb"
+      }
+    ],
+    "pose": "sit_look_l",
+    "size": [0.422, 1.037, 0.585],
+    "label": "男の子（座って横を見る）",
+    "gaze": "l",
+    "mirror": "person_sit_look_r_boy_a",
+    "anchors": {
+      "hand_l": [-0.127, 0.42, 0.075],
+      "hand_r": [0.127, 0.42, 0.075],
+      "feet": [0.0, 0.0, -0.15],
+      "head": [0.0, 0.9, -0.15],
+      "hip": [0.0, 0.36, -0.15]
+    }
+  },
+  {
+    "id": "person_show_hand_boy_a",
+    "version": 1,
+    "file": "parts/person_show_hand_boy_a/1.usdz",
+    "category": "person",
+    "words": [
+      {
+        "word": "boy",
+        "pos": "noun"
+      },
+      {
+        "word": "show",
+        "pos": "verb"
+      },
+      {
+        "word": "hand",
+        "pos": "noun"
+      }
+    ],
+    "pose": "show_hand",
+    "size": [0.445, 1.279, 0.508],
+    "label": "男の子（手を差し出して見せる）",
+    "anchors": {
+      "hand_l": [-0.188, 0.585, -0.112],
+      "hand_r": [0.044, 0.795, 0.218],
+      "feet": [0.014, 0.0, -0.112],
+      "head": [0.014, 1.14, -0.112]
+    }
+  },
+  {
+    "id": "person_check_hand_mother_a",
+    "version": 1,
+    "file": "parts/person_check_hand_mother_a/1.usdz",
+    "category": "person",
+    "words": [
+      {
+        "word": "woman",
+        "pos": "noun"
+      },
+      {
+        "word": "check",
+        "pos": "verb"
+      },
+      {
+        "word": "hand",
+        "pos": "noun"
+      }
+    ],
+    "pose": "check_hand",
+    "size": [0.559, 1.71, 0.8],
+    "label": "お母さん（手を確かめる）",
+    "anchors": {
+      "hand_l": [-0.07, 0.8, 0.352],
+      "hand_r": [0.09, 0.8, 0.352],
+      "feet": [0.0, 0.0, -0.148],
+      "head": [0.0, 1.52, -0.148]
+    }
+  },
+  {
+    "id": "person_feed_old_a",
+    "version": 1,
+    "file": "parts/person_feed_old_a/1.usdz",
+    "category": "person",
+    "words": [
+      {
+        "word": "old man",
+        "pos": "noun"
+      },
+      {
+        "word": "feed",
+        "pos": "verb"
+      }
+    ],
+    "pose": "feed",
+    "size": [0.567, 1.62, 0.701],
+    "label": "おじいさん（鳥にえさをやる）",
+    "uses": ["animal_bird_a"],
+    "anchors": {
+      "hand_l": [-0.24, 0.741, -0.17],
+      "hand_r": [0.131, 0.712, 0.305],
+      "feet": [0.017, 0.0, -0.17],
+      "head": [0.017, 1.444, -0.17]
+    }
+  },
+  {
+    "id": "person_lift_desk_boy_a",
+    "version": 1,
+    "file": "parts/person_lift_desk_boy_a/1.usdz",
+    "category": "person",
+    "words": [
+      {
+        "word": "boy",
+        "pos": "noun"
+      },
+      {
+        "word": "carry",
+        "pos": "verb"
+      },
+      {
+        "word": "move",
+        "pos": "verb"
+      }
+    ],
+    "pose": "lift_desk",
+    "size": [0.428, 1.271, 0.479],
+    "label": "男の子（机を両手で持って運ぶ）",
+    "uses": ["table"],
+    "anchors": {
+      "hand_l": [-0.18, 0.72, 0.203],
+      "hand_r": [0.18, 0.72, 0.203],
+      "feet": [0.0, 0.0, -0.097],
+      "head": [0.0, 1.14, -0.097]
+    }
+  },
+  {
+    "id": "person_lift_desk_girl_a",
+    "version": 1,
+    "file": "parts/person_lift_desk_girl_a/1.usdz",
+    "category": "person",
+    "words": [
+      {
+        "word": "girl",
+        "pos": "noun"
+      },
+      {
+        "word": "carry",
+        "pos": "verb"
+      },
+      {
+        "word": "move",
+        "pos": "verb"
+      }
+    ],
+    "pose": "lift_desk",
+    "size": [0.428, 1.305, 0.516],
+    "label": "女の子（机を両手で持って運ぶ）",
+    "uses": ["table"],
+    "anchors": {
+      "hand_l": [-0.18, 0.72, 0.222],
+      "hand_r": [0.18, 0.72, 0.222],
+      "feet": [0.0, 0.0, -0.078],
+      "head": [0.0, 1.14, -0.078]
+    }
+  },
+  {
+    "id": "person_cut_mother_a",
+    "version": 1,
+    "file": "parts/person_cut_mother_a/1.usdz",
+    "category": "person",
+    "words": [
+      {
+        "word": "woman",
+        "pos": "noun"
+      },
+      {
+        "word": "cut",
+        "pos": "verb"
+      }
+    ],
+    "pose": "cut",
+    "size": [0.563, 1.703, 0.949],
+    "label": "お母さん（ケーキを切る）",
+    "holds": "knife",
+    "uses": ["table", "cake"],
+    "anchors": {
+      "hand_l": [-0.199, 0.8, 0.185],
+      "hand_r": [0.121, 0.84, 0.265],
+      "feet": [0.001, 0.0, -0.235],
+      "head": [0.001, 1.52, -0.235]
+    }
+  },
+  {
+    "id": "person_press_woman_a",
+    "version": 1,
+    "file": "parts/person_press_woman_a/1.usdz",
+    "category": "person",
+    "words": [
+      {
+        "word": "woman",
+        "pos": "noun"
+      },
+      {
+        "word": "buy",
+        "pos": "verb"
+      },
+      {
+        "word": "press",
+        "pos": "verb"
+      }
+    ],
+    "pose": "press",
+    "size": [0.597, 1.695, 0.838],
+    "label": "女の人（機械のボタンを押す）",
+    "uses": ["ticket_machine"],
+    "anchors": {
+      "hand_l": [-0.253, 0.78, -0.179],
+      "hand_r": [0.137, 1.18, 0.371],
+      "feet": [0.017, 0.0, -0.179],
+      "head": [0.017, 1.52, -0.179]
+    }
+  },
+  {
+    "id": "person_kneel_build_boy_a",
+    "version": 1,
+    "file": "parts/person_kneel_build_boy_a/1.usdz",
+    "category": "person",
+    "words": [
+      {
+        "word": "boy",
+        "pos": "noun"
+      },
+      {
+        "word": "build",
+        "pos": "verb"
+      },
+      {
+        "word": "make",
+        "pos": "verb"
+      }
+    ],
+    "pose": "kneel_build",
+    "size": [0.423, 1.054, 0.711],
+    "label": "男の子（ひざをついて砂で作る）",
+    "uses": ["sand_castle"],
+    "anchors": {
+      "hand_l": [-0.15, 0.21, 0.319],
+      "hand_r": [0.15, 0.21, 0.319],
+      "feet": [0.0, 0.0, 0.005],
+      "head": [0.0, 0.915, 0.005]
+    }
+  },
+  {
+    "id": "person_bucket_girl_a",
+    "version": 1,
+    "file": "parts/person_bucket_girl_a/1.usdz",
+    "category": "person",
+    "words": [
+      {
+        "word": "girl",
+        "pos": "noun"
+      },
+      {
+        "word": "bring",
+        "pos": "verb"
+      },
+      {
+        "word": "water",
+        "pos": "noun"
+      },
+      {
+        "word": "bucket",
+        "pos": "noun"
+      }
+    ],
+    "pose": "bucket",
+    "size": [0.552, 1.305, 0.454],
+    "label": "女の子（水のバケツを運ぶ）",
+    "holds": "bucket",
+    "anchors": {
+      "hand_l": [-0.242, 0.585, -0.035],
+      "hand_r": [0.186, 0.6, 0.04],
+      "feet": [-0.039, 0.0, -0.035],
+      "head": [-0.039, 1.14, -0.035]
+    }
+  },
+  {
+    "id": "person_check_hand_doctor_a",
+    "version": 1,
+    "file": "parts/person_check_hand_doctor_a/1.usdz",
+    "category": "person",
+    "words": [
+      {
+        "word": "doctor",
+        "pos": "noun"
+      },
+      {
+        "word": "check",
+        "pos": "verb"
+      },
+      {
+        "word": "hand",
+        "pos": "noun"
+      }
+    ],
+    "pose": "check_hand",
+    "size": [0.559, 1.71, 0.818],
+    "label": "医者（手を確かめる）",
+    "anchors": {
+      "hand_l": [-0.07, 0.8, 0.361],
+      "hand_r": [0.09, 0.8, 0.361],
+      "feet": [0.0, 0.0, -0.139],
+      "head": [0.0, 1.52, -0.139]
+    }
+  },
+  {
+    "id": "person_show_hand_girl_a",
+    "version": 1,
+    "file": "parts/person_show_hand_girl_a/1.usdz",
+    "category": "person",
+    "words": [
+      {
+        "word": "girl",
+        "pos": "noun"
+      },
+      {
+        "word": "show",
+        "pos": "verb"
+      },
+      {
+        "word": "hand",
+        "pos": "noun"
+      }
+    ],
+    "pose": "show_hand",
+    "size": [0.445, 1.324, 0.546],
+    "label": "女の子（手を差し出して見せる）",
+    "anchors": {
+      "hand_l": [-0.188, 0.585, -0.093],
+      "hand_r": [0.044, 0.795, 0.237],
+      "feet": [0.014, 0.0, -0.093],
+      "head": [0.014, 1.14, -0.093]
+    }
+  },
+  {
+    "id": "person_try_jacket_adult_a",
+    "version": 1,
+    "file": "parts/person_try_jacket_adult_a/1.usdz",
+    "category": "person",
+    "words": [
+      {
+        "word": "man",
+        "pos": "noun"
+      },
+      {
+        "word": "try",
+        "pos": "verb"
+      },
+      {
+        "word": "jacket",
+        "pos": "noun"
+      }
+    ],
+    "pose": "try_jacket",
+    "size": [0.571, 1.695, 0.476],
+    "label": "男の人（上着を試着する）",
+    "holds": "jacket",
+    "anchors": {
+      "hand_l": [-0.24, 1.18, 0.19],
+      "hand_r": [0.24, 1.18, 0.19],
+      "feet": [0.0, 0.0, -0.01],
+      "head": [0.0, 1.52, -0.01]
+    }
+  },
+  {
+    "id": "person_show_jacket_clerk_a",
+    "version": 1,
+    "file": "parts/person_show_jacket_clerk_a/1.usdz",
+    "category": "person",
+    "words": [
+      {
+        "word": "clerk",
+        "pos": "noun"
+      },
+      {
+        "word": "show",
+        "pos": "verb"
+      },
+      {
+        "word": "jacket",
+        "pos": "noun"
+      }
+    ],
+    "pose": "show_jacket",
+    "size": [0.766, 1.695, 0.775],
+    "label": "店の店員（上着を広げて見せる）",
+    "holds": "jacket",
+    "anchors": {
+      "hand_l": [-0.2, 1.25, 0.298],
+      "hand_r": [0.2, 1.25, 0.298],
+      "feet": [0.0, 0.0, -0.162],
+      "head": [0.0, 1.52, -0.162]
+    }
+  },
+  {
+    "id": "person_poke_adult_a",
+    "version": 1,
+    "file": "parts/person_poke_adult_a/1.usdz",
+    "category": "person",
+    "words": [
+      {
+        "word": "man",
+        "pos": "noun"
+      },
+      {
+        "word": "reach",
+        "pos": "verb"
+      },
+      {
+        "word": "stick",
+        "pos": "noun"
+      }
+    ],
+    "pose": "poke",
+    "size": [0.584, 3.203, 0.952],
+    "label": "男の人（長い棒で高い所をつつく）",
+    "holds": "stick",
+    "uses": ["tree"],
+    "anchors": {
+      "hand_l": [-0.07, 1.18, -0.016],
+      "hand_r": [0.08, 1.58, 0.114],
+      "feet": [-0.02, 0.0, -0.286],
+      "head": [-0.02, 1.52, -0.286]
+    }
+  },
+  {
+    "id": "person_look_boy_a",
+    "version": 1,
+    "file": "parts/person_look_boy_a/1.usdz",
+    "category": "person",
+    "words": [
+      {
+        "word": "boy",
+        "pos": "noun"
+      },
+      {
+        "word": "look",
+        "pos": "verb"
+      }
+    ],
+    "pose": "look",
+    "size": [0.444, 1.271, 0.329],
+    "label": "男の子（手をかざして見る）",
+    "anchors": {
+      "hand_l": [-0.188, 0.585, -0.022],
+      "hand_r": [0.052, 1.2, 0.128],
+      "feet": [0.015, 0.0, -0.022],
+      "head": [0.015, 1.14, -0.022]
+    }
+  },
+  {
+    "id": "person_blow_girl_a",
+    "version": 1,
+    "file": "parts/person_blow_girl_a/1.usdz",
+    "category": "person",
+    "words": [
+      {
+        "word": "girl",
+        "pos": "noun"
+      },
+      {
+        "word": "blow",
+        "pos": "verb"
+      }
+    ],
+    "pose": "blow",
+    "size": [0.423, 1.08, 0.623],
+    "label": "女の子（座ってろうそくを吹き消す）",
+    "uses": ["table", "chair", "cake", "candles"],
+    "anchors": {
+      "hand_l": [-0.15, 0.555, 0.184],
+      "hand_r": [0.15, 0.555, 0.184],
+      "feet": [0.0, 0.0, -0.131],
+      "head": [0.0, 0.9, -0.131],
+      "hip": [0.0, 0.36, -0.131]
+    }
+  },
+  {
+    "id": "person_clap_adult_a",
+    "version": 1,
+    "file": "parts/person_clap_adult_a/1.usdz",
+    "category": "person",
+    "words": [
+      {
+        "word": "man",
+        "pos": "noun"
+      },
+      {
+        "word": "clap",
+        "pos": "verb"
+      }
+    ],
+    "pose": "clap",
+    "size": [0.55, 1.375, 0.78],
+    "label": "男の人（座って拍手する）",
+    "uses": ["chair"],
+    "anchors": {
+      "hand_l": [-0.031, 0.78, 0.14],
+      "hand_r": [0.049, 0.82, 0.16],
+      "feet": [-0.001, 0.0, -0.2],
+      "head": [-0.001, 1.2, -0.2],
+      "hip": [-0.001, 0.48, -0.2]
+    }
+  },
+  {
+    "id": "person_clap_woman_a",
+    "version": 1,
+    "file": "parts/person_clap_woman_a/1.usdz",
+    "category": "person",
+    "words": [
+      {
+        "word": "woman",
+        "pos": "noun"
+      },
+      {
+        "word": "clap",
+        "pos": "verb"
+      }
+    ],
+    "pose": "clap",
+    "size": [0.55, 1.375, 0.83],
+    "label": "女の人（座って拍手する）",
+    "uses": ["chair"],
+    "anchors": {
+      "hand_l": [-0.031, 0.78, 0.165],
+      "hand_r": [0.049, 0.82, 0.185],
+      "feet": [-0.001, 0.0, -0.175],
+      "head": [-0.001, 1.2, -0.175],
+      "hip": [-0.001, 0.48, -0.175]
+    }
+  },
+  {
+    "id": "person_clap_boy_a",
+    "version": 1,
+    "file": "parts/person_clap_boy_a/1.usdz",
+    "category": "person",
+    "words": [
+      {
+        "word": "boy",
+        "pos": "noun"
+      },
+      {
+        "word": "clap",
+        "pos": "verb"
+      }
+    ],
+    "pose": "clap",
+    "size": [0.413, 1.031, 0.585],
+    "label": "男の子（座って拍手する）",
+    "uses": ["chair"],
+    "anchors": {
+      "hand_l": [-0.023, 0.585, 0.105],
+      "hand_r": [0.037, 0.615, 0.12],
+      "feet": [-0.001, 0.0, -0.15],
+      "head": [-0.001, 0.9, -0.15],
+      "hip": [-0.001, 0.36, -0.15]
+    }
+  },
+  {
+    "id": "person_fallen_woman_a",
+    "version": 1,
+    "file": "parts/person_fallen_woman_a/1.usdz",
+    "category": "person",
+    "words": [
+      {
+        "word": "woman",
+        "pos": "noun"
+      },
+      {
+        "word": "fall",
+        "pos": "verb"
+      }
+    ],
+    "pose": "fallen",
+    "size": [0.607, 1.401, 0.948],
+    "label": "女の人（転んで地面に座り込む）",
+    "anchors": {
+      "hand_l": [-0.258, 0.15, -0.114],
+      "hand_r": [0.202, 0.78, 0.426],
+      "feet": [0.022, 0.0, 0.006],
+      "head": [0.022, 1.22, 0.006]
+    }
+  },
+  {
+    "id": "person_help_up_adult_a",
+    "version": 1,
+    "file": "parts/person_help_up_adult_a/1.usdz",
+    "category": "person",
+    "words": [
+      {
+        "word": "man",
+        "pos": "noun"
+      },
+      {
+        "word": "help",
+        "pos": "verb"
+      }
+    ],
+    "pose": "help_up",
+    "size": [0.596, 1.707, 0.788],
+    "label": "男の人（手を差しのべて助け起こす）",
+    "anchors": {
+      "hand_l": [-0.252, 0.78, -0.204],
+      "hand_r": [0.118, 0.8, 0.346],
+      "feet": [0.018, 0.0, -0.204],
+      "head": [0.018, 1.52, -0.204]
     }
   },
   {
@@ -1253,6 +3348,46 @@
     ],
     "size": [8.0, 0.002, 8.0],
     "label": "じゅうたん（8 m 四方）"
+  },
+  {
+    "id": "floor_bus",
+    "version": 1,
+    "file": "parts/floor_bus/1.usdz",
+    "category": "ground",
+    "words": [
+      {
+        "word": "floor",
+        "pos": "noun"
+      },
+      {
+        "word": "bus",
+        "pos": "noun"
+      }
+    ],
+    "size": [8.0, 0.002, 8.0],
+    "label": "バスの床（8 m 四方）"
+  },
+  {
+    "id": "wall_bus",
+    "version": 1,
+    "file": "parts/wall_bus/1.usdz",
+    "category": "building",
+    "words": [
+      {
+        "word": "bus",
+        "pos": "noun"
+      },
+      {
+        "word": "window",
+        "pos": "noun"
+      },
+      {
+        "word": "wall",
+        "pos": "noun"
+      }
+    ],
+    "size": [8.0, 2.6, 0.28],
+    "label": "バスの中の壁（窓の列と手すり）"
   },
   {
     "id": "platform_station",
@@ -1398,7 +3533,52 @@
       }
     ],
     "size": [8.0, 2.6, 0.24],
-    "label": "黒板つきの壁（教室、幅 8 m）"
+    "label": "黒板つきの壁（教室、幅 8 m）",
+    "anchors": {
+      "spots": {
+        "board": [-0.9, 1.5, 0.05]
+      }
+    }
+  },
+  {
+    "id": "wall_cafe",
+    "version": 1,
+    "file": "parts/wall_cafe/1.usdz",
+    "category": "building",
+    "words": [
+      {
+        "word": "cafe",
+        "pos": "noun"
+      },
+      {
+        "word": "counter",
+        "pos": "noun"
+      },
+      {
+        "word": "menu",
+        "pos": "noun"
+      },
+      {
+        "word": "wall",
+        "pos": "noun"
+      }
+    ],
+    "size": [8.0, 2.6, 0.86],
+    "label": "カフェの奥の壁（カウンターつき）"
+  },
+  {
+    "id": "plant_pot",
+    "version": 1,
+    "file": "parts/plant_pot/1.usdz",
+    "category": "plant",
+    "words": [
+      {
+        "word": "plant",
+        "pos": "noun"
+      }
+    ],
+    "size": [1.032, 1.564, 0.846],
+    "label": "鉢植えの木"
   },
   {
     "id": "wall_store_shelves",
@@ -1452,7 +3632,11 @@
     "size": [2.42, 1.22, 0.68],
     "label": "台所の流しとコンロ",
     "anchors": {
-      "top": 0.9
+      "top": 0.9,
+      "spots": {
+        "stove": [0.5, 0.925, 0.025],
+        "sink": [-0.6, 0.9, 0.015]
+      }
     }
   },
   {

@@ -1,0 +1,30 @@
+{
+  "id": "person_run_phone_girl_a",
+  "version": 1,
+  "file": "parts/person_run_phone_girl_a/1.usdz",
+  "category": "person",
+  "words": [
+    {
+      "word": "girl",
+      "pos": "noun"
+    },
+    {
+      "word": "run",
+      "pos": "verb"
+    },
+    {
+      "word": "phone",
+      "pos": "noun"
+    }
+  ],
+  "pose": "run_phone",
+  "size": [0.423, 1.305, 0.776],
+  "label": "女の子（スマホを持って走る）",
+  "holds": "phone",
+  "anchors": {
+    "hand_l": [-0.165, 0.69, -0.186],
+    "hand_r": [0.15, 1.14, 0.339],
+    "feet": [0.0, 0.0, -0.036],
+    "head": [0.0, 1.125, -0.036]
+  }
+}

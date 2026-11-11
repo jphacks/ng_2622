@@ -1,0 +1,25 @@
+{
+  "id": "person_help_up_adult_a",
+  "version": 1,
+  "file": "parts/person_help_up_adult_a/1.usdz",
+  "category": "person",
+  "words": [
+    {
+      "word": "man",
+      "pos": "noun"
+    },
+    {
+      "word": "help",
+      "pos": "verb"
+    }
+  ],
+  "pose": "help_up",
+  "size": [0.596, 1.707, 0.788],
+  "label": "男の人（手を差しのべて助け起こす）",
+  "anchors": {
+    "hand_l": [-0.252, 0.78, -0.204],
+    "hand_r": [0.118, 0.8, 0.346],
+    "feet": [0.018, 0.0, -0.204],
+    "head": [0.018, 1.52, -0.204]
+  }
+}

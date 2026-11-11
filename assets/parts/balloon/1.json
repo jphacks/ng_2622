@@ -1,0 +1,14 @@
+{
+  "id": "balloon",
+  "version": 1,
+  "file": "parts/balloon/1.usdz",
+  "category": "thing",
+  "words": [
+    {
+      "word": "balloon",
+      "pos": "noun"
+    }
+  ],
+  "size": [0.437, 1.003, 0.437],
+  "label": "風船"
+}
