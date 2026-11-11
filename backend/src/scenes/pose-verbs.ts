@@ -432,15 +432,70 @@ export const verbForms = (verb: string): Set<string> => {
 export const wordsOf = (text: string): string[] =>
   text.toLowerCase().match(/[a-z]+/g) ?? [];
 
+// 助動詞としても使う動詞。ほかの動詞が文にあれば、動作の動詞としては数えない（has fallen の has）
+const WEAK_VERBS = new Set(["have", "do"]);
+
+/** 文の中に出てくる、表の動詞（原形）。have・do は、ほかの動詞があれば数えない */
+export const verbsIn = (text: string): string[] => {
+  const words = new Set(wordsOf(text));
+  const found = Object.keys(VERB_LEVELS).filter((v) =>
+    [...verbForms(v)].some((f) => words.has(f)),
+  );
+  const strong = found.filter((v) => !WEAK_VERBS.has(v));
+  return strong.length > 0 ? strong : found;
+};
+
 /** 文の中に出てくる、その部品のポーズの動詞 */
 export const poseVerbsIn = (
   text: string,
   part: Posed,
 ): { verb: string; level: CefrLevel }[] => {
+  const said = new Set(verbsIn(text));
+  // 表に無いポーズの動詞（words から取ったもの）は、文の語と直に照らす
   const words = new Set(wordsOf(text));
   return poseVerbsOf(part).filter((v) =>
-    [...verbForms(v.verb)].some((f) => words.has(f)),
+    v.verb in VERB_LEVELS
+      ? said.has(v.verb)
+      : [...verbForms(v.verb)].some((f) => words.has(f)),
   );
+};
+
+/** 部品が誰か（words の先頭。man・woman・boy・girl・old man・dog など） */
+export const whoOf = (part: Pick<Part, "id" | "words">): string =>
+  part.words[0]?.word ?? part.id;
+
+/** 人と動物の呼び方ごとの部品（"old man" → その部品の一覧） */
+export const partsByWho = (parts: Part[]): Map<string, Part[]> => {
+  const by = new Map<string, Part[]>();
+  for (const p of parts) {
+    if (p.category !== "person" && p.category !== "animal") continue;
+    by.set(whoOf(p), [...(by.get(whoOf(p)) ?? []), p]);
+  }
+  return by;
+};
+
+/**
+ * 文の主語にあたる人や動物（文の中でいちばん先に出てくる呼び方。同じ位置なら長いほう: old man）。
+ * 一覧に無い呼び方（teacher・mother など）なら undefined
+ */
+export const subjectIn = (text: string, whos: string[]): string | undefined => {
+  const words = wordsOf(text);
+  let best: { who: string; at: number; size: number } | undefined;
+  for (const who of whos) {
+    const tokens = who.split(" ");
+    const at = words.findIndex((_, i) =>
+      tokens.every((t, n) => words[i + n] === t),
+    );
+    if (at < 0) continue;
+    if (
+      !best ||
+      at < best.at ||
+      (at === best.at && tokens.length > best.size)
+    ) {
+      best = { who, at, size: tokens.length };
+    }
+  }
+  return best?.who;
 };
 
 /**
@@ -456,8 +511,7 @@ export const actionVocabulary = (parts: Part[]): string => {
       .join(", ");
     const phrase = (p.pose && POSE_VERBS[p.pose]?.phrase) || p.pose || p.id;
     const row = rows.get(phrase) ?? { verbs, who: new Set<string>() };
-    // 誰かは words の先頭（man・woman・boy・girl・old man・dog など）
-    row.who.add(p.words[0]?.word ?? p.id);
+    row.who.add(whoOf(p));
     rows.set(phrase, row);
   }
   return [...rows]

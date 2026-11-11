@@ -31,6 +31,7 @@ import {
 import { GRADES } from "../src/scenes/grades";
 import { PARTS } from "../src/scenes/parts";
 import { GRADE_IDS, type Part } from "../src/scenes/types";
+import { reasonSeeds, summarizeScene } from "../src/scenes/variety";
 
 const ENV = { CLAUDE_API_KEY: "test" };
 const USAGE = { input_tokens: 1, output_tokens: 1 };
@@ -122,8 +123,20 @@ test("1 回目の指示: 級の表・語彙・テーマ・例があり、部品�
   assert.ok(system.includes("Never return an empty or shorter checklist"));
   assert.ok(system.includes("One person, one action"));
   assert.ok(system.includes("One item, one fact"));
-  assert.ok(system.includes("a feeling, a wish or a plan is not a cause"));
-  assert.ok(system.includes("Good reason:") && system.includes("Bad link:"));
+  assert.ok(system.includes("A feeling, a wish or a plan is not a cause"));
+  assert.ok(system.includes("Bad reasons and links"));
+  assert.ok(system.includes("A bag is on the ground so the boy is running"));
+  // 似た場面ばかりにならないための決まり
+  assert.ok(system.includes(reasonSeeds(PARTS)));
+  assert.ok(system.includes("Do not make every scene about the same cause"));
+  assert.ok(system.includes("This example only shows the form of the answer"));
+  assert.ok(!system.includes("Good reason:"));
+  // 絵で見つかった崩れへの決まり
+  assert.ok(system.includes("only a woman or a man can drink"));
+  assert.ok(system.includes("Rain only falls in outdoor scenes"));
+  assert.ok(system.includes("never he, she, it or they"));
+  assert.ok(system.includes("never a piece of a sentence"));
+  assert.ok(system.includes("Do not write it as a second, separate thing"));
   assert.ok(system.includes("eiken-3 uses only verbs marked A1"));
   assert.ok(system.includes(verbLimits(PARTS)));
   assert.ok(verbLimits(PARTS).includes("- eiken-3: "));
@@ -134,8 +147,8 @@ test("1 回目の指示: 級の表・語彙・テーマ・例があり、部品�
     assert.ok(!system.includes(p.id), `${p.id} が出ている`);
   }
   assert.ok(!system.includes("# Parts"));
-  // 今の 1 回の生成の指示の半分より小さい
-  assert.ok(system.length < buildSystem(PARTS).length / 2);
+  // 今の 1 回の生成の指示の 2/3 より小さい
+  assert.ok(system.length < (buildSystem(PARTS).length * 2) / 3);
 });
 
 test("2 回目の指示: 今の生成の決まりをそのまま使い、候補の部品と例を載せる", () => {
@@ -634,4 +647,67 @@ test("作り置き: 形が違う応答が最後まで続けば、その理由を
       e.problems[0].code === "invalid_response",
   );
   assert.equal(f.calls.length, 6);
+});
+
+test("すでに作った場面の要約を渡すと、1 回目に「これらと違う場面にする」と指示する", async () => {
+  const avoid = [summarizeScene(EXAMPLE_SENTENCES), "公園: a dog is running"];
+  const text = sentenceMessage({ ...INPUT, avoid });
+  assert.ok(text.startsWith(`${sentenceMessage(INPUT)}\n\n`));
+  assert.ok(text.includes("clearly different from all of them"));
+  assert.ok(
+    text.endsWith(
+      "- 雨のバス停: a girl is holding an umbrella; a boy is running; a man is reading a book | reason: a boy is running to the bus stop because it is raining\n- 公園: a dog is running",
+    ),
+  );
+  // 空なら何も足さない
+  assert.equal(
+    sentenceMessage({ ...INPUT, avoid: [] }),
+    sentenceMessage(INPUT),
+  );
+
+  // 作り置きの道でも 1 回目に渡り、作り直しの理由はその後ろに付く。2 回目には渡さない
+  const bad = () =>
+    message({
+      ...EXAMPLE_SENTENCES,
+      checklist: EXAMPLE_SENTENCES.checklist.slice(0, 5),
+    });
+  const f = fake([bad, SENTENCES, ITEMS]);
+  await generateVerifiedScene(
+    ENV,
+    PARTS,
+    { ...INPUT, avoid },
+    { create: f.create },
+  );
+  assert.equal(userOf(f.calls[0]), text);
+  assert.ok(userOf(f.calls[1]).startsWith(`${text}\n\n`));
+  assert.ok(userOf(f.calls[1]).includes("rejected by the checking program"));
+  assert.equal(userOf(f.calls[2]), itemsMessage(INPUT, EXAMPLE_SENTENCES));
+});
+
+test("作り置き: その人にできない動作は、2 回目を呼ばずに 1 回目から作り直す", async () => {
+  const girl = {
+    ...EXAMPLE_SENTENCES,
+    description: `A girl is drinking from a cup. ${EXAMPLE_SENTENCES.description}`,
+    checklist: EXAMPLE_SENTENCES.checklist.map((c) =>
+      c.id === "girl_umbrella"
+        ? { ...c, accept: "a girl is drinking from a cup" }
+        : c,
+    ),
+  };
+  const f = fake([() => message(girl), SENTENCES, ITEMS]);
+  const result = await generateVerifiedScene(ENV, PARTS, INPUT, {
+    create: f.create,
+  });
+  assert.deepEqual(f.calls.map(stageOf), ["sentences", "sentences", "items"]);
+  assert.equal(result.rejected[0][0].code, "who_cannot");
+  assert.ok(userOf(f.calls[1]).includes("girl にできる動作に drink が無い"));
+});
+
+test("2 回目の指示: 持っている物を別に置かない・雨は屋外だけ", () => {
+  const system = buildItemsSystem(PARTS);
+  assert.ok(system.includes("never add it as a separate item"));
+  assert.ok(
+    system.includes("never put rain in a scene whose ground is a floor_ part"),
+  );
+  assert.ok(system.includes("| holds: umbrella |"));
 });

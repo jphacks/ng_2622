@@ -73,10 +73,12 @@ const HARD: SceneSentences = {
     check("dog_run", "center", "the dog is running", ["dog"]),
     check("woman_fall", "center", "a woman has fallen down", ["woman"]),
     check("man_help", "center", "a man is helping her", ["man", "woman"]),
-    check("why_help", "reason", "because she has fallen down", [
-      "man",
-      "woman",
-    ]),
+    check(
+      "why_help",
+      "reason",
+      "a man is helping her because she has fallen down",
+      ["man", "woman"],
+    ),
     check(
       "ball_dog",
       "link",
@@ -377,12 +379,15 @@ test("英文と部品の理由をまとめて返す", () => {
 test("立っているポーズの人は、何をしていても「立っている」と言える（段階は stand の A2）", () => {
   const scene = (accept: string): SceneSentences => ({
     name: "部屋",
-    description: `${accept}. A boy is looking at it. A man is eating. Because it is raining. It is raining. There is a table.`,
+    description: `${accept}. A boy is looking at it. A man is eating because it is raining. It is raining. There is a table.`,
     checklist: [
       check("girl", "center", accept, ["girl", "table"]),
       check("boy", "center", "a boy is looking at it", ["boy"]),
       check("man", "center", "a man is eating", ["man"]),
-      check("why", "reason", "because it is raining", ["girl", "rain"]),
+      check("why", "reason", "a man is eating because it is raining", [
+        "man",
+        "rain",
+      ]),
       check("rain", "detail", "it is raining", ["rain"]),
       check("table", "detail", "there is a table", ["table"]),
     ],
@@ -517,4 +522,206 @@ test("人と動物の数が級の範囲を外れれば落ちる（動物も 1 �
   assert.deepEqual(codes(verifyItems("eiken-2", HARD, five, PARTS)), [
     "people_count",
   ]);
+});
+
+test("accept の形: 動詞の無い切れ端・主語から始まらない accept は落ちる", () => {
+  const withDetail = (accept: string) => {
+    const s = clone(EASY);
+    s.description = `${s.description} A boy is running to the train, waiting with a basket.`;
+    s.checklist[2] = check("d", "detail", accept, ["ball"]);
+    return codes(verifySentences("eiken-3", s, PARTS));
+  };
+  assert.deepEqual(withDetail("to the train"), ["accept_no_verb"]);
+  assert.deepEqual(withDetail("waiting with a basket"), ["accept_no_subject"]);
+  // detail は there・it・he で始めてよい
+  assert.deepEqual(withDetail("there is a red ball on the grass"), []);
+  const pronoun = clone(EXAMPLE_SENTENCES);
+  assert.equal(pronoun.checklist[5].accept, "he is sitting on the bench");
+  assert.deepEqual(verifySentences("eiken-pre2", pronoun, PARTS), []);
+});
+
+test("accept の形: center・reason・link の主語が代名詞なら落ちる", () => {
+  const s = clone(HARD);
+  s.description = `${s.description} She is looking at the boy. He is helping her because she has fallen down.`;
+  s.checklist[2] = check("woman_look", "center", "she is looking at the boy", [
+    "woman",
+  ]);
+  s.checklist[4].accept = "he is helping her because she has fallen down";
+  const problems = verifySentences("eiken-2", s, PARTS);
+  assert.deepEqual(codes(problems), ["accept_pronoun", "accept_pronoun"]);
+  assert.equal(
+    problems[0].message,
+    "center の項目 woman_look の accept「she is looking at the boy」の主語が代名詞（she）。a girl のように名詞で書く（description のその文も）",
+  );
+  // because から始まる理由は、主語から始まっていない
+  s.checklist[4].accept = "because she has fallen down";
+  assert.deepEqual(codes(verifySentences("eiken-2", s, PARTS)).slice(1), [
+    "accept_no_subject",
+  ]);
+});
+
+test("center の主語の人にその動作ができなければ、部品を選ぶ前に落ちる", () => {
+  const scene = (accept: string, ref: string): SceneSentences => ({
+    ...EASY,
+    description: `${accept}. ${EASY.description}`,
+    checklist: [
+      check("who", "center", accept, [ref]),
+      EASY.checklist[1],
+      EASY.checklist[2],
+    ],
+  });
+  const messages = (accept: string, ref: string) =>
+    verifySentences("eiken-3", scene(accept, ref), PARTS).map((p) => p.message);
+  // drink は woman・man だけ
+  assert.deepEqual(messages("A girl is drinking from a cup", "girl"), [
+    "center の項目 who: girl にできる動作に drink が無い（できるのは man, woman）。できる人に替えるか、girl にできる動作にする",
+  ]);
+  // fallen は woman だけ。has は助動詞なので、hold のポーズの have とは見ない
+  assert.deepEqual(
+    codes(
+      verifySentences(
+        "eiken-3",
+        scene("A girl has fallen down", "girl"),
+        PARTS,
+      ),
+    ),
+    ["who_cannot"],
+  );
+  assert.deepEqual(messages("A woman is drinking from a cup", "woman"), []);
+  assert.deepEqual(messages("A woman has fallen down", "woman"), []);
+  // 物を持っている（have が動作）は girl にできる
+  assert.deepEqual(messages("A girl has a box", "girl"), []);
+  // 文の先頭の人が主語。old man は man と別の人
+  assert.deepEqual(messages("An old man is feeding a bird", "old_man"), []);
+  assert.deepEqual(
+    codes(
+      verifySentences(
+        "eiken-3",
+        scene("An old man is reading a book", "old_man"),
+        PARTS,
+      ),
+    ),
+    ["who_cannot"],
+  );
+  assert.deepEqual(messages("A man is helping a woman", "man"), []);
+  // 一覧に無い呼び方（teacher）と、parts を渡さないときは確かめない
+  assert.deepEqual(messages("A teacher is drinking tea", "teacher"), []);
+  assert.deepEqual(
+    verifySentences("eiken-3", scene("A girl is drinking", "girl")),
+    [],
+  );
+});
+
+test("has fallen の has は、hold のポーズの動詞（have）とは見ない", () => {
+  const s: SceneSentences = {
+    ...EASY,
+    description: `A woman has fallen down. ${EASY.description}`,
+    checklist: [
+      check("fall", "center", "a woman has fallen down", ["woman"]),
+      EASY.checklist[1],
+      EASY.checklist[2],
+    ],
+  };
+  const items = (part: string) => [
+    ...EASY_ITEMS.filter((i) => i.key !== "boy"),
+    item("woman", part),
+  ];
+  assert.deepEqual(
+    codes(
+      verifyItems("eiken-pre2", s, items("person_hold_woman_a"), PARTS),
+    ).filter((c) => c.startsWith("verb")),
+    ["verb_mismatch"],
+  );
+  assert.ok(
+    !codes(
+      verifyItems("eiken-pre2", s, items("person_fallen_woman_a"), PARTS),
+    ).includes("verb_mismatch"),
+  );
+});
+
+test("人が持っている物を、別の部品としてもう一度置くと落ちる", () => {
+  // 傘を持つ女の子の上に、別の傘（どの項目も指していない）
+  const extra = [...EXAMPLE_ITEMS, item("umbrella", "umbrella")];
+  const problems = verifyItems("eiken-pre2", EXAMPLE_SENTENCES, extra, PARTS);
+  assert.deepEqual(codes(problems), ["held_thing"]);
+  assert.equal(problems[0].stage, "items");
+  assert.equal(
+    problems[0].message,
+    "girl の部品 person_umbrella_girl_a は umbrella を持っている。別の部品 umbrella（umbrella）を置かない",
+  );
+  // かごを持つ人の横の床に、別のかご
+  const s = clone(EXAMPLE_SENTENCES);
+  const basket = [
+    ...EXAMPLE_ITEMS.map((i) =>
+      i.key === "girl" ? item("girl", "person_basket_woman_a") : i,
+    ),
+    item("basket", "basket"),
+  ];
+  assert.ok(
+    codes(verifyItems("eiken-pre2", s, basket, PARTS)).includes("held_thing"),
+  );
+});
+
+test("持ち物を呼び名にした項目が、持っている人も指していれば 1 回目から作り直す", () => {
+  const s = clone(EXAMPLE_SENTENCES);
+  s.checklist[0].refs = ["girl", "umbrella"];
+  const items = [...EXAMPLE_ITEMS, item("umbrella", "umbrella")];
+  const problems = verifyItems("eiken-pre2", s, items, PARTS);
+  assert.deepEqual(codes(problems), ["held_thing"]);
+  assert.equal(problems[0].stage, "sentences");
+  assert.ok(problems[0].message.includes("項目 girl_umbrella"));
+});
+
+test("持っている人と関係の無い項目が指す物・uses の物・持ち物と違う物は落とさない", () => {
+  // 傘を持つ女の子とは別に、ベンチの傘を言う細部がある
+  const s = clone(EXAMPLE_SENTENCES);
+  s.description = `${s.description} There is an umbrella on the bench.`;
+  s.checklist[4] = check(
+    "umbrella",
+    "detail",
+    "there is an umbrella on the bench",
+    ["umbrella", "bench"],
+  );
+  const items = [...EXAMPLE_ITEMS, item("umbrella", "umbrella")];
+  assert.deepEqual(verifyItems("eiken-pre2", s, items, PARTS), []);
+  // 皿を並べる男の子（holds: plates、uses: plate）と、テーブルの皿
+  const plates = [
+    ...EXAMPLE_ITEMS.map((i) =>
+      i.key === "boy" ? item("boy", "person_set_plates_boy_a") : i,
+    ),
+    item("plate", "plate"),
+    item("ball", "ball_red"),
+  ];
+  assert.ok(
+    !codes(
+      verifyItems("eiken-pre2", EXAMPLE_SENTENCES, plates, PARTS),
+    ).includes("held_thing"),
+  );
+});
+
+test("屋内の床の場面に雨があれば落ちる（屋外の地面なら通る）", () => {
+  const indoors = EXAMPLE_ITEMS.map((i) =>
+    i.key === "ground" ? { ...i, part: "floor_tile" } : i,
+  );
+  const problems = verifyItems("eiken-pre2", EXAMPLE_SENTENCES, indoors, PARTS);
+  assert.deepEqual(codes(problems), ["rain_indoors"]);
+  // 英文が雨を言っているので、1 回目から作り直す
+  assert.equal(problems[0].stage, "sentences");
+  assert.equal(
+    problems[0].message,
+    "屋内の床（floor_tile）の場面に雨（rain）がある。雨は屋外の場面だけにし、屋内では雨を理由にしない",
+  );
+  // 英文に雨が無いのに 2 回目が足したら、2 回目だけ作り直す
+  const dry = [...EASY_ITEMS, item("rain", "rain")].map((i) =>
+    i.key === "ground" ? { ...i, part: "floor_wood" } : i,
+  );
+  const added = verifyItems("eiken-3", EASY, dry, PARTS);
+  assert.deepEqual(
+    added.map((p) => [p.code, p.stage]),
+    [["rain_indoors", "items"]],
+  );
+  assert.deepEqual(
+    verifyItems("eiken-pre2", EXAMPLE_SENTENCES, EXAMPLE_ITEMS, PARTS),
+    [],
+  );
 });

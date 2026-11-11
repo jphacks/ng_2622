@@ -38,6 +38,7 @@ import {
   type ScenePlanV2,
   type SceneSentences,
 } from "./types";
+import { reasonSeeds } from "./variety";
 import { type Problem, refNames, verifyItems, verifySentences } from "./verify";
 
 // 英文を先に書く 2 段の場面の生成（scenenglish.scene/2）。
@@ -48,7 +49,15 @@ import { type Problem, refNames, verifyItems, verifySentences } from "./verify";
 // 今の 1 回の生成（generate.ts の generatePlan）は置き換えない。部屋での生成にはまだつないでいない
 
 /** 2 段の生成への入力。theme を省けば、指示の中のテーマの一覧から Claude が選ぶ */
-export type GenerateV2Input = { grade: GradeId; theme?: string };
+export type GenerateV2Input = {
+  grade: GradeId;
+  theme?: string;
+  /**
+   * すでに作った場面の要約（variety.ts の summarizeScene）。渡すと、1 回目に「これらと違う場面にする」と指示する。
+   * 作り置きを級ごとにまとめて作るとき、場面が似すぎないようにするためのもの
+   */
+  avoid?: string[];
+};
 
 // 指示の例は /2 の形で eiken-pre2 の 1 つだけ（例に似た場面ばかりになるのを防ぐ）。
 // docs/design/scene-protocol.md の雨のバス停を、実在の部品で組めるよう直したもの
@@ -84,7 +93,8 @@ export const EXAMPLE_SENTENCES: SceneSentences = {
       id: "why_run",
       kind: "reason",
       label: "男の子が走っている理由",
-      accept: "because it is raining / because he has no umbrella",
+      accept:
+        "a boy is running to the bus stop because it is raining / because he has no umbrella",
       refs: ["boy", "rain"],
     },
     {
@@ -183,8 +193,11 @@ Grammar and verbs of a lower grade may be used in a higher grade, but never use 
 - Write what a good player of that grade would say about the scene: plain sentences, one fact or action per sentence or clause.
 - Every sentence must be visible in a still 3D scene with simple motion. Do not write names, feelings, thoughts, speech, sounds, or anything that happened before and left nothing to see.
 - One person, one action: every person and animal does exactly one action from the list of actions below. Never give the same person a second action (not "a woman is cooking" and later "the woman is wiping the table"). A second fact about the same person (where they are, what they have) is fine and becomes a detail.
-- Only a person listed for an action can do it (a girl can blow out candles; a man cannot).
+- Only a person listed for an action can do it. Read the last column of the action's line: "drink from a cup | ... | woman, man" means only a woman or a man can drink; a girl or a boy cannot. "have fallen down | ... | woman" means only a woman can have fallen down. A program checks the subject of every center item against this column.
+- The posture belongs to the action: actions marked "(sitting)" and the action "sit" are seated, all the others are done standing. Do not write that a person who drinks, reads (standing) or waits is sitting.
 - Use only people, actions and things from the lists below. Do not write about a thing that is not in the list of things.
+- A thing that a person holds as part of the action (the umbrella of the girl who shares it, the basket of a person who waits with it, the book, the box, the cup) is part of that person. Do not write it as a second, separate thing.
+- Rain only falls in outdoor scenes (a park, a street, a bus stop, a playground, a beach). Indoors (a store, a cafe, a kitchen, a classroom, a room, a library) and on a station platform there is no rain: do not write "it is raining outside" and do not use rain as a reason there.
 - Count the people and animals: the whole scene has exactly the number of the grade, and all of them are in the description.
 - Write the description before the checklist.
 
@@ -194,15 +207,18 @@ Grammar and verbs of a lower grade may be used in a higher grade, but never use 
 - The verb of a center accept must be one of the verbs on the line of that person's action, and its level must be within the grade: eiken-3 uses only verbs marked A1, eiken-pre2 verbs marked A1 or A2, eiken-2 verbs marked A1, A2 or B1. A program checks this against the 3D part. When the usual verb of an action is above the grade, say the action with another verb of the same line (in eiken-3 the boy of "throw a ball" "is playing with a ball", a person who stands "is waiting" or "is looking at" something, the woman of "wipe a table" "is cleaning the table"), or choose another action. Verbs from the list that a center accept must not use:
 ${verbLimits(parts)}
 - detail: a position, a number, a thing, the weather, or a second fact about a person.
-- reason (eiken-pre2 and eiken-2): why a person does their action. The cause must be visible in the scene as the weather, a thing or another person from the lists below: rain, spilled juice, a person who has fallen down, a thrown ball, a bicycle lying on the ground, and so on. Think of the cause yourself, but a feeling, a wish or a plan is not a cause (she wants it, he is in a hurry, he is late, she wants to go home), and neither is a thing that is not in the list of things. Say the reason in the description.
-- link (eiken-2 only): one sentence with two steps: a visible cause -> the action -> the purpose or result of that action. The last step must follow naturally from what the player sees, not from a plan you invent.
-- Good and bad reasons and links:
-  - Good reason: "A man is helping a woman because she has fallen down." (the woman on the ground is in the scene)
-  - Bad reason: "A girl is reaching for the ball because she wants it." (a wish is not visible) / "A man is running because a girl is standing near the door." (not a cause)
-  - Good link: "A boy threw a ball, so the dog is running across the grass to get it." (the ball in the air -> the dog runs -> to get it)
-  - Bad link: "The man is hurrying so that he can leave." (no visible cause, and the purpose is invented)
+- reason (eiken-pre2 and eiken-2): why a person does their action. The cause must be visible in the scene as a thing, the weather, or what another person or animal is doing. Choose it from "Visible events that can be a reason" below, or build another one from the lists in the same way. A feeling, a wish or a plan is not a cause (she wants it, he is in a hurry, he is late, she wants to go home), and neither is a thing that is not in the list of things. Say the reason in the description.
+- link (eiken-2 only): one sentence with two steps: because of a visible cause, a person does the action, and the action has a purpose or result that the player can see coming (the dog runs to get the ball). Not a plan you invent, and not two facts that only stand next to each other.
+- Do not make every scene about the same cause. Rain and a person who has fallen down are only two of many causes; prefer a cause that belongs to the theme, and when you can, let the cause be a thing or another person's action rather than a repeat of a center item.
+- Bad reasons and links (never write these):
+  - "A girl is reaching for the ball because she wants it." (a wish is not visible)
+  - "A man is running because a girl is standing near the door." (not a cause)
+  - "The man is hurrying so that he can leave." (no visible cause, and the purpose is invented)
+  - "A bag is on the ground so the boy is running past it." (the bag does not make him run, and running past it has no purpose)
 - id: short snake_case, unique. label: short Japanese shown to the player after the round.
-- accept: the English wording that counts as "said". One item, one fact. For a center item it is who is doing what, without the place and without a second fact joined by "and" ("a woman is waiting", not "a woman is waiting with a shopping basket in the store"; "a girl is holding a plate", not "a girl is standing next to her and she is holding a plate"). Put the place into accept only when the item is a detail about the place.
+- accept: the English wording that counts as "said". One item, one fact, written as a small sentence with a subject and a verb ("a man is reading a book", "there is a ball under the bench"); never a piece of a sentence ("to the train", "waiting with a basket").
+- For a center item, accept is who is doing what, without the place and without a second fact joined by "and" ("a woman is waiting", not "a woman is waiting with a shopping basket in the store"; "a girl is holding a plate", not "a girl is standing next to her and she is holding a plate"). Put the place into accept only when the item is a detail about the place.
+- The subject of a center, reason or link accept is a noun (a girl, the dog), never he, she, it or they. So in the description, write those sentences with the noun too. A reason accept is the whole sentence with the action and its cause ("a boy is running because it is raining"); a detail may start with he, she, it or there.
 - Copy accept word for word from the description (one clause is enough; lower case and no final period are fine), so write the description in a way that each fact is a clause of its own. Every accept must be found in the description. For reason and link you may add other correct wordings after " / ", but the first wording must be copied from the description.
 - refs: the people and things the item is about, as short lower-case English names (man, bench, rain; letters, digits and _ only). Put the person or animal who acts first. Use one name for one person or thing in the whole checklist (two boys: boy and tall_boy). The second step puts one part in the scene for every name, so name only things that stand in the scene as their own part: people, animals, furniture, things, rain. Do not name the place itself (park), a body part, or a thing that a person holds as part of the action (the book of a person reading, the box of a person carrying): name the person instead.
 - reason and link items need two or more refs: the person who acts, and the cause (a thing or another person).
@@ -214,6 +230,9 @@ ${actionVocabulary(parts)}
 Things and places, as "English word (Japanese name of the part)":
 ${thingVocabulary(parts)}
 
+Visible events that can be a reason, as "visible cause -> action (-> purpose or result)". They are material, not a fixed list: pick one that fits the theme, change who does it within the "who can do it" column, or build another visible cause from the lists above. Do not always take the same ones.
+${reasonSeeds(parts)}
+
 Things can also fall, move in a straight line, spin or sway. A ball can fly from a person who throws it to a person who catches it. Faces and feelings are not visible.
 
 # Themes (choose one when the request has no theme)
@@ -221,6 +240,7 @@ ${THEMES.map((t) => `- ${t}`).join("\n")}
 For eiken-pre2 and eiken-2, do not choose a theme where you cannot place a visible cause. If the given theme cannot be made with these parts, write the closest everyday scene you can.
 
 # Example
+This example only shows the form of the answer. Do not reuse its scene, its sentences, its people or its cause (rain) in your answer; even for a bus stop, write a different scene.
 Request: 級: ${EXAMPLE_GRADE} / テーマ: ${EXAMPLE_THEME}
 ${JSON.stringify(EXAMPLE_SENTENCES)}`;
 
@@ -259,11 +279,12 @@ const PEOPLE_RULES = `# Relations with people (use these whenever a person or an
 - seat_at: a chair at the next free seat of a table (target the table). Use it for every chair at a table; the person then uses sit_on with that chair. Choose the table by the number of people: table_small for 2, table_long for 3 to 6, table_party for 8 or more.
 - thrown_by: a thrown thing in the air in front of the person who throws it (target), or between that person and the person who catches it.
 - facing "auto": for the first person or seat of a group, use relation "ground", zone "center", facing "auto"; the program tries directions and picks the one where nobody hides another person. relate sets the direction itself. Give facing "left" or "right" only when someone walks or runs alone in a direction.
-- "holds" names what a part already has in its hands; do not add that thing as a separate item. "uses" lists parts that must also be in the scene for that action; add them (a person who cooks needs kitchen_counter and a pan on its spot "stove").
+- "holds" names what a part already has in its hands (the umbrella of person_umbrella_girl_a, the basket of person_basket_woman_a, the book, the box, the cup). That thing is part of the person: never add it as a separate item, not on the ground and not in the air. A program checks this.
+- "uses" lists parts that must also be in the scene for that action; add them (a person who cooks needs kitchen_counter and a pan on its spot "stove").
 - A person with a sitting pose (anchors.hip) must sit on something: add a chair, a bench or a sofa and use sit_on.
 - Furniture that someone works at (kitchen_counter, checkout_counter, bookshelf, ticket_machine) goes with relation "ground" and zone "left"; the program turns it so that the person is seen from the side.
 - A background wall can be a target: a person writing on wall_blackboard uses relate with link "hand".
-- When it rains, add the part rain with relation "ground" (it covers the whole scene). A cafe uses wall_cafe as its background wall.
+- When it rains, add the part rain with relation "ground" (it covers the whole scene). Use rain only when the ground is an outdoor ground; never put rain in a scene whose ground is a floor_ part. A cafe uses wall_cafe as its background wall.
 - The words of a part say who it is (man, woman, boy, girl, old man). Keep the person of the text: never use a man for a woman.`;
 
 /** 2 回目の指示。場面・関係・向き・動きの決まりは今の生成（SCENE_RULES）と同じ文を使う */
@@ -281,7 +302,7 @@ ${PEOPLE_RULES}
 - "Keys" lists the names used in the refs of the checklist. Use every one of them, exactly once, as the key of the item that shows that person or thing. A program checks this.
 - Give the other items (the ground, the background wall, chairs to sit on, a few background things) other short lower-case keys.
 - For every person and animal, choose the part whose words say the same person and whose pose shows the action of the description.
-- For each center item, read the verb of its accept and give the first person or animal of its refs a part whose "says" lists that verb (accept "a woman is drinking" needs a woman part that says drink, not one that says wipe). A program checks this.
+- For each center item, read the verb of its accept and give the first person or animal of its refs a part whose "says" lists that verb (accept "a woman is drinking" needs a woman part that says drink, not one that says wipe, and not one that only says sit or stand). A program checks this.
 - Keep who the person is. If that person has no part that says the verb, still use a part of that person (the closest pose); never change a woman into a man or give the action to someone else. The checker then sends the text back to be rewritten.
 - Show exactly the people and animals that the description mentions: no one more, no one less, one item for each. Everything the description mentions must be in the scene.
 - The cause of a reason or link item must be visible as its own item (rain, spilled_juice, a person who has fallen down, a thrown ball).
@@ -354,9 +375,15 @@ const feedbackText = (feedback: string[] | undefined) =>
     ? `\n\nYour last answer was rejected by the checking program. Write a new answer that fixes all of these:\n${feedback.map((f) => `- ${f}`).join("\n")}`
     : "";
 
+// すでに作った場面の要約を渡し、違う場面を書かせる
+const avoidText = (avoid: string[] | undefined) =>
+  avoid?.length
+    ? `\n\nScenes already made for this grade. Write a scene that is clearly different from all of them: other main actions, other people, and a cause that none of them uses.\n${avoid.map((a) => `- ${a}`).join("\n")}`
+    : "";
+
 /** 1 回目の user の文 */
 export const sentenceMessage = (input: GenerateV2Input, feedback?: string[]) =>
-  `級: ${input.grade}\nテーマ: ${input.theme ?? "一覧から選ぶ"}\nchecklist: ${checklistCounts(input.grade)}（計 ${checklistSize(input.grade)} 個）${feedbackText(feedback)}`;
+  `級: ${input.grade}\nテーマ: ${input.theme ?? "一覧から選ぶ"}\nchecklist: ${checklistCounts(input.grade)}（計 ${checklistSize(input.grade)} 個）${avoidText(input.avoid)}${feedbackText(feedback)}`;
 
 /** 2 回目の user の文。1 回目の出力の全部と、コードが refs から集めた呼び名の一覧 */
 export function itemsMessage(
@@ -610,7 +637,7 @@ export async function generateSceneV2(
   return {
     plan,
     problems: [
-      ...verifySentences(input.grade, plan),
+      ...verifySentences(input.grade, plan, parts),
       ...verifyItems(input.grade, plan, plan.items, parts),
     ],
     model: env.CLAUDE_SCENE_MODEL || DEFAULT_SCENE_MODEL,
@@ -697,7 +724,7 @@ export async function generateVerifiedScene(
         );
         usage.push(first.usage);
         written = first.sentences;
-        problems = verifySentences(input.grade, written);
+        problems = verifySentences(input.grade, written, parts);
       } catch (e) {
         problems = [invalidResponse(e, "sentences")];
       }
