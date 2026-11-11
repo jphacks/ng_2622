@@ -3,23 +3,14 @@ import Foundation
 /// 作り置きの場面の難しさ（英検の級）。docs/design/scene-protocol.md の「難易度の中身」。
 /// 配置の JSON の difficulty、start の difficulty、pool/index.json のキーと同じ値
 enum SceneDifficulty: String, CaseIterable, Identifiable, Sendable {
-  /// 3 級。お題は「誰が何をしている？」
+  /// 3 級
   case eiken3 = "eiken-3"
-  /// 準 2 級。お題は「誰が何をしている？ → なぜ？」
+  /// 準 2 級
   case eikenPre2 = "eiken-pre2"
-  /// 2 級。お題は「誰が何をしている？ → なぜ？ → つなげよう」
+  /// 2 級
   case eiken2 = "eiken-2"
 
   var id: String { rawValue }
-
-  /// 録音の画面のお題の段階。級が上がるほど、理由とつながりを足す
-  var topicSteps: [String] {
-    switch self {
-    case .eiken3: ["誰が何をしている？"]
-    case .eikenPre2: ["誰が何をしている？", "なぜ？"]
-    case .eiken2: ["誰が何をしている？", "なぜ？", "つなげよう"]
-    }
-  }
 
   /// 画面に出す名前（級の名前は出さない）
   var label: String {
