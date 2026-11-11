@@ -39,7 +39,14 @@ import {
   type SceneSentences,
 } from "./types";
 import { reasonSeeds } from "./variety";
-import { type Problem, refNames, verifyItems, verifySentences } from "./verify";
+import {
+  type Problem,
+  refNames,
+  verifyItems,
+  verifyPlaces,
+  verifyScene,
+  verifySentences,
+} from "./verify";
 
 // 英文を先に書く 2 段の場面の生成（scenenglish.scene/2）。
 // 1 回目: 部品の一覧を見せず、級の規則で英文の部分（name・description・checklist）を書かせる。
@@ -66,7 +73,7 @@ export const EXAMPLE_THEME = "バス停（bus stop）";
 export const EXAMPLE_SENTENCES: SceneSentences = {
   name: "雨のバス停",
   description:
-    "It is raining at the bus stop. A girl is holding an umbrella. A boy is running to the bus stop because it is raining. A man is reading a book. He is sitting on the bench.",
+    "It is raining at the bus stop. A girl is holding an umbrella. A boy is running to the bus stop because it is raining. A man is reading a book. The man is sitting on the bench.",
   checklist: [
     {
       id: "girl_umbrella",
@@ -108,7 +115,7 @@ export const EXAMPLE_SENTENCES: SceneSentences = {
       id: "man_sit",
       kind: "detail",
       label: "男の人はベンチに座っている",
-      accept: "he is sitting on the bench",
+      accept: "the man is sitting on the bench",
       refs: ["man", "bench"],
     },
   ],
@@ -192,11 +199,13 @@ Grammar and verbs of a lower grade may be used in a higher grade, but never use 
 # description (the model answer)
 - Write what a good player of that grade would say about the scene: plain sentences, one fact or action per sentence or clause.
 - Every sentence must be visible in a still 3D scene with simple motion. Do not write names, feelings, thoughts, speech, sounds, or anything that happened before and left nothing to see.
-- One person, one action: every person and animal does exactly one action from the list of actions below. Never give the same person a second action (not "a woman is cooking" and later "the woman is wiping the table"). A second fact about the same person (where they are, what they have) is fine and becomes a detail.
+- One person, one action: every person and animal does exactly one action from the list of actions below. Never give the same person a second action (not "a woman is cooking" and later "the woman is wiping the table"). A second fact about the same person can only be where they are (a detail); it is never another action ("she is drinking from a cup" about a woman who is sitting is a second action).
 - Only a person listed for an action can do it. Read the last column of the action's line: "drink from a cup | ... | woman, man" means only a woman or a man can drink; a girl or a boy cannot. "have fallen down | ... | woman" means only a woman can have fallen down. A program checks the subject of every center item against this column.
 - The posture belongs to the action: actions marked "(sitting)" and the action "sit" are seated, all the others are done standing. Do not write that a person who drinks, reads (standing) or waits is sitting.
 - Use only people, actions and things from the lists below. Do not write about a thing that is not in the list of things.
 - A thing that a person holds as part of the action (the umbrella of the girl who shares it, the basket of a person who waits with it, the book, the box, the cup) is part of that person. Do not write it as a second, separate thing.
+- Nothing can hang on a wall. The background walls already show a blackboard, windows, shelves or a menu; do not write about a clock, a picture or anything else "on the wall".
+- When you say that someone is on the sidewalk, on the road or on the grass, the second step must be able to put them exactly there; in a street scene say clearly who is on the road and who is on the sidewalk, and do not say it for both.
 - Rain only falls in outdoor scenes (a park, a street, a bus stop, a playground, a beach). Indoors (a store, a cafe, a kitchen, a classroom, a room, a library) and on a station platform there is no rain: do not write "it is raining outside" and do not use rain as a reason there.
 - Count the people and animals: the whole scene has exactly the number of the grade, and all of them are in the description.
 - Write the description before the checklist.
@@ -206,7 +215,7 @@ Grammar and verbs of a lower grade may be used in a higher grade, but never use 
 - center: who is doing what. Each person or animal is the subject of at most one center item.
 - The verb of a center accept must be one of the verbs on the line of that person's action, and its level must be within the grade: eiken-3 uses only verbs marked A1, eiken-pre2 verbs marked A1 or A2, eiken-2 verbs marked A1, A2 or B1. A program checks this against the 3D part. When the usual verb of an action is above the grade, say the action with another verb of the same line (in eiken-3 the boy of "throw a ball" "is playing with a ball", a person who stands "is waiting" or "is looking at" something, the woman of "wipe a table" "is cleaning the table"), or choose another action. Verbs from the list that a center accept must not use:
 ${verbLimits(parts)}
-- detail: a position, a number, a thing, the weather, or a second fact about a person.
+- detail: a position, a number, a thing or the weather. It must be a fact that no other item already says: never repeat the accept of a center item as a detail, and never make a detail from a second action of a person.
 - reason (eiken-pre2 and eiken-2): why a person does their action. The cause must be visible in the scene as a thing, the weather, or what another person or animal is doing. Choose it from "Visible events that can be a reason" below, or build another one from the lists in the same way. A feeling, a wish or a plan is not a cause (she wants it, he is in a hurry, he is late, she wants to go home), and neither is a thing that is not in the list of things. Say the reason in the description.
 - link (eiken-2 only): one sentence with two steps: because of a visible cause, a person does the action, and the action has a purpose or result that the player can see coming (the dog runs to get the ball). Not a plan you invent, and not two facts that only stand next to each other.
 - Do not make every scene about the same cause. Rain and a person who has fallen down are only two of many causes; prefer a cause that belongs to the theme, and when you can, let the cause be a thing or another person's action rather than a repeat of a center item.
@@ -218,8 +227,9 @@ ${verbLimits(parts)}
 - id: short snake_case, unique. label: short Japanese shown to the player after the round.
 - accept: the English wording that counts as "said". One item, one fact, written as a small sentence with a subject and a verb ("a man is reading a book", "there is a ball under the bench"); never a piece of a sentence ("to the train", "waiting with a basket").
 - For a center item, accept is who is doing what, without the place and without a second fact joined by "and" ("a woman is waiting", not "a woman is waiting with a shopping basket in the store"; "a girl is holding a plate", not "a girl is standing next to her and she is holding a plate"). Put the place into accept only when the item is a detail about the place.
-- The subject of a center, reason or link accept is a noun (a girl, the dog), never he, she, it or they. So in the description, write those sentences with the noun too. A reason accept is the whole sentence with the action and its cause ("a boy is running because it is raining"); a detail may start with he, she, it or there.
-- Copy accept word for word from the description (one clause is enough; lower case and no final period are fine), so write the description in a way that each fact is a clause of its own. Every accept must be found in the description. For reason and link you may add other correct wordings after " / ", but the first wording must be copied from the description.
+- The subject of a center, reason or link accept is a noun (a girl, the dog), never he, she, it or they. So in the description, write those sentences with the noun too. A detail also starts with a noun or with "there is"; only the weather may use it ("it is raining"). Never start an accept with he, she or they.
+- A reason accept is one whole sentence of the description: "<noun> is <the action of that person's center item> because <the visible cause>" ("a boy is running because it is raining"). The action before "because" is the same action as in that person's center item, never a new one. Write this sentence into the description first, then copy it.
+- Copy accept word for word from the description (one clause is enough; lower case and no final period are fine), so write the description in a way that each fact is a clause of its own. Every accept must be found in the description. Do not reword it: before you answer, check for every item that its accept (the first wording) stands in the description letter for letter. A reason or link accept that is a rewording of the description is rejected. For reason and link you may add other correct wordings after " / ", but only after the copied one.
 - refs: the people and things the item is about, as short lower-case English names (man, bench, rain; letters, digits and _ only). Put the person or animal who acts first. Use one name for one person or thing in the whole checklist (two boys: boy and tall_boy). The second step puts one part in the scene for every name, so name only things that stand in the scene as their own part: people, animals, furniture, things, rain. Do not name the place itself (park), a body part, or a thing that a person holds as part of the action (the book of a person reading, the box of a person carrying): name the person instead.
 - reason and link items need two or more refs: the person who acts, and the cause (a thing or another person).
 
@@ -304,6 +314,8 @@ ${PEOPLE_RULES}
 - For every person and animal, choose the part whose words say the same person and whose pose shows the action of the description.
 - For each center item, read the verb of its accept and give the first person or animal of its refs a part whose "says" lists that verb (accept "a woman is drinking" needs a woman part that says drink, not one that says wipe, and not one that only says sit or stand). A program checks this.
 - Keep who the person is. If that person has no part that says the verb, still use a part of that person (the closest pose); never change a woman into a man or give the action to someone else. The checker then sends the text back to be rewritten.
+- Nothing can hang on a wall: do not use clock, and never put a wall thing on a table or on the floor instead.
+- When an accept says that someone is on the sidewalk, on the grass or on the road, place them on that ground part. road_patch lies on top of the sidewalk and is 5.5 m deep, so with the road in zone "back" it also covers the center zones: people on the sidewalk go in a front zone, people on the road in center or back. A program checks this with the computed positions.
 - Show exactly the people and animals that the description mentions: no one more, no one less, one item for each. Everything the description mentions must be in the scene.
 - The cause of a reason or link item must be visible as its own item (rain, spilled_juice, a person who has fallen down, a thrown ball).
 - At most 40 items.
@@ -636,10 +648,7 @@ export async function generateSceneV2(
   const plan = { ...first.sentences, items: second.items };
   return {
     plan,
-    problems: [
-      ...verifySentences(input.grade, plan, parts),
-      ...verifyItems(input.grade, plan, plan.items, parts),
-    ],
+    problems: verifyScene(input.grade, plan, parts),
     model: env.CLAUDE_SCENE_MODEL || DEFAULT_SCENE_MODEL,
     ms: {
       sentences: t1 - t0,
@@ -752,6 +761,9 @@ export async function generateVerifiedScene(
       usage.push(second.usage);
       items = second.items;
       problems = verifyItems(input.grade, sentences, items, parts);
+      if (problems.length === 0) {
+        problems = verifyPlaces(input.grade, { ...sentences, items }, parts);
+      }
     } catch (e) {
       problems = [invalidResponse(e, "items")];
     }

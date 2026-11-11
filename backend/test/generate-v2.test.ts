@@ -711,3 +711,88 @@ test("2 回目の指示: 持っている物を別に置かない・雨は屋外�
   );
   assert.ok(system.includes("| holds: umbrella |"));
 });
+
+test("作り置き: 場所の食い違い（座標に直して分かる）は、同じ英文のまま 2 回目だけ作り直す", async () => {
+  const street = {
+    name: "道",
+    description:
+      "A woman is sitting on the sidewalk. A girl is waiting. There is a bicycle next to the woman.",
+    checklist: [
+      {
+        id: "fall",
+        kind: "center",
+        label: "転んだ",
+        accept: "a woman is sitting on the sidewalk",
+        refs: ["woman", "sidewalk"],
+      },
+      {
+        id: "wait",
+        kind: "center",
+        label: "待つ",
+        accept: "a girl is waiting",
+        refs: ["girl"],
+      },
+      {
+        id: "bike",
+        kind: "detail",
+        label: "自転車",
+        accept: "there is a bicycle next to the woman",
+        refs: ["bicycle", "woman"],
+      },
+    ],
+  };
+  const items = (zone: string) => () =>
+    message({
+      items: [
+        {
+          key: "sidewalk",
+          part: "sidewalk_stone",
+          place: { relation: "ground" },
+        },
+        {
+          key: "road",
+          part: "road_patch",
+          place: { relation: "ground", zone: "back" },
+        },
+        {
+          key: "woman",
+          part: "person_fallen_woman_a",
+          place: { relation: "ground", zone },
+        },
+        {
+          key: "bicycle",
+          part: "bicycle_down",
+          place: { relation: "next_to", target: "woman" },
+        },
+        {
+          key: "girl",
+          part: "person_stand_girl_a",
+          place: { relation: "ground", zone: "front_left" },
+        },
+      ],
+    });
+  const f = fake([() => message(street), items("center"), items("front")]);
+  const result = await generateVerifiedScene(
+    ENV,
+    PARTS,
+    { grade: "eiken-3" },
+    { create: f.create },
+  );
+  assert.deepEqual(f.calls.map(stageOf), ["sentences", "items", "items"]);
+  assert.equal(result.rejected[0][0].code, "place_mismatch");
+  assert.ok(userOf(f.calls[2]).includes("woman を sidewalk の上に置く"));
+});
+
+test("指示: 写した accept・壁の物・場所・detail の決まり", () => {
+  const first = buildSentenceSystem(PARTS);
+  assert.ok(first.includes("letter for letter"));
+  assert.ok(first.includes("Nothing can hang on a wall"));
+  assert.ok(first.includes("Never start an accept with he, she or they"));
+  assert.ok(
+    first.includes("never repeat the accept of a center item as a detail"),
+  );
+  assert.ok(first.includes("the same action as in that person's center item"));
+  const second = buildItemsSystem(PARTS);
+  assert.ok(second.includes("do not use clock"));
+  assert.ok(second.includes("people on the sidewalk go in a front zone"));
+});

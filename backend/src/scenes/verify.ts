@@ -1,3 +1,5 @@
+import { footprint } from "./compose";
+import { composeLayoutV2 } from "./compose-v2";
 import { GRADES, withinLevel } from "./grades";
 import {
   partsByWho,
@@ -7,6 +9,7 @@ import {
   VERB_LEVELS,
   verbForms,
   verbsIn,
+  whoOf,
   wordsOf,
 } from "./pose-verbs";
 import {
@@ -37,7 +40,11 @@ export type Problem = {
     | "accept_no_verb"
     | "accept_no_subject"
     | "accept_pronoun"
+    | "duplicate_accept"
     | "who_cannot"
+    | "on_the_wall"
+    | "action_mismatch"
+    | "place_mismatch"
     | "held_thing"
     | "rain_indoors"
     | "duplicate_key"
@@ -125,6 +132,15 @@ const FRAGMENT_STARTS = new Set([
   "when",
 ]);
 const PRONOUNS = new Set(["he", "she", "it", "they", "we", "i", "you"]);
+/** 天気の it（it is raining）は、detail の主語にしてよい */
+const WEATHER_IT =
+  /^it (is|was) (raining|snowing|sunny|rainy|cloudy|windy|snowy|hot|cold|dark)\b/;
+
+/** accept の言い方（" / " で分けて比べる形にしたもの）のうち、a が b と同じか、b にそのまま含まれるものがあるか */
+const saidWithin = (a: string, b: string) =>
+  acceptWordings(a).some((wa) =>
+    acceptWordings(b).some((wb) => ` ${wb} `.includes(` ${wa} `)),
+  );
 
 /**
  * 英文の部分（1 回目の出力）だけで確かめられること。部品を選ぶ前に落とせる。
@@ -198,11 +214,37 @@ export const verifySentences = (
         "accept_no_subject",
         `項目 ${c.id} の accept「${c.accept}」が主語から始まっていない。主語と動詞のある 1 つの事実にする`,
       );
-    } else if (c.kind !== "detail" && PRONOUNS.has(start)) {
+    } else if (
+      PRONOUNS.has(start) &&
+      !(c.kind === "detail" && WEATHER_IT.test(normalizeText(c.accept)))
+    ) {
       add(
         "accept_pronoun",
         `${c.kind} の項目 ${c.id} の accept「${c.accept}」の主語が代名詞（${start}）。a girl のように名詞で書く（description のその文も）`,
       );
+    }
+
+    // 同じ事実を 2 つの項目にしていないか。center どうし・detail と center・detail どうしを比べる。
+    // reason・link が center の文を含むのは決まりどおりなので比べない。
+    // detail が center に場所を足した文（a woman has fallen down on the sidewalk）は、長いほうなので落とさない
+    if (c.kind === "center" || c.kind === "detail") {
+      const same = sentences.checklist.find(
+        (o) =>
+          o !== c &&
+          (o.kind === "center" || o.kind === "detail") &&
+          (c.kind === "detail"
+            ? saidWithin(c.accept, o.accept)
+            : o.kind === "center" &&
+              sentences.checklist.indexOf(o) < sentences.checklist.indexOf(c) &&
+              saidWithin(c.accept, o.accept) &&
+              saidWithin(o.accept, c.accept)),
+      );
+      if (same) {
+        add(
+          "duplicate_accept",
+          `${c.kind} の項目 ${c.id} の accept「${c.accept}」が、項目 ${same.id} の accept と同じか、その一部。項目ごとに別の事実にする`,
+        );
+      }
     }
 
     // center の主語の人に、その動作ができるか（動作の一覧の「できる人」）
@@ -340,6 +382,7 @@ export const verifyItems = (
     }
   }
 
+  const whoOfItem = (i: PlanItem) => whoOf(parts.get(i.part) as Part);
   const livingRefs = (c: ChecklistItem) =>
     c.refs
       .map((r) => ({ key: r, part: parts.get(byKey.get(r)?.part ?? "") }))
@@ -359,6 +402,26 @@ export const verifyItems = (
     }
     if (missing.length > 0) continue;
     const actors = livingRefs(c);
+    // 壁に掛ける関係は無い。壁そのもの（黒板・窓つきの壁）以外を「壁にある」と言っていないか
+    const wording = c.accept.split("/")[0];
+    if (/\bon the (\w+ )?wall\b/i.test(wording)) {
+      const loose = c.refs.filter(
+        (r) => parts.get(byKey.get(r)?.part ?? "")?.category !== "building",
+      );
+      if (loose.length > 0) {
+        add(
+          "on_the_wall",
+          "sentences",
+          `項目 ${c.id} の accept「${c.accept}」は ${loose.join(", ")} が壁にあると言うが、物を壁に掛けることはできない（壁に付いているのは、背景の壁の黒板・窓・棚だけ）。別の細部にする`,
+        );
+      }
+    }
+
+    /** 文の主語の人（呼び方が合う refs の人）。分からなければ refs の先頭の人や動物 */
+    const subjectOf = (text: string) => {
+      const who = subjectIn(text, [...new Set(people.map(whoOfItem))]);
+      return actors.find((a) => whoOf(a.part) === who);
+    };
     if (c.kind === "reason" || c.kind === "link") {
       // 原因と行動のうち、行動する人がいるか。原因が見える物かどうか（因果の中身）は確かめられない
       if (actors.length === 0) {
@@ -367,10 +430,52 @@ export const verifyItems = (
           "sentences",
           `${c.kind} の項目 ${c.id} の refs（${c.refs.join(", ")}）に、行動する人や動物がいない`,
         );
+        continue;
+      }
+      // 行動の動詞が、その人のポーズで言えるか。reason は because より前、link は文の全部を見る
+      const action =
+        c.kind === "reason" ? wording.split(/\bbecause\b/i)[0] : wording;
+      const actor = subjectOf(action) ?? actors[0];
+      if (
+        verbsIn(action).length > 0 &&
+        poseVerbsIn(action, actor.part).length === 0
+      ) {
+        add(
+          "action_mismatch",
+          "sentences",
+          `${c.kind} の項目 ${c.id} の行動「${action.trim()}」の動詞（${verbsIn(action).join("・")}）が、${actor.key} の部品 ${actor.part.id} のポーズ（${poseVerbsOf(
+            actor.part,
+          )
+            .map((v) => v.verb)
+            .join(
+              ", ",
+            )}）に無い。理由の行動は、その人の center の動作と同じにする`,
+        );
       }
       continue;
     }
-    if (c.kind !== "center") continue;
+    if (c.kind === "detail") {
+      // 人が主語の detail（the woman is drinking from a cup）は、その人のポーズで言える動作か
+      const actor = subjectOf(wording);
+      if (
+        actor &&
+        verbsIn(wording).length > 0 &&
+        poseVerbsIn(wording, actor.part).length === 0
+      ) {
+        add(
+          "action_mismatch",
+          "sentences",
+          `detail の項目 ${c.id} の accept「${c.accept}」の動詞（${verbsIn(wording).join("・")}）が、${actor.key} の部品 ${actor.part.id} のポーズ（${poseVerbsOf(
+            actor.part,
+          )
+            .map((v) => v.verb)
+            .join(
+              ", ",
+            )}）に無い。1 人につき動作は 1 つなので、2 つ目の動作を detail にしない`,
+        );
+      }
+      continue;
+    }
 
     if (actors.length === 0) {
       add(
@@ -420,12 +525,78 @@ export const verifyItems = (
   return problems;
 };
 
-/** 英文と部品の両方を確かめる。空なら通った */
+/**
+ * 座標に直してから確かめること。「on the sidewalk」のように地面の部品の上にいると言う項目で、
+ * その人や物が、実際にはその上に重ねた別の地面（歩道の上の道路）に載っていないか。
+ * 見るのは、refs に地面の部品があり、accept に on・across・along があって、next to・near などが無い項目だけ。
+ * 裏取り（verifyItems）を通った plan を渡す。座標に直せなければ何も返さない
+ */
+export const verifyPlaces = (
+  gradeId: GradeId,
+  plan: SceneSentences & { items: PlanItem[] },
+  partList: Part[],
+): Problem[] => {
+  const parts = new Map(partList.map((p) => [p.id, p]));
+  let layout: ReturnType<typeof composeLayoutV2>;
+  try {
+    layout = composeLayoutV2(plan, partList, { id: "check", grade: gradeId });
+  } catch {
+    return [];
+  }
+  const placed = new Map(layout.items.map((i) => [i.key, i]));
+  const grounds = layout.items.filter(
+    (i) => parts.get(i.part)?.category === "ground",
+  );
+  /** その点の真下にある地面のうち、いちばん小さいもの（広い地面の上に重ねた道路など） */
+  const groundUnder = (x: number, z: number) =>
+    grounds
+      .filter((g) => {
+        const size = (parts.get(g.part) as Part).size;
+        const { hx, hz } = footprint(size, g.yaw ?? 0);
+        return (
+          Math.abs(x - g.position[0]) <= hx && Math.abs(z - g.position[2]) <= hz
+        );
+      })
+      .sort((a, b) => {
+        const area = (i: typeof a) => {
+          const size = (parts.get(i.part) as Part).size;
+          return size[0] * size[2];
+        };
+        return area(a) - area(b);
+      })[0];
+
+  const problems: Problem[] = [];
+  for (const c of plan.checklist) {
+    const wording = c.accept.split("/")[0];
+    if (!/\b(on|across|along)\b/i.test(wording)) continue;
+    if (/\b(next to|near|beside|in front of|behind|outside)\b/i.test(wording))
+      continue;
+    const isGround = (r: string) =>
+      parts.get(placed.get(r)?.part ?? "")?.category === "ground";
+    const said = c.refs.filter(isGround);
+    const subject = placed.get(c.refs.find((r) => !isGround(r)) ?? "");
+    if (said.length === 0 || !subject) continue;
+    const under = groundUnder(subject.position[0], subject.position[2]);
+    if (under && !said.includes(under.key)) {
+      problems.push({
+        code: "place_mismatch",
+        stage: "items",
+        message: `項目 ${c.id} の accept「${c.accept}」は ${subject.key} が ${said.join(", ")} の上にいると言うが、置いた位置は ${under.key}（${under.part}）の上。${subject.key} を ${said.join(", ")} の上に置く`,
+      });
+    }
+  }
+  return problems;
+};
+
+/** 英文と部品の両方を確かめる。部品まで通れば、座標に直して場所も確かめる。空なら通った */
 export const verifyScene = (
   gradeId: GradeId,
   plan: SceneSentences & { items: PlanItem[] },
   parts: Part[],
-): Problem[] => [
-  ...verifySentences(gradeId, plan, parts),
-  ...verifyItems(gradeId, plan, plan.items, parts),
-];
+): Problem[] => {
+  const problems = [
+    ...verifySentences(gradeId, plan, parts),
+    ...verifyItems(gradeId, plan, plan.items, parts),
+  ];
+  return problems.length > 0 ? problems : verifyPlaces(gradeId, plan, parts);
+};
