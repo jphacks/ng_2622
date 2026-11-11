@@ -54,7 +54,7 @@ export type ContentBreakdown = {
   items: ItemResult[];
   // その他として数えた件数（OTHER_MAX まで）
   others: number;
-  // 言えた（再現率）。earned ÷ max
+  // 言えた（再現率）。earned ÷ max。max は checklist の項目だけの重み。earned はその他の分も足し、max で頭打ちにする
   recall: { value: number; earned: number; max: number };
   // 正しさ（適合率）。correct ÷ said。said は ignored を除いた描写の数
   precision: { value: number; correct: number; said: number };
@@ -73,7 +73,8 @@ export const WEIGHTS: Record<ChecklistKind | "other", number> = {
   detail: 1,
   other: 0.5,
 };
-// その他（一覧に無い正しい描写）として数える件数の上限
+// その他（一覧に無い正しい描写）として数える件数の上限。その他はおまけで、満点の重みには入れない
+// （ADR 20261111-count-other-claims-as-bonus-and-require-actions-for-items）
 export const OTHER_MAX = 2;
 
 const LEVEL_VALUE: Record<ItemLevel, number> = {
@@ -115,7 +116,10 @@ const tidy = (claim: Claim, ids: Set<string>): Claim => {
 /**
  * 引用を文字起こしの中で確かめる。見つからない描写は捨て、見つかったものは
  * 文字起こしに書かれているとおりの文字列に直して、話した順に並べる。
- * 同じ語が 2 回出るときのため、前の描写の終わりから先を探す。そこに無ければ（順が前後した・重なった）頭から探す
+ * 同じ語が 2 回出るときのため、前の描写の終わりから先を探す。そこに無ければ（前の描写と重なる・順が前後した）、
+ * 前の描写の始まりから、それでも無ければ頭から探す。
+ * 同じ場所の同じ判定（verdict と item が同じ）が 2 つあれば、同じ事実の二重数えなので 1 つにする（level は高いほう）。
+ * 引用が重なっていても、当たる項目が違えば別の事実として両方残す
  */
 export const verifyClaims = (
   transcript: string,
@@ -124,20 +128,36 @@ export const verifyClaims = (
 ): Claim[] => {
   const tokens = tokenize(transcript);
   const ids = new Set(checklist.map((c) => c.id));
-  const found: { claim: Claim; at: number; order: number }[] = [];
+  const found: { claim: Claim; at: number; length: number; order: number }[] =
+    [];
   let cursor = 0;
-  claims.forEach((claim, order) => {
-    const quote = tokenize(claim.quote).map((t) => t.text);
+  let previous = 0;
+  claims.forEach((raw, order) => {
+    const quote = tokenize(raw.quote).map((t) => t.text);
     if (quote.length === 0) return;
     let at = findFrom(tokens, quote, cursor);
     if (at >= 0) cursor = at + quote.length;
-    else at = findFrom(tokens, quote, 0);
+    else at = findFrom(tokens, quote, previous);
+    if (at < 0) at = findFrom(tokens, quote, 0);
     if (at < 0) return;
+    previous = at;
     const text = transcript.slice(
       tokens[at].start,
       tokens[at + quote.length - 1].end,
     );
-    found.push({ claim: { ...tidy(claim, ids), quote: text }, at, order });
+    const claim = { ...tidy(raw, ids), quote: text };
+    const same = found.find(
+      (f) =>
+        f.at === at &&
+        f.length === quote.length &&
+        f.claim.verdict === claim.verdict &&
+        f.claim.item === claim.item,
+    );
+    if (same) {
+      if (claim.level === "full") same.claim = { ...same.claim, level: "full" };
+      return;
+    }
+    found.push({ claim, at, length: quote.length, order });
   });
   return found
     .sort((a, b) => a.at - b.at || a.order - b.order)
@@ -168,18 +188,21 @@ export const countOthers = (claims: Claim[]) =>
     claims.filter((c) => c.verdict === "correct" && c.item === null).length,
   );
 
-/** 言えた（R）= 言えた重み ÷ 満点の重み。満点にはその他 OTHER_MAX 件分を含める */
+/**
+ * 言えた（R）= 言えた重み ÷ 満点の重み。満点は checklist の項目だけで、その他は含めない。
+ * その他は 1 件 0.5・OTHER_MAX 件までを言えた重みに足すおまけで、言えた重みは満点で頭打ちにする（R は 1 を超えない）
+ */
 export const recallOf = (
   items: Pick<ItemResult, "kind" | "level">[],
   others: number,
 ): ContentBreakdown["recall"] => {
-  const max =
-    items.reduce((sum, i) => sum + WEIGHTS[i.kind], 0) +
-    WEIGHTS.other * OTHER_MAX;
-  const earned =
+  const max = items.reduce((sum, i) => sum + WEIGHTS[i.kind], 0);
+  const earned = Math.min(
+    max,
     items.reduce((sum, i) => sum + WEIGHTS[i.kind] * LEVEL_VALUE[i.level], 0) +
-    WEIGHTS.other * Math.min(OTHER_MAX, Math.max(0, others));
-  return { value: earned / max, earned, max };
+      WEIGHTS.other * Math.min(OTHER_MAX, Math.max(0, others)),
+  );
+  return { value: max === 0 ? 0 : earned / max, earned, max };
 };
 
 /**

@@ -16,7 +16,7 @@ import {
   WEIGHTS,
 } from "../src/scoring/checklist";
 
-// eiken-pre2 の形（中心 3・理由 1・細部 2。満点の重み 11）
+// eiken-pre2 の形（中心 3・理由 1・細部 2。満点の重み 10）
 const CHECKLIST: ChecklistItem[] = [
   {
     id: "c1",
@@ -131,6 +131,85 @@ test("話した順に並べ直す。前の描写と重なる引用は頭から�
       "A man is reading a book",
       "reading a book next to the table",
       "next to the table",
+    ],
+  );
+});
+
+test("引用が重なっていても、当たる項目が違えば両方残る（1 つの文が 2 つの項目に当たる）", () => {
+  const transcript = "Woman wipe table because juice. A boy is sitting.";
+  const r = scoreContent(CHECKLIST, transcript, [
+    claim("woman wipe table", "correct", "c1"),
+    // 理由の描写は、中心の描写を含む同じ文の全部を引用している
+    claim("woman wipe table because juice", "correct", "r1"),
+    // 引用がまったく同じでも、項目が違えば残る
+    claim("a boy is sitting", "correct", "c3", "partial"),
+    claim("a boy is sitting", "correct", "d1", "partial"),
+  ]);
+  assert.deepEqual(
+    r.claims.map((c) => [c.quote, c.item]),
+    [
+      ["Woman wipe table", "c1"],
+      ["Woman wipe table because juice", "r1"],
+      ["A boy is sitting", "c3"],
+      ["A boy is sitting", "d1"],
+    ],
+  );
+  assert.deepEqual(
+    r.items.map((i) => i.level),
+    ["full", "none", "partial", "full", "partial", "none"],
+  );
+  // 項目ごとに 1 つの事実と数える
+  assert.deepEqual(r.precision, { value: 1, correct: 4, said: 4 });
+});
+
+test("同じ場所・同じ判定・同じ項目の描写は 1 つにまとめる（同じ事実を 2 回数えない。level は高いほう）", () => {
+  const claims = [
+    claim("a dog is running", "correct", "c1", "partial"),
+    claim("a dog is running", "correct", "c1", "full"),
+    claim("a dog", "correct"),
+    claim("A DOG", "correct"),
+    claim("dog", "absent"),
+    claim("dog", "absent"),
+  ];
+  const once = verifyClaims("a dog is running", claims, CHECKLIST);
+  assert.deepEqual(
+    once.map((c) => [c.quote, c.verdict, c.item, c.level]),
+    [
+      ["a dog is running", "correct", "c1", "full"],
+      ["a dog", "correct", null, null],
+      ["dog", "absent", null, null],
+    ],
+  );
+  // 文字起こしで 2 回言っていれば、別の場所に当たるので両方残る
+  const twice = verifyClaims(
+    "a dog is running a dog is running",
+    claims.slice(0, 2),
+    CHECKLIST,
+  );
+  assert.deepEqual(
+    twice.map((c) => c.level),
+    ["partial", "full"],
+  );
+});
+
+test("重なる引用は、頭からではなく前の描写の場所から探す", () => {
+  const transcript = "A dog is running. Then a dog is running fast";
+  const out = verifyClaims(
+    transcript,
+    [
+      claim("then", "ignored"),
+      claim("a dog is running fast", "correct", "c1"),
+      claim("a dog is running", "correct", "c2"),
+    ],
+    CHECKLIST,
+  );
+  // 3 つ目は、1 文目ではなく 2 つ目と同じ場所（"Then" のあと）に当たる
+  assert.deepEqual(
+    out.map((c) => [c.quote, c.item]),
+    [
+      ["Then", null],
+      ["a dog is running fast", "c1"],
+      ["a dog is running", "c2"],
     ],
   );
 });
@@ -256,16 +335,16 @@ test("重みは中心 2・理由 2・つながり 2・細部 1・その他 0.5",
   });
 });
 
-test("満点の重みは級の形で 6・11・15（その他 2 件分の 1 を含む）", () => {
+test("満点の重みは checklist の項目だけで、級の形で 5・10・14（その他は含めない）", () => {
   const shape = (kinds: ChecklistItem["kind"][]) =>
     recallOf(
       kinds.map((kind) => ({ kind, level: "none" as const })),
       0,
     ).max;
-  assert.equal(shape(["center", "center", "detail"]), 6);
+  assert.equal(shape(["center", "center", "detail"]), 5);
   assert.equal(
     shape(["center", "center", "center", "reason", "detail", "detail"]),
-    11,
+    10,
   );
   assert.equal(
     shape([
@@ -278,24 +357,52 @@ test("満点の重みは級の形で 6・11・15（その他 2 件分の 1 を�
       "detail",
       "detail",
     ]),
-    15,
+    14,
+  );
+  assert.deepEqual(recallOf([], 2), { value: 0, earned: 0, max: 0 });
+});
+
+test("R は full を 1、partial を 0.5 として重みに掛ける。項目を全部言えれば、その他が無くても 1", () => {
+  const levels = (level: "full" | "none") =>
+    CHECKLIST.map((c) => ({ kind: c.kind, level }));
+  assert.deepEqual(recallOf(levels("full"), 0), {
+    value: 1,
+    earned: 10,
+    max: 10,
+  });
+  assert.deepEqual(
+    recallOf(
+      CHECKLIST.map((c) => ({
+        kind: c.kind,
+        level: c.kind === "center" ? ("partial" as const) : ("none" as const),
+      })),
+      0,
+    ),
+    { value: 0.3, earned: 3, max: 10 },
   );
 });
 
-test("R は full を 1、partial を 0.5 として重みに掛ける。全部言えてその他 2 件なら 1", () => {
-  const all = recallOf(
-    CHECKLIST.map((c) => ({ kind: c.kind, level: "full" as const })),
-    2,
-  );
-  assert.deepEqual(all, { value: 1, earned: 11, max: 11 });
-  // その他は 2 件を超えて渡しても 2 件分
-  assert.equal(
-    recallOf(
-      CHECKLIST.map((c) => ({ kind: c.kind, level: "none" as const })),
-      5,
-    ).earned,
-    1,
-  );
+test("その他はおまけ: 1 件 0.5・2 件までを言えた重みに足し、満点で頭打ちにする（R は 1 を超えない）", () => {
+  const levels = (level: "full" | "none") =>
+    CHECKLIST.map((c) => ({ kind: c.kind, level }));
+  assert.equal(recallOf(levels("none"), 1).earned, 0.5);
+  assert.equal(recallOf(levels("none"), 2).earned, 1);
+  // 2 件を超えて渡しても 2 件分
+  assert.equal(recallOf(levels("none"), 5).earned, 1);
+  // 全部言えていれば、その他を足しても満点のまま
+  assert.deepEqual(recallOf(levels("full"), 2), {
+    value: 1,
+    earned: 10,
+    max: 10,
+  });
+  // 細部 1 つ（重み 1）が抜けた分は、その他 2 件で埋まる。3 件めは足さない
+  const missingDetail = CHECKLIST.map((c) => ({
+    kind: c.kind,
+    level: c.id === "d2" ? ("none" as const) : ("full" as const),
+  }));
+  assert.equal(recallOf(missingDetail, 1).earned, 9.5);
+  assert.equal(recallOf(missingDetail, 2).earned, 10);
+  assert.equal(recallOf(missingDetail, 3).value, 1);
 });
 
 test("P は ignored を数えない。数える描写が無いときは 0（分子・分母も 0）", () => {
@@ -323,38 +430,12 @@ test("内容 = round(100 × 2PR/(P+R))。P + R = 0 なら 0", () => {
   assert.equal(f1Content(1, 0), 0);
   assert.equal(f1Content(0, 1), 0);
   assert.equal(f1Content(0.5, 1), 67);
+  // ADR 20261110 の例の数字（R = 6.5/11、P = 4/5）。式は変えていない
+  assert.equal(f1Content(4 / 5, 6.5 / 11), 68);
 });
 
-test("ADR の計算例（eiken-pre2）: R = 6.5/11、P = 4/5 → 68 点", () => {
-  // 中心 3 つのうち 2 つ、理由が一部、細部 2 つのうち 1 つ、その他 1 件
-  const recall = recallOf(
-    [
-      { kind: "center", level: "full" },
-      { kind: "center", level: "full" },
-      { kind: "center", level: "none" },
-      { kind: "reason", level: "partial" },
-      { kind: "detail", level: "full" },
-      { kind: "detail", level: "none" },
-    ],
-    1,
-  );
-  assert.equal(recall.earned, 6.5);
-  assert.equal(recall.max, 11);
-  // 言った描写 5 つのうち 1 つが場面に無い物
-  const precision = precisionOf([
-    claim("a"),
-    claim("b"),
-    claim("c"),
-    claim("d"),
-    claim("e", "absent"),
-  ]);
-  assert.deepEqual(precision, { value: 0.8, correct: 4, said: 5 });
-  assert.equal(f1Content(precision.value, recall.value), 68);
-});
-
-test("描写の一覧から同じ達成（R = 6.5/11）を作ると、正しい描写は 5 つになり P = 5/6 で 69 点", () => {
-  // ADR の例は、項目 4 つとその他 1 件を正しい描写 4 つで言えたことになっている。
-  // 描写 1 つが当たる項目は 1 つなので、描写の一覧からは正しい描写が 5 つ要る
+test("計算の例（usecase.md、eiken-pre2）: R = 6.5/10、P = 5/6 → 73 点", () => {
+  // 中心 3 つのうち 2 つ、理由が一部、細部 2 つのうち 1 つ、その他 1 件。場面に無い物を 1 つ言った
   const transcript = "one two three four five six";
   const r = scoreContent(CHECKLIST, transcript, [
     claim("one", "correct", "c1"),
@@ -364,10 +445,25 @@ test("描写の一覧から同じ達成（R = 6.5/11）を作ると、正しい�
     claim("five"),
     claim("six", "absent"),
   ]);
-  assert.deepEqual(r.recall, { value: 6.5 / 11, earned: 6.5, max: 11 });
+  assert.deepEqual(r.recall, { value: 0.65, earned: 6.5, max: 10 });
   assert.deepEqual(r.precision, { value: 5 / 6, correct: 5, said: 6 });
   assert.equal(r.others, 1);
-  assert.equal(r.content, 69);
+  assert.equal(r.content, 73);
+});
+
+test("見本どおり（項目を全部 full、間違いなし）なら、その他が無くても 100 点", () => {
+  const transcript = CHECKLIST.map((_, i) => `w${i}`).join(" ");
+  const all = CHECKLIST.map((c, i) => claim(`w${i}`, "correct", c.id));
+  const r = scoreContent(CHECKLIST, transcript, all);
+  assert.deepEqual(r.recall, { value: 1, earned: 10, max: 10 });
+  assert.equal(r.content, 100);
+  // その他を足しても 100 点のまま
+  const more = scoreContent(CHECKLIST, `${transcript} extra`, [
+    ...all,
+    claim("extra"),
+  ]);
+  assert.equal(more.recall.earned, 10);
+  assert.equal(more.content, 100);
 });
 
 test("引用が文字起こしに無い描写は、正しさにも言えたにも数えない（当たっていた項目はその分下がる）", () => {
@@ -426,12 +522,12 @@ const partly = () =>
 
 test("gain は、その項目を full で言えたときの内容の伸び", () => {
   const r = partly();
-  // 今: R = (2 + 1 + 1) / 11、P = 3/3
-  assert.equal(r.content, f1Content(1, 4 / 11));
-  // c2 を足す: R = 6/11、正しい描写が 1 つ増えて P = 4/4
-  assert.equal(gainOf(r, "c2"), f1Content(1, 6 / 11) - r.content);
-  // 一部の r1 が full になる: R = 5/11、P はそのまま
-  assert.equal(gainOf(r, "r1"), f1Content(1, 5 / 11) - r.content);
+  // 今: R = (2 + 1 + 1) / 10、P = 3/3
+  assert.equal(r.content, f1Content(1, 4 / 10));
+  // c2 を足す: R = 6/10、正しい描写が 1 つ増えて P = 4/4
+  assert.equal(gainOf(r, "c2"), f1Content(1, 6 / 10) - r.content);
+  // 一部の r1 が full になる: R = 5/10、P はそのまま
+  assert.equal(gainOf(r, "r1"), f1Content(1, 5 / 10) - r.content);
   // もう言えている項目・無い項目は 0
   assert.equal(gainOf(r, "c1"), 0);
   assert.equal(gainOf(r, "nope"), 0);
@@ -440,8 +536,8 @@ test("gain は、その項目を full で言えたときの内容の伸び", () 
 test("gain は、間違いだけの答えでも 0 にならない（正しい描写が増える分 P も上がる）", () => {
   const r = scoreContent(CHECKLIST, "a cat", [claim("a cat", "absent")]);
   assert.equal(r.content, 0);
-  // R = 2/11、P = 1/2
-  assert.equal(gainOf(r, "c1"), f1Content(1 / 2, 2 / 11));
+  // R = 2/10、P = 1/2
+  assert.equal(gainOf(r, "c1"), f1Content(1 / 2, 2 / 10));
   assert.ok(gainOf(r, "c1") > 0);
 });
 

@@ -22,14 +22,19 @@ import type {
 // Claude が返すのは描写の一覧と表現の点と講評だけで、内容の点は checklist.ts が計算する。
 // 30 場面を作り直して採点を切り替えるまで、score() からは呼ばれない
 
-// 表現の段階の文は下書き。PR で人が確かめたものに差し替える。IELTS・英検の公式の文は丸写ししない
-const EXPRESSION_BANDS = `Expression: grammar and vocabulary, measured against the grammar list of the player's grade (given in the input). Judge how well the player uses the forms of their grade, not how long or how difficult the answer is. A short answer can reach 80. Rare or difficult words do not raise the band by themselves.
-- 100: Uses the forms on the grade's grammar list correctly and naturally, and also uses forms beyond the list (the next grade up) naturally. Words fit the scene. Almost no errors.
-- 80: Uses the forms on the grade's grammar list correctly, in complete sentences. Errors are rare and do not block the meaning.
-- 60: Complete sentences, but only with the easier forms on the list, or forms of the grade with clear errors (verb forms, articles, prepositions). The meaning is clear.
+// 表現の段階の文は下書き。PR で人が確かめたものに差し替える。IELTS・英検の公式の文は丸写ししない。
+// 表現は発話の全部（推測や、場面と合わない文も含む）の英語を見る。合っているかは描写の判定だけで見る
+// （2026-11-11 の実測で、推測を足した正しい英文の表現が 0 点になったため、0 と 60 の条件をはっきり書いた）
+const EXPRESSION_BANDS = `Expression: the grammar and vocabulary of the player's English, measured against the grammar list in the input. The list covers the player's grade and the easier grades below it; its examples in parentheses are only examples.
+Judge the English of the whole transcript: every sentence counts, including guesses, opinions ("I think ...", "Maybe ...") and sentences that are wrong about the scene or not about it. Whether a statement is true is judged only in the claims and must not change this score; the verdicts ("ignored" and so on) do not matter here.
+Judge how well the player uses the forms, not how long or how difficult the answer is. A short answer can reach 80. Rare or difficult words do not raise the band by themselves. Forms that are not on any list ("I think", "maybe", "can") are fine and never lower the band.
+- 100: Uses forms on the grammar list correctly and naturally, and also uses a form from the next grade up naturally. Almost no errors.
+- 80: Uses forms on the grammar list correctly, in complete sentences. Errors are rare and do not block the meaning.
+- 60: Complete sentences whose meaning is clear, but with some clear errors (verb forms, articles, prepositions).
 - 40: Short simple sentences or phrases with frequent errors (a missing be-verb, bare verbs). The meaning is mostly clear.
 - 20: Isolated words or memorized fragments, hardly any sentence structure.
-- 0: No English that can be assessed.`;
+- 0: Only when the transcript has no English words to judge.
+One complete and correct English sentence is already 60 or more.`;
 
 const SYSTEM = `You grade short spoken English descriptions by Japanese learners in a party game. The players are junior and senior high school students practicing for a speaking test, at one of three grades: eiken-3 (easiest), eiken-pre2, eiken-2 (hardest).
 All players watched the same 3D scene and described it freely in up to 20 seconds. The input is an automatic transcript, so ignore punctuation and small recognition errors.
@@ -37,11 +42,13 @@ All players watched the same 3D scene and described it freely in up to 20 second
 You get the scene data: every thing in the scene with its name, English words, size, position, facing and motion, and the relations the scene was built from. It is the ground truth; nothing else is in the scene. A model answer for the grade may follow as a supplement; when it disagrees with the scene data, trust the scene data.
 Players can rotate the scene, so accept left/right and front/back from any viewpoint as long as the relation could be true from some side. Do not judge colors that the scene data does not give.
 
-You also get the checklist of the scene. Each item has an id, a kind (center: who is doing what; reason: why something is happening; link: a chain from a cause through an action to its result or purpose; detail: a position, a count and so on), a Japanese label, accept (the English wording that counts as said) and refs (the keys of the things in the scene data that the item is about).
+You also get the checklist of the scene. Each item has an id, a kind (center: who is doing what; reason: why something is happening; link: a chain from a cause through an action to its result or purpose; detail: a position, a count, a thing that is there and so on), a Japanese label, accept (the English wording that counts as said) and refs (the keys of the things in the scene data that the item is about). When accept lists several wordings separated by " / ", saying any one of them is enough.
 
 # Claims
 Split what the player said into claims and judge each one. Do not give a content score; the program computes it from your claims.
-- One claim is one fact. "A man is reading a book next to the table." is two claims: "A man is reading a book" and "next to the table". Naming a person or thing ("there is a dog") is a claim too. If the player repeats the same fact, list it once.
+- One claim is one fact. Always put an action (who is doing what) and a position (a preposition phrase: where it is or where it happens) into separate claims. "A man is reading a book next to the table." is two claims: "A man is reading a book" and "next to the table". Naming a person or thing ("there is a dog", or each noun of "woman, table, cup") is a claim too. If the player repeats the same fact, list it once.
+- Judge each claim on its own. A wrong position does not make the action wrong. For a scene where a girl is sitting on a bench, "A girl is sitting under a bench." gives "A girl is sitting" (correct; it hits the item about the girl sitting) and "under a bench" (contradiction). For a scene where a dog is running on the grass, "A dog is running on the bench." gives "A dog is running" (correct) and "on the bench" (contradiction).
+- When one stretch of speech says what two checklist items ask (an action and its reason, or an action inside a chain), make one claim for each item; their quotes may overlap or even be the same words. "A woman is wiping the table because of the juice." gives "A woman is wiping the table" (the center item about wiping) and "A woman is wiping the table because of the juice" (the reason item). Do the same for a long sentence that contains both a center item and a link item.
 - quote: the words of the claim, copied exactly from the transcript as one continuous run of words. Do not fix, reorder or join words. List the claims in the order they were spoken.
 - verdict:
   - "correct": agrees with the scene data.
@@ -50,8 +57,10 @@ Split what the player said into claims and judge each one. Do not give a content
   - "offtopic": not about the scene at all ("I like pizza").
   - "ignored": not counted either way. Use it for a reason or a guess that follows naturally from the scene and does not contradict it but cannot be checked ("maybe he is tired", "I think she is late"), for fillers and connecting words ("I think", "um", "in this picture"), and for a claim that is only about a color the scene data does not give.
   A reason that contradicts the scene, or that depends on something not in the scene, is "contradiction" or "absent".
-- item: for a "correct" claim, the id of the checklist item it says, or null when it is true but not on the checklist. For every other verdict, null. Judge meaning, not exact words; grammar mistakes do not matter here.
-- level: for a claim with an item, compare it with the item's accept. "full": it says the accept wording or a clear paraphrase of it. "partial": it says only part of it (the person without the action, the action without the person or the object it needs). Null when item is null.
+- item: for a "correct" claim, the id of the checklist item it says, or null when it is true but not on the checklist. For every other verdict, null. Judge meaning, not exact words; grammar mistakes do not matter here ("Woman wipe table" says the same as "a woman is wiping the table").
+  - center, reason and link items are about actions, relations and reasons. A claim that only names a person or thing ("a girl", "there is a dog", a list of nouns) never hits them, even when the item is about that person or thing: give it item null. It is still "correct" when the thing is in the scene.
+  - A detail item can be hit by the name alone only when its accept asks for nothing more than the thing being there.
+- level: for a claim with an item, compare it with the item's accept. "full": it says what accept says, or a clear paraphrase. "partial": it says the action or relation of the item but leaves out, or gets wrong, an important part of accept (who does it, the object of the action, or the place when accept names one). Null when item is null.
   - reason item: any reason that does not contradict the scene is "full", even if it differs from accept. Saying the action without any reason does not hit the reason item.
   - link item: "full" when two steps are connected: a cause, the action, and its result or purpose (e.g. "The boy threw a ball, so the dog is running across the grass to get it."). "partial" when only one step is connected (a single "because" or "so").
   - A reason or a chain that hits a reason or link item is "correct" with that item, not "ignored".
@@ -102,7 +111,11 @@ const schemaFor = (checklist: ChecklistItem[], withSpeech: boolean) => {
           additionalProperties: false,
         },
       },
-      expression: { type: "integer" },
+      expression: {
+        type: "integer",
+        description:
+          "0-100 by the Expression bands, for the English of the whole transcript",
+      },
       strength: {
         type: "object",
         properties: { quote: { type: "string" }, text: { type: "string" } },
@@ -156,7 +169,7 @@ export type ChecklistInput = {
   sceneData: string;
   // 級の見本の答え（場面の description。補足）
   description?: string;
-  // 級の文法の一覧。表現の段階の物差しにする（生成と同じ定数 GRADES から渡す）
+  // 級の文法の一覧。下の級の分も含めて渡す。表現の段階の物差しにする（生成と同じ定数 GRADES から作る）
   grammar: string[];
   // 一つ上の級で足される文法の一覧。あれば 100 の段階の目安として渡す
   grammarAbove?: string[];
@@ -194,7 +207,7 @@ const describeChecklist = (checklist: ChecklistItem[]) =>
 export const checklistPrompt = (input: ChecklistInput) => {
   const parts = [
     `Grade: ${input.grade}`,
-    `Grammar list of the grade:\n${input.grammar.map((g) => `- ${g}`).join("\n")}`,
+    `Grammar list (the player's grade and the easier grades below it):\n${input.grammar.map((g) => `- ${g}`).join("\n")}`,
   ];
   if (input.grammarAbove?.length) {
     parts.push(
