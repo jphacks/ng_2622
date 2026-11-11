@@ -10,7 +10,7 @@ repo の pool には入れない。人が PNG を見て選んだものだけを�
 
 使い方:
   export SCENE_WRITE_TOKEN=...   # wrangler dev に --var SCENE_WRITE_TOKEN:... で渡したのと同じ値
-  python3 scripts/scene/make_pool.py --url http://localhost:8799 --out <dir> --difficulty easy normal hard --count 14
+  python3 scripts/scene/make_pool.py --url http://localhost:8799 --out <dir> --difficulty eiken-3 eiken-pre2 eiken-2 --count 14
   （--jobs で同時に投げる数、--no-render で描かない、--blender で Blender の場所を変える）
 """
 from __future__ import annotations
@@ -28,7 +28,8 @@ import urllib.request
 from pathlib import Path
 
 REPO = Path(__file__).resolve().parents[2]
-DIFFICULTIES = ("easy", "normal", "hard")
+# 級の値（backend/src/scenes/types.ts の GRADE_IDS と同じ）
+DIFFICULTIES = ("eiken-3", "eiken-pre2", "eiken-2")
 # 今の部品で作れる場所（生成の口の THEMES と同じ顔ぶれ）
 THEMES = ("公園", "カフェ", "店", "駅", "台所", "教室", "部屋", "図書館", "砂浜", "道", "バス停", "校庭")
 # 生成の口は 1 回 60 秒まで待ち、1 回やり直すことがある
