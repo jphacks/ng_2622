@@ -59,7 +59,6 @@ private struct TranscriptCard: View {
         Text(player.name)
           .font(Theme.font(17, .heavy))
           .lineLimit(1)
-        if player.isSelf { SelfBadge() }
         Spacer(minLength: 8)
         if let score = player.score {
           PointsText(total: score.total, size: 22)
