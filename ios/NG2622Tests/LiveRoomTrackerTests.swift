@@ -166,6 +166,41 @@ struct LiveRoomTrackerTests {
     #expect(results.myReview == nil)
   }
 
+  /// rank が null なら、content が付いていても採点できなかった人として扱い、内訳を持たない
+  @Test func resultsUngradedWithContent() throws {
+    var tracker = try joined()
+    let updates = tracker.apply(
+      try message(
+        #"{"type":"results","round":1,"sceneId":"temp-eiken-3-park","sceneName":"公園","players":[{"id":"\#(me)","name":"たろう","color":5987302,"rank":null,"score":{"content":60,"expression":50,"speech":70,"total":60},"transcript":"A dog.","content":\#(Self.content),"feedback":null}]}"#
+      ))
+    guard case .event(.results(let results)) = updates.first else {
+      Issue.record("results でない: \(updates)")
+      return
+    }
+    #expect(results.players.first?.score == nil)
+    #expect(results.players.first?.content == nil)
+    #expect(results.myReview == nil)
+  }
+
+  /// sceneName が空なら、取ってある配置の JSON の名前で埋める。取っていなければ ID のまま
+  @Test func resultsFillSceneName() async throws {
+    let sceneID = try #require(ScenePool.bundled.randomCandidate())
+    let layout = try await SceneLayouts.store.layout(of: sceneID)
+    let json =
+      #"{"type":"results","round":1,"sceneId":"\#(sceneID)","sceneName":"","players":[]}"#
+    let message = try JSONDecoder().decode(Components.Schemas.ServerMessage.self, from: Data(json.utf8))
+    guard case .results(let results) = message else {
+      Issue.record("results でない")
+      return
+    }
+    #expect(RoundResults(results, selfID: nil).sceneName == layout.name)
+    let unknown = try JSONDecoder().decode(
+      Components.Schemas.ServerMessage.self,
+      from: Data(#"{"type":"results","round":1,"sceneId":"gen-unknown","sceneName":"","players":[]}"#.utf8))
+    guard case .results(let other) = unknown else { return }
+    #expect(RoundResults(other, selfID: nil).sceneName == "gen-unknown")
+  }
+
   /// 3 語未満の発話: 項目は全部 none・描写は空、次の一つは item も gain も null で、「+N 点」は出さない
   @Test func resultsTooShort() throws {
     var tracker = try joined()
