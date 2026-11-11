@@ -31,6 +31,9 @@ export const MIN_WORDS = 3;
 // 短すぎる発話に出す、次の一つの文
 export const SHORT_TEXT = "もう少し長く、文にして話してみよう。";
 
+// 合計と話し方の点は小数第 1 位まで返す
+const round = (n: number) => Math.round(n * 10) / 10;
+
 export const parseWeights = (
   raw: string | undefined,
 ): [number, number, number] => {
@@ -54,7 +57,14 @@ export const weightedTotal = (
 ) => (content * wc + expression * we + speech * ws) / (wc + we + ws);
 
 /**
+ * 画面に出す合計。score() は合計を小数第 1 位に丸めて返し、結果発表（domain/round.ts の roundScore）が整数に丸めて見せる。
+ * その 2 回の丸めをここで同じようにかける
+ */
+export const shownTotal = (total: number) => Math.round(round(total));
+
+/**
  * 次の一つの gain（合計の点の伸び）。「その項目を full で言えたときの合計 − 今の合計」を、合計と同じ式と重みで出す。
+ * 画面の足し算と合うよう、どちらも画面に出す合計（shownTotal）に丸めてから引く。
  * 内容以外の次の一つと、項目が無いときは null
  */
 export const withGain = (
@@ -68,19 +78,16 @@ export const withGain = (
   gain:
     step.contentIfSaid === null
       ? null
-      : Math.round(
+      : shownTotal(
           weightedTotal(
             weights,
             step.contentIfSaid,
             score.expression,
             score.speech,
-          ) -
-            weightedTotal(
-              weights,
-              score.content,
-              score.expression,
-              score.speech,
-            ),
+          ),
+        ) -
+        shownTotal(
+          weightedTotal(weights, score.content, score.expression, score.speech),
         ),
 });
 
@@ -98,8 +105,6 @@ const isWav = (buf: ArrayBuffer) => {
   const head = new TextDecoder().decode(new Uint8Array(buf, 0, 12));
   return head.startsWith("RIFF") && head.endsWith("WAVE");
 };
-
-const round = (n: number) => Math.round(n * 10) / 10;
 
 const FIXED_SPEECH = { accuracy: 60, fluency: 60, prosody: 60 };
 

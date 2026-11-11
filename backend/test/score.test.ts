@@ -3,14 +3,19 @@
 import assert from "node:assert/strict";
 import { afterEach, test } from "node:test";
 import app from "../src/app";
+import { createRoomState, startRound } from "../src/domain/room";
+import { beginGrading, recordGrade, roundResults } from "../src/domain/round";
 import { findPoolScene, poolCandidates } from "../src/scenes/pool";
+import { ResultsMessage } from "../src/schemas/ws";
 import {
   grammarFor,
   parseWeights,
   score,
+  shownTotal,
   weightedTotal,
   withGain,
 } from "../src/scoring";
+import { toGrade } from "../src/usecases/submitAudio";
 
 const realFetch = globalThis.fetch;
 afterEach(() => {
@@ -334,6 +339,19 @@ test("合計と gain の式", () => {
     ).gain,
     15,
   );
+  // 画面に出す合計の差にする。内容 41 → 70 なら、合計は 55.5 → 70（画面では 56 → 70）なので 14（丸めない差は 14.5）
+  assert.equal(
+    withGain(
+      { kind: "content", text: "t", item: "x", contentIfSaid: 70 },
+      [50, 25, 25],
+      { ...score0, content: 41 },
+    ).gain,
+    14,
+  );
+  assert.equal(shownTotal(55.5), 56);
+  // score() は合計を小数第 1 位に丸めてから、結果発表が整数に丸める。その 2 回の丸めと同じにする
+  assert.equal(shownTotal(2.449), 2);
+  assert.equal(shownTotal(2.45), 3);
   assert.equal(
     withGain(
       { kind: "content", text: "t", item: null, contentIfSaid: null },
@@ -372,6 +390,52 @@ test("無い場面（外した手作りの場面も）は unknown_scene、WAV �
   const failed = await score(env, wav(), SCENE_ID);
   assert.ok(!failed.ok);
   assert.equal(failed.reason, "api_error");
+});
+
+test("score() の結果を部屋に書き込み、結果発表の形（ResultsMessage）まで通る", async () => {
+  stubFetch([]);
+  const result = await score(env, wav(), SCENE_ID);
+  assert.ok(result.ok, JSON.stringify(result));
+  const { state, host } = createRoomState("0427");
+  const lobby = {
+    ...state,
+    players: state.players.map((p) => ({ ...p, name: "host" })),
+  };
+  const started = startRound(lobby, {
+    playerId: host.id,
+    sceneId: SCENE_ID,
+    now: 0,
+    connectedIds: new Set([host.id]),
+  });
+  assert.ok(started.ok);
+  const begun = beginGrading(started.value.state, {
+    playerId: host.id,
+    round: 1,
+  });
+  assert.ok(begun.ok);
+  const recorded = recordGrade(begun.value.state, {
+    playerId: host.id,
+    round: 1,
+    grade: toGrade(result),
+  });
+  assert.ok(recorded);
+  assert.equal(recorded.phase, "results");
+  const results = roundResults(recorded);
+  assert.ok(results);
+  const message = ResultsMessage.parse({ type: "results", ...results });
+  const [me] = message.players;
+  assert.equal(me.rank, 1);
+  assert.deepEqual(me.score, {
+    content: 44,
+    expression: 60,
+    speech: 80,
+    total: 57,
+  });
+  assert.deepEqual(me.content, result.breakdown);
+  assert.deepEqual(me.feedback, result.feedback);
+  assert.equal(message.sceneName, SCENE.name);
+  // 画面の足し算: 今の合計 + gain = 言えたときの合計（画面に出す整数）
+  assert.equal(me.feedback?.nextStep.gain, 15);
 });
 
 // ---- POST /score（部屋を通さない採点の口。ENABLE_DEV_ROUTES のときだけ開く） ----
@@ -429,6 +493,8 @@ test("POST /score は、形が違えば 400、fixed なら固定の点、口を�
     { ...LAYOUT, difficulty: "easy" },
     { ...LAYOUT, checklist: [] },
     { description: "A park.", items: LAYOUT.items },
+    // checklist の id が重なっている
+    { ...LAYOUT, checklist: [LAYOUT.checklist[0], LAYOUT.checklist[0]] },
   ]) {
     const res = await post({ layout, transcript: TRANSCRIPT });
     assert.equal(res.status, 400);

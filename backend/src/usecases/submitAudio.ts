@@ -13,7 +13,8 @@ const isWav = (audio: ArrayBuffer) => {
   return head.startsWith("RIFF") && head.endsWith("WAVE");
 };
 
-const toGrade = (result: ScoreResult): Grade =>
+/** 採点の結果を、部屋に書き込む 1 人分の採点にする */
+export const toGrade = (result: ScoreResult): Grade =>
   result.ok
     ? {
         status: "done",

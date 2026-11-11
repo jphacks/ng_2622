@@ -31,7 +31,7 @@ export const scoreRoutes = new Hono<AppEnv>().post(
       return c.json(
         errorBody(
           "invalid_message",
-          "layout（difficulty・checklist・1〜40 個の items）と transcript（1〜2000 文字）を送る。speech の点は 0〜100 の整数",
+          "layout（difficulty・id の重ならない checklist・1〜40 個の items）と transcript（1〜2000 文字）を送る。speech の点は 0〜100 の整数",
         ),
         400,
       );

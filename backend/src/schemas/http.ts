@@ -312,7 +312,14 @@ export const ScoringLayout = z
     description: z.string().max(2000).optional().meta({
       description: "級の見本の答え（英語）。採点の補足として Claude に渡す",
     }),
-    checklist: z.array(z.object(checklistItemShape)).min(1).max(20),
+    checklist: z
+      .array(z.object(checklistItemShape))
+      .min(1)
+      .max(20)
+      // Claude に渡す項目の id の enum に、同じ id が入らないようにする
+      .refine((list) => new Set(list.map((c) => c.id)).size === list.length, {
+        message: "checklist の id が重なっている",
+      }),
     items: z
       .array(
         z.object({
