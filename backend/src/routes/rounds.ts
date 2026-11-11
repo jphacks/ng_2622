@@ -1,5 +1,6 @@
 import { Hono } from "hono";
 import { describeRoute, validator } from "hono-openapi";
+import { createPlayRecordRepository } from "../repositories/playRecordRepository";
 import { createRoomRepository } from "../repositories/roomRepository";
 import {
   AudioHeaders,
@@ -104,7 +105,9 @@ export const roundRoutes = new Hono<AppEnv>().post(
         token: headers.authorization.slice("Bearer ".length),
         audio: await c.req.arrayBuffer(),
         transcript: decodeTranscript(headers["x-transcript"]),
+        deviceId: headers["x-device-id"],
       },
+      createPlayRecordRepository(c.env.PLAY_RECORDS),
     );
     if (!result.ok) {
       const status =

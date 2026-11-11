@@ -169,7 +169,8 @@ final class LiveGameClient: GameClient {
     let client = APIClient.make(url: baseURL, middlewares: [BearerToken(credentials.token)])
     let output = try await client.submitAudio(
       path: .init(roomId: roomID, round: String(round)),
-      headers: .init(xPlayerId: credentials.playerID, xTranscript: transcript),
+      // X-Device-Id は場面の評価と同じ端末の ID。バックエンドが本人のきろくに残す（表示名は残さない）
+      headers: .init(xPlayerId: credentials.playerID, xTranscript: transcript, xDeviceId: SceneReviews.reviewerID),
       body: .audioWav(HTTPBody(data)))
     switch output {
     case .accepted:

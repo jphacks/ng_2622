@@ -20,7 +20,19 @@ import {
   RoomPhase,
   SceneId,
 } from "./common";
-import { FeedbackNextStep, PlayerContent, Rewrite } from "./ws";
+import {
+  Feedback,
+  FeedbackNextStep,
+  PlayerContent,
+  PlayerScore,
+  Rewrite,
+} from "./ws";
+
+/** 端末ごとの乱数の ID（場面の評価の reviewerId と同じ値）。きろくを本人ごとに分ける */
+const DeviceId = z.uuid().meta({
+  description:
+    "端末ごとの乱数の ID。端末で 1 つ作って覚えておく（場面の評価の reviewerId と同じ値）",
+});
 
 export const CreateRoomResponse = z
   .object({
@@ -71,6 +83,10 @@ export const AudioHeaders = z.object({
   "x-transcript": z.string().max(8000).optional().meta({
     description:
       "端末で文字起こしした発話を URL エンコードしたもの（元の文で 2000 文字まで）。あれば発音評価の正解文と内容・表現の採点に使い、無ければ Azure の文字起こしを使う",
+  }),
+  "x-device-id": DeviceId.optional().meta({
+    description:
+      "端末ごとの乱数の ID。あれば、採点できた結果を本人のきろく（GET /records/mine）に 180 日残す",
   }),
 });
 
@@ -416,3 +432,36 @@ export const GenerateSceneRequest = z
     }),
   })
   .meta({ ref: "GenerateSceneRequest" });
+
+// 本人のきろく（GET /records/mine）
+
+export const MyRecordsHeaders = z.object({ "x-device-id": DeviceId });
+
+export const PlayRecord = z
+  .object({
+    id: z.int().min(1),
+    playedAt: z.iso
+      .datetime()
+      .meta({ description: "採点できた日時（UTC、ISO 8601）" }),
+    sceneId: SceneId,
+    words: z.int().min(0).meta({ description: "文字起こしの語数" }),
+    score: PlayerScore,
+    transcript: z.string().meta({ description: "文字起こし" }),
+    content: PlayerContent,
+    feedback: Feedback,
+    // ref 付きの型に説明を足すと OpenAPI で型が分かれるので、説明は PlayRecord の側に書く
+    layout: SceneLayout,
+  })
+  .meta({
+    ref: "PlayRecord",
+    description:
+      "きろくの 1 ラウンド分。表示名と録音は入れない。layout は遊んだときの場面の配置（名前・級・見本の答え・チェックリスト）で、部屋が閉じても振り返りを出し直せるよう残している",
+  });
+
+export const ListMyRecordsResponse = z
+  .object({
+    records: z.array(PlayRecord).meta({
+      description: "新しい順。180 日を過ぎたものは入らない。最大 500 件",
+    }),
+  })
+  .meta({ ref: "ListMyRecordsResponse" });

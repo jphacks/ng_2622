@@ -38,6 +38,7 @@ private struct AppFlow: View {
     case home
     case join
     case room
+    case records
   }
 
   @State private var screen = Screen.home
@@ -49,8 +50,11 @@ private struct AppFlow: View {
     ZStack {
       switch screen {
       case .home:
-        HomeView(profile: $profile, onCreate: create, onJoin: { go(.join) })
+        HomeView(profile: $profile, onCreate: create, onJoin: { go(.join) }, onRecords: { go(.records) })
           .disabled(creating)
+          .transition(.opacity)
+      case .records:
+        RecordsView(onBack: { go(.home) })
           .transition(.opacity)
       case .join:
         JoinView(profile: profile, join: join, onBack: { go(.home) })

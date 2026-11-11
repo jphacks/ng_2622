@@ -1868,6 +1868,76 @@
           "parts"
         ],
         "additionalProperties": false
+      },
+      "PlayRecord": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 9007199254740991
+          },
+          "playedAt": {
+            "type": "string",
+            "format": "date-time",
+            "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$",
+            "description": "採点できた日時（UTC、ISO 8601）"
+          },
+          "sceneId": {
+            "$ref": "#/components/schemas/SceneId"
+          },
+          "words": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991,
+            "description": "文字起こしの語数"
+          },
+          "score": {
+            "$ref": "#/components/schemas/PlayerScore"
+          },
+          "transcript": {
+            "type": "string",
+            "description": "文字起こし"
+          },
+          "content": {
+            "$ref": "#/components/schemas/PlayerContent"
+          },
+          "feedback": {
+            "$ref": "#/components/schemas/Feedback"
+          },
+          "layout": {
+            "$ref": "#/components/schemas/SceneLayout"
+          }
+        },
+        "required": [
+          "id",
+          "playedAt",
+          "sceneId",
+          "words",
+          "score",
+          "transcript",
+          "content",
+          "feedback",
+          "layout"
+        ],
+        "additionalProperties": false,
+        "description": "きろくの 1 ラウンド分。表示名と録音は入れない。layout は遊んだときの場面の配置（名前・級・見本の答え・チェックリスト）で、部屋が閉じても振り返りを出し直せるよう残している"
+      },
+      "ListMyRecordsResponse": {
+        "type": "object",
+        "properties": {
+          "records": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PlayRecord"
+            },
+            "description": "新しい順。180 日を過ぎたものは入らない。最大 500 件"
+          }
+        },
+        "required": [
+          "records"
+        ],
+        "additionalProperties": false
       }
     }
   },
@@ -2163,6 +2233,16 @@
               "maxLength": 8000
             },
             "description": "端末で文字起こしした発話を URL エンコードしたもの（元の文で 2000 文字まで）。あれば発音評価の正解文と内容・表現の採点に使い、無ければ Azure の文字起こしを使う"
+          },
+          {
+            "in": "header",
+            "name": "x-device-id",
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            },
+            "description": "端末ごとの乱数の ID。あれば、採点できた結果を本人のきろく（GET /records/mine）に 180 日残す"
           }
         ]
       }
@@ -2503,6 +2583,51 @@
             }
           }
         }
+      }
+    },
+    "/records/mine": {
+      "get": {
+        "operationId": "listMyRecords",
+        "tags": [
+          "records"
+        ],
+        "summary": "自分のきろく",
+        "description": "X-Device-Id の端末で遊んで採点できたラウンドを、新しい順に返す。きろくの画面（点数と語数の推移・過去の振り返り）に使う",
+        "responses": {
+          "200": {
+            "description": "きろく",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ListMyRecordsResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "X-Device-Id が無い・形が違う（invalid_message）",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "in": "header",
+            "name": "x-device-id",
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            },
+            "required": true,
+            "description": "端末ごとの乱数の ID。端末で 1 つ作って覚えておく（場面の評価の reviewerId と同じ値）"
+          }
+        ]
       }
     }
   }

@@ -54,3 +54,4 @@
 | 2026-11-10 | [場面の形を scenenglish.scene/2 にし、要素をチェックリストに置き換え、説明文を見本の答えにする](./20261110-adopt-scene-protocol-v2-with-checklist.md) | accepted（`/1` と `/2` の両方を読む期間の条項のみ 2026-11-11 に部分 supersede） |
 | 2026-11-11 | [その他の描写は満点に含めないおまけにし、名前だけでは中心・理由・つながりの項目に当てない](./20261111-count-other-claims-as-bonus-and-require-actions-for-items.md) | accepted |
 | 2026-11-11 | [手作りの場面と古い採点を外し、採点をチェックリストの 1 通りにする](./20261111-score-only-with-checklist-and-drop-handmade-scenes.md) | accepted |
+| 2026-11-11 | [本人が経過を見返せるよう、遊んだ記録を端末の ID ごとに 180 日残す](./20261111-keep-own-play-records-for-180-days.md) | accepted |

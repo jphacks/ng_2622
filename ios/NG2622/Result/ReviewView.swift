@@ -6,6 +6,12 @@ struct ReviewView: View {
   let results: RoundResults
   /// このラウンドで録った自分の声。あれば「あなたの描写」から聞き直せる
   var recording: RecordedAudio?
+  /// 見出し。きろくから開いたときは日付と場面の名前にする
+  var title = "振り返り"
+  /// きろくに残っている、遊んだときの場面の配置。あれば取りに行かずにこれを使う（部屋が閉じると AI の場面は取れない）
+  var savedLayout: SceneLayout? = nil
+  /// 順位を出すか。きろくから開いたときは自分 1 人分しか無いので出さない
+  var showsPlace = true
   let onBack: () -> Void
 
   /// 遊んだ場面の配置の JSON（難易度・見本の答え・チェックリスト）。取れるまでは、それを使う所を出さない
@@ -13,7 +19,7 @@ struct ReviewView: View {
 
   var body: some View {
     VStack(spacing: 0) {
-      ResultSubHeader(title: "振り返り", onBack: onBack)
+      ResultSubHeader(title: title, onBack: onBack)
         .resultColumn()
         .padding(.top, 8)
       // 点数があれば出す。講評（feedback）が届かなかったときは、講評のカード（次の一つ・言い直し・話し方）だけ出さない
@@ -33,6 +39,10 @@ struct ReviewView: View {
       }
     }
     .task(id: results.sceneID) {
+      if let savedLayout {
+        layout = savedLayout
+        return
+      }
       // 3D を出すときに取ってあるので、ふつうは通信しない
       layout = try? await SceneLayouts.store.layout(of: results.sceneID, room: results.room)
     }
@@ -46,7 +56,7 @@ struct ReviewView: View {
         }
         PointsText(total: score.total, size: 64)
           .foregroundStyle(Theme.accent)
-        if let place = results.place(of: me) {
+        if showsPlace, let place = results.place(of: me) {
           Text("\(place) 位 / \(results.players.count) 人")
             .font(Theme.font(17, .heavy))
             .foregroundStyle(Theme.muted)

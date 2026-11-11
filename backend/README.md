@@ -132,6 +132,12 @@ main に `backend/` の変更が入ると、GitHub Actions（`.github/workflows/
   - 難易度（`start` の `difficulty`）を受けたら、`src/scenes/pool/index.json` のその難易度の場面から、その部屋でまだ出ていないものをランダムに選ぶ。全部出たら最初に戻る。生成が有効なら、先に部屋が AI で作る（「部屋で AI に作らせる」）。
   - シーン ID を受けたら、そのシーンにする（作り置きの場面の ID だけ。手元で試すとき用）。どちらも無ければ、全部の級の作り置きの場面からおまかせで選ぶ。
 
+## 本人のきろく（`src/durable-objects/playRecords.ts`）
+
+- 音声（`POST /rooms/{roomId}/rounds/{round}/audio`）に `X-Device-Id`（場面の評価と同じ端末の乱数の ID）が付いていて採点できたら、Durable Object `PlayRecords`（全部屋で 1 つ）に 1 行足す。中身は点数・文字起こし・内容の内訳・講評と、遊んだ場面の配置。表示名と録音は入れない。
+- 180 日を過ぎた行は書き込むたびに消し、読むときも返さない。きろくに残せなくても遊びは止めない。
+- アプリのきろくの画面は `GET /records/mine`（`X-Device-Id`）で、その端末の分だけを新しい順に取る。全員分を読む口は無い（[ADR](../docs/adr/20261111-keep-own-play-records-for-180-days.md)）。
+
 ## API のスキーマ（OpenAPI）
 
 API の型は zod で書き、[hono-openapi](https://hono.dev/examples/hono-openapi) が OpenAPI を生成する。iOS はリポジトリにある `backend/openapi.json` から型を作る。

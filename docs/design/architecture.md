@@ -85,7 +85,8 @@ WebSocket のメッセージ（ThatsFight の `src/shared/protocol.ts` に倣う
 
 - シーンの定義（ID、名前、Claude に渡す場面の説明、描写してほしい要素の一覧、3D モデルのファイル名）は、リポジトリに JSON で置き、Worker とアプリの両方が読む（推測）。
 - 3D モデルはアプリに同梱する（推測）。会場の回線に左右されないため。
-- 音声と採点の結果は、部屋が閉じたら消す。長く保存しない（推測）。
+- 音声は保存しない。部屋の中の採点の結果は、部屋が閉じたら消す。
+- 本人のきろくのため、採点できたラウンド（端末の乱数の ID・場面・文字起こし・点数・内容の内訳・講評・場面の配置）を、全体で 1 つの Durable Object `PlayRecords` の SQLite に 180 日残す。表示名と録音は入れない。読む口は本人用の `GET /records/mine`（`X-Device-Id` の端末の分だけ）だけ（[ADR](../adr/20261111-keep-own-play-records-for-180-days.md)）。
 - シーンの評価（★とコメント）は、全体で 1 つの Durable Object `SceneReviews` の SQLite に残す（[ADR](../adr/20261024-store-scene-reviews-in-a-global-durable-object.md)）。今後のユーザーが作るシーンも同じ表に足す。
 
 ## コスト破産への備え（[`cost-safety.md`](./cost-safety.md) の具体化）

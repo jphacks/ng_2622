@@ -4,6 +4,7 @@ import { buildOpenAPISpec } from "./openapi";
 import { devRoutes } from "./routes/dev";
 import { healthRoutes } from "./routes/health";
 import { partRoutes } from "./routes/parts";
+import { recordRoutes } from "./routes/records";
 import { roomRoutes } from "./routes/rooms";
 import { roundRoutes } from "./routes/rounds";
 import { sceneRoutes } from "./routes/scenes";
@@ -19,6 +20,7 @@ const app = new Hono<AppEnv>()
   .route("/", sceneRoutes)
   .route("/", scoreRoutes)
   .route("/", partRoutes)
+  .route("/", recordRoutes)
   .route("/", devRoutes);
 
 // API の説明は手元だけで見られるようにする（iOS は commit 済みの openapi.json を読む）

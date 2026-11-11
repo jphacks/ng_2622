@@ -276,5 +276,7 @@ final class MockGameClient: GameClient {
       return m
     }
     continuation.yield(.results(results))
+    // Live はバックエンドが本人のきろくに残す。Mock はアプリの中のきろくに足す
+    MockPlayRecordClient.shared.append(results, layout: try? MockSceneLayoutClient.read(roundSceneID))
   }
 }

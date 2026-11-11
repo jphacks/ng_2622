@@ -5,6 +5,8 @@ struct HomeView: View {
   @Binding var profile: PlayerProfile
   let onCreate: () -> Void
   let onJoin: () -> Void
+  /// 自分のきろく（点数と話した量の推移・過去の振り返り）を開く
+  let onRecords: () -> Void
 
   @FocusState private var editing: Bool
 
@@ -31,6 +33,20 @@ struct HomeView: View {
       }
       .disabled(!hasName)
       .padding(.top, 26)
+      // 部屋のボタンより目立たせない。名前が無くても開ける
+      Button(action: onRecords) {
+        HStack(spacing: 6) {
+          Image(systemName: "chart.line.uptrend.xyaxis")
+            .font(.system(size: 14, weight: .bold))
+          Text("きろくを見る")
+            .font(Theme.font(16, .heavy))
+        }
+        .foregroundStyle(Theme.accent)
+        .padding(.horizontal, 18)
+        .frame(height: 40)
+        .background(Theme.accentSoft, in: Capsule())
+      }
+      .padding(.top, 18)
       Spacer(minLength: 12)
     }
     .frame(width: 346)
