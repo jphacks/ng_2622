@@ -21,9 +21,9 @@ python3 scripts/ui-spec/build.py --pdf    # 同名の .pdf も（Google Chrome �
 
 仮の画面は Codex の image gen で作る。固まったら `drafts/` から `images/` に移して commit する。
 
-画面を作り直したときは、前の画像を消さずに別の名前（例: `3-lobby-v2.png`）で置き、frontmatter の `image` を差し替える。`image` は 1 画面に 1 枚なので、長い画面（振り返り）は上下の 2 枚を縦につないだ 1 枚にする。HTML の画面カードは iPhone の縦横比の枠で出し、それより縦に長い画像は切り抜かずに枠の中で縦にスクロールさせる。
+画面を作り直したときは、前の画像を消さずに別の名前（例: `3-lobby-v2.png`）で置き、frontmatter の `image` を差し替える。長い画面（振り返り）は、スクロール前とスクロール後の 1 画面ぶんずつの画像にし、`image` に配列で書く（例: `image = ["7-review-v5-top.png", "7-review-v5-bottom.png"]`）。HTML の画面カードでは横に並べ、遷移図のノードには 1 枚目を使う。iPhone の 1 画面ぶんの画像は縮めずに埋める。縦に長い画像は切り抜かずに枠の中で縦にスクロールさせる。
 
-2026-11-11 の v2: 振り返り以外は、Codex の画像ではなく実際のアプリのスクリーンショット（`<番号>-<id>-app.png`。iPhone 18 Pro、Mock、ふつう）にした。画面が大きく変わった振り返りだけ Codex の画像（`7-review-v4.png`、上下 2 枚をつないだもの）を使う。v1 の画像は履歴として残す。
+2026-11-11 の v2: 振り返り以外は、Codex の画像ではなく実際のアプリのスクリーンショット（`<番号>-<id>-app.png`。iPhone 18 Pro、Mock、ふつう）にした。画面が大きく変わった振り返りだけ Codex の画像（`7-review-v5-top.png`・`7-review-v5-bottom.png`）を使う。v1 の画像は履歴として残す。
 
 frontmatter の主なキー:
 
@@ -32,5 +32,5 @@ frontmatter の主なキー:
 | `title` | 画面の日本語の呼称 |
 | `group` | `room`（部屋）/ `play`（プレイ）/ `result`（結果） |
 | `order` | まとまりの中の並び |
-| `image` | 仮の画面のファイル名（`images/` → `drafts/` の順に探す） |
+| `image` | 仮の画面のファイル名（`images/` → `drafts/` の順に探す）。複数なら配列で書き、カードでは横に並べる |
 | `entry_points` / `exits` | `{ from|to = "<id か説明>", how = "push / 全員同時 / 自動 / 戻る", trigger = "きっかけ" }` の配列。`to` が他の画面の `id` なら遷移マップの矢印になる。`how` に「全員」を含む遷移は青の太線、「自動」は破線、「戻る」は薄い線で描く |
