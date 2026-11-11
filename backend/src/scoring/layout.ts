@@ -17,6 +17,31 @@ export type LayoutItem = {
   };
 };
 
+/**
+ * scenenglish.scene/2 の items の 1 つ。座標に加えて、生成で Claude が書いた関係（place・facing・動きの行き先）も残る。
+ * ここでは採点で読む欄だけを最小限に書く（形の正本は docs/design/scene-protocol.md の「配置の JSON v2」）
+ */
+export type RelationItem = Omit<LayoutItem, "motion"> & {
+  place?: {
+    relation: string;
+    target?: string;
+    target2?: string;
+    zone?: string;
+    spot?: string;
+    link?: string;
+    side?: string;
+    distance?: string;
+    turn?: string;
+  };
+  // camera・left・right・away か、向く相手の key
+  facing?: string;
+  // 座標の動き（to）と関係の動き（toward・path）を同じ欄に並べる
+  motion?: NonNullable<LayoutItem["motion"]> & {
+    toward?: string;
+    path?: string;
+  };
+};
+
 type PartMeta = {
   id: string;
   category: string;
@@ -52,6 +77,30 @@ const describeMotion = (m: NonNullable<LayoutItem["motion"]>) => {
   }
 };
 
+// 生成で書いた関係を 1 行にする。例: "sit_on bench"、"between tree and bench"、"relate woman (link hand, side front)"
+const describePlace = (place: NonNullable<RelationItem["place"]>) => {
+  const { relation, target, target2, ...rest } = place;
+  const targets = [target, target2].filter(Boolean).join(" and ");
+  const options = Object.entries(rest)
+    .filter(([, v]) => v !== undefined)
+    .map(([k, v]) => `${k} ${v}`)
+    .join(", ");
+  return [relation, targets, options && `(${options})`]
+    .filter(Boolean)
+    .join(" ");
+};
+
+const describeRelations = (item: RelationItem) => {
+  const lines: string[] = [];
+  if (item.place) lines.push(`  place: ${describePlace(item.place)}`);
+  if (item.facing) lines.push(`  facing: ${item.facing}`);
+  if (item.motion?.toward) {
+    const path = item.motion.path ? ` (${item.motion.path} it)` : "";
+    lines.push(`  moves toward: ${item.motion.toward}${path}`);
+  }
+  return lines;
+};
+
 const describeItem = (item: LayoutItem, meta: PartMeta) => {
   const scale = Math.min(4, Math.max(0.25, item.scale ?? 1));
   const words = meta.words.map((w) =>
@@ -83,5 +132,29 @@ export const describeLayout = (items: LayoutItem[]): string | null => {
     COORDINATES,
     "Things (nothing else is in the scene):",
     ...known.map(({ item, meta }) => describeItem(item, meta)),
+  ].join("\n");
+};
+
+// 関係の読み方。座標より読み違えにくいので、位置の関係はこちらを先に見させる
+const RELATIONS = `Relations: place, facing and "moves toward" are how the scene was built; the positions were computed from them. Use them first to tell where things are, and the coordinates for the rest. place is a relation to the key of another thing (on, in, under, above, next_to, in_front_of, behind, near, between, sit_on, seat_at, relate, thrown_by), or "ground" with a zone of the square (front is the +Z side, back is -Z, left is -X). relate means the thing interacts with the target (link: the body part that reaches it; side, distance and turn: where it stands and which way it faces). facing is camera (+Z), left, right, away, or the key it faces.`;
+
+/**
+ * describeLayout に、生成で書いた関係（place・facing・動きの行き先）を書き足したもの。scenenglish.scene/2 の採点で渡す。
+ * 関係の無い item は describeLayout と同じ行になる。地面のほかに部品が 1 つも分からなければ null
+ */
+export const describeLayoutWithRelations = (
+  items: RelationItem[],
+): string | null => {
+  const known = items
+    .map((item) => ({ item, meta: catalog.get(item.part.split("@")[0]) }))
+    .filter((k): k is { item: RelationItem; meta: PartMeta } => !!k.meta);
+  if (known.every(({ meta }) => meta.category === "ground")) return null;
+  return [
+    COORDINATES,
+    RELATIONS,
+    "Things (nothing else is in the scene):",
+    ...known.map(({ item, meta }) =>
+      [describeItem(item, meta), ...describeRelations(item)].join("\n"),
+    ),
   ].join("\n");
 };

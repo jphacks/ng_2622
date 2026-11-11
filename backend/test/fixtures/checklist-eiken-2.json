@@ -1,0 +1,132 @@
+{
+  "protocol": "scenenglish.scene/2",
+  "id": "test-eiken-2-street",
+  "name": "歩道で転んだ人を助ける",
+  "difficulty": "eiken-2",
+  "description": "A woman has fallen on the street because her bicycle fell over. A man is holding out his hand to help her stand up. A girl saw the accident, so she is running with her smartphone to call for help. An old man is standing near the bench. The bicycle is lying next to the woman. There is a bag on the bench.",
+  "checklist": [
+    {
+      "id": "woman_fall",
+      "kind": "center",
+      "label": "女の人が道で転んでいる",
+      "accept": "a woman has fallen on the street",
+      "refs": ["woman"]
+    },
+    {
+      "id": "man_help",
+      "kind": "center",
+      "label": "男の人が手を差しのべて助けている",
+      "accept": "a man is holding out his hand to help her stand up",
+      "refs": ["man", "woman"]
+    },
+    {
+      "id": "girl_run",
+      "kind": "center",
+      "label": "女の子がスマホを持って走っている",
+      "accept": "she is running with her smartphone",
+      "refs": ["girl"]
+    },
+    {
+      "id": "oldman_stand",
+      "kind": "center",
+      "label": "おじいさんがベンチの近くに立っている",
+      "accept": "an old man is standing near the bench",
+      "refs": ["oldman", "bench"]
+    },
+    {
+      "id": "why_fall",
+      "kind": "reason",
+      "label": "女の人が転んだ理由",
+      "accept": "a woman has fallen on the street because her bicycle fell over",
+      "refs": ["bicycle", "woman"]
+    },
+    {
+      "id": "girl_call",
+      "kind": "link",
+      "label": "女の子は事故を見て、助けを呼ぶために走っている",
+      "accept": "a girl saw the accident, so she is running with her smartphone to call for help",
+      "refs": ["woman", "girl"]
+    },
+    {
+      "id": "bicycle",
+      "kind": "detail",
+      "label": "女の人の横に自転車が倒れている",
+      "accept": "the bicycle is lying next to the woman",
+      "refs": ["bicycle", "woman"]
+    },
+    {
+      "id": "bag",
+      "kind": "detail",
+      "label": "ベンチの上にかばんがある",
+      "accept": "there is a bag on the bench",
+      "refs": ["bag", "bench"]
+    }
+  ],
+  "items": [
+    {
+      "key": "ground",
+      "part": "sidewalk_stone",
+      "place": { "relation": "ground" },
+      "position": [0, 0, 0]
+    },
+    {
+      "key": "bench",
+      "part": "bench",
+      "place": { "relation": "ground", "zone": "back_right" },
+      "position": [2.6, 0, -2.6]
+    },
+    {
+      "key": "bag",
+      "part": "bag",
+      "place": { "relation": "on", "target": "bench" },
+      "position": [2.9, 0.48, -2.52]
+    },
+    {
+      "key": "oldman",
+      "part": "person_stand_old_a",
+      "place": { "relation": "next_to", "target": "bench" },
+      "facing": "woman",
+      "position": [1.3, 0, -2.6],
+      "yaw": -27
+    },
+    {
+      "key": "woman",
+      "part": "person_fallen_woman_a",
+      "place": { "relation": "ground", "zone": "center" },
+      "position": [0, 0, 0]
+    },
+    {
+      "key": "bicycle",
+      "part": "bicycle_down",
+      "place": { "relation": "next_to", "target": "woman" },
+      "position": [-1.1, 0, 0.1]
+    },
+    {
+      "key": "man",
+      "part": "person_help_up_adult_a",
+      "place": {
+        "relation": "relate",
+        "target": "woman",
+        "link": "hand",
+        "side": "front",
+        "distance": "touch",
+        "turn": "toward"
+      },
+      "position": [0.15, 0, 1],
+      "yaw": 180
+    },
+    {
+      "key": "girl",
+      "part": "person_run_phone_girl_a",
+      "place": { "relation": "near", "target": "woman" },
+      "position": [-1.6, 0, 1.6],
+      "yaw": -90,
+      "motion": {
+        "type": "move",
+        "toward": "left",
+        "to": [-3.6, 0, 1.6],
+        "duration": 5
+      }
+    }
+  ]
+}
