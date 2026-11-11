@@ -141,6 +141,15 @@ export type LayoutItem = {
 export const GRADE_IDS = ["eiken-3", "eiken-pre2", "eiken-2"] as const;
 export type GradeId = (typeof GRADE_IDS)[number];
 
+/** 級の値として知らないもの（前の版で保存した部屋の easy など）を寄せる先 */
+export const DEFAULT_GRADE: GradeId = "eiken-3";
+
+/** 級の値でなければ DEFAULT_GRADE にする。保存された状態から読んだ値に使う */
+export const toGradeId = (value: string): GradeId =>
+  (GRADE_IDS as readonly string[]).includes(value)
+    ? (value as GradeId)
+    : DEFAULT_GRADE;
+
 export const CHECKLIST_KINDS = ["center", "reason", "link", "detail"] as const;
 export type ChecklistKind = (typeof CHECKLIST_KINDS)[number];
 

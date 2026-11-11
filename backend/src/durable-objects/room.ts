@@ -60,6 +60,8 @@ export class Room extends DurableObject<CloudflareBindings> {
    * 保存した状態が generating なのにここが違う id なら、DO が作り直されて生成が途切れている
    */
   private generation: { id: string; controller: AbortController } | null = null;
+  /** 部屋で AI に場面を作らせるときの待ち時間の上限（ms）。テストでは短くする */
+  protected generationTimeoutMs = GENERATION_TIMEOUT_MS;
 
   /** そのコードの部屋がすでにあれば null */
   async create(roomId: string) {
@@ -296,11 +298,11 @@ export class Room extends DurableObject<CloudflareBindings> {
           { grade: difficulty },
           {
             // 2 段（Claude を 2 回呼ぶ）の合計で 10 秒まで。各段はやり直さず、裏取りで落ちても作り直さない
-            timeoutMs: GENERATION_TIMEOUT_MS,
+            timeoutMs: this.generationTimeoutMs,
             maxAttempts: 1,
             signal: AbortSignal.any([
               controller.signal,
-              AbortSignal.timeout(GENERATION_TIMEOUT_MS),
+              AbortSignal.timeout(this.generationTimeoutMs),
             ]),
           },
         );
