@@ -70,6 +70,8 @@ cp ios/Config/Local.xcconfig.example ios/Config/Local.xcconfig   # アプリを�
 | PR タイトルの形式 | なし | pr-checks |
 | PR 必須・1 approve・squash のみ | なし | ruleset `main-protection` |
 
+merge するには、PR のブランチが最新の main を含んでいる必要がある（古ければ「Update branch」で追従し、pr-checks の再実行を待つ。[ADR](./docs/adr/20261112-require-up-to-date-branch-before-merge.md)）。
+
 main への直接 push と force push は ruleset が拒否する。admin も例外にしていない。
 ただし repo の admin は、PR を merge するときに限り approve と pr-checks を待たずに merge できる（急ぎの場合の逃げ道で、普段は使わない）。
 

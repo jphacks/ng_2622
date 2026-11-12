@@ -53,3 +53,4 @@
 | 2026-11-10 | [場面の生成は、級の規則で英文とチェックリストを先に書き、その英文に合う部品と関係を後に書く](./20261110-write-grade-sentences-before-scene-parts.md) | accepted |
 | 2026-11-10 | [場面の形を scenenglish.scene/2 にし、要素をチェックリストに置き換え、説明文を見本の答えにする](./20261110-adopt-scene-protocol-v2-with-checklist.md) | accepted |
 | 2026-11-11 | [その他の描写は満点に含めないおまけにし、名前だけでは中心・理由・つながりの項目に当てない](./20261111-count-other-claims-as-bonus-and-require-actions-for-items.md) | accepted |
+| 2026-11-12 | [merge の前に PR のブランチを最新の main に追従させる](./20261112-require-up-to-date-branch-before-merge.md) | accepted |

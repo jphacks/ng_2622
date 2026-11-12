@@ -130,7 +130,7 @@ ruleset_json="$(cat <<JSON
         "allowed_merge_methods": ["squash"]
     } },
     { "type": "required_status_checks", "parameters": {
-        "strict_required_status_checks_policy": false,
+        "strict_required_status_checks_policy": true,
         "required_status_checks": [ { "context": "${REQUIRED_CHECK}" } ]
     } }
   ]
