@@ -34,6 +34,7 @@ GROUP_ORDER = [
     ("room", "部屋"),
     ("play", "プレイ"),
     ("result", "結果"),
+    ("record", "きろく・設定"),
 ]
 DISCUSSION_SECTIONS = ["課題", "改善案", "決定"]
 IMAGE_STATE = {"final": "確定", "draft": "下書き", "none": "未作成"}
