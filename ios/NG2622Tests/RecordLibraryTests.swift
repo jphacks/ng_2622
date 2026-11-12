@@ -87,6 +87,7 @@ struct RecordLibraryTests {
     await library.reload()
     #expect(library.count == 0)
     #expect(library.scenes.isEmpty)
+    #expect(!library.canDelete)
 
     let audio = FileManager.default.temporaryDirectory.appending(path: "audio-\(UUID().uuidString).wav")
     try Data([1, 2, 3]).write(to: audio)
@@ -118,6 +119,20 @@ struct RecordLibraryTests {
     #expect(store.all().isEmpty)
     await library.reload()
     #expect(library.count == 0)
+  }
+
+  /// 読める記録が 0 件でも、読めなかったファイルが残っていれば消せる。消すと、消すものが無くなる
+  @Test func deletesUnreadableFiles() async throws {
+    defer { cleanUp() }
+    try FileManager.default.createDirectory(at: store.directory, withIntermediateDirectories: true)
+    try Data("{ こわれた".utf8).write(to: store.directory.appending(path: "broken.json"))
+    let library = RecordLibrary(store: store)
+    await library.reload()
+    #expect(library.count == 0)
+    #expect(library.canDelete)
+    try await library.deleteAll()
+    #expect(!library.canDelete)
+    #expect(!store.hasFiles())
   }
 
   /// 例の記録は、頼んだ数だけあり、同じ場面を何回か遊んだ形で、端末には書かない

@@ -10,13 +10,12 @@ struct RootView: View {
       switch config.mode {
       case .live:
         if let url = config.backendURL {
-          AppFlow(library: RecordLibrary()) { LiveGameClient(baseURL: url) }
+          AppFlow(library: .app) { LiveGameClient(baseURL: url) }
         } else {
           MissingBackendURLView()
         }
       case .mock:
-        // 例の記録は端末に書かず、きろくの画面を遊ばずに確かめるために出す
-        AppFlow(library: RecordLibrary(samples: PlayRecord.samples(count: config.mockSampleRecords))) {
+        AppFlow(library: .app) {
           MockGameClient(options: config.mock, pool: .bundled)
         }
       }
@@ -32,15 +31,10 @@ struct RootView: View {
 
 /// ホーム → 部屋に入る → 部屋（待合・プレイ・結果）の切り替え。ホームからは、きろくと設定にも入る
 private struct AppFlow: View {
-  /// 端末に残した遊んだ記録
-  @State private var library: RecordLibrary
+  /// 端末に残した遊んだ記録（アプリ全体で 1 つ。body が走るたびに作り直さない）
+  let library: RecordLibrary
   /// 部屋ごとに新しい GameClient を作る
   let makeClient: () -> any GameClient
-
-  init(library: @autoclosure @escaping () -> RecordLibrary, makeClient: @escaping () -> any GameClient) {
-    _library = State(wrappedValue: library())
-    self.makeClient = makeClient
-  }
 
   private enum Screen: Equatable {
     case home
@@ -63,7 +57,7 @@ private struct AppFlow: View {
         // （3D の入った view を画面の切り替えと同時に出し入れすると、後から出た 3D が描き直されないことがある）
         HomeView(
           profile: $profile, recordCount: library.count, onCreate: create, onJoin: { go(.join) },
-          onRecords: { go(.records) }, onSettings: { go(.settings) }
+          onRecords: { go(.records) }, onSettings: { go(.settings) }, isCovered: screen != .home
         )
         .disabled(creating || screen != .home)
         .accessibilityHidden(screen != .home)

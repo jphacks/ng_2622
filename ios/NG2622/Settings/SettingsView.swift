@@ -36,16 +36,17 @@ struct SettingsView: View {
         } label: {
           Text("きろくと録音をすべて消す")
             .font(Theme.font(18, .heavy))
-            .foregroundStyle(library.count > 0 ? Theme.mismatch : Theme.gray)
+            .foregroundStyle(library.canDelete ? Theme.mismatch : Theme.gray)
             .frame(maxWidth: .infinity)
             .frame(height: 52)
             .overlay {
-              Capsule().strokeBorder(library.count > 0 ? Theme.mismatch : Theme.disabledBorder, lineWidth: 2.5)
+              Capsule().strokeBorder(library.canDelete ? Theme.mismatch : Theme.disabledBorder, lineWidth: 2.5)
             }
             .contentShape(Capsule())
         }
         .buttonStyle(.plain)
-        .disabled(library.count == 0)
+        // 読める記録が 0 件でも、読めなかったファイルが残っていれば消せる
+        .disabled(!library.canDelete)
         .padding(.top, 4)
         if failed {
           Text("消せませんでした。もう一度ためしてください。")
@@ -90,7 +91,10 @@ private struct ConfirmDelete: View {
         VStack(spacing: 10) {
           Text("すべて消しますか？")
             .font(Theme.font(20, .black))
-          Text("きろく \(count) 回と録音が、この iPhone から消えます。元にもどせません。")
+          Text(
+            count > 0
+              ? "きろく \(count) 回と録音が、この iPhone から消えます。元にもどせません。"
+              : "読めなかったきろくのファイルが、この iPhone から消えます。元にもどせません。")
             .font(Theme.font(15, .bold))
             .foregroundStyle(Theme.muted)
             .multilineTextAlignment(.center)
@@ -100,13 +104,20 @@ private struct ConfirmDelete: View {
         .padding(.vertical, 24)
         Rectangle().fill(Theme.line).frame(height: 1.5)
         HStack(spacing: 0) {
-          Button("やめる", action: onCancel)
-            .foregroundStyle(Theme.accent)
-            .frame(maxWidth: .infinity, minHeight: 54)
+          // 文字だけでなく、枠の半分ずつを押せる範囲にする
+          Button(action: onCancel) {
+            Text("やめる")
+              .foregroundStyle(Theme.accent)
+              .frame(maxWidth: .infinity, minHeight: 54)
+              .contentShape(Rectangle())
+          }
           Rectangle().fill(Theme.line).frame(width: 1.5, height: 54)
-          Button("消す", action: onDelete)
-            .foregroundStyle(Theme.mismatch)
-            .frame(maxWidth: .infinity, minHeight: 54)
+          Button(action: onDelete) {
+            Text("消す")
+              .foregroundStyle(Theme.mismatch)
+              .frame(maxWidth: .infinity, minHeight: 54)
+              .contentShape(Rectangle())
+          }
         }
         .font(Theme.font(19, .heavy))
       }

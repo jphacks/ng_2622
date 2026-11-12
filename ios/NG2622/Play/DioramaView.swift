@@ -45,6 +45,7 @@ struct DioramaView: View {
   }
 
   /// 手元の配置から組んで出す（遊んだ記録の場面）。ID では取りに行かない
+  /// 組み上がるまでは透明にする。下に名前の板を置いて使う（RecordSceneView）
   init(layout: SceneLayout, key: String, yaw: Double, tilt: Double, distance: Float = 7.8) {
     source = .layout(layout, key: key)
     self.yaw = yaw
@@ -109,6 +110,61 @@ struct DioramaView: View {
       from: target + [0, distance * sin(t), distance * cos(t)],
       relativeTo: nil
     )
+  }
+}
+
+extension View {
+  /// 上に別の画面が重なっている間は、3D の入ったこの view を外す。外すのは重なる動きが終わってから、
+  /// 戻すのは重なりが無くなったらすぐ。
+  /// 不透明な画面で覆われたまま残った RealityView があると、ほかの RealityView（新しく作ったものも）が
+  /// 描き直されなくなる（シミュレータで確かめた。docs/design/ui/screens/records.md）。
+  /// 一瞬だけ出し入れするのとは違い、出したままの画面の切り替えには重ならない
+  func unmountedWhileCovered(_ covered: Bool) -> some View {
+    modifier(UnmountWhileCovered(covered: covered))
+  }
+}
+
+private struct UnmountWhileCovered: ViewModifier {
+  let covered: Bool
+  /// 重なる動き（0.25〜0.3 秒）が終わるまで待つ時間
+  static let delay: Duration = .milliseconds(450)
+  @State private var mounted = true
+
+  func body(content: Content) -> some View {
+    ZStack {
+      if mounted { content }
+    }
+    .task(id: covered) {
+      if covered {
+        try? await Task.sleep(for: Self.delay)
+        if !Task.isCancelled { mounted = false }
+      } else {
+        mounted = true
+      }
+    }
+  }
+}
+
+/// 場面の名前だけの板。遊んだ記録の 3D の下に敷く（3D が描かれるまで・描かれないときも、何も無い所を作らない）。
+/// きろくの横の並びの、3D を出さない場面にも使う
+struct ScenePlaceholder: View {
+  let name: String
+
+  var body: some View {
+    VStack(spacing: 10) {
+      Image(systemName: "cube.fill")
+        .font(.system(size: 30, weight: .bold))
+        .foregroundStyle(Theme.accent.opacity(0.5))
+      Text(name)
+        .font(Theme.font(17, .heavy))
+        .foregroundStyle(Theme.muted)
+        .multilineTextAlignment(.center)
+    }
+    .padding(16)
+    .frame(maxWidth: .infinity, maxHeight: .infinity)
+    .background(Theme.accentSoft.opacity(0.6), in: RoundedRectangle(cornerRadius: 28))
+    .padding(.horizontal, 10)
+    .padding(.vertical, 40)
   }
 }
 

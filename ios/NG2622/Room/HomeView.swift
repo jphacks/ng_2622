@@ -9,6 +9,8 @@ struct HomeView: View {
   let onJoin: () -> Void
   var onRecords: () -> Void = {}
   var onSettings: () -> Void = {}
+  /// 上に別の画面（きろく・設定）が重なっている。重なっている間は、場面の 3D を外す
+  var isCovered = false
 
   @FocusState private var editing: Bool
 
@@ -19,6 +21,7 @@ struct HomeView: View {
   var body: some View {
     VStack(spacing: 0) {
       SpinningScene()
+        .unmountedWhileCovered(isCovered)
         .frame(maxWidth: .infinity, minHeight: 160, maxHeight: 340)
         .contentShape(Rectangle())
         .onTapGesture { editing = false }

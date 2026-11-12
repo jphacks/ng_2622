@@ -37,8 +37,17 @@ final class RecordsScreens: XCTestCase {
 
     recordsCard(app).tap()
     XCTAssert(app.staticTexts["りれき"].waitForExistence(timeout: 10))
-    sleep(4)
+    let opened = Date()
+    // 真ん中の場面の 3D が描かれるまでの秒数を残す（描かれるまでは名前の板が見えている）
+    let scenes = app.descendants(matching: .any).matching(identifier: "record-scene")
+    XCTAssert(scenes.firstMatch.waitForExistence(timeout: 10))
+    print("TIMING records-scene-drawn \(Self.drawnTime(of: scenes.element(boundBy: 0), since: opened, timeout: 8))")
     shot("2-records-top")
+    // 回り続けているかを、続けて撮ったコマで見る（名前は、開いてからのミリ秒）
+    for _ in 0..<30 {
+      shot(String(format: "t-open-%05d", Int(Date().timeIntervalSince(opened) * 1000)))
+    }
+    shot("2b-records-top-later")
 
     // 横に送って、隣の場面にする
     let window = app.windows.firstMatch
@@ -48,7 +57,11 @@ final class RecordsScreens: XCTestCase {
     shot("3-records-next-scene")
     window.coordinate(withNormalizedOffset: CGVector(dx: 0.7, dy: 0.32))
       .press(forDuration: 0.05, thenDragTo: window.coordinate(withNormalizedOffset: CGVector(dx: 0.25, dy: 0.32)))
-    sleep(3)
+    // 送った先で新しく作った 3D（右隣）が出るまでと、真ん中が回り続けているかを、続けて撮ったコマで見る
+    let swiped = Date()
+    for _ in 0..<40 {
+      shot(String(format: "t-swipe-%05d", Int(Date().timeIntervalSince(swiped) * 1000)))
+    }
     shot("3b-records-third-scene")
     for _ in 0..<2 {
       window.coordinate(withNormalizedOffset: CGVector(dx: 0.3, dy: 0.32))
@@ -68,14 +81,32 @@ final class RecordsScreens: XCTestCase {
       .press(forDuration: 0.05, thenDragTo: window.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.25)))
     sleep(2)
     shot("4-records-scrolled")
+    // 上へ戻っても、横の並びの 3D と、選んでいる場面はそのまま
+    let name = app.staticTexts.matching(NSPredicate(format: "label ENDSWITH '回あそんだ'")).firstMatch.label
+    window.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.3))
+      .press(forDuration: 0.05, thenDragTo: window.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.85)))
+    sleep(2)
+    shot("4b-records-back-to-top")
+    XCTAssert(scenes.firstMatch.exists)
+    print("TIMING records-scene-after-scroll-back \(Self.drawnTime(of: scenes.element(boundBy: 0), since: Date(), timeout: 4))")
+    XCTAssertEqual(app.staticTexts.matching(NSPredicate(format: "label ENDSWITH '回あそんだ'")).firstMatch.label, name)
+    window.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.8))
+      .press(forDuration: 0.05, thenDragTo: window.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.25)))
+    sleep(2)
 
     // 前の記録を押して、振り返りを開き直す
     let row = app.buttons.matching(NSPredicate(format: "label CONTAINS '言えた' AND label CONTAINS '点'")).firstMatch
     XCTAssert(row.waitForExistence(timeout: 5))
     row.tap()
-    sleep(4)
+    // 開き直した振り返りの 3D が描かれるまでの秒数を残す。続けて撮ったコマで、回っているかも見る
+    let tapped = Date()
+    let reviewScene = app.otherElements["record-scene"].firstMatch
+    XCTAssert(reviewScene.waitForExistence(timeout: 10))
+    print("TIMING review-scene-drawn \(Self.drawnTime(of: reviewScene, since: tapped, timeout: 8))")
+    for _ in 0..<30 {
+      shot(String(format: "t-review-%05d", Int(Date().timeIntervalSince(tapped) * 1000)))
+    }
     shot("5-review-reopened")
-    sleep(5)
     shot("5b-review-reopened-later")
     app.swipeUp()
     sleep(1)
@@ -146,6 +177,44 @@ final class RecordsScreens: XCTestCase {
       leave.tap()
       XCTAssert(app.buttons["部屋を作る"].waitForExistence(timeout: 10))
     }
+  }
+
+  /// 名前の板だけのときの色の数（20〜26）より多ければ、3D が描かれたとみなす。描かれると 34〜126
+  static let drawnColors = 30
+
+  /// 場面（record-scene）の所に 3D が描かれたかを、画面を撮って見る。名前の板だけなら色の数が少なく、
+  /// 3D が描かれると増える。描かれたら since からの秒数、timeout までに描かれなければ nil
+  @MainActor
+  static func drawnTime(of element: XCUIElement, since start: Date, timeout: TimeInterval) -> TimeInterval? {
+    let limit = Date().addingTimeInterval(timeout)
+    repeat {
+      if colorCount(of: element) > Self.drawnColors { return Date().timeIntervalSince(start) }
+    } while Date() < limit
+    return nil
+  }
+
+  /// 要素の所を 60 × 40 に縮め、色を各 4 bit にまるめたときの色の数
+  @MainActor
+  static func colorCount(of element: XCUIElement) -> Int {
+    let image = XCUIScreen.main.screenshot().image
+    guard let cg = image.cgImage else { return 0 }
+    let f = element.frame
+    let s = image.scale
+    let rect = CGRect(x: f.minX * s, y: f.minY * s, width: f.width * s, height: f.height * s).integral
+    guard let crop = cg.cropping(to: rect) else { return 0 }
+    let (w, h) = (60, 40)
+    var pixels = [UInt8](repeating: 0, count: w * h * 4)
+    guard
+      let ctx = CGContext(
+        data: &pixels, width: w, height: h, bitsPerComponent: 8, bytesPerRow: w * 4,
+        space: CGColorSpaceCreateDeviceRGB(), bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue)
+    else { return 0 }
+    ctx.draw(crop, in: CGRect(x: 0, y: 0, width: w, height: h))
+    var colors = Set<Int>()
+    for i in stride(from: 0, to: pixels.count, by: 4) {
+      colors.insert(Int(pixels[i] >> 4) << 8 | Int(pixels[i + 1] >> 4) << 4 | Int(pixels[i + 2] >> 4))
+    }
+    return colors.count
   }
 
   @MainActor

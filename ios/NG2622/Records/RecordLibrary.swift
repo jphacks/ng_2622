@@ -71,10 +71,17 @@ final class RecordLibrary {
   private(set) var count = 0
   /// 録音のある記録の数
   private(set) var audioCount = 0
+  /// 「すべて消す」で消すものがあるか。読める記録が 0 件でも、読めなかったファイルが残っていれば true
+  private(set) var canDelete = false
+
+  /// アプリ全体で使う 1 つ。Mock では、例の記録（端末には書かない）も一緒に出す
+  static let app = RecordLibrary(samples: PlayRecord.samples(count: AppConfig.current.mockSampleRecords))
 
   private let store: PlayRecordStore
   /// 例の記録（Mock で画面を確かめるためのもの。端末には書かない）。「すべて消す」で一緒に出さなくなる
   private var samples: [PlayRecord]
+  /// 読み直しの番号。後から始めた読み直しが先に終わったとき、古い結果で上書きしない
+  private var generation = 0
 
   init(store: PlayRecordStore = .shared, samples: [PlayRecord] = []) {
     self.store = store
@@ -84,13 +91,17 @@ final class RecordLibrary {
   /// 端末の記録を読み直す。ファイルは main の外で読む（記録が増えても画面を止めない）
   func reload() async {
     let store = store
-    let (saved, audio) = await Task.detached {
+    generation += 1
+    let mine = generation
+    let (saved, audio, hasFiles) = await Task.detached {
       let saved = store.all()
-      return (saved, saved.filter { store.audioURL(of: $0.id) != nil }.count)
+      return (saved, saved.filter { store.audioURL(of: $0.id) != nil }.count, store.hasFiles())
     }.value
+    guard mine == generation else { return }
     scenes = RecordScenes.group(saved + samples)
     count = saved.count + samples.count
     audioCount = audio
+    canDelete = hasFiles || !samples.isEmpty
   }
 
   /// その回の自分の録音。無ければ nil
@@ -102,7 +113,13 @@ final class RecordLibrary {
   /// 記録と録音をすべて消す
   func deleteAll() async throws {
     let store = store
-    try await Task.detached { try store.deleteAll() }.value
+    do {
+      try await Task.detached { try store.deleteAll() }.value
+    } catch {
+      // 途中まで消えたかもしれないので、消せなくても今の中身に合わせ直す
+      await reload()
+      throw error
+    }
     samples = []
     SceneLibrary.shared.forgetComposedLayouts()
     await reload()

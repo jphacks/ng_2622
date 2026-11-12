@@ -21,8 +21,15 @@ struct RecordsView: View {
 
   /// 選んでいる場面の ID
   @State private var selected: String?
-  /// 開き直している記録
-  @State private var opened: RecordEntry?
+  /// 開き直している記録と、その録音（開いたときに 1 度だけ読む）
+  @State private var opened: Opened?
+  /// 場面の名前の行が、スクロールで上に隠れたか（隠れたら、同じ行を上に残す）
+  @State private var barHidden = false
+
+  private struct Opened: Equatable {
+    let entry: RecordEntry
+    let recording: RecordedAudio?
+  }
 
   private var scenes: [RecordScene] { library.scenes }
   private var current: RecordScene? {
@@ -37,8 +44,8 @@ struct RecordsView: View {
         .accessibilityHidden(opened != nil)
       if let opened {
         ReviewView(
-          results: opened.results, recording: library.recording(of: opened), title: Self.title(of: opened),
-          savedLayout: opened.layout, savedSceneKey: opened.sceneKey, showsPlace: false,
+          results: opened.entry.results, recording: opened.recording, title: Self.title(of: opened.entry),
+          savedLayout: opened.entry.layout, savedSceneKey: opened.entry.sceneKey, showsPlace: false,
           onBack: { self.opened = nil }
         )
         .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -48,6 +55,20 @@ struct RecordsView: View {
     }
     .animation(.easeInOut(duration: 0.25), value: opened)
     .task { await library.reload() }
+    // きろくを閉じたら、組んで覚えた場面を忘れる（遊ぶたびに増えるので、持ち続けない）
+    .onDisappear { SceneLibrary.shared.forgetComposedLayouts() }
+  }
+
+  private func open(_ entry: RecordEntry) {
+    opened = Opened(entry: entry, recording: library.recording(of: entry))
+  }
+
+  /// 隣の場面を選ぶ（読み上げの操作から）。横の並びは、選んだ場面まで送られる
+  private func step(_ offset: Int) {
+    guard let index = scenes.firstIndex(where: { $0.id == current?.id }),
+      scenes.indices.contains(index + offset)
+    else { return }
+    selected = scenes[index + offset].id
   }
 
   private var list: some View {
@@ -56,8 +77,9 @@ struct RecordsView: View {
         .resultColumn()
         .padding(.top, 8)
       if let current {
+        // 横の並びを作り直さないよう、遅延しない VStack にする（下にスクロールして戻っても、3D と横の位置がそのまま残る）
         ScrollView {
-          LazyVStack(spacing: 0, pinnedViews: [.sectionHeaders]) {
+          VStack(spacing: 0) {
             if Self.showsWeakPointEntry {
               // 押した先は次の PR で作る
               Button {
@@ -75,18 +97,29 @@ struct RecordsView: View {
               .resultColumn()
               .padding(.top, 12)
             SceneCarousel(scenes: scenes, selected: $selected, mode: Self.sceneMode)
+              // 振り返りが上に重なっている間は、横の並びの 3D を外す
+              .unmountedWhileCovered(opened != nil)
             PageDots(count: scenes.count, index: scenes.firstIndex { $0.id == current.id } ?? 0)
               .padding(.top, 4)
-            Section {
-              SceneRecords(scene: current) { opened = $0 }
-                .resultColumn()
-                .padding(.top, 8)
-                .padding(.bottom, 28)
-                // 場面を替えたら、棒の伸びる動きなどを初めからにする
-                .id(current.id)
-            } header: {
-              SceneBar(scene: current)
-            }
+            SceneBar(scene: current, onStep: step)
+              .onGeometryChange(for: Bool.self) { proxy in
+                proxy.frame(in: .scrollView).minY < 0
+              } action: { hidden in
+                barHidden = hidden
+              }
+            SceneRecords(scene: current, onOpen: open)
+              .resultColumn()
+              .padding(.top, 8)
+              .padding(.bottom, 28)
+              // 場面を替えたら、棒の伸びる動きなどを初めからにする
+              .id(current.id)
+          }
+        }
+        // 下にスクロールしても、場面の名前は上に残す
+        .overlay(alignment: .top) {
+          if barHidden {
+            SceneBar(scene: current, onStep: step)
+              .accessibilityHidden(true)
           }
         }
       } else {
@@ -127,6 +160,9 @@ private struct SceneCarousel: View {
   @Binding var selected: String?
   let mode: RecordsView.SceneMode
 
+  /// いま真ん中にある場面が何番目か（送っている途中も変わる）。隣を小さく薄くするのに使う
+  @State private var middle = 0
+
   /// 1 つの場面の幅（画面の幅に対する割合）
   private static let tileRatio = 0.58
   private static let height: CGFloat = 250
@@ -134,31 +170,40 @@ private struct SceneCarousel: View {
   var body: some View {
     GeometryReader { geo in
       let tile = geo.size.width * Self.tileRatio
-      ScrollView(.horizontal) {
-        HStack(spacing: 0) {
-          ForEach(Array(scenes.enumerated()), id: \.element.id) { index, scene in
-            let isCenter = index == center
-            SceneTile(scene: scene, shows3D: shows3D(at: index))
-              .frame(width: tile, height: Self.height)
-              // 隣の場面は少し小さく、薄くする
-              .scaleEffect(isCenter ? 1 : 0.85)
-              .opacity(isCenter ? 1 : 0.7)
-              .animation(.easeOut(duration: 0.2), value: isCenter)
-              .accessibilityLabel(scene.name)
+      ScrollViewReader { proxy in
+        ScrollView(.horizontal) {
+          HStack(spacing: 0) {
+            ForEach(Array(scenes.enumerated()), id: \.element.id) { index, scene in
+              let isMiddle = index == middle
+              SceneTile(scene: scene, shows3D: shows3D(at: index))
+                .frame(width: tile, height: Self.height)
+                // 隣の場面は少し小さく、薄くする
+                .scaleEffect(isMiddle ? 1 : 0.85)
+                .opacity(isMiddle ? 1 : 0.7)
+                .animation(.easeOut(duration: 0.2), value: isMiddle)
+            }
           }
+          .scrollTargetLayout()
         }
-        .scrollTargetLayout()
-      }
-      .scrollIndicators(.hidden)
-      .scrollTargetBehavior(.viewAligned)
-      // 初めと終わりの場面も真ん中に来るよう、両端を空ける
-      .safeAreaPadding(.horizontal, (geo.size.width - tile) / 2)
-      // 真ん中に来た場面を、選んでいる場面にする（スクロールの位置から数える）
-      .onScrollGeometryChange(for: Int.self) { geometry in
-        Int(((geometry.contentOffset.x + geometry.contentInsets.leading) / max(1, tile)).rounded())
-      } action: { _, index in
-        guard scenes.indices.contains(index) else { return }
-        selected = scenes[index].id
+        .scrollIndicators(.hidden)
+        .scrollTargetBehavior(.viewAligned)
+        // 初めと終わりの場面も真ん中に来るよう、両端を空ける
+        .safeAreaPadding(.horizontal, (geo.size.width - tile) / 2)
+        // 真ん中に来た場面を、スクロールの位置から数える
+        .onScrollGeometryChange(for: Int.self) { geometry in
+          Int(((geometry.contentOffset.x + geometry.contentInsets.leading) / max(1, tile)).rounded())
+        } action: { _, index in
+          if scenes.indices.contains(index) { middle = index }
+        }
+        // 選ぶのは、スクロールが止まってから（速く送ったときに、通り過ぎる場面の 3D を作って捨てない）
+        .onScrollPhaseChange { _, phase in
+          if phase == .idle, scenes.indices.contains(middle) { selected = scenes[middle].id }
+        }
+        // 外から選ばれたら（読み上げの「次の場面」など）、その場面まで送る
+        .onChange(of: selected) { _, id in
+          guard let id, scenes.indices.contains(middle), scenes[middle].id != id else { return }
+          withAnimation(.easeInOut(duration: 0.25)) { proxy.scrollTo(id, anchor: .center) }
+        }
       }
       .mask {
         LinearGradient(
@@ -195,22 +240,9 @@ private struct SceneTile: View {
 
   var body: some View {
     if shows3D, let layout = scene.layout {
-      RecordSceneView(layout: layout, key: scene.sceneKey)
+      RecordSceneView(layout: layout, key: scene.sceneKey, name: scene.name)
     } else {
-      VStack(spacing: 10) {
-        Image(systemName: "cube.fill")
-          .font(.system(size: 30, weight: .bold))
-          .foregroundStyle(Theme.accent.opacity(0.5))
-        Text(scene.name)
-          .font(Theme.font(17, .heavy))
-          .foregroundStyle(Theme.muted)
-          .multilineTextAlignment(.center)
-      }
-      .padding(16)
-      .frame(maxWidth: .infinity, maxHeight: .infinity)
-      .background(Theme.accentSoft.opacity(0.6), in: RoundedRectangle(cornerRadius: 28))
-      .padding(.horizontal, 10)
-      .padding(.vertical, 40)
+      ScenePlaceholder(name: scene.name)
     }
   }
 }
@@ -249,6 +281,8 @@ private struct PageDots: View {
 /// 場面の名前と遊んだ回数。下にスクロールしても上に残る
 private struct SceneBar: View {
   let scene: RecordScene
+  /// 隣の場面を選ぶ（-1 で前、+1 で次）。読み上げでは横に送れないので、ここの操作で替える
+  let onStep: (Int) -> Void
 
   var body: some View {
     VStack(spacing: 2) {
@@ -264,6 +298,8 @@ private struct SceneBar: View {
     .frame(maxWidth: .infinity)
     .background(Theme.background)
     .accessibilityElement(children: .combine)
+    .accessibilityAction(named: "次の場面") { onStep(1) }
+    .accessibilityAction(named: "前の場面") { onStep(-1) }
   }
 }
 

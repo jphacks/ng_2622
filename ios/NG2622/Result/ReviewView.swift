@@ -8,10 +8,10 @@ struct ReviewView: View {
   var recording: RecordedAudio?
   /// 見出し。きろくから開き直したときは、日付と場面の名前にする
   var title = "振り返り"
-  /// きろくに残っている、遊んだときの場面の配置。あれば ID で取りに行かずにこれを使い、上に場面の 3D も出す
+  /// きろくに残っている、遊んだときの場面の配置。あれば ID で取りに行かずにこれを使う
   /// （作り置きから外した場面や、部屋が閉じた AI の場面は、ID では取れない）
   var savedLayout: SceneLayout? = nil
-  /// savedLayout の 3D を覚える名前（SceneLibrary）
+  /// savedLayout の 3D を覚える名前（SceneLibrary）。あれば、上に場面の 3D を出す
   var savedSceneKey: String? = nil
   /// 順位を出すか。きろくから開き直したときは、自分 1 人分しか無いので出さない
   var showsPlace = true
@@ -55,7 +55,7 @@ struct ReviewView: View {
     VStack(spacing: 16) {
       if let savedLayout, let savedSceneKey {
         // 開き直したときは、どの場面だったかを先に見せる（遊んだ直後は、見たばかりなので出さない）
-        RecordSceneView(layout: savedLayout, key: savedSceneKey, distance: 5.2)
+        RecordSceneView(layout: savedLayout, key: savedSceneKey, name: results.sceneName, distance: 5.2)
           .frame(maxWidth: .infinity)
           .frame(height: 200)
       }

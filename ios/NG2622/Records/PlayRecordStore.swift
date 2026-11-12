@@ -54,6 +54,11 @@ nonisolated struct PlayRecordStore: Sendable {
       .sorted { ($0.playedAt, $0.id) > ($1.playedAt, $1.id) }
   }
 
+  /// records/ に何かファイルがあるか（読めなかった記録や、知らない版の記録も数える）。「すべて消す」で消すものがあるかを見る
+  func hasFiles() -> Bool {
+    !((try? FileManager.default.contentsOfDirectory(atPath: directory.path)) ?? []).isEmpty
+  }
+
   /// その ID の記録。無い・読めないときは nil
   func record(id: String) -> PlayRecord? {
     (try? jsonURL(of: id)).flatMap { read($0) }

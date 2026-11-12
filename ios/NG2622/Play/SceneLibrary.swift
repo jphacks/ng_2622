@@ -46,9 +46,9 @@ final class SceneLibrary {
     return task
   }
 
-  /// 手元にある配置から、その場で組み立てる（覚えない）。遊んだ記録の場面のように、
-  /// ID では取れなくなった場面（作り置きから外した・部屋が閉じた）を出すときに使う。置けた部品が無ければ nil
-  /// key を渡すと、組んだ場面を覚えておき、同じ key では組み直さずに複製して渡す
+  /// 手元にある配置から組み立てる。遊んだ記録の場面のように、ID では取れなくなった場面
+  /// （作り置きから外した・部屋が閉じた）を出すときに使う。置けた部品が無ければ nil。
+  /// key を渡すと、組んだ場面を覚えておき、同じ key では組み直さずに複製して渡す。key が nil なら、覚えずに毎回組む
   func instance(composing layout: SceneLayout, key: String? = nil) async -> SceneComposer.Composed? {
     guard let key else { return await Self.compose(layout) }
     let task = composed[key] ?? Task { await Self.compose(layout) }
@@ -61,7 +61,7 @@ final class SceneLibrary {
     return Self.copy(of: template)
   }
 
-  /// 覚えた、手元の配置から組んだ場面を忘れる（記録を消したとき）
+  /// 覚えた、手元の配置から組んだ場面を忘れる（きろくの画面を閉じたとき・記録を消したとき）
   func forgetComposedLayouts() {
     composed.removeAll()
   }
