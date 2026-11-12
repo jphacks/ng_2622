@@ -139,6 +139,27 @@ struct PlayRecordStoreTests {
     #expect(read.results.myReview?.expressionBasis == nil)
   }
 
+  /// 根拠が null で届いた回（3 語未満など）の記録は、null と書いて、読み戻しても nil のまま（空の文字列にしない）
+  @Test func roundTripsNullExpressionBasis() throws {
+    defer { cleanUp() }
+    let sceneID = try sceneID()
+    let original = try record(id: "null-basis", sceneID: sceneID)
+    let feedback = try #require(original.result.feedback)
+    let record = PlayRecord(
+      id: original.id, playedAt: original.playedAt, difficulty: original.difficulty, scene: original.scene,
+      result: .init(
+        transcript: original.result.transcript, score: original.result.score, content: original.result.content,
+        feedback: .init(
+          nextStep: feedback.nextStep, rewrite: feedback.rewrite, speechTip: feedback.speechTip, expressionBasis: nil)))
+    try store.save(record)
+    let text = try String(contentsOf: directory.appending(path: "null-basis.json"), encoding: .utf8)
+    #expect(text.contains(#""expressionBasis" : null"#))
+    let read = try #require(store.record(id: "null-basis"))
+    #expect(read == record)
+    #expect(read.result.feedback?.expressionBasis == nil)
+    #expect(read.results.myReview?.expressionBasis == nil)
+  }
+
   /// 根拠が無い（nil）ときも、欄を省かずに null と書く（play-record.md の「null の欄は省かずに null と書く」）
   @Test func writesNullExpressionBasis() throws {
     let feedback = PlayRecord.Feedback(

@@ -123,7 +123,7 @@ nonisolated struct PlayRecord: Codable, Sendable, Equatable, Identifiable {
     /// 言い直しの例。直す所が無ければ nil
     let rewrite: Rewrite?
     let speechTip: SpeechTip
-    /// 表現の点の根拠（英語 1 文）。2026-11-12 に足した欄で、版は上げていない。
+    /// 表現の点の根拠（英語 1 文）。2026-11-12 に足した欄で、版は上げていない。根拠が無い回は nil（届いたときも null）。
     /// 欄が無い前の記録は nil で読む（合成の Decodable は、無い欄の Optional を nil にする）。書くときは nil も null と書く
     let expressionBasis: String?
 
