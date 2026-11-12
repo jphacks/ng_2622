@@ -31,7 +31,8 @@ extension PlayRecord {
         score: .init(content: me.score.content, expression: expression, speech: speech, total: total),
         content: me.content, feedback: review.map(PlayRecord.Feedback.init))
       return PlayRecord(
-        id: "sample-\(i)", playedAt: now.addingTimeInterval(-Double(i) * 20 * 3600 - 1800),
+        // 3 回ずつ同じ日に遊んだことにする（40 分おき）。同じ日に同じ場面を 2 回遊んだ例も出る
+        id: "sample-\(i)", playedAt: now.addingTimeInterval(-Double(i / 3) * 86_400 - Double(i % 3) * 2400 - 600),
         difficulty: scene.layout.difficulty?.rawValue, scene: sceneJSON, result: result)
     }
   }

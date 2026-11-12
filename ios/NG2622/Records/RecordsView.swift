@@ -23,6 +23,8 @@ struct RecordsView: View {
   @State private var selected: String?
   /// 場面の名前の行が、スクロールで上に隠れたか（隠れたら、同じ行を上に残す）
   @State private var barHidden = false
+  /// 回ごとの録音を鳴らす口。1 つを共有し、別の回を押したら前のを止める（2 本同時に鳴らさない）
+  @State private var player = VoicePlayer()
 
   private var scenes: [RecordScene] { library.scenes }
   private var current: RecordScene? {
@@ -31,6 +33,8 @@ struct RecordsView: View {
 
   var body: some View {
     list
+      .environment(\.sharedVoicePlayer, player)
+      .onDisappear { player.stop() }
       .task { await library.reload() }
       // きろくを閉じたら、組んで覚えた場面を忘れる（遊ぶたびに増えるので、持ち続けない）
       .onDisappear { SceneLibrary.shared.forgetComposedLayouts() }
@@ -121,9 +125,11 @@ struct RecordsView: View {
     }
   }
 
-  /// 遊んだ日（例: 11/12）
-  static func day(_ date: Date) -> String {
-    date.formatted(.dateTime.month(.defaultDigits).day())
+  /// 遊んだ日と時刻（例: 11/12 14:05）。同じ日に何回か遊んでも見分けられるよう、時刻も出す
+  static func dayAndTime(_ date: Date) -> String {
+    // 端末の言語の設定によらず、24 時間で出す
+    let c = Calendar.current.dateComponents([.month, .day, .hour, .minute], from: date)
+    return String(format: "%d/%d %d:%02d", c.month ?? 0, c.day ?? 0, c.hour ?? 0, c.minute ?? 0)
   }
 }
 
@@ -150,9 +156,10 @@ private struct SceneCarousel: View {
           HStack(spacing: 0) {
             ForEach(Array(scenes.enumerated()), id: \.element.id) { index, scene in
               let isMiddle = index == middle
-              SceneTile(scene: scene, shows3D: shows3D(at: index))
+              SceneTile(scene: scene, shows3D: shows3D(at: index), isMiddle: isMiddle)
                 .frame(width: tile, height: Self.height)
-                // 隣の場面は少し小さく、薄くする
+                // 隣の場面は少し小さく、薄くする。後ろの印が 3D から透けないよう、まとめてから薄くする
+                .compositingGroup()
                 .scaleEffect(isMiddle ? 1 : 0.85)
                 .opacity(isMiddle ? 1 : 0.7)
                 .animation(.easeOut(duration: 0.2), value: isMiddle)
@@ -212,12 +219,14 @@ private struct SceneCarousel: View {
 private struct SceneTile: View {
   let scene: RecordScene
   let shows3D: Bool
+  /// 真ん中の場面か。隣の場面では名前を出さない（薄くしたときに 3D の後ろから透けないよう）
+  let isMiddle: Bool
 
   var body: some View {
     if shows3D, let layout = scene.layout {
-      RecordSceneView(layout: layout, key: scene.sceneKey, name: scene.name)
+      RecordSceneView(layout: layout, key: scene.sceneKey, name: scene.name, showsName: isMiddle)
     } else {
-      ScenePlaceholder(name: scene.name)
+      ScenePlaceholder(name: scene.name, showsName: isMiddle)
     }
   }
 }
@@ -297,7 +306,8 @@ private struct SceneRounds: View {
     LazyVStack(spacing: 20) {
       ForEach(Array(scene.entries.enumerated()), id: \.element.id) { index, entry in
         VStack(spacing: 14) {
-          RoundDivider(text: index == 0 ? "最新 \(RecordsView.day(entry.playedAt))" : RecordsView.day(entry.playedAt))
+          RoundDivider(
+            text: index == 0 ? "最新 \(RecordsView.dayAndTime(entry.playedAt))" : RecordsView.dayAndTime(entry.playedAt))
           if let me = entry.results.me, let score = me.score {
             ReviewBody(
               me: me, score: score, review: entry.results.myReview, layout: entry.layout,

@@ -153,7 +153,16 @@ private struct TranscriptCard: View {
   let transcript: String
   let claims: [ContentBreakdown.Claim]
   let recording: RecordedAudio?
-  @State private var player = VoicePlayer()
+  /// 何枚かで共有する再生の口（きろく）。無ければ、このカードだけの口を使う（遊んだ直後の振り返り）
+  @Environment(\.sharedVoicePlayer) private var shared
+  @State private var own = VoicePlayer()
+
+  private var player: VoicePlayer { shared ?? own }
+  /// このカードの録音を鳴らしているか
+  private var playing: Bool {
+    guard let recording else { return false }
+    return player.isPlaying(recording)
+  }
 
   /// 端末にファイルが残っているときだけボタンを出す
   private var playable: RecordedAudio? {
@@ -186,24 +195,27 @@ private struct TranscriptCard: View {
     .padding(20)
     .frame(maxWidth: .infinity, alignment: .leading)
     // 再生中は板の地を薄い紫にする（形と影は resultCard と同じ）
-    .background(player.isPlaying ? Theme.accentSoft : Theme.card, in: RoundedRectangle(cornerRadius: 22))
+    .background(playing ? Theme.accentSoft : Theme.card, in: RoundedRectangle(cornerRadius: 22))
     .shadow(color: Theme.ink.opacity(0.07), radius: 10, y: 6)
-    .animation(.easeInOut(duration: 0.2), value: player.isPlaying)
-    .onDisappear { player.stop() }
+    .animation(.easeInOut(duration: 0.2), value: playing)
+    .onDisappear {
+      // 共有の口では、ほかのカードの録音は止めない
+      if playing { player.stop() }
+    }
   }
 
   private func speakerButton(_ audio: RecordedAudio) -> some View {
     Button {
-      player.toggle(audio)
+      player.toggle(only: audio)
     } label: {
-      Image(systemName: player.isPlaying ? "stop.fill" : "speaker.wave.2.fill")
-        .font(.system(size: player.isPlaying ? 13 : 15, weight: .bold))
+      Image(systemName: playing ? "stop.fill" : "speaker.wave.2.fill")
+        .font(.system(size: playing ? 13 : 15, weight: .bold))
         .foregroundStyle(Theme.accent)
         .frame(width: 32, height: 32)
-        .background(player.isPlaying ? Theme.card : Theme.accentSoft, in: Circle())
+        .background(playing ? Theme.card : Theme.accentSoft, in: Circle())
         .contentTransition(.symbolEffect(.replace))
     }
-    .accessibilityLabel(player.isPlaying ? "停止" : "自分の録音を再生")
+    .accessibilityLabel(playing ? "停止" : "自分の録音を再生")
   }
 }
 

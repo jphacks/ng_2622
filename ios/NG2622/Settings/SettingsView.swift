@@ -6,6 +6,8 @@ struct SettingsView: View {
   let onBack: () -> Void
 
   @State private var confirming = false
+  /// 消している（終わるまでボタンを押せなくする）
+  @State private var deleting = false
   /// 消せなかった
   @State private var failed = false
 
@@ -36,17 +38,17 @@ struct SettingsView: View {
         } label: {
           Text("きろくと録音をすべて消す")
             .font(Theme.font(18, .heavy))
-            .foregroundStyle(library.canDelete ? Theme.mismatch : Theme.gray)
+            .foregroundStyle(library.canDelete && !deleting ? Theme.mismatch : Theme.gray)
             .frame(maxWidth: .infinity)
             .frame(height: 52)
             .overlay {
-              Capsule().strokeBorder(library.canDelete ? Theme.mismatch : Theme.disabledBorder, lineWidth: 2.5)
+              Capsule().strokeBorder(library.canDelete && !deleting ? Theme.mismatch : Theme.disabledBorder, lineWidth: 2.5)
             }
             .contentShape(Capsule())
         }
         .buttonStyle(.plain)
         // 読める記録が 0 件でも、読めなかったファイルが残っていれば消せる
-        .disabled(!library.canDelete)
+        .disabled(!library.canDelete || deleting)
         .padding(.top, 4)
         if failed {
           Text("消せませんでした。もう一度ためしてください。")
@@ -63,11 +65,15 @@ struct SettingsView: View {
     .overlay {
       if confirming {
         ConfirmDelete(
-          count: library.count,
+          count: library.count, audioCount: library.audioCount,
           onCancel: { confirming = false },
           onDelete: {
             confirming = false
-            Task { failed = (try? await library.deleteAll()) == nil }
+            deleting = true
+            Task {
+              failed = (try? await library.deleteAll()) == nil
+              deleting = false
+            }
           })
       }
     }
@@ -79,8 +85,21 @@ struct SettingsView: View {
 /// 「すべて消しますか？」の確かめ。消すほうはオレンジにする
 private struct ConfirmDelete: View {
   let count: Int
+  /// 録音の本数。0 本なら、録音のことは書かない
+  let audioCount: Int
   let onCancel: () -> Void
   let onDelete: () -> Void
+
+  /// 消えるものに合わせた文
+  private var message: String {
+    let what =
+      switch (count > 0, audioCount > 0) {
+      case (true, true): "きろく \(count) 回と録音 \(audioCount) 本"
+      case (true, false): "きろく \(count) 回"
+      case (false, _): "読めなかったきろくのファイル"
+      }
+    return "\(what)が、この iPhone から消えます。元にもどせません。"
+  }
 
   var body: some View {
     ZStack {
@@ -91,10 +110,7 @@ private struct ConfirmDelete: View {
         VStack(spacing: 10) {
           Text("すべて消しますか？")
             .font(Theme.font(20, .black))
-          Text(
-            count > 0
-              ? "きろく \(count) 回と録音が、この iPhone から消えます。元にもどせません。"
-              : "読めなかったきろくのファイルが、この iPhone から消えます。元にもどせません。")
+          Text(message)
             .font(Theme.font(15, .bold))
             .foregroundStyle(Theme.muted)
             .multilineTextAlignment(.center)

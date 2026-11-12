@@ -42,6 +42,7 @@ final class RecordsScreens: XCTestCase {
     // 真ん中の場面の 3D が描かれるまでの秒数を残す（描かれるまでは名前の板が見えている）
     let scenes = app.descendants(matching: .any).matching(identifier: "record-scene")
     XCTAssert(scenes.firstMatch.waitForExistence(timeout: 10))
+    shot("2a-records-before-drawn")
     print("TIMING records-scene-drawn \(Self.drawnTime(of: scenes.element(boundBy: 0), since: opened, timeout: 8))")
     sleep(1)
     shot("2-records-top")
