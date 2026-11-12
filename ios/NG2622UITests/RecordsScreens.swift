@@ -27,7 +27,8 @@ final class RecordsScreens: XCTestCase {
     app.buttons.matching(NSPredicate(format: "label BEGINSWITH 'きろく'")).firstMatch
   }
 
-  /// ホーム → きろく → 横に送る → 下にスクロール → 開き直し → 設定 → 消す → きろく（0 件）
+  /// ホーム → きろく → 横に送る → 下にスクロール（最新の回の振り返り → 前の回との区切り → 一番下）→ 上へ戻る
+  /// → 設定 → 消す → きろく（0 件）
   @MainActor
   func testRecordsAndSettings() throws {
     guard outDir != nil else { throw XCTSkip("RECORDS_SHOT_DIR が無いので撮らない") }
@@ -42,77 +43,64 @@ final class RecordsScreens: XCTestCase {
     let scenes = app.descendants(matching: .any).matching(identifier: "record-scene")
     XCTAssert(scenes.firstMatch.waitForExistence(timeout: 10))
     print("TIMING records-scene-drawn \(Self.drawnTime(of: scenes.element(boundBy: 0), since: opened, timeout: 8))")
+    sleep(1)
     shot("2-records-top")
-    // 回り続けているかを、続けて撮ったコマで見る（名前は、開いてからのミリ秒）
-    for _ in 0..<30 {
-      shot(String(format: "t-open-%05d", Int(Date().timeIntervalSince(opened) * 1000)))
-    }
-    shot("2b-records-top-later")
 
     // 横に送って、隣の場面にする
     let window = app.windows.firstMatch
-    window.coordinate(withNormalizedOffset: CGVector(dx: 0.7, dy: 0.32))
-      .press(forDuration: 0.05, thenDragTo: window.coordinate(withNormalizedOffset: CGVector(dx: 0.25, dy: 0.32)))
-    sleep(3)
+    func swipe(_ from: Double, _ to: Double) {
+      window.coordinate(withNormalizedOffset: CGVector(dx: from, dy: 0.32))
+        .press(forDuration: 0.05, thenDragTo: window.coordinate(withNormalizedOffset: CGVector(dx: to, dy: 0.32)))
+      sleep(3)
+    }
+    swipe(0.7, 0.25)
     shot("3-records-next-scene")
-    window.coordinate(withNormalizedOffset: CGVector(dx: 0.7, dy: 0.32))
-      .press(forDuration: 0.05, thenDragTo: window.coordinate(withNormalizedOffset: CGVector(dx: 0.25, dy: 0.32)))
-    // 送った先で新しく作った 3D（右隣）が出るまでと、真ん中が回り続けているかを、続けて撮ったコマで見る
-    let swiped = Date()
-    for _ in 0..<40 {
-      shot(String(format: "t-swipe-%05d", Int(Date().timeIntervalSince(swiped) * 1000)))
-    }
-    shot("3b-records-third-scene")
-    for _ in 0..<2 {
-      window.coordinate(withNormalizedOffset: CGVector(dx: 0.3, dy: 0.32))
-        .press(forDuration: 0.05, thenDragTo: window.coordinate(withNormalizedOffset: CGVector(dx: 0.75, dy: 0.32)))
-      sleep(2)
-    }
-    // 何回か遊んだ場面（前の記録「これまで」がある）まで送る
-    for _ in 0..<8 where !app.staticTexts["これまで"].exists {
-      window.coordinate(withNormalizedOffset: CGVector(dx: 0.7, dy: 0.32))
-        .press(forDuration: 0.05, thenDragTo: window.coordinate(withNormalizedOffset: CGVector(dx: 0.25, dy: 0.32)))
-      sleep(2)
-    }
-    XCTAssert(app.staticTexts["これまで"].exists)
+    swipe(0.3, 0.75)
 
-    // 下にスクロールすると、場面の名前が上に残り、同じ場面の記録が続く
-    window.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.8))
-      .press(forDuration: 0.05, thenDragTo: window.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.25)))
-    sleep(2)
+    // 何回か遊んだ場面（回の区切りが 2 つ以上ある）まで送る
+    let dividers = app.descendants(matching: .any).matching(identifier: "round-divider")
+    let counted = app.staticTexts.matching(NSPredicate(format: "label ENDSWITH '回あそんだ'")).firstMatch
+    for _ in 0..<8 where counted.label.hasPrefix("1 ") {
+      swipe(0.7, 0.25)
+    }
+    XCTAssertFalse(counted.label.hasPrefix("1 "))
+    let name = counted.label
+
+    // 下にスクロールすると、画面を移らずに、最新の回の振り返り（あなたの描写・場面のチェック）が続く
+    func scrollDown(_ amount: Double = 0.55) {
+      window.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.8))
+        .press(forDuration: 0.05, thenDragTo: window.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.8 - amount)))
+      sleep(1)
+    }
+    scrollDown()
     shot("4-records-scrolled")
+    scrollDown()
+    shot("4b-records-scrolled-more")
+    // 前の回との区切り（─── 11/11 ───）まで送る
+    let second = dividers.element(boundBy: 1)
+    for _ in 0..<12 where !(second.exists && second.isHittable) {
+      scrollDown(0.4)
+    }
+    XCTAssert(second.exists)
+    shot("5-records-next-round")
+    // 一番下まで送る
+    for _ in 0..<40 {
+      let before = XCUIScreen.main.screenshot().pngRepresentation
+      scrollDown(0.6)
+      if XCUIScreen.main.screenshot().pngRepresentation == before { break }
+    }
+    shot("6-records-bottom")
+
     // 上へ戻っても、横の並びの 3D と、選んでいる場面はそのまま
-    let name = app.staticTexts.matching(NSPredicate(format: "label ENDSWITH '回あそんだ'")).firstMatch.label
-    window.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.3))
-      .press(forDuration: 0.05, thenDragTo: window.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.85)))
-    sleep(2)
-    shot("4b-records-back-to-top")
+    for _ in 0..<40 where !app.staticTexts["りれき"].isHittable {
+      window.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.2))
+        .press(forDuration: 0.05, thenDragTo: window.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.9)))
+    }
+    sleep(1)
+    shot("6b-records-back-to-top")
     XCTAssert(scenes.firstMatch.exists)
     print("TIMING records-scene-after-scroll-back \(Self.drawnTime(of: scenes.element(boundBy: 0), since: Date(), timeout: 4))")
-    XCTAssertEqual(app.staticTexts.matching(NSPredicate(format: "label ENDSWITH '回あそんだ'")).firstMatch.label, name)
-    window.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.8))
-      .press(forDuration: 0.05, thenDragTo: window.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.25)))
-    sleep(2)
-
-    // 前の記録を押して、振り返りを開き直す
-    let row = app.buttons.matching(NSPredicate(format: "label CONTAINS '言えた' AND label CONTAINS '点'")).firstMatch
-    XCTAssert(row.waitForExistence(timeout: 5))
-    row.tap()
-    // 開き直した振り返りの 3D が描かれるまでの秒数を残す。続けて撮ったコマで、回っているかも見る
-    let tapped = Date()
-    let reviewScene = app.otherElements["record-scene"].firstMatch
-    XCTAssert(reviewScene.waitForExistence(timeout: 10))
-    print("TIMING review-scene-drawn \(Self.drawnTime(of: reviewScene, since: tapped, timeout: 8))")
-    for _ in 0..<30 {
-      shot(String(format: "t-review-%05d", Int(Date().timeIntervalSince(tapped) * 1000)))
-    }
-    shot("5-review-reopened")
-    shot("5b-review-reopened-later")
-    app.swipeUp()
-    sleep(1)
-    shot("6-review-reopened-scrolled")
-    app.buttons["戻る"].firstMatch.tap()
-    XCTAssert(app.staticTexts["りれき"].waitForExistence(timeout: 10))
+    XCTAssertEqual(counted.label, name)
     app.buttons["戻る"].firstMatch.tap()
 
     // 設定 → すべて消す

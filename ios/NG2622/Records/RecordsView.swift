@@ -1,7 +1,7 @@
 import SwiftUI
 
-/// きろく。遊んだ場面が横に並び（最後に遊んだのが新しい順）、選んだ場面の最新の採点と、
-/// 同じ場面を遊んだ記録（新しい順）が下に続く。記録を押すと、遊んだ直後と同じ振り返りを開き直す
+/// きろく。遊んだ場面が横に並び（最後に遊んだのが新しい順）、その下に、選んだ場面を遊んだ回の振り返りが
+/// 新しい順に縦に続く（1 枚の縦の流れ。押して別の画面に移る所は無い）
 struct RecordsView: View {
   let library: RecordLibrary
   let onBack: () -> Void
@@ -21,15 +21,8 @@ struct RecordsView: View {
 
   /// 選んでいる場面の ID
   @State private var selected: String?
-  /// 開き直している記録と、その録音（開いたときに 1 度だけ読む）
-  @State private var opened: Opened?
   /// 場面の名前の行が、スクロールで上に隠れたか（隠れたら、同じ行を上に残す）
   @State private var barHidden = false
-
-  private struct Opened: Equatable {
-    let entry: RecordEntry
-    let recording: RecordedAudio?
-  }
 
   private var scenes: [RecordScene] { library.scenes }
   private var current: RecordScene? {
@@ -37,30 +30,10 @@ struct RecordsView: View {
   }
 
   var body: some View {
-    ZStack {
-      // 一覧は出したまま、振り返りを上に重ねる。一覧の 3D を消して出し直さないため
-      // （3D の入った view を画面の切り替えと同時に出し入れすると、後から出た 3D が描き直されないことがある）
-      list
-        .accessibilityHidden(opened != nil)
-      if let opened {
-        ReviewView(
-          results: opened.entry.results, recording: opened.recording, title: Self.title(of: opened.entry),
-          savedLayout: opened.entry.layout, savedSceneKey: opened.entry.sceneKey, showsPlace: false,
-          onBack: { self.opened = nil }
-        )
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .background(Theme.background.ignoresSafeArea())
-        .transition(.move(edge: .trailing))
-      }
-    }
-    .animation(.easeInOut(duration: 0.25), value: opened)
-    .task { await library.reload() }
-    // きろくを閉じたら、組んで覚えた場面を忘れる（遊ぶたびに増えるので、持ち続けない）
-    .onDisappear { SceneLibrary.shared.forgetComposedLayouts() }
-  }
-
-  private func open(_ entry: RecordEntry) {
-    opened = Opened(entry: entry, recording: library.recording(of: entry))
+    list
+      .task { await library.reload() }
+      // きろくを閉じたら、組んで覚えた場面を忘れる（遊ぶたびに増えるので、持ち続けない）
+      .onDisappear { SceneLibrary.shared.forgetComposedLayouts() }
   }
 
   /// 隣の場面を選ぶ（読み上げの操作から）。横の並びは、選んだ場面まで送られる
@@ -77,8 +50,9 @@ struct RecordsView: View {
         .resultColumn()
         .padding(.top, 8)
       if let current {
-        // 横の並びを作り直さないよう、遅延しない VStack にする（下にスクロールして戻っても、3D と横の位置がそのまま残る）
         ScrollView {
+          // 横の並びは遅延しない VStack に置く（下にスクロールして戻っても、3D と横の位置がそのまま残る）。
+          // 回の振り返りは数が多いことがあるので、その部分だけ遅延にする
           VStack(spacing: 0) {
             if Self.showsWeakPointEntry {
               // 押した先は次の PR で作る
@@ -97,8 +71,6 @@ struct RecordsView: View {
               .resultColumn()
               .padding(.top, 12)
             SceneCarousel(scenes: scenes, selected: $selected, mode: Self.sceneMode)
-              // 振り返りが上に重なっている間は、横の並びの 3D を外す
-              .unmountedWhileCovered(opened != nil)
             PageDots(count: scenes.count, index: scenes.firstIndex { $0.id == current.id } ?? 0)
               .padding(.top, 4)
             SceneBar(scene: current, onStep: step)
@@ -107,20 +79,28 @@ struct RecordsView: View {
               } action: { hidden in
                 barHidden = hidden
               }
-            SceneRecords(scene: current, onOpen: open)
+            SceneRounds(scene: current, recordings: library.recordings)
               .resultColumn()
               .padding(.top, 8)
-              .padding(.bottom, 28)
+              .padding(.bottom, 56)
               // 場面を替えたら、棒の伸びる動きなどを初めからにする
               .id(current.id)
           }
         }
-        // 下にスクロールしても、場面の名前は上に残す
+        // 下にスクロールしても、場面の名前は上に残す（下の中身と重ならないよう、地の色と下の線を付ける）
         .overlay(alignment: .top) {
           if barHidden {
-            SceneBar(scene: current, onStep: step)
+            SceneBar(scene: current, onStep: step, pinned: true)
               .accessibilityHidden(true)
           }
+        }
+        // 最下部は、下に行くほど地の色に溶かして、続きがあることを示す
+        .overlay(alignment: .bottom) {
+          LinearGradient(colors: [Theme.background.opacity(0), Theme.background], startPoint: .top, endPoint: .bottom)
+            .frame(height: 72)
+            .ignoresSafeArea(edges: .bottom)
+            .allowsHitTesting(false)
+            .accessibilityHidden(true)
         }
       } else {
         Spacer()
@@ -139,11 +119,6 @@ struct RecordsView: View {
         Spacer()
       }
     }
-  }
-
-  /// 開き直した振り返りの見出し（例: 11/12 図書館の二人）
-  static func title(of entry: RecordEntry) -> String {
-    "\(Self.day(entry.playedAt)) \(entry.results.sceneName)"
   }
 
   /// 遊んだ日（例: 11/12）
@@ -283,6 +258,8 @@ private struct SceneBar: View {
   let scene: RecordScene
   /// 隣の場面を選ぶ（-1 で前、+1 で次）。読み上げでは横に送れないので、ここの操作で替える
   let onStep: (Int) -> Void
+  /// 上に残している行か。下の線を引き、下の中身と分ける
+  var pinned = false
 
   var body: some View {
     VStack(spacing: 2) {
@@ -297,34 +274,34 @@ private struct SceneBar: View {
     .padding(.vertical, 8)
     .frame(maxWidth: .infinity)
     .background(Theme.background)
+    .overlay(alignment: .bottom) {
+      if pinned {
+        Rectangle().fill(Theme.line).frame(height: 1.5)
+      }
+    }
+    .shadow(color: Theme.ink.opacity(pinned ? 0.06 : 0), radius: 6, y: 3)
     .accessibilityElement(children: .combine)
     .accessibilityAction(named: "次の場面") { onStep(1) }
     .accessibilityAction(named: "前の場面") { onStep(-1) }
   }
 }
 
-/// 選んでいる場面の最新の採点と、それより前の記録（新しい順）
-private struct SceneRecords: View {
+/// 選んでいる場面を遊んだ回の振り返り。新しい順に、日付の見出しで区切って縦に並べる。
+/// 中身は遊んだ直後の振り返りと同じ（ReviewBody。順位は出さない）
+private struct SceneRounds: View {
   let scene: RecordScene
-  let onOpen: (RecordEntry) -> Void
+  /// 記録の ID ごとの自分の録音（読み直すときに 1 度だけ読んだもの）
+  let recordings: [String: RecordedAudio]
 
   var body: some View {
-    VStack(spacing: 20) {
-      LatestSummary(entry: scene.latest) { onOpen(scene.latest) }
-      let older = scene.entries.dropFirst()
-      if !older.isEmpty {
-        VStack(spacing: 10) {
-          Text("これまで")
-            .font(Theme.font(15, .heavy))
-            .foregroundStyle(Theme.muted)
-            .frame(maxWidth: .infinity, alignment: .leading)
-          ForEach(older) { entry in
-            Button {
-              onOpen(entry)
-            } label: {
-              RecordRow(entry: entry)
-            }
-            .buttonStyle(.plain)
+    LazyVStack(spacing: 20) {
+      ForEach(Array(scene.entries.enumerated()), id: \.element.id) { index, entry in
+        VStack(spacing: 14) {
+          RoundDivider(text: index == 0 ? "最新 \(RecordsView.day(entry.playedAt))" : RecordsView.day(entry.playedAt))
+          if let me = entry.results.me, let score = me.score {
+            ReviewBody(
+              me: me, score: score, review: entry.results.myReview, layout: entry.layout,
+              recording: recordings[entry.id])
           }
         }
       }
@@ -332,118 +309,24 @@ private struct SceneRecords: View {
   }
 }
 
-/// 最新の採点。合計と 3 つの点、言えた項目の要約。枠では囲まない
-private struct LatestSummary: View {
-  let entry: RecordEntry
-  let onOpen: () -> Void
-
-  var body: some View {
-    VStack(alignment: .leading, spacing: 16) {
-      HStack {
-        Text("最新の採点")
-        Spacer()
-        Text(RecordsView.day(entry.playedAt)).monospacedDigit()
-      }
-      .font(Theme.font(15, .heavy))
-      .foregroundStyle(Theme.muted)
-
-      if let score = entry.score {
-        HStack(spacing: 14) {
-          if let difficulty = entry.difficulty {
-            DifficultyChip(difficulty: difficulty, size: 16)
-          }
-          PointsText(total: score.total, size: 48)
-            .foregroundStyle(Theme.accent)
-        }
-        VStack(spacing: 12) {
-          ScoreBar(label: "内容", value: score.content)
-          ScoreBar(label: "表現", value: score.expression)
-          ScoreBar(label: "話し方", value: score.speaking)
-        }
-      }
-
-      if let content = entry.content, !content.items.isEmpty {
-        ItemSummary(content: content)
-      }
-
-      Button("振り返りをひらく", action: onOpen)
-        .buttonStyle(BigButtonStyle(kind: .outlined))
-        .padding(.top, 4)
-    }
-  }
-}
-
-/// 言えた項目と、あと少しの項目（一部だけ言えた）。言えていない項目は、振り返りで見る
-private struct ItemSummary: View {
-  let content: ContentBreakdown
-
-  var body: some View {
-    let said = content.items.filter { $0.level == .full }
-    let partial = content.items.filter { $0.level == .partial }
-    VStack(alignment: .leading, spacing: 10) {
-      Text("言えた項目 \(said.count) / \(content.items.count)")
-        .font(Theme.font(15, .heavy))
-        .foregroundStyle(Theme.muted)
-      if !said.isEmpty {
-        FlowLayout {
-          ForEach(said) { item in
-            Label(item.label, systemImage: "checkmark")
-              .font(Theme.font(14, .heavy))
-              .foregroundStyle(Theme.ink)
-              .padding(.horizontal, 12)
-              .padding(.vertical, 6)
-              .background(Theme.accentSoft, in: Capsule())
-          }
-        }
-      }
-      if !partial.isEmpty {
-        Text("あと少し: \(partial.map(\.label).joined(separator: "、"))")
-          .font(Theme.font(14, .heavy))
-          .foregroundStyle(Theme.muted)
-          .fixedSize(horizontal: false, vertical: true)
-      }
-    }
-    .frame(maxWidth: .infinity, alignment: .leading)
-    .accessibilityElement(children: .combine)
-  }
-}
-
-/// 前の記録の 1 行。日付・難易度・合計・言えた項目の数
-private struct RecordRow: View {
-  let entry: RecordEntry
+/// 回の区切り（─── 11/11 ───）
+private struct RoundDivider: View {
+  let text: String
 
   var body: some View {
     HStack(spacing: 12) {
-      VStack(alignment: .leading, spacing: 6) {
-        Text(RecordsView.day(entry.playedAt))
-          .font(Theme.font(14, .heavy))
-          .foregroundStyle(Theme.muted)
-          .monospacedDigit()
-        HStack(spacing: 10) {
-          if let difficulty = entry.difficulty {
-            DifficultyChip(difficulty: difficulty)
-          }
-          if let score = entry.score {
-            PointsText(total: score.total, size: 26)
-          }
-        }
-      }
-      Spacer(minLength: 8)
-      if let content = entry.content, !content.items.isEmpty {
-        Text("言えた \(content.fullCount) / \(content.items.count)")
-          .font(Theme.font(14, .heavy))
-          .foregroundStyle(Theme.muted)
-          .monospacedDigit()
-      }
-      Image(systemName: "chevron.right")
-        .font(.system(size: 15, weight: .bold))
-        .foregroundStyle(Theme.gray)
+      Rectangle().fill(Theme.disabledBorder).frame(height: 1.5)
+      Text(text)
+        .font(Theme.font(15, .heavy))
+        .foregroundStyle(Theme.muted)
+        .monospacedDigit()
+        .fixedSize()
+      Rectangle().fill(Theme.disabledBorder).frame(height: 1.5)
     }
-    .padding(.horizontal, 18)
-    .padding(.vertical, 14)
-    .resultCard()
-    .contentShape(Rectangle())
-    .accessibilityElement(children: .combine)
-    .accessibilityAddTraits(.isButton)
+    .padding(.top, 8)
+    .accessibilityElement(children: .ignore)
+    .accessibilityLabel(text)
+    .accessibilityAddTraits(.isHeader)
+    .accessibilityIdentifier("round-divider")
   }
 }
