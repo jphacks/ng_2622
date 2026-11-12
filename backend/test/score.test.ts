@@ -8,7 +8,6 @@ import { beginGrading, recordGrade, roundResults } from "../src/domain/round";
 import { findPoolScene, poolCandidates } from "../src/scenes/pool";
 import { ResultsMessage } from "../src/schemas/ws";
 import {
-  FIXED_BASIS,
   grammarFor,
   parseWeights,
   score,
@@ -262,8 +261,8 @@ test("3 語未満の発話は Claude を呼ばず、内容・表現を 0 点に�
     gain: null,
   });
   assert.equal(r.feedback.rewrite, null);
-  // Claude を呼んでいないので、表現の点の根拠は空
-  assert.equal(r.feedback.expressionBasis, "");
+  // Claude を呼んでいないので、表現の点の根拠は無い（空の文字列ではなく null）
+  assert.equal(r.feedback.expressionBasis, null);
 });
 
 test("表現・話し方を勧めたときと、項目を全部言えたときは、item も gain も null", async () => {
@@ -385,8 +384,24 @@ test("SCORING_MODE=fixed では Claude も Azure も呼ばず固定の点。内�
   assert.ok(r.breakdown.items.every((i) => i.level === "none"));
   assert.equal(r.feedback.nextStep.gain, null);
   assert.equal(r.feedback.nextStep.item, null);
-  // プレビューでも欄が埋まる
-  assert.equal(r.feedback.expressionBasis, FIXED_BASIS);
+  // 固定の点数のモードは Claude を呼ばないので、根拠は null（本物に見える文を作らない）
+  assert.equal(r.feedback.expressionBasis, null);
+});
+
+test("呼び直しても根拠が空（空白だけ）なら、根拠は null で届く。前後の空白は落とす", async () => {
+  const bodies: string[] = [];
+  stubFetch(bodies, { ...JUDGED, expressionBasis: "  " });
+  const empty = await score(env, wav(), SCENE_ID);
+  assert.ok(empty.ok, JSON.stringify(empty));
+  assert.equal(bodies.length, 3, "2 回まで呼び直した");
+  assert.equal(empty.feedback.expressionBasis, null);
+  // 表現の点そのものは、最初の応答のまま
+  assert.equal(empty.expression, 60);
+
+  stubFetch([], { ...JUDGED, expressionBasis: "  Uses be-verbs correctly. " });
+  const padded = await score(env, wav(), SCENE_ID);
+  assert.ok(padded.ok);
+  assert.equal(padded.feedback.expressionBasis, "Uses be-verbs correctly.");
 });
 
 test("無い場面（外した手作りの場面も）は unknown_scene、WAV でなければ invalid_audio、Claude の失敗は api_error", async () => {
@@ -484,7 +499,7 @@ test("POST /score は、/2 の配置（difficulty・checklist・items）と文�
     content: number;
     expression: number;
     breakdown: { recall: unknown; claims: unknown[] };
-    feedback: { nextStep: unknown; rewrite: unknown };
+    feedback: { nextStep: unknown; rewrite: unknown; expressionBasis: unknown };
   };
   assert.equal(body.content, 44);
   assert.equal(body.expression, 60);
@@ -497,7 +512,13 @@ test("POST /score は、/2 の配置（difficulty・checklist・items）と文�
     item: CENTER_2.id,
     gain: 15,
   });
-  assert.deepEqual(Object.keys(body.feedback), ["nextStep", "rewrite"]);
+  assert.deepEqual(Object.keys(body.feedback), [
+    "nextStep",
+    "rewrite",
+    "expressionBasis",
+  ]);
+  // 部屋の結果と同じく、表現の点の根拠も返す（苦手の分析の測定で、この口から記録を作る）
+  assert.equal(body.feedback.expressionBasis, "Correct present continuous.");
   const user = JSON.parse(bodies[0]).messages[0].content as string;
   assert.match(user, /^Grade: eiken-3\n/);
   assert.doesNotMatch(user, /Speech scores/);
@@ -519,9 +540,14 @@ test("POST /score は、形が違えば 400、fixed なら固定の点、口を�
     { SCORING_MODE: "fixed" },
   );
   assert.equal(fixed.status, 200);
-  const body = (await fixed.json()) as { content: number; mode: string };
+  const body = (await fixed.json()) as {
+    content: number;
+    mode: string;
+    feedback: { expressionBasis: unknown };
+  };
   assert.equal(body.content, 60);
   assert.equal(body.mode, "fixed");
+  assert.equal(body.feedback.expressionBasis, null);
 
   const closed = await post(
     { layout: LAYOUT, transcript: TRANSCRIPT },

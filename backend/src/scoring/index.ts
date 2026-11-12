@@ -30,8 +30,12 @@ const MAX_AUDIO_BYTES = 1024 * 1024;
 export const MIN_WORDS = 3;
 // 短すぎる発話に出す、次の一つの文
 export const SHORT_TEXT = "もう少し長く、文にして話してみよう。";
-// 固定の点数のモードの、表現の点の根拠（プレビューでも欄が埋まるように）
-export const FIXED_BASIS = "Fixed score mode: expression was not assessed.";
+/**
+ * 送る表現の点の根拠。空（Claude を呼ばなかった・呼び直しても空だった・空白だけ）なら null にする。
+ * 本物の根拠に見える文を作らない（苦手の分析の入力に混ざらないように）
+ */
+export const sentBasis = (basis: string): string | null =>
+  basis.trim() === "" ? null : basis.trim();
 
 // 合計と話し方の点は小数第 1 位まで返す
 const round = (n: number) => Math.round(n * 10) / 10;
@@ -116,7 +120,7 @@ type Graded = {
   breakdown: ContentBreakdown;
   nextStep: CheckedNextStep;
   rewrite: Rewrite | null;
-  // 表現の点の根拠（英語 1 文）。Claude を呼ばなかったときは空か固定の文
+  // 表現の点の根拠（英語 1 文）。Claude を呼ばなかったときは空（送るときに null にする）
   expressionBasis: string;
 };
 
@@ -180,7 +184,7 @@ export async function score(
       // 引用と言い換え元は、文字起こしに含まれるものだけを出す
       rewrite: checkedRewrite(transcript, graded.rewrite),
       speechTip: speechTip(speech),
-      expressionBasis: graded.expressionBasis,
+      expressionBasis: sentBasis(graded.expressionBasis),
     },
     speechDetail: {
       accuracy: speech.accuracy,
@@ -204,7 +208,8 @@ export async function score(
           contentIfSaid: null,
         },
         rewrite: null,
-        expressionBasis: FIXED_BASIS,
+        // 固定の点数のモードは Claude を呼ばないので、根拠は無い（null で送る）
+        expressionBasis: "",
       },
       { ...FIXED_SPEECH, score: 60, words: [] },
       "(固定の点数のモードのため、文字起こしはありません)",
@@ -251,7 +256,7 @@ export async function score(
           contentIfSaid: null,
         },
         rewrite: null,
-        // Claude を呼んでいないので根拠は無い
+        // Claude を呼んでいないので根拠は無い（null で送る）
         expressionBasis: "",
       };
     } else {
