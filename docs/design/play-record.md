@@ -75,7 +75,7 @@
 
 ### 自分の結果（`result`）
 
-バックエンドから届いた形のまま持つ。`results` の `PlayerResult`（`backend/openapi.json`）から、誰か（`id`・`name`・`color`）と順位（`rank`）を除いたもの。欄の意味は [`usecase.md`](./usecase.md) の「アプリへ送るもの」。
+バックエンドから届いた結果と同じ欄の形で持つ（届いた JSON をそのまま写すのではなく、アプリが読んだ結果から同じ欄の名前で書き直す。アプリが知らない値は、読むときの読み替えのあとの値になる）。`results` の `PlayerResult`（`backend/openapi.json`）から、誰か（`id`・`name`・`color`）と順位（`rank`）を除いたもの。欄の意味は [`usecase.md`](./usecase.md) の「アプリへ送るもの」。
 
 | 項目 | 型 | 意味 |
 | --- | --- | --- |
@@ -84,7 +84,7 @@
 | `content` | オブジェクトか null | 内容の内訳。`claims`・`items`・`others`・`recall`・`precision` |
 | `feedback` | オブジェクトか null | 講評。`nextStep`（次の一つ）・`rewrite`（言い直しの例。無ければ null）・`speechTip`（話し方のコツ） |
 
-- null の欄は、省かずに null と書く（届いた形と同じ）。
+- null の欄は、省かずに null と書く（届いた結果と同じ）。
 - 種類の値（`verdict`・`level`・`kind`・`aspect`）は、文字のまま書く。アプリは読むときにも文字のまま読み、画面に出すときに読み替える。後から値が増えても、記録ごと読めなくならないようにするため。
 
 ## 保存するとき
