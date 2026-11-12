@@ -53,7 +53,8 @@
     "feedback": {
       "nextStep": { "kind": "content", "text": "次は「男の人が本を読んでいる」を足してみよう。", "item": "man_read", "gain": 6 },
       "rewrite": { "before": "A girl is looking at.", "after": "A girl is looking at the bookshelf.", "reason": "動きをくわしく言うと、場面がもっと伝わります。" },
-      "speechTip": { "aspect": "fluency", "text": "文と文の間で止まりすぎないように、続けて言ってみよう。" }
+      "speechTip": { "aspect": "fluency", "text": "文と文の間で止まりすぎないように、続けて言ってみよう。" },
+      "expressionBasis": "Uses the present continuous correctly, but one sentence is unfinished."
     }
   }
 }
@@ -82,9 +83,10 @@
 | `transcript` | 文字列 | 文字起こし |
 | `score` | オブジェクト | `content`・`expression`・`speech`（各 0〜100）と、重み付きの `total` |
 | `content` | オブジェクトか null | 内容の内訳。`claims`・`items`・`others`・`recall`・`precision` |
-| `feedback` | オブジェクトか null | 講評。`nextStep`（次の一つ）・`rewrite`（言い直しの例。無ければ null）・`speechTip`（話し方のコツ） |
+| `feedback` | オブジェクトか null | 講評。`nextStep`（次の一つ）・`rewrite`（言い直しの例。無ければ null）・`speechTip`（話し方のコツ）・`expressionBasis`（表現の点の根拠。英語 1 文。下） |
 
 - null の欄は、省かずに null と書く（届いた結果と同じ）。
+- `feedback.expressionBasis`（2026-11-12 に足した）: 採点の Claude が書いた表現の点の根拠。苦手の分析に使い、振り返りの画面には出さない。版は `/1` のまま足したので、欄が無い前の記録もあり、アプリは無ければ null として読む。書くときは、値が無くても欄を省かずに null と書く。3 語未満で Claude を呼ばなかった回は空の文字列、固定の点数のモードは固定の文になる（届いたまま書く）。
 - 種類の値（`verdict`・`level`・`kind`・`aspect`）は、文字のまま書く。アプリは読むときにも文字のまま読み、画面に出すときに読み替える。後から値が増えても、記録ごと読めなくならないようにするため。
 
 ## 保存するとき
@@ -125,6 +127,7 @@
   - 版を上げるときは、新しいアプリが `/1` も読めるようにするか、`/1` を `/2` に書き直す処理を入れる（記録は端末にしか無いので、読めなくなると本人は取り戻せない）。
 - 中に入れる場面の版（`scenenglish.scene/2`）は、記録の版とは別に進む。場面の版が上がったら、アプリは記録の中の古い場面も読めるようにしておく。
 - 自分の結果（`result`）の形はバックエンドの `PlayerResult` に合わせている。バックエンドが欄を足したときは、記録にも足すかをここに書く。
+  - 2026-11-12: `feedback.expressionBasis` を足した（記録にも足す。`/1` のまま、無くても読める）。
 
 ## アプリのコード
 
