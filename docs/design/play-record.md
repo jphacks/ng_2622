@@ -83,10 +83,10 @@
 | `transcript` | 文字列 | 文字起こし |
 | `score` | オブジェクト | `content`・`expression`・`speech`（各 0〜100）と、重み付きの `total` |
 | `content` | オブジェクトか null | 内容の内訳。`claims`・`items`・`others`・`recall`・`precision` |
-| `feedback` | オブジェクトか null | 講評。`nextStep`（次の一つ）・`rewrite`（言い直しの例。無ければ null）・`speechTip`（話し方のコツ）・`expressionBasis`（表現の点の根拠。英語 1 文。下） |
+| `feedback` | オブジェクトか null | 講評。`nextStep`（次の一つ）・`rewrite`（言い直しの例。無ければ null）・`speechTip`（話し方のコツ）・`expressionBasis`（表現の点の根拠。英語 1 文か null。下） |
 
 - null の欄は、省かずに null と書く（届いた結果と同じ）。
-- `feedback.expressionBasis`（2026-11-12 に足した）: 採点の Claude が書いた表現の点の根拠。苦手の分析に使い、振り返りの画面には出さない。版は `/1` のまま足したので、欄が無い前の記録もあり、アプリは無ければ null として読む。書くときは、値が無くても欄を省かずに null と書く。3 語未満で Claude を呼ばなかった回は空の文字列、固定の点数のモードは固定の文になる（届いたまま書く）。
+- `feedback.expressionBasis`（2026-11-12 に足した）: 採点の Claude が書いた表現の点の根拠。苦手の分析に使い、振り返りの画面には出さない。版は `/1` のまま足したので、欄が無い前の記録もあり、アプリは無ければ null として読む。書くときは、値が無くても欄を省かずに null と書く。根拠が無い回（3 語未満で Claude を呼ばなかった回、呼び直しても根拠が空だった回、固定の点数のモード）は、届いたときから null で、そのまま null と書く。空の文字列は書かない。
 - 種類の値（`verdict`・`level`・`kind`・`aspect`）は、文字のまま書く。アプリは読むときにも文字のまま読み、画面に出すときに読み替える。後から値が増えても、記録ごと読めなくならないようにするため。
 
 ## 保存するとき
