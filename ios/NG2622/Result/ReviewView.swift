@@ -6,6 +6,15 @@ struct ReviewView: View {
   let results: RoundResults
   /// このラウンドで録った自分の声。あれば「あなたの描写」から聞き直せる
   var recording: RecordedAudio?
+  /// 見出し。きろくから開き直したときは、日付と場面の名前にする
+  var title = "振り返り"
+  /// きろくに残っている、遊んだときの場面の配置。あれば ID で取りに行かずにこれを使い、上に場面の 3D も出す
+  /// （作り置きから外した場面や、部屋が閉じた AI の場面は、ID では取れない）
+  var savedLayout: SceneLayout? = nil
+  /// savedLayout の 3D を覚える名前（SceneLibrary）
+  var savedSceneKey: String? = nil
+  /// 順位を出すか。きろくから開き直したときは、自分 1 人分しか無いので出さない
+  var showsPlace = true
   let onBack: () -> Void
 
   /// 遊んだ場面の配置の JSON（難易度・見本の答え・チェックリスト）。取れるまでは、それを使う所を出さない
@@ -13,7 +22,7 @@ struct ReviewView: View {
 
   var body: some View {
     VStack(spacing: 0) {
-      ResultSubHeader(title: "振り返り", onBack: onBack)
+      ResultSubHeader(title: title, onBack: onBack)
         .resultColumn()
         .padding(.top, 8)
       // 点数があれば出す。講評（feedback）が届かなかったときは、講評のカード（次の一つ・言い直し・話し方）だけ出さない
@@ -33,6 +42,10 @@ struct ReviewView: View {
       }
     }
     .task(id: results.sceneID) {
+      if let savedLayout {
+        layout = savedLayout
+        return
+      }
       // 3D を出すときに取ってあるので、ふつうは通信しない
       layout = try? await SceneLayouts.store.layout(of: results.sceneID, room: results.room)
     }
@@ -40,13 +53,19 @@ struct ReviewView: View {
 
   private func content(me: PlayerResult, score: PlayerResult.Score, review: RoundResults.Review?) -> some View {
     VStack(spacing: 16) {
+      if let savedLayout, let savedSceneKey {
+        // 開き直したときは、どの場面だったかを先に見せる（遊んだ直後は、見たばかりなので出さない）
+        RecordSceneView(layout: savedLayout, key: savedSceneKey, distance: 5.2)
+          .frame(maxWidth: .infinity)
+          .frame(height: 200)
+      }
       VStack(spacing: 4) {
         if let difficulty = layout?.difficulty {
           DifficultyChip(difficulty: difficulty)
         }
         PointsText(total: score.total, size: 64)
           .foregroundStyle(Theme.accent)
-        if let place = results.place(of: me) {
+        if showsPlace, let place = results.place(of: me) {
           Text("\(place) 位 / \(results.players.count) 人")
             .font(Theme.font(17, .heavy))
             .foregroundStyle(Theme.muted)
@@ -99,7 +118,7 @@ struct ReviewView: View {
 }
 
 /// 項目の点数のバー。開いたときに左から伸びる
-private struct ScoreBar: View {
+struct ScoreBar: View {
   let label: String
   let value: Int
   @State private var grown = false

@@ -14,6 +14,8 @@
 	<string>$(MOCK_INCLUDES_OFFLINE)</string>
 	<key>MockHostStartDelay</key>
 	<string>$(MOCK_HOST_START_DELAY)</string>
+	<key>MockSampleRecords</key>
+	<string>$(MOCK_SAMPLE_RECORDS)</string>
 	<!-- 手元のバックエンド（http://localhost:8787 や Mac の IP）に http でつなげるよう、ローカルのネットワークだけ ATS を緩める -->
 	<key>NSAppTransportSecurity</key>
 	<dict>

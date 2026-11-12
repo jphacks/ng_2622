@@ -1,10 +1,14 @@
 import SwiftUI
 
-/// ホーム。名前と色を決めて、部屋を作るか、部屋に入るかを選ぶ
+/// ホーム。名前と色を決めて、部屋を作るか、部屋に入るかを選ぶ。きろくと設定にも、ここから入る
 struct HomeView: View {
   @Binding var profile: PlayerProfile
+  /// 端末に残した遊んだ記録の数
+  var recordCount = 0
   let onCreate: () -> Void
   let onJoin: () -> Void
+  var onRecords: () -> Void = {}
+  var onSettings: () -> Void = {}
 
   @FocusState private var editing: Bool
 
@@ -31,15 +35,53 @@ struct HomeView: View {
       }
       .disabled(!hasName)
       .padding(.top, 26)
+      recordsCard
+        .padding(.top, 22)
       Spacer(minLength: 12)
     }
     .frame(width: 346)
     .frame(maxWidth: .infinity)
+    .overlay(alignment: .topTrailing) {
+      CircleIconButton(systemName: "gearshape.fill", label: "設定", action: onSettings)
+        .padding(.top, 8)
+        .padding(.trailing, 16)
+    }
     .onChange(of: profile.name) { _, name in
       if name.count > PlayerProfile.maxNameLength {
         profile.name = String(name.prefix(PlayerProfile.maxNameLength))
       }
     }
+  }
+
+  /// きろくへの入口。部屋のボタンより目立たせない（白い板）。名前が無くても開ける
+  private var recordsCard: some View {
+    Button(action: onRecords) {
+      HStack(spacing: 14) {
+        Image(systemName: "clock.arrow.circlepath")
+          .font(.system(size: 26, weight: .bold))
+          .foregroundStyle(Theme.accent)
+        VStack(alignment: .leading, spacing: 2) {
+          Text("きろく")
+            .font(Theme.font(19, .heavy))
+          Text(recordCount > 0 ? "これまでの \(recordCount) 回" : "あそぶと、ここにたまります")
+            .font(Theme.font(14, .heavy))
+            .foregroundStyle(Theme.muted)
+            .monospacedDigit()
+        }
+        Spacer(minLength: 8)
+        Image(systemName: "chevron.right")
+          .font(.system(size: 15, weight: .bold))
+          .foregroundStyle(Theme.gray)
+      }
+      .padding(.horizontal, 18)
+      .frame(height: 64)
+      .background(Theme.card, in: RoundedRectangle(cornerRadius: 22))
+      .shadow(color: Theme.ink.opacity(0.07), radius: 10, y: 6)
+      .contentShape(RoundedRectangle(cornerRadius: 22))
+    }
+    .buttonStyle(.plain)
+    .accessibilityElement(children: .combine)
+    .accessibilityAddTraits(.isButton)
   }
 
   private var playerCard: some View {

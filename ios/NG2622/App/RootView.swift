@@ -10,12 +10,13 @@ struct RootView: View {
       switch config.mode {
       case .live:
         if let url = config.backendURL {
-          AppFlow { LiveGameClient(baseURL: url) }
+          AppFlow(library: RecordLibrary()) { LiveGameClient(baseURL: url) }
         } else {
           MissingBackendURLView()
         }
       case .mock:
-        AppFlow {
+        // 例の記録は端末に書かず、きろくの画面を遊ばずに確かめるために出す
+        AppFlow(library: RecordLibrary(samples: PlayRecord.samples(count: config.mockSampleRecords))) {
           MockGameClient(options: config.mock, pool: .bundled)
         }
       }
@@ -29,15 +30,24 @@ struct RootView: View {
   }
 }
 
-/// ホーム → 部屋に入る → 部屋（待合・プレイ・結果）の切り替え
+/// ホーム → 部屋に入る → 部屋（待合・プレイ・結果）の切り替え。ホームからは、きろくと設定にも入る
 private struct AppFlow: View {
+  /// 端末に残した遊んだ記録
+  @State private var library: RecordLibrary
   /// 部屋ごとに新しい GameClient を作る
   let makeClient: () -> any GameClient
+
+  init(library: @autoclosure @escaping () -> RecordLibrary, makeClient: @escaping () -> any GameClient) {
+    _library = State(wrappedValue: library())
+    self.makeClient = makeClient
+  }
 
   private enum Screen: Equatable {
     case home
     case join
     case room
+    case records
+    case settings
   }
 
   @State private var screen = Screen.home
@@ -48,10 +58,27 @@ private struct AppFlow: View {
   var body: some View {
     ZStack {
       switch screen {
-      case .home:
-        HomeView(profile: $profile, onCreate: create, onJoin: { go(.join) })
-          .disabled(creating)
-          .transition(.opacity)
+      case .home, .records, .settings:
+        // きろくと設定は、ホームを出したまま上に重ねる。ホームの 3D を消して出し直さないため
+        // （3D の入った view を画面の切り替えと同時に出し入れすると、後から出た 3D が描き直されないことがある）
+        HomeView(
+          profile: $profile, recordCount: library.count, onCreate: create, onJoin: { go(.join) },
+          onRecords: { go(.records) }, onSettings: { go(.settings) }
+        )
+        .disabled(creating || screen != .home)
+        .accessibilityHidden(screen != .home)
+        .transition(.opacity)
+        // 部屋から戻ったときに、遊んだ回を数え直す
+        .task { await library.reload() }
+        .overlay {
+          if screen == .records {
+            RecordsView(library: library, onBack: { go(.home) })
+              .cover()
+          } else if screen == .settings {
+            SettingsView(library: library, onBack: { go(.home) })
+              .cover()
+          }
+        }
       case .join:
         JoinView(profile: profile, join: join, onBack: { go(.home) })
           .transition(.opacity)
@@ -105,6 +132,15 @@ private struct AppFlow: View {
     session?.leave()
     session = nil
     go(.home)
+  }
+}
+
+extension View {
+  /// 下の画面を隠して上に重ねる（下の画面は出したままにする）
+  fileprivate func cover() -> some View {
+    frame(maxWidth: .infinity, maxHeight: .infinity)
+      .background(Theme.background.ignoresSafeArea())
+      .transition(.opacity)
   }
 }
 
