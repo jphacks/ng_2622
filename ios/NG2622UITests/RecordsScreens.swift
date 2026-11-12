@@ -18,7 +18,7 @@ final class RecordsScreens: XCTestCase {
     let app = XCUIApplication()
     app.launchArguments += ["-player.name", "Mika", "-player.color", "0"]
     app.launch()
-    XCTAssert(app.buttons["部屋を作る"].waitForExistence(timeout: 20))
+    XCTAssert(app.buttons["あそぶ"].waitForExistence(timeout: 20))
     return app
   }
 
@@ -131,7 +131,7 @@ final class RecordsScreens: XCTestCase {
     sleep(2)
     shot("9-settings-deleted")
     app.buttons["戻る"].firstMatch.tap()
-    XCTAssert(app.buttons["部屋を作る"].waitForExistence(timeout: 10))
+    XCTAssert(app.buttons["あそぶ"].waitForExistence(timeout: 10))
     sleep(2)
     shot("10-home-empty")
     recordsCard(app).tap()
@@ -155,7 +155,7 @@ final class RecordsScreens: XCTestCase {
       sleep(2)
       shot("play\(round)-1-home")
 
-      let create = app.buttons["部屋を作る"]
+      let create = app.buttons["あそぶ"]
       XCTAssert(create.waitForExistence(timeout: 10))
       create.tap()
       let start = app.buttons["スタート"]
@@ -175,7 +175,7 @@ final class RecordsScreens: XCTestCase {
       if skip.exists { skip.tap() }
       XCTAssert(leave.waitForExistence(timeout: 30))
       leave.tap()
-      XCTAssert(app.buttons["部屋を作る"].waitForExistence(timeout: 10))
+      XCTAssert(app.buttons["あそぶ"].waitForExistence(timeout: 10))
     }
   }
 

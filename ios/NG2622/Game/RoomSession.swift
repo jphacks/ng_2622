@@ -43,6 +43,11 @@ final class RoomSession {
   /// 記録の保存（テストが終わりを待つ）
   private(set) var recordSaving: Task<Void, Never>?
 
+  enum MoveError: Error, Equatable {
+    /// いまいる部屋のコードを打った
+    case sameRoom
+  }
+
   private struct RoundRecord {
     let id = PlayRecordStore.newID()
     let info: RoundInfo
@@ -80,6 +85,31 @@ final class RoomSession {
     listener?.cancel()
     recorder.discard()
     client.leaveRoom()
+  }
+
+  // MARK: - 別の部屋に移る（待合の「他のルーム」）
+
+  /// 自分のほかに、部屋に人がいる（切断中の人も数える）。いれば、移る前に確かめる
+  var hasOthers: Bool {
+    participants.contains { !$0.isSelf }
+  }
+
+  /// 別の部屋に移る前に、移る先に入れそうかを確かめる。入れないなら throw し、今の部屋はそのまま
+  func checkMove(to code: String) async throws {
+    guard code != self.code else { throw MoveError.sameRoom }
+    try await client.findRoom(code: code)
+  }
+
+  /// 今の部屋を抜けてから、next で code の部屋に入る。入れなければ next も抜けて throw する
+  /// （今の部屋には戻らない。ホストは部屋に残った人に替わっている）
+  func move(to code: String, with next: RoomSession) async throws {
+    leave()
+    do {
+      try await next.join(code: code)
+    } catch {
+      next.leave()
+      throw error
+    }
   }
 
   /// ホストが難易度だけを選んでラウンドを始める。どの場面かはホストにも前もって伝えず、round で届く

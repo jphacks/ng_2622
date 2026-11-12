@@ -1,19 +1,26 @@
 import SwiftUI
 
-/// 設定。端末に残した遊んだ記録と録音を、まとめて消せる
+/// 設定。自分の名前と色を変えられる。端末に残した遊んだ記録と録音を、まとめて消せる
 struct SettingsView: View {
   let library: RecordLibrary
+  /// 自分の名前と色。変えると、次に入る部屋から使う
+  @Binding var profile: PlayerProfile
   let onBack: () -> Void
 
   @State private var confirming = false
   /// 消せなかった
   @State private var failed = false
+  /// 名前と色を変える画面を開いている
+  @State private var editingProfile = false
 
   var body: some View {
     VStack(spacing: 0) {
       ResultSubHeader(title: "設定", onBack: onBack)
         .resultColumn()
         .padding(.top, 8)
+      profileCard
+        .resultColumn()
+        .padding(.top, 16)
       VStack(alignment: .leading, spacing: 12) {
         Text("きろく")
           .font(Theme.font(14, .heavy))
@@ -62,69 +69,62 @@ struct SettingsView: View {
     }
     .overlay {
       if confirming {
-        ConfirmDelete(
-          count: library.count,
+        ConfirmDialog(
+          title: "すべて消しますか？",
+          message: library.count > 0
+            ? "きろく \(library.count) 回と録音が、この iPhone から消えます。元にもどせません。"
+            : "読めなかったきろくのファイルが、この iPhone から消えます。元にもどせません。",
+          action: "消す", actionColor: Theme.mismatch,
           onCancel: { confirming = false },
-          onDelete: {
+          onAction: {
             confirming = false
             Task { failed = (try? await library.deleteAll()) == nil }
           })
       }
     }
     .animation(.easeOut(duration: 0.15), value: confirming)
+    .overlay {
+      if editingProfile {
+        ProfileEditView(profile: $profile, onBack: { editingProfile = false })
+          .frame(maxWidth: .infinity, maxHeight: .infinity)
+          .background(Theme.background.ignoresSafeArea())
+          .transition(.opacity)
+      }
+    }
+    .animation(.easeInOut(duration: 0.25), value: editingProfile)
     .task { await library.reload() }
   }
-}
 
-/// 「すべて消しますか？」の確かめ。消すほうはオレンジにする
-private struct ConfirmDelete: View {
-  let count: Int
-  let onCancel: () -> Void
-  let onDelete: () -> Void
-
-  var body: some View {
-    ZStack {
-      Theme.ink.opacity(0.35)
-        .ignoresSafeArea()
-        .onTapGesture(perform: onCancel)
-      VStack(spacing: 0) {
-        VStack(spacing: 10) {
-          Text("すべて消しますか？")
-            .font(Theme.font(20, .black))
-          Text(
-            count > 0
-              ? "きろく \(count) 回と録音が、この iPhone から消えます。元にもどせません。"
-              : "読めなかったきろくのファイルが、この iPhone から消えます。元にもどせません。")
-            .font(Theme.font(15, .bold))
+  /// 「あなた」。押すと名前と色を変える画面を開く
+  private var profileCard: some View {
+    VStack(alignment: .leading, spacing: 10) {
+      Text("あなた")
+        .font(Theme.font(14, .heavy))
+        .foregroundStyle(Theme.muted)
+      Button {
+        editingProfile = true
+      } label: {
+        HStack(spacing: 12) {
+          Avatar(name: profile.name, color: profile.color, size: 44)
+          Text(profile.name)
+            .font(Theme.font(20, .heavy))
+            .lineLimit(1)
+          Spacer(minLength: 8)
+          Text("名前と色を変える")
+            .font(Theme.font(14, .heavy))
             .foregroundStyle(Theme.muted)
-            .multilineTextAlignment(.center)
-            .fixedSize(horizontal: false, vertical: true)
+          Image(systemName: "chevron.right")
+            .font(.system(size: 15, weight: .bold))
+            .foregroundStyle(Theme.gray)
         }
-        .padding(.horizontal, 22)
-        .padding(.vertical, 24)
-        Rectangle().fill(Theme.line).frame(height: 1.5)
-        HStack(spacing: 0) {
-          // 文字だけでなく、枠の半分ずつを押せる範囲にする
-          Button(action: onCancel) {
-            Text("やめる")
-              .foregroundStyle(Theme.accent)
-              .frame(maxWidth: .infinity, minHeight: 54)
-              .contentShape(Rectangle())
-          }
-          Rectangle().fill(Theme.line).frame(width: 1.5, height: 54)
-          Button(action: onDelete) {
-            Text("消す")
-              .foregroundStyle(Theme.mismatch)
-              .frame(maxWidth: .infinity, minHeight: 54)
-              .contentShape(Rectangle())
-          }
-        }
-        .font(Theme.font(19, .heavy))
+        .contentShape(Rectangle())
       }
-      .frame(width: 300)
-      .background(Theme.card, in: RoundedRectangle(cornerRadius: 22))
-      .accessibilityAddTraits(.isModal)
+      .buttonStyle(.plain)
+      .accessibilityElement(children: .combine)
+      .accessibilityAddTraits(.isButton)
     }
-    .transition(.opacity)
+    .padding(18)
+    .frame(maxWidth: .infinity, alignment: .leading)
+    .resultCard()
   }
 }

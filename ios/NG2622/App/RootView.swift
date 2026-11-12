@@ -29,7 +29,9 @@ struct RootView: View {
   }
 }
 
-/// ホーム → 部屋に入る → 部屋（待合・プレイ・結果）の切り替え。ホームからは、きろくと設定にも入る
+/// ホーム → 部屋（待合・プレイ・結果）の切り替え。ホームからは、きろくと設定にも入る。
+/// 初めて開いた（名前が無い）ときは、ホームの代わりに名前を決める最初の画面を出す（HomeView の中で替える）。
+/// ほかの人の部屋へは、ホームの「あそぶ」で自分の部屋を作ってから、待合の「他のルーム」で移る
 private struct AppFlow: View {
   /// 端末に残した遊んだ記録（アプリ全体で 1 つ。body が走るたびに作り直さない）
   let library: RecordLibrary
@@ -38,7 +40,6 @@ private struct AppFlow: View {
 
   private enum Screen: Equatable {
     case home
-    case join
     case room
     case records
     case settings
@@ -56,7 +57,7 @@ private struct AppFlow: View {
         // きろくと設定は、ホームを出したまま上に重ねる。ホームの 3D を消して出し直さないため
         // （3D の入った view を画面の切り替えと同時に出し入れすると、後から出た 3D が描き直されないことがある）
         HomeView(
-          profile: $profile, recordCount: library.count, onCreate: create, onJoin: { go(.join) },
+          profile: profile, recordCount: library.count, onName: { profile = .first(name: $0) }, onPlay: create,
           onRecords: { go(.records) }, onSettings: { go(.settings) }, isCovered: screen != .home
         )
         .disabled(creating || screen != .home)
@@ -69,21 +70,21 @@ private struct AppFlow: View {
             RecordsView(library: library, onBack: { go(.home) })
               .cover()
           } else if screen == .settings {
-            SettingsView(library: library, onBack: { go(.home) })
+            SettingsView(library: library, profile: $profile, onBack: { go(.home) })
               .cover()
           }
         }
-      case .join:
-        JoinView(profile: profile, join: join, onBack: { go(.home) })
-          .transition(.opacity)
       case .room:
         if let session {
-          RoomView(session: session, onLeave: leave)
+          RoomView(session: session, onLeave: leave, onMove: move)
+            // 別の部屋に移ったら、待合を新しく作る（前の部屋の画面の状態を持ち越さない）
+            .id(ObjectIdentifier(session))
             .transition(.opacity)
         }
       }
     }
     .animation(.easeInOut(duration: 0.3), value: screen)
+    .onChange(of: profile) { _, profile in profile.save() }
   }
 
   private func go(_ next: Screen) {
@@ -91,16 +92,16 @@ private struct AppFlow: View {
   }
 
   private func newSession() -> RoomSession {
-    profile.name = profile.name.trimmingCharacters(in: .whitespaces)
-    profile.save()
-    return RoomSession(client: makeClient(), me: profile)
+    RoomSession(client: makeClient(), me: profile)
   }
 
+  /// 「あそぶ」。自分の部屋を作り、ホストとして待合に入る
   private func create() {
     let session = newSession()
     creating = true
     Task {
       defer { creating = false }
+      // ラウンドの途中で確認が出ないよう、部屋に入る前に聞く
       await MicPermission.request()
       guard (try? await session.create()) != nil else { return }
       self.session = session
@@ -108,18 +109,18 @@ private struct AppFlow: View {
     }
   }
 
-  private func join(_ code: String) async throws {
-    // ラウンドの途中で確認が出ないよう、部屋に入る前に聞く
-    await MicPermission.request()
-    let session = newSession()
+  /// 待合の「他のルーム」。今の部屋を抜けてから code の部屋に入る。
+  /// 確かめたあとで入れなくなっていたら（満員になった・始まった・つながらない）、今の部屋には戻らずホームに戻る
+  private func move(to code: String) async {
+    guard let current = session else { return }
+    let next = newSession()
     do {
-      try await session.join(code: code)
+      try await current.move(to: code, with: next)
+      session = next
     } catch {
-      session.leave()
-      throw error
+      session = nil
+      go(.home)
     }
-    self.session = session
-    go(.room)
   }
 
   private func leave() {

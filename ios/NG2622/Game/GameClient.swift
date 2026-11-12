@@ -8,6 +8,9 @@ protocol GameClient: AnyObject {
 
   /// 部屋を作り、ホストとして入る（POST /rooms → join）。部屋のコードを返す
   func createRoom(as player: PlayerProfile) async throws -> String
+  /// コードの部屋に入れそうかを、入らずに確かめる（GET /rooms/:id）。部屋が無いときは GameError.roomNotFound、
+  /// 満員なら roomFull、ゲームが始まっていれば alreadyStarted
+  func findRoom(code: String) async throws
   /// コードの部屋に入る（join）。部屋が無いときは GameError.roomNotFound
   func joinRoom(code: String, as player: PlayerProfile) async throws
   /// 部屋から抜ける。以後 events は届かない

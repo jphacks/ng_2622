@@ -88,9 +88,14 @@ final class MockGameClient: GameClient {
     return code
   }
 
-  func joinRoom(code: String, as player: PlayerProfile) async throws {
-    try await Task.sleep(for: .milliseconds(600))
+  func findRoom(code: String) async throws {
+    try await Task.sleep(for: .milliseconds(300))
     guard code != Self.missingRoomCode else { throw GameError.roomNotFound }
+  }
+
+  func joinRoom(code: String, as player: PlayerProfile) async throws {
+    try await findRoom(code: code)
+    try await Task.sleep(for: .milliseconds(300))
     self.code = code
     isHost = false
     // ホストは先にいる。ほかの人は後から入ってくる

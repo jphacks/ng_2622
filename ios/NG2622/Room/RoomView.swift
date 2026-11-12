@@ -5,6 +5,8 @@ struct RoomView: View {
   let session: RoomSession
   /// 部屋を出てホームに戻る
   let onLeave: () -> Void
+  /// 待合の「他のルーム」で、code の部屋に移る
+  var onMove: (String) async -> Void = { _ in }
 
   /// プレイ・待機の画面を出しているか。結果がそろっても、少しのあいだ待機の画面を残す
   @State private var inRound = false
@@ -22,7 +24,7 @@ struct RoomView: View {
           onLeave: onLeave)
           .transition(.opacity)
       } else {
-        LobbyView(session: session, onLeave: onLeave)
+        LobbyView(session: session, onLeave: onLeave, onMove: onMove)
           .safeAreaInset(edge: .bottom, spacing: 0) {
             if micDenied { MicDeniedNotice() }
           }
