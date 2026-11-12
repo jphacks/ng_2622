@@ -8,6 +8,7 @@ import { beginGrading, recordGrade, roundResults } from "../src/domain/round";
 import { findPoolScene, poolCandidates } from "../src/scenes/pool";
 import { ResultsMessage } from "../src/schemas/ws";
 import {
+  FIXED_BASIS,
   grammarFor,
   parseWeights,
   score,
@@ -163,12 +164,14 @@ test("作り置きの場面は、チェックリストの採点（Claude 1 回�
     precision: { correct: 1, said: 2 },
   });
 
-  // 講評: 良かった所（strength）は無い。gain は合計の伸び
+  // 講評: 良かった所（strength）は無い。gain は合計の伸び。表現の点の根拠は Claude が書いたまま送る
   assert.deepEqual(Object.keys(r.feedback), [
     "nextStep",
     "rewrite",
     "speechTip",
+    "expressionBasis",
   ]);
+  assert.equal(r.feedback.expressionBasis, "Correct present continuous.");
   // 項目を言えたら 言えた 4 / 5、正しさ 2 / 3 → 内容 73。合計は (73 − 44) × 50 / 100 = 14.5 → 15 点伸びる
   assert.deepEqual(r.feedback.nextStep, {
     kind: "content",
@@ -259,6 +262,8 @@ test("3 語未満の発話は Claude を呼ばず、内容・表現を 0 点に�
     gain: null,
   });
   assert.equal(r.feedback.rewrite, null);
+  // Claude を呼んでいないので、表現の点の根拠は空
+  assert.equal(r.feedback.expressionBasis, "");
 });
 
 test("表現・話し方を勧めたときと、項目を全部言えたときは、item も gain も null", async () => {
@@ -380,6 +385,8 @@ test("SCORING_MODE=fixed では Claude も Azure も呼ばず固定の点。内�
   assert.ok(r.breakdown.items.every((i) => i.level === "none"));
   assert.equal(r.feedback.nextStep.gain, null);
   assert.equal(r.feedback.nextStep.item, null);
+  // プレビューでも欄が埋まる
+  assert.equal(r.feedback.expressionBasis, FIXED_BASIS);
 });
 
 test("無い場面（外した手作りの場面も）は unknown_scene、WAV でなければ invalid_audio、Claude の失敗は api_error", async () => {
@@ -439,6 +446,8 @@ test("score() の結果を部屋に書き込み、結果発表の形（ResultsMe
   });
   assert.deepEqual(me.content, result.breakdown);
   assert.deepEqual(me.feedback, result.feedback);
+  // 表現の点の根拠も、結果発表の形まで届く
+  assert.equal(me.feedback?.expressionBasis, "Correct present continuous.");
   assert.equal(message.sceneName, SCENE.name);
   // 画面の足し算: 今の合計 + gain = 言えたときの合計（画面に出す整数）
   assert.equal(me.feedback?.nextStep.gain, 15);

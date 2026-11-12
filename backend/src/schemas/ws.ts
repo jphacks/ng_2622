@@ -291,6 +291,11 @@ export const Feedback = z
         ref: "FeedbackSpeechTip",
         description: "話し方のコツ。発音・なめらかさ・抑揚のうち最も低いもの",
       }),
+    expressionBasis: z.string().meta({
+      description:
+        "表現の点の根拠（英語 1 文。どの形を正しく使えたか・どこが誤りか）。採点の Claude が点の前に書く。振り返りの画面には出さず、端末の記録と苦手の分析に使う。3 語未満で Claude を呼ばなかった回は空、固定の点数のモード（SCORING_MODE=fixed）は固定の文",
+      example: "Uses the present continuous correctly, but misses articles.",
+    }),
   })
   .meta({ ref: "Feedback", description: "振り返りの講評" });
 
