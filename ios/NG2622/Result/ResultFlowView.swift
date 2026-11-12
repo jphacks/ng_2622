@@ -99,7 +99,7 @@ struct ResultSubHeader: View {
 
   var body: some View {
     ZStack {
-      // 長い題名（開き直した振り返りの「日付 場面の名前」）は、戻るボタンに重ねず、1 行に縮めて収める
+      // 長い題名は、戻るボタンに重ねず、1 行に縮めて収める
       Text(title)
         .font(Theme.font(20, .black))
         .lineLimit(1)

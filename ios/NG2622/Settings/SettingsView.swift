@@ -8,6 +8,8 @@ struct SettingsView: View {
   let onBack: () -> Void
 
   @State private var confirming = false
+  /// 消している（終わるまでボタンを押せなくする）
+  @State private var deleting = false
   /// 消せなかった
   @State private var failed = false
   /// 名前と色を変える画面を開いている
@@ -43,17 +45,17 @@ struct SettingsView: View {
         } label: {
           Text("きろくと録音をすべて消す")
             .font(Theme.font(18, .heavy))
-            .foregroundStyle(library.canDelete ? Theme.mismatch : Theme.gray)
+            .foregroundStyle(library.canDelete && !deleting ? Theme.mismatch : Theme.gray)
             .frame(maxWidth: .infinity)
             .frame(height: 52)
             .overlay {
-              Capsule().strokeBorder(library.canDelete ? Theme.mismatch : Theme.disabledBorder, lineWidth: 2.5)
+              Capsule().strokeBorder(library.canDelete && !deleting ? Theme.mismatch : Theme.disabledBorder, lineWidth: 2.5)
             }
             .contentShape(Capsule())
         }
         .buttonStyle(.plain)
         // 読める記録が 0 件でも、読めなかったファイルが残っていれば消せる
-        .disabled(!library.canDelete)
+        .disabled(!library.canDelete || deleting)
         .padding(.top, 4)
         if failed {
           Text("消せませんでした。もう一度ためしてください。")
@@ -71,14 +73,16 @@ struct SettingsView: View {
       if confirming {
         ConfirmDialog(
           title: "すべて消しますか？",
-          message: library.count > 0
-            ? "きろく \(library.count) 回と録音が、この iPhone から消えます。元にもどせません。"
-            : "読めなかったきろくのファイルが、この iPhone から消えます。元にもどせません。",
+          message: Self.deleteMessage(count: library.count, audioCount: library.audioCount),
           action: "消す", actionColor: Theme.mismatch,
           onCancel: { confirming = false },
           onAction: {
             confirming = false
-            Task { failed = (try? await library.deleteAll()) == nil }
+            deleting = true
+            Task {
+              failed = (try? await library.deleteAll()) == nil
+              deleting = false
+            }
           })
       }
     }
@@ -93,6 +97,17 @@ struct SettingsView: View {
     }
     .animation(.easeInOut(duration: 0.25), value: editingProfile)
     .task { await library.reload() }
+  }
+
+  /// 「すべて消しますか？」の文。消えるものに合わせ、録音が 0 本なら録音のことは書かない
+  static func deleteMessage(count: Int, audioCount: Int) -> String {
+    let what =
+      switch (count > 0, audioCount > 0) {
+      case (true, true): "きろく \(count) 回と録音 \(audioCount) 本"
+      case (true, false): "きろく \(count) 回"
+      case (false, _): "読めなかったきろくのファイル"
+      }
+    return "\(what)が、この iPhone から消えます。元にもどせません。"
   }
 
   /// 「あなた」。押すと名前と色を変える画面を開く

@@ -2,7 +2,7 @@ import AVFoundation
 import Observation
 
 /// 1 ラウンドで録った自分の音声。端末の一時フォルダに置き、次のラウンドか退出で消す
-struct RecordedAudio: Sendable, Equatable {
+nonisolated struct RecordedAudio: Sendable, Equatable {
   /// WAV（16 kHz・16 bit・モノラル）のファイル
   let url: URL
   /// 長さ（秒）
@@ -126,7 +126,7 @@ final class VoiceRecorder {
 }
 
 /// WAV の見出し（fmt と data のチャンク）を読み、形式と長さを確かめる
-struct WAVInfo: Equatable {
+nonisolated struct WAVInfo: Equatable {
   let sampleRate: Int
   let channels: Int
   let bitDepth: Int

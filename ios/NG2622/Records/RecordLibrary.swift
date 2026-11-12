@@ -71,6 +71,8 @@ final class RecordLibrary {
   private(set) var count = 0
   /// 録音のある記録の数
   private(set) var audioCount = 0
+  /// 記録の ID ごとの自分の録音。読み直すときに 1 度だけ読む（画面を描くたびにファイルを読まない）
+  private(set) var recordings: [String: RecordedAudio] = [:]
   /// 「すべて消す」で消すものがあるか。読める記録が 0 件でも、読めなかったファイルが残っていれば true
   private(set) var canDelete = false
 
@@ -93,22 +95,25 @@ final class RecordLibrary {
     let store = store
     generation += 1
     let mine = generation
-    let (saved, audio, hasFiles) = await Task.detached {
+    let (saved, audio, audioFiles, hasFiles) = await Task.detached {
       let saved = store.all()
-      return (saved, saved.filter { store.audioURL(of: $0.id) != nil }.count, store.hasFiles())
+      let urls = saved.compactMap { record in store.audioURL(of: record.id).map { (record.id, $0) } }
+      // 聴けるのは WAV として読めるものだけ。数える（設定に出す・消す）のは、ファイルがあるもの全部
+      let audio = urls.reduce(into: [String: RecordedAudio]()) { found, pair in
+        guard let info = WAVInfo.read(pair.1) else { return }
+        found[pair.0] = RecordedAudio(url: pair.1, duration: info.duration)
+      }
+      return (saved, audio, urls.count, store.hasFiles())
     }.value
     guard mine == generation else { return }
     scenes = RecordScenes.group(saved + samples)
     count = saved.count + samples.count
-    audioCount = audio
+    recordings = audio
+    audioCount = audioFiles
     canDelete = hasFiles || !samples.isEmpty
   }
 
-  /// その回の自分の録音。無ければ nil
-  func recording(of entry: RecordEntry) -> RecordedAudio? {
-    guard let url = store.audioURL(of: entry.id), let info = WAVInfo.read(url) else { return nil }
-    return RecordedAudio(url: url, duration: info.duration)
-  }
+
 
   /// 記録と録音をすべて消す
   func deleteAll() async throws {

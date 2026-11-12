@@ -1,20 +1,10 @@
 import SwiftUI
 
-/// 振り返り。上から、難易度・合計・順位、3 つの軸の棒、あなたの描写（下線）、場面のチェック、場面と合わない描写、
-/// 次の一つ、見本の答え、言い直してみよう、話し方の一言
+/// 振り返り（遊んだ直後）。中身は ReviewBody
 struct ReviewView: View {
   let results: RoundResults
   /// このラウンドで録った自分の声。あれば「あなたの描写」から聞き直せる
   var recording: RecordedAudio?
-  /// 見出し。きろくから開き直したときは、日付と場面の名前にする
-  var title = "振り返り"
-  /// きろくに残っている、遊んだときの場面の配置。あれば ID で取りに行かずにこれを使う
-  /// （作り置きから外した場面や、部屋が閉じた AI の場面は、ID では取れない）
-  var savedLayout: SceneLayout? = nil
-  /// savedLayout の 3D を覚える名前（SceneLibrary）。あれば、上に場面の 3D を出す
-  var savedSceneKey: String? = nil
-  /// 順位を出すか。きろくから開き直したときは、自分 1 人分しか無いので出さない
-  var showsPlace = true
   let onBack: () -> Void
 
   /// 遊んだ場面の配置の JSON（難易度・見本の答え・チェックリスト）。取れるまでは、それを使う所を出さない
@@ -22,16 +12,19 @@ struct ReviewView: View {
 
   var body: some View {
     VStack(spacing: 0) {
-      ResultSubHeader(title: title, onBack: onBack)
+      ResultSubHeader(title: "振り返り", onBack: onBack)
         .resultColumn()
         .padding(.top, 8)
       // 点数があれば出す。講評（feedback）が届かなかったときは、講評のカード（次の一つ・言い直し・話し方）だけ出さない
       if let me = results.me, let score = me.score {
         ScrollView {
-          content(me: me, score: score, review: results.myReview)
-            .resultColumn()
-            .padding(.top, 12)
-            .padding(.bottom, 24)
+          ReviewBody(
+            me: me, score: score, review: results.myReview, layout: layout, recording: recording,
+            place: results.place(of: me).map { "\($0) 位 / \(results.players.count) 人" }
+          )
+          .resultColumn()
+          .padding(.top, 12)
+          .padding(.bottom, 24)
         }
       } else {
         Spacer()
@@ -42,31 +35,37 @@ struct ReviewView: View {
       }
     }
     .task(id: results.sceneID) {
-      if let savedLayout {
-        layout = savedLayout
-        return
-      }
       // 3D を出すときに取ってあるので、ふつうは通信しない
       layout = try? await SceneLayouts.store.layout(of: results.sceneID, room: results.room)
     }
   }
+}
 
-  private func content(me: PlayerResult, score: PlayerResult.Score, review: RoundResults.Review?) -> some View {
+/// 振り返りの中身。上から、難易度・合計・順位、3 つの軸の棒、あなたの描写（下線）、場面のチェック、場面と合わない描写、
+/// 次の一つ、見本の答え、言い直してみよう、話し方の一言。
+/// 遊んだ直後の振り返り（ReviewView）と、きろくの縦の流れ（RecordsView）で同じものを使う
+struct ReviewBody: View {
+  let me: PlayerResult
+  let score: PlayerResult.Score
+  /// 講評。届かなかったときは nil で、講評のカード（次の一つ・言い直し・話し方）だけ出さない
+  let review: RoundResults.Review?
+  /// 遊んだ場面の配置（難易度・見本の答え・チェックリスト）。無ければ、それを使う所を出さない
+  let layout: SceneLayout?
+  /// 自分の声。あれば「あなたの描写」から聞き直せる
+  let recording: RecordedAudio?
+  /// 順位の一文（例: 2 位 / 4 人）。nil なら出さない（きろくには自分の結果しか無い）
+  var place: String? = nil
+
+  var body: some View {
     VStack(spacing: 16) {
-      if let savedLayout, let savedSceneKey {
-        // 開き直したときは、どの場面だったかを先に見せる（遊んだ直後は、見たばかりなので出さない）
-        RecordSceneView(layout: savedLayout, key: savedSceneKey, name: results.sceneName, distance: 5.2)
-          .frame(maxWidth: .infinity)
-          .frame(height: 200)
-      }
       VStack(spacing: 4) {
         if let difficulty = layout?.difficulty {
           DifficultyChip(difficulty: difficulty)
         }
         PointsText(total: score.total, size: 64)
           .foregroundStyle(Theme.accent)
-        if showsPlace, let place = results.place(of: me) {
-          Text("\(place) 位 / \(results.players.count) 人")
+        if let place {
+          Text(place)
             .font(Theme.font(17, .heavy))
             .foregroundStyle(Theme.muted)
         }
@@ -118,7 +117,7 @@ struct ReviewView: View {
 }
 
 /// 項目の点数のバー。開いたときに左から伸びる
-struct ScoreBar: View {
+private struct ScoreBar: View {
   let label: String
   let value: Int
   @State private var grown = false
@@ -154,7 +153,16 @@ private struct TranscriptCard: View {
   let transcript: String
   let claims: [ContentBreakdown.Claim]
   let recording: RecordedAudio?
-  @State private var player = VoicePlayer()
+  /// 何枚かで共有する再生の口（きろく）。無ければ、このカードだけの口を使う（遊んだ直後の振り返り）
+  @Environment(\.sharedVoicePlayer) private var shared
+  @State private var own = VoicePlayer()
+
+  private var player: VoicePlayer { shared ?? own }
+  /// このカードの録音を鳴らしているか
+  private var playing: Bool {
+    guard let recording else { return false }
+    return player.isPlaying(recording)
+  }
 
   /// 端末にファイルが残っているときだけボタンを出す
   private var playable: RecordedAudio? {
@@ -187,24 +195,27 @@ private struct TranscriptCard: View {
     .padding(20)
     .frame(maxWidth: .infinity, alignment: .leading)
     // 再生中は板の地を薄い紫にする（形と影は resultCard と同じ）
-    .background(player.isPlaying ? Theme.accentSoft : Theme.card, in: RoundedRectangle(cornerRadius: 22))
+    .background(playing ? Theme.accentSoft : Theme.card, in: RoundedRectangle(cornerRadius: 22))
     .shadow(color: Theme.ink.opacity(0.07), radius: 10, y: 6)
-    .animation(.easeInOut(duration: 0.2), value: player.isPlaying)
-    .onDisappear { player.stop() }
+    .animation(.easeInOut(duration: 0.2), value: playing)
+    .onDisappear {
+      // 共有の口では、ほかのカードの録音は止めない
+      if playing { player.stop() }
+    }
   }
 
   private func speakerButton(_ audio: RecordedAudio) -> some View {
     Button {
-      player.toggle(audio)
+      player.toggle(only: audio)
     } label: {
-      Image(systemName: player.isPlaying ? "stop.fill" : "speaker.wave.2.fill")
-        .font(.system(size: player.isPlaying ? 13 : 15, weight: .bold))
+      Image(systemName: playing ? "stop.fill" : "speaker.wave.2.fill")
+        .font(.system(size: playing ? 13 : 15, weight: .bold))
         .foregroundStyle(Theme.accent)
         .frame(width: 32, height: 32)
-        .background(player.isPlaying ? Theme.card : Theme.accentSoft, in: Circle())
+        .background(playing ? Theme.card : Theme.accentSoft, in: Circle())
         .contentTransition(.symbolEffect(.replace))
     }
-    .accessibilityLabel(player.isPlaying ? "停止" : "自分の録音を再生")
+    .accessibilityLabel(playing ? "停止" : "自分の録音を再生")
   }
 }
 

@@ -1,8 +1,8 @@
 import SwiftUI
 
 /// 遊んだ記録の場面の 3D。記録の中の配置から組み、ゆっくり回し続ける（触れない）。
-/// 下に場面の名前の板を敷く。組み上がって描かれるまで数秒かかることがあり（シミュレータで、長いと十数秒）、
-/// その間も「何も無い」所にしないため
+/// 後ろに場面の名前と小さな印を置く。組み上がって描かれるまで数秒かかることがあり（シミュレータで、長いと十数秒）、
+/// その間も「何も無い」所にしないため。描かれると盤に隠れる
 struct RecordSceneView: View {
   let layout: SceneLayout
   /// 組んだ 3D を覚える名前（SceneLibrary）
@@ -11,12 +11,14 @@ struct RecordSceneView: View {
   let name: String
   /// カメラから見る点までの距離（m）
   var distance: Float = 5.4
+  /// 後ろに置く名前を出すか（薄くして並べる隣の場面では出さない）
+  var showsName = true
   /// 1 秒に回す角度（度）。みんなの描写の場面と同じ
   private static let speed = 12.0
 
   var body: some View {
     ZStack {
-      ScenePlaceholder(name: name)
+      ScenePlaceholder(name: name, showsName: showsName)
       TimelineView(.animation) { context in
         // 並べて出す場面が同じ向きで回るよう、時刻から向きを決める
         let seconds = context.date.timeIntervalSinceReferenceDate.truncatingRemainder(dividingBy: 360 / Self.speed)

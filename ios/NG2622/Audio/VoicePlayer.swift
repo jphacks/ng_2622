@@ -1,10 +1,18 @@
 import AVFoundation
 import Observation
+import SwiftUI
+
+/// 何枚かの「あなたの描写」で共有する再生の口。きろくのように何回分も並ぶ所で入れ、別の回を押したら前のを止める
+extension EnvironmentValues {
+  @Entry var sharedVoicePlayer: VoicePlayer? = nil
+}
 
 /// 録った自分の声を再生する（振り返り）
 @Observable
 final class VoicePlayer: NSObject, AVAudioPlayerDelegate {
   private(set) var isPlaying = false
+  /// いま鳴らしている録音のファイル。止まっていれば nil
+  private(set) var playingURL: URL?
   @ObservationIgnored private var player: AVAudioPlayer?
   @ObservationIgnored private var sessionActive = false
 
@@ -25,6 +33,7 @@ final class VoicePlayer: NSObject, AVAudioPlayerDelegate {
       guard player.play() else { return finish() }
       self.player = player
       isPlaying = true
+      playingURL = audio.url
     } catch {
       finish()
     }
@@ -38,9 +47,20 @@ final class VoicePlayer: NSObject, AVAudioPlayerDelegate {
   private func finish() {
     player = nil
     isPlaying = false
+    playingURL = nil
     guard sessionActive else { return }
     sessionActive = false
     try? AVAudioSession.sharedInstance().setActive(false, options: .notifyOthersOnDeactivation)
+  }
+
+  /// その録音を鳴らしているか（何枚かの「あなたの描写」が 1 つの VoicePlayer を共有するとき、どれが鳴っているかを見分ける）
+  func isPlaying(_ audio: RecordedAudio) -> Bool {
+    isPlaying && playingURL == audio.url
+  }
+
+  /// その録音を鳴らしていれば止め、そうでなければ（ほかの録音を止めて）鳴らす
+  func toggle(only audio: RecordedAudio) {
+    if isPlaying(audio) { stop() } else { play(audio) }
   }
 
   /// 最後まで流れたら元に戻す

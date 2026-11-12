@@ -5,7 +5,7 @@
 遊んだ本人が、前のラウンドを場面ごと見返すための記録。本人の苦手の分析の元にもする。端末の中だけに置き、サーバーには送らない。
 
 - 保存・読み出し・消去の層（`PlayRecordStore`）と、ラウンドからの呼び出しは実装した（2026-11-12）。
-- 画面は、きろく（場面ごとの一覧と開き直し）と設定（すべて消す）を作った（2026-11-12。[`ui/screens/records.md`](./ui/screens/records.md)・[`ui/screens/settings.md`](./ui/screens/settings.md)）。苦手の画面は、まだ無い。
+- 画面は、きろく（場面ごとに、遊んだ回の振り返りを縦に並べる）と設定（すべて消す）を作った（2026-11-12。[`ui/screens/records.md`](./ui/screens/records.md)・[`ui/screens/settings.md`](./ui/screens/settings.md)）。苦手の画面は、まだ無い。
 
 ## 置き場所
 

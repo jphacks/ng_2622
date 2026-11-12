@@ -68,7 +68,7 @@ struct RecordLibraryTests {
     #expect(scenes.allSatisfy { $0.name == "名なしの場面" && $0.entries.count == 1 })
   }
 
-  /// 開き直すときの形: 自分 1 人だけで、点と内訳と講評が記録のとおり
+  /// 縦の流れに出す形: 自分 1 人だけで、点と内訳と講評が記録のとおり
   @Test func entryForReview() throws {
     let record = try record("a", sceneID: try sceneID(.eikenPre2), minutesAgo: 0)
     let entry = RecordEntry(record)
@@ -77,7 +77,6 @@ struct RecordLibraryTests {
     #expect(entry.content?.items.count == record.result.content?.items.count)
     #expect(entry.results.myReview != nil)
     #expect(entry.layout?.description?.isEmpty == false)
-    #expect(RecordsView.title(of: entry).hasSuffix(entry.results.sceneName))
   }
 
   /// 読み直すと、端末の記録と録音の数に合う
@@ -101,7 +100,30 @@ struct RecordLibraryTests {
     #expect(library.audioCount == 1)
     #expect(library.scenes.map(\.entries.count) == [1, 2])
     // WAV として読めない録音は、聴けるものとして渡さない
-    #expect(library.recording(of: library.scenes[1].entries[1]) == nil)
+    #expect(library.recordings.isEmpty)
+
+    // WAV として読める録音は、読み直したときに 1 度だけ読んで、記録の ID で渡す
+    let wav = FileManager.default.temporaryDirectory.appending(path: "audio-\(UUID().uuidString).wav")
+    try Self.wav(seconds: 1).write(to: wav)
+    defer { try? FileManager.default.removeItem(at: wav) }
+    try store.save(try record("d", sceneID: park, minutesAgo: 1), audio: wav)
+    await library.reload()
+    #expect(library.audioCount == 2)
+    #expect(library.recordings.keys.sorted() == ["d"])
+    #expect(library.recordings["d"]?.duration == 1)
+  }
+
+  /// 16 kHz・16 bit・モノラルの、無音の WAV
+  static func wav(seconds: Int) -> Data {
+    let rate = 16_000
+    let size = rate * 2 * seconds
+    var data = Data()
+    func u32(_ v: Int) { withUnsafeBytes(of: UInt32(v).littleEndian) { data.append(contentsOf: $0) } }
+    func u16(_ v: Int) { withUnsafeBytes(of: UInt16(v).littleEndian) { data.append(contentsOf: $0) } }
+    data.append(contentsOf: Array("RIFF".utf8)); u32(36 + size); data.append(contentsOf: Array("WAVE".utf8))
+    data.append(contentsOf: Array("fmt ".utf8)); u32(16); u16(1); u16(1); u32(rate); u32(rate * 2); u16(2); u16(16)
+    data.append(contentsOf: Array("data".utf8)); u32(size); data.append(Data(count: size))
+    return data
   }
 
   /// すべて消すと、端末の記録も例の記録も無くなり、数が 0 になる
