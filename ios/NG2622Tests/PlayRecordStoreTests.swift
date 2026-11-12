@@ -103,9 +103,53 @@ struct PlayRecordStoreTests {
     let score = try #require(result["score"] as? [String: Any])
     #expect(Set(score.keys) == ["content", "expression", "speech", "total"])
     let feedback = try #require(result["feedback"] as? [String: Any])
-    #expect(Set(feedback.keys) == ["nextStep", "rewrite", "speechTip"])
+    #expect(Set(feedback.keys) == ["nextStep", "rewrite", "speechTip", "expressionBasis"])
     #expect(!text.contains("はなこ"))
     #expect(!text.contains("rank"))
+  }
+
+  /// 表現の点の根拠は、保存して読み戻しても残り、振り返りの形に戻しても残る（画面には出さない）
+  @Test func keepsExpressionBasis() throws {
+    defer { cleanUp() }
+    let sceneID = try sceneID()
+    let record = try record(id: "basis-1", sceneID: sceneID)
+    let basis = try #require(results(sceneID: sceneID).myReview?.expressionBasis)
+    #expect(!basis.isEmpty)
+    #expect(record.result.feedback?.expressionBasis == basis)
+    try store.save(record)
+    let read = try #require(store.record(id: "basis-1"))
+    #expect(read.result.feedback?.expressionBasis == basis)
+    #expect(read.results.myReview?.expressionBasis == basis)
+  }
+
+  /// 欄を足す前の記録（feedback に expressionBasis が無い）も読め、根拠は nil になる。版は /1 のまま
+  @Test func readsRecordWithoutExpressionBasis() throws {
+    let record = try record(sceneID: try sceneID())
+    var json = try #require(try JSONSerialization.jsonObject(with: record.encoded()) as? [String: Any])
+    var result = try #require(json["result"] as? [String: Any])
+    var feedback = try #require(result["feedback"] as? [String: Any])
+    feedback.removeValue(forKey: "expressionBasis")
+    result["feedback"] = feedback
+    json["result"] = result
+    let read = try PlayRecord.decode(JSONSerialization.data(withJSONObject: json))
+    #expect(read.protocol == "scenenglish.record/1")
+    #expect(read.result.feedback != nil)
+    #expect(read.result.feedback?.expressionBasis == nil)
+    #expect(read.result.feedback?.nextStep == record.result.feedback?.nextStep)
+    #expect(read.results.myReview?.expressionBasis == nil)
+  }
+
+  /// 根拠が無い（nil）ときも、欄を省かずに null と書く（play-record.md の「null の欄は省かずに null と書く」）
+  @Test func writesNullExpressionBasis() throws {
+    let feedback = PlayRecord.Feedback(
+      nextStep: .init(kind: "content", text: "t", item: nil, gain: nil), rewrite: nil,
+      speechTip: .init(aspect: "fluency", text: "s"), expressionBasis: nil)
+    let encoder = JSONEncoder()
+    encoder.outputFormatting = .sortedKeys
+    let text = String(decoding: try encoder.encode(feedback), as: UTF8.self)
+    #expect(text.contains(#""expressionBasis":null"#))
+    #expect(text.contains(#""rewrite":null"#))
+    #expect(text.contains(#""item":null"#))
   }
 
   /// 記録から、振り返りの画面に渡す形（自分 1 人の結果）に戻せる

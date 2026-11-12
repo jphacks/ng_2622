@@ -188,7 +188,8 @@ extension RoundResults.Review {
       rewrite: feedback.rewrite.map { Rewrite(before: $0.value1.before, after: $0.value1.after, reason: $0.value1.reason) },
       speechTip: SpeechTip(
         aspect: SpeechTip.Aspect(rawValue: feedback.speechTip.aspect.rawValue) ?? .fluency,
-        text: feedback.speechTip.text))
+        text: feedback.speechTip.text),
+      expressionBasis: feedback.expressionBasis)
   }
 }
 

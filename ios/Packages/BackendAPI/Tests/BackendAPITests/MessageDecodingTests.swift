@@ -77,7 +77,8 @@ struct MessageDecodingTests {
       + #""items":[{"id":"dog","kind":"center","label":"犬","level":"partial"}],"others":0,"#
       + #""recall":{"earned":1,"max":2},"precision":{"correct":1,"said":2}}"#
     let feedback =
-      #"{"nextStep":{"kind":"content","text":"t","item":"dog","gain":4},"rewrite":null,"speechTip":{"aspect":"prosody","text":"s"}}"#
+      #"{"nextStep":{"kind":"content","text":"t","item":"dog","gain":4},"rewrite":null,"speechTip":{"aspect":"prosody","text":"s"},"#
+      + #""expressionBasis":"Uses the present continuous correctly."}"#
     let message = try decode(
       #"{"type":"results","round":1,"sceneId":"temp-eiken-3-park","sceneName":"公園","players":[{"id":"\#(playerID)","name":"はなこ","color":5987302,"rank":1,"score":{"content":50,"expression":60,"speech":70,"total":58},"transcript":"A dog is sleeping. A cat.","content":\#(content),"feedback":\#(feedback)}]}"#
     )
@@ -95,6 +96,21 @@ struct MessageDecodingTests {
     #expect(breakdown.precision.said == 2)
     #expect(review.nextStep.gain == 4)
     #expect(review.speechTip.aspect.rawValue == "prosody")
+    // 表現の点の根拠（画面には出さず、記録と苦手の分析に使う）
+    #expect(review.expressionBasis == "Uses the present continuous correctly.")
+  }
+
+  /// 講評に知らない欄があると、results ごと読めない（openapi.json の additionalProperties: false）。
+  /// 欄を足すと、足す前のビルドのアプリは結果の画面に進めなくなる（2026-11-12 に受け入れた。docs/design/play-record.md）
+  @Test func resultsWithUnknownFeedbackField() throws {
+    let feedback =
+      #"{"nextStep":{"kind":"expression","text":"t","item":null,"gain":null},"rewrite":null,"speechTip":{"aspect":"prosody","text":"s"},"#
+      + #""expressionBasis":"b","newField":"x"}"#
+    #expect(throws: (any Error).self) {
+      try decode(
+        #"{"type":"results","round":1,"sceneId":"temp-eiken-3-park","sceneName":"公園","players":[{"id":"\#(playerID)","name":"はなこ","color":5987302,"rank":1,"score":{"content":50,"expression":60,"speech":70,"total":58},"transcript":"A dog.","content":null,"feedback":\#(feedback)}]}"#
+      )
+    }
   }
 
   /// iPhone から送る join は、type と name だけの JSON になる
