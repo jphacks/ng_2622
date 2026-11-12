@@ -13,6 +13,8 @@ final class SceneLibrary {
 
   private var loads: [String: Task<SceneComposer.Composed?, Never>] = [:]
   private var loaded: Set<String> = []
+  /// 手元の配置から組んだ場面（key ごと）。遊んだ記録の場面を、きろくの画面で何度も出すので覚えておく
+  private var composed: [String: Task<SceneComposer.Composed?, Never>] = [:]
 
   func isLoaded(_ id: String) -> Bool {
     loaded.contains(id)
@@ -26,12 +28,7 @@ final class SceneLibrary {
   /// 読み込んだシーンの複製。読めなかったときは nil
   func instance(of id: String, room: String? = nil) async -> SceneComposer.Composed? {
     guard let template = await load(id, room: room).value else { return nil }
-    let root = template.root.clone(recursive: true)
-    // 動かす部品は、複製の中から名前で探し直す
-    let moving = template.moving.compactMap { m in
-      root.findEntity(named: m.entity.name).map { SceneComposer.Moving(entity: $0, item: m.item) }
-    }
-    return SceneComposer.Composed(root: root, moving: moving)
+    return Self.copy(of: template)
   }
 
   private func load(_ id: String, room: String?) -> Task<SceneComposer.Composed?, Never> {
@@ -51,8 +48,31 @@ final class SceneLibrary {
 
   /// 手元にある配置から、その場で組み立てる（覚えない）。遊んだ記録の場面のように、
   /// ID では取れなくなった場面（作り置きから外した・部屋が閉じた）を出すときに使う。置けた部品が無ければ nil
-  func instance(composing layout: SceneLayout) async -> SceneComposer.Composed? {
-    await Self.compose(layout)
+  /// key を渡すと、組んだ場面を覚えておき、同じ key では組み直さずに複製して渡す
+  func instance(composing layout: SceneLayout, key: String? = nil) async -> SceneComposer.Composed? {
+    guard let key else { return await Self.compose(layout) }
+    let task = composed[key] ?? Task { await Self.compose(layout) }
+    composed[key] = task
+    guard let template = await task.value else {
+      // 組めなかったものは覚えず、次にまた組む
+      composed[key] = nil
+      return nil
+    }
+    return Self.copy(of: template)
+  }
+
+  /// 覚えた、手元の配置から組んだ場面を忘れる（記録を消したとき）
+  func forgetComposedLayouts() {
+    composed.removeAll()
+  }
+
+  /// 組んだ場面の複製。動かす部品は、複製の中から名前で探し直す
+  private static func copy(of template: SceneComposer.Composed) -> SceneComposer.Composed {
+    let root = template.root.clone(recursive: true)
+    let moving = template.moving.compactMap { m in
+      root.findEntity(named: m.entity.name).map { SceneComposer.Moving(entity: $0, item: m.item) }
+    }
+    return SceneComposer.Composed(root: root, moving: moving)
   }
 
   /// 配置の JSON を取って部品を並べる
