@@ -155,11 +155,13 @@ final class RoomSession {
       results.me?.score != nil
     else { return }
     roundRecord?.saved = true
-    // 録音は次のラウンドか退出で消えるので、いまのファイルを指しておく
-    let audio = recorder.recording?.url
+    // 録音は次のラウンドか退出で消える。場面を取るのを待つ間に消されないよう、先に一時のフォルダへ写しておく
+    // （records/ には、記録の json を書いてから写す。録音だけが残る状態を作らない）
+    let audio = recorder.recording.flatMap { Self.holdAudio($0.url, id: round.id) }
     let records = records
     let scenes = scenes
     recordSaving = Task {
+      defer { if let audio { try? FileManager.default.removeItem(at: audio) } }
       do {
         // 3D を出すときに取ってあるので、ふつうは通信しない
         let scene = try await scenes.document(of: results.sceneID, room: results.room)
@@ -169,6 +171,18 @@ final class RoomSession {
       } catch {
         recordLog.error("遊んだ記録を保存できませんでした: \(error, privacy: .public)")
       }
+    }
+  }
+
+  /// 録音を、記録に写すまで一時のフォルダに取っておく。写せなければ nil（録音なしの記録になる）
+  private static func holdAudio(_ url: URL, id: String) -> URL? {
+    let held = FileManager.default.temporaryDirectory.appending(path: "record-\(id).wav")
+    do {
+      try FileManager.default.copyItem(at: url, to: held)
+      return held
+    } catch {
+      recordLog.notice("録音を取っておけませんでした: \(error, privacy: .public)")
+      return nil
     }
   }
 

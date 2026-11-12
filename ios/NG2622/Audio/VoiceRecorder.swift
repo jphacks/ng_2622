@@ -113,6 +113,13 @@ final class VoiceRecorder {
     }
   }
 
+  #if DEBUG
+    /// テスト用。録ったことにする（マイクの無いテストで、録音を記録に写す道を確かめる）
+    func setRecordingForTesting(_ audio: RecordedAudio?) {
+      recording = audio
+    }
+  #endif
+
   private func deactivateSession() {
     try? AVAudioSession.sharedInstance().setActive(false, options: .notifyOthersOnDeactivation)
   }
