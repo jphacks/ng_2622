@@ -162,6 +162,28 @@ struct LiveRoomTrackerTests {
     #expect(review.nextStepBadge == nil)
     #expect(review.nextStep == "犬のことも言ってみよう")
     #expect(review.rewrite == nil)
+    // words の無い results（この項目を足す前のバックエンド）も読め、単語は空
+    #expect(review.words.isEmpty)
+  }
+
+  /// 自分の単語ごとの点と位置は myReview.words に入る
+  @Test func resultsWithWords() throws {
+    var tracker = try joined()
+    let updates = tracker.apply(
+      try message(
+        #"{"type":"results","round":1,"sceneId":"gen-abc","sceneName":"公園","players":[{"id":"\#(me)","name":"たろう","color":5987302,"rank":1,"score":{"content":40,"expression":50,"speech":60,"total":48},"transcript":"A man.","comment":"よい","feedback":{"strength":{"quote":"","text":"よい"},"nextStep":{"kind":"content","gain":null,"text":"犬"},"rewrite":null,"speechTip":{"aspect":"accuracy","text":"man"}},"words":[{"word":"a","accuracy":95,"offsetMs":500,"durationMs":100},{"word":"man","accuracy":41,"offsetMs":610,"durationMs":320}]}]}"#
+      ))
+    guard case .event(.results(let results)) = updates.first else {
+      Issue.record("results でない: \(updates)")
+      return
+    }
+    let words = try #require(results.myReview?.words)
+    #expect(
+      words == [
+        SpokenWord(word: "a", accuracy: 95, offsetMs: 500, durationMs: 100),
+        SpokenWord(word: "man", accuracy: 41, offsetMs: 610, durationMs: 320),
+      ])
+    #expect(words.map(\.isWeak) == [false, true])
   }
 
   @Test func returnedToLobby() throws {

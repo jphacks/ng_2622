@@ -1,7 +1,7 @@
 import type { z } from "zod";
 import type { PlayerStatus } from "../schemas/common";
 import type { PlayerResult, ResultsMessage } from "../schemas/ws";
-import type { Feedback } from "../scoring";
+import type { Feedback, SpokenWord } from "../scoring";
 import { AVATAR_COLORS } from "./player";
 import { fail, ok, type Result } from "./result";
 import type { RoomState } from "./room";
@@ -24,6 +24,8 @@ export type Grade =
       score: Score;
       transcript: string;
       feedback: Feedback;
+      /** 単語ごとの発音の点と録音の中の位置。この項目を足す前に保存した採点には無い */
+      words?: SpokenWord[];
     }
   | { status: "failed" };
 
@@ -161,6 +163,7 @@ export const roundResults = (
       transcript: done?.transcript ?? "",
       comment: done?.feedback.strength.text ?? "",
       feedback: done?.feedback ?? null,
+      words: done?.words ?? [],
     };
   });
   const graded = rows

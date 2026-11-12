@@ -1,10 +1,12 @@
 import Foundation
 
 extension RoundResults {
-  /// 仮の結果。シーンと、参加者の名前・色・自分かどうか・採点できたかを受け取り、点数・文字起こし・講評を作る
+  /// 仮の結果。シーンと、参加者の名前・色・自分かどうか・採点できたかを受け取り、点数・文字起こし・講評を作る。
+  /// selfSpeech（自分の録音を端末で文字起こししたもの）があれば、自分の文字起こしと単語はそれにする（点数と講評は仮のまま）
   static func mock(
     sceneID: String,
-    players: [(id: String, name: String, color: UInt32, isSelf: Bool, graded: Bool)]
+    players: [(id: String, name: String, color: UInt32, isSelf: Bool, graded: Bool)],
+    selfSpeech: DeviceTranscriber.Timed? = nil
   ) -> RoundResults {
     var graded: [PlayerResult] = []
     var ungraded: [PlayerResult] = []
@@ -19,11 +21,16 @@ extension RoundResults {
       // 並び順で文例を割り当てる（プレビューで毎回同じになるように）
       let samples = MockSample.samples(for: sceneID)
       let sample = samples[i % samples.count]
+      let spoken = p.isSelf ? selfSpeech : nil
       graded.append(
         PlayerResult(
           id: p.id, name: p.name, color: p.color, isSelf: p.isSelf,
-          score: sample.score, transcript: sample.transcript, comment: sample.review.strength))
-      if p.isSelf { myReview = sample.review }
+          score: sample.score, transcript: spoken?.text ?? sample.transcript, comment: sample.review.strength))
+      if p.isSelf {
+        var review = sample.review
+        review.words = spoken.map(MockSample.words(from:)) ?? sample.words
+        myReview = review
+      }
     }
 
     // 点数の高い順。採点できなかった人は最後
@@ -45,6 +52,26 @@ private struct MockSample {
   var score: PlayerResult.Score {
     let total = (Double(content) * 0.5 + Double(expression) * 0.25 + Double(speaking) * 0.25).rounded()
     return PlayerResult.Score(content: content, expression: expression, speaking: speaking, total: Int(total))
+  }
+
+  /// 仮の単語ごとの点と位置。Azure と同じく、記号を除いた小文字の単語を 1 語 0.4 秒で並べる。
+  /// 話し方のコツが名指しした単語（無ければ最も長い単語）だけ 60 点未満にする
+  var words: [SpokenWord] {
+    let tokens = transcript.split(separator: " ").map(SpokenWord.normalized).filter { !$0.isEmpty }
+    let named = review.speechTip.split(separator: "“").dropFirst().first?.split(separator: "”").first.map(String.init)
+    let weak = named ?? tokens.max { $0.count < $1.count }
+    return tokens.enumerated().map { i, word in
+      SpokenWord(word: word, accuracy: word == weak ? 48 : 92, offsetMs: 300 + i * 400, durationMs: 340)
+    }
+  }
+
+  /// 端末の文字起こしの語と位置から、仮の点を付けた単語にする。Azure と同じく記号を除いた小文字にし、
+  /// 最も長い単語だけ 60 点未満にする（発音の点は端末では出せないため）
+  static func words(from speech: DeviceTranscriber.Timed) -> [SpokenWord] {
+    let words = speech.words.map { (word: SpokenWord.normalized($0.word), $0.offsetMs, $0.durationMs) }
+      .filter { !$0.word.isEmpty }
+    let weak = words.map(\.word).max { $0.count < $1.count }
+    return words.map { SpokenWord(word: $0.word, accuracy: $0.word == weak ? 48 : 92, offsetMs: $0.1, durationMs: $0.2) }
   }
 
   static func samples(for sceneID: String) -> [MockSample] {

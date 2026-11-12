@@ -7,6 +7,9 @@ struct ReviewView: View {
   var recording: RecordedAudio?
   let onBack: () -> Void
 
+  /// 発音のお手本の読み上げ（言い換えの文と単語で 1 つを使い、同時に鳴らさない）
+  @State private var voice = ModelVoice()
+
   var body: some View {
     VStack(spacing: 0) {
       ResultSubHeader(title: "振り返り", onBack: onBack)
@@ -27,6 +30,7 @@ struct ReviewView: View {
         Spacer()
       }
     }
+    .onDisappear { voice.stop() }
   }
 
   private func content(me: PlayerResult, score: PlayerResult.Score, review: RoundResults.Review) -> some View {
@@ -52,7 +56,7 @@ struct ReviewView: View {
 
       // 自分が話した英文。下の講評の引用と見比べる
       if !me.transcript.isEmpty {
-        TranscriptCard(transcript: me.transcript, recording: recording)
+        TranscriptCard(transcript: me.transcript, words: review.words, recording: recording, voice: voice)
       }
 
       ReviewCard(title: "できたこと") {
@@ -77,9 +81,16 @@ struct ReviewView: View {
               .font(Theme.font(15, .bold))
               .strikethrough()
               .foregroundStyle(Theme.muted)
-            Text(rewrite.after)
-              .font(Theme.font(19, .heavy))
-              .foregroundStyle(Theme.accent)
+            HStack(alignment: .top, spacing: 10) {
+              Text(rewrite.after)
+                .font(Theme.font(19, .heavy))
+                .foregroundStyle(Theme.accent)
+                .frame(maxWidth: .infinity, alignment: .leading)
+              let speaking = voice.speakingText == rewrite.after
+              SpeakButton(isPlaying: speaking, label: "言い換えの文のお手本を聞く") {
+                if speaking { voice.stop() } else { voice.speak(rewrite.after) }
+              }
+            }
             Text(rewrite.reason)
               .font(Theme.font(14, .bold))
               .foregroundStyle(Theme.muted)
@@ -131,11 +142,19 @@ private struct ScoreBar: View {
   }
 }
 
-/// あなたの描写。録音があれば、見出しの右のボタンで聞き直せる（再生中はカードの地を薄い紫にする）
+/// あなたの描写。録音があれば、見出しの右のボタンで聞き直せる（再生中はカードの地を薄い紫にする）。
+/// 単語ごとの点が届いていれば単語を押せるようにし、押すとお手本の読み上げのあとに自分の録音のその単語を流す。
+/// 60 点未満の単語だけ色を付け、点の数字は出さない
 private struct TranscriptCard: View {
   let transcript: String
+  let words: [SpokenWord]
   let recording: RecordedAudio?
+  let voice: ModelVoice
   @State private var player = VoicePlayer()
+  /// 単語の聞き比べで、自分の録音のその単語を流す（カード全体の再生とは分ける）
+  @State private var wordPlayer = VoicePlayer()
+  /// 聞き比べている単語（文字起こしの何語目か）
+  @State private var comparing: Int?
 
   /// 端末にファイルが残っているときだけボタンを出す
   private var playable: RecordedAudio? {
@@ -155,11 +174,19 @@ private struct TranscriptCard: View {
         }
       }
       .frame(minHeight: 22)
-      Text(transcript)
-        .font(Theme.font(17, .bold))
-        .lineSpacing(5)
-        .foregroundStyle(Theme.ink)
-        .fixedSize(horizontal: false, vertical: true)
+      if words.isEmpty {
+        Text(transcript)
+          .font(Theme.font(17, .bold))
+          .lineSpacing(5)
+          .foregroundStyle(Theme.ink)
+          .fixedSize(horizontal: false, vertical: true)
+      } else {
+        wordList
+        Text("単語を押すと、お手本と自分の声を続けて聞けます。赤い単語は発音を見直したい単語です。")
+          .font(Theme.font(13, .bold))
+          .foregroundStyle(Theme.muted)
+          .fixedSize(horizontal: false, vertical: true)
+      }
     }
     .padding(20)
     .frame(maxWidth: .infinity, alignment: .leading)
@@ -167,21 +194,68 @@ private struct TranscriptCard: View {
     .background(player.isPlaying ? Theme.accentSoft : Theme.card, in: RoundedRectangle(cornerRadius: 22))
     .shadow(color: Theme.ink.opacity(0.07), radius: 10, y: 6)
     .animation(.easeInOut(duration: 0.2), value: player.isPlaying)
-    .onDisappear { player.stop() }
+    .onDisappear {
+      player.stop()
+      wordPlayer.stop()
+    }
   }
 
   private func speakerButton(_ audio: RecordedAudio) -> some View {
-    Button {
+    SpeakButton(isPlaying: player.isPlaying, label: "自分の録音を再生") {
+      stopComparing()
       player.toggle(audio)
-    } label: {
-      Image(systemName: player.isPlaying ? "stop.fill" : "speaker.wave.2.fill")
-        .font(.system(size: player.isPlaying ? 13 : 15, weight: .bold))
-        .foregroundStyle(Theme.accent)
-        .frame(width: 32, height: 32)
-        .background(player.isPlaying ? Theme.card : Theme.accentSoft, in: Circle())
-        .contentTransition(.symbolEffect(.replace))
     }
-    .accessibilityLabel(player.isPlaying ? "停止" : "自分の録音を再生")
+  }
+
+  /// 文字起こしの語を並べる。単語ごとの点に当たった語だけ押せる
+  private var wordList: some View {
+    let tokens = SpokenWord.align(transcript: transcript, words: words)
+    return FlowLayout(spacing: 2, lineSpacing: 4) {
+      ForEach(Array(tokens.enumerated()), id: \.offset) { i, item in
+        // お手本を読んでいる間と、自分の録音のその単語を流している間だけ地を付ける
+        let active =
+          comparing == i && (wordPlayer.isPlaying || (item.word != nil && voice.speakingText == item.word?.word))
+        // 押せる語には点線の下線を引き、押せることが分かるようにする
+        let label = Text(item.token)
+          .underline(
+            item.word != nil, pattern: .dot, color: item.word?.isWeak == true ? Theme.red : Theme.gray)
+          .font(Theme.font(17, .bold))
+          .foregroundStyle(item.word?.isWeak == true ? Theme.red : Theme.ink)
+          .padding(.horizontal, 3)
+          .padding(.vertical, 2)
+          .background(active ? Theme.accentSoft : .clear, in: RoundedRectangle(cornerRadius: 6))
+        if let word = item.word {
+          Button {
+            compare(word, at: i)
+          } label: {
+            label
+          }
+          .buttonStyle(.plain)
+          .accessibilityLabel(item.token)
+          .accessibilityHint(
+            word.isWeak ? "発音を見直したい単語。お手本と自分の声を続けて聞く" : "お手本と自分の声を続けて聞く")
+        } else {
+          label
+        }
+      }
+    }
+  }
+
+  /// お手本の読み上げのあとに、自分の録音のその単語の部分を流す。録音が無ければお手本だけ
+  private func compare(_ word: SpokenWord, at index: Int) {
+    player.stop()
+    wordPlayer.stop()
+    comparing = index
+    let audio = playable
+    voice.speak(word.word) { [wordPlayer] in
+      if let audio { wordPlayer.play(audio, segment: word.segment) }
+    }
+  }
+
+  private func stopComparing() {
+    comparing = nil
+    voice.stop()
+    wordPlayer.stop()
   }
 }
 

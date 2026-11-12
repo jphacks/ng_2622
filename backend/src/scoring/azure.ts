@@ -18,6 +18,9 @@ const assessmentHeader = (referenceText: string) => {
 
 type Word = {
   Word?: string;
+  // 音声の頭からの開始時刻と長さ。単位は 100 ナノ秒
+  Offset?: number;
+  Duration?: number;
   AccuracyScore?: number;
   ErrorType?: string;
   PronunciationAssessment?: { AccuracyScore?: number; ErrorType?: string };
@@ -43,6 +46,9 @@ type AzureResponse = {
 };
 
 export class AzureError extends Error {}
+
+// Azure の時刻（100 ナノ秒単位）をミリ秒にする。無ければ 0
+const ticksToMs = (ticks?: number) => Math.round((ticks ?? 0) / 10_000);
 
 // 何も聞き取れなかったときは null を返す
 export async function assessSpeech(
@@ -93,6 +99,8 @@ export async function assessSpeech(
       accuracy:
         w.AccuracyScore ?? w.PronunciationAssessment?.AccuracyScore ?? 0,
       errorType: w.ErrorType ?? w.PronunciationAssessment?.ErrorType ?? "None",
+      offsetMs: ticksToMs(w.Offset),
+      durationMs: ticksToMs(w.Duration),
     })),
   };
 }

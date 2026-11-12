@@ -157,7 +157,13 @@ extension RoundResults {
             PlayerResult.Score(content: $0.content, expression: $0.expression, speaking: $0.speech, total: $0.total)
           },
           transcript: p.transcript, comment: p.comment),
-        review: p.feedback.map { RoundResults.Review($0.value1) }
+        review: p.feedback.map {
+          var review = RoundResults.Review($0.value1)
+          review.words = (p.words ?? []).map {
+            SpokenWord(word: $0.word, accuracy: $0.accuracy, offsetMs: $0.offsetMs, durationMs: $0.durationMs)
+          }
+          return review
+        }
       )
     }
     // バックエンドも順位の順に送るが、同じ順位の中では届いた順を保って並べ直す

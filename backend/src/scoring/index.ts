@@ -11,9 +11,26 @@ import type {
   ScoreResult,
   ScoringEnv,
   SpeechScore,
+  SpokenWord,
 } from "./types";
 
-export type { Feedback, ScoreResult, ScoringEnv } from "./types";
+export type {
+  Feedback,
+  ScoreResult,
+  ScoringEnv,
+  SpokenWord,
+} from "./types";
+
+// 振り返りの単語の聞き比べに送る分。点は整数にし、誤りの種類は送らない（色分けは点で決める）
+const spokenWords = (speech: SpeechScore): SpokenWord[] =>
+  speech.words
+    .filter((w) => w.word)
+    .map((w) => ({
+      word: w.word,
+      accuracy: Math.round(w.accuracy),
+      offsetMs: w.offsetMs,
+      durationMs: w.durationMs,
+    }));
 
 // Claude を呼ばないときの講評の材料
 const SHORT_NOTES: LanguageNotes = {
@@ -108,6 +125,7 @@ export async function score(
         },
         weights: [wc, we, ws],
       }),
+      words: [],
       elements: [],
       speechDetail: { accuracy: 60, fluency: 60, prosody: 60 },
       mode: "fixed",
@@ -165,6 +183,7 @@ export async function score(
         notes: language.notes,
         weights: [wc, we, ws],
       }),
+      words: spokenWords(speech),
       elements: language.elements,
       speechDetail: {
         accuracy: speech.accuracy,
@@ -243,6 +262,7 @@ async function scorePoolScene(
         },
         "",
       ),
+      words: [],
       elements: [],
       speechDetail: FIXED_SPEECH,
       mode: "fixed",
@@ -319,6 +339,7 @@ async function scorePoolScene(
       speech: round(speech.score),
       transcript,
       feedback: poolFeedback(speech, graded, transcript),
+      words: spokenWords(speech),
       elements: [],
       speechDetail: aspects,
       mode: "live",

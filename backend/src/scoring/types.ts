@@ -42,8 +42,16 @@ export type SpeechScore = {
   prosody: number;
   // 上の 3 つの平均。PronScore はこれらをまとめた点なので使わない
   score: number;
-  // 単語ごとの正確さ。話し方の一言で、直す単語を一つ選ぶのに使う
-  words: { word: string; accuracy: number; errorType: string }[];
+  // 単語ごとの正確さ。話し方の一言で直す単語を一つ選ぶのと、振り返りの単語の聞き比べに使う
+  words: (SpokenWord & { errorType: string })[];
+};
+
+// 振り返りで聞き比べる単語。offsetMs・durationMs は録音の頭からの位置（ミリ秒）
+export type SpokenWord = {
+  word: string;
+  accuracy: number;
+  offsetMs: number;
+  durationMs: number;
 };
 
 export type LanguageScore = {
@@ -118,6 +126,8 @@ export type ScoreResult =
       speech: number;
       transcript: string;
       feedback: Feedback;
+      // 単語ごとの発音の点と録音の中の位置。Azure の結果が無い（固定の点数のモード）ときは空
+      words: SpokenWord[];
       // 内容の内訳
       elements: ElementJudgment[];
       // 話し方の内訳

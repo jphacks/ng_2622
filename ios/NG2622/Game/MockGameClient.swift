@@ -48,6 +48,9 @@ final class MockGameClient: GameClient {
   private var plans: [String: Plan] = [:]
   /// ラウンド開始から自分の採点が終わるまで（秒）。話し終えるまでは nil
   private var selfGradingEnd: TimeInterval?
+  /// 自分の録音を端末で文字起こしした文と語の位置。振り返りの「あなたの描写」と単語の聞き比べに使う。
+  /// 採点が終わるまでに間に合わなかった・使えなかったときは nil で、仮の文例を出す
+  private var selfSpeech: DeviceTranscriber.Timed?
   private var lastSent: [Participant] = []
   private var ticker: Task<Void, Never>?
   private var roundRunning = false
@@ -143,6 +146,8 @@ final class MockGameClient: GameClient {
 
   /// 部屋に入る。present の人は先にいて、joining の人は 1 人ずつ入ってくる
   private func enter(as player: PlayerProfile, present: [Participant], joining: [Participant]) {
+    // 自分の声の文字起こしに使う音声モデルを、Live と同じく部屋に入ったときに入れておく
+    Task { await DeviceTranscriber.prepare() }
     let me = Participant(
       id: "me", name: player.name, color: player.color, isSelf: true, isHost: isHost, status: .connected)
     members = present + [me]
@@ -193,6 +198,7 @@ final class MockGameClient: GameClient {
     roundStart = start
     roundRunning = true
     selfGradingEnd = nil
+    selfSpeech = nil
     lastSent = []
     plans = [:]
     for p in members where !p.isSelf {
@@ -211,11 +217,20 @@ final class MockGameClient: GameClient {
     }
   }
 
-  /// 音声は送らない（採点は仮の結果）
+  /// 音声は送らない（点数と講評は仮の結果）。録音は端末で文字起こしし、振り返りに自分の文と語の位置を出す
   func finishSpeaking(audio: RecordedAudio?) async throws {
     guard roundRunning, selfGradingEnd == nil, let elapsed = elapsed() else { return }
     selfGradingEnd = elapsed + .random(in: 2.5...4.5)
     publish()
+    if let audio {
+      let start = roundStart
+      Task { [weak self] in
+        let speech = await DeviceTranscriber.transcribeWithTimes(audio.url)
+        // 次のラウンドに移っていたら使わない
+        guard let self, roundStart == start else { return }
+        selfSpeech = speech
+      }
+    }
   }
 
   func closeRound() async throws {
@@ -260,7 +275,8 @@ final class MockGameClient: GameClient {
     let final = lastSent
     let results = RoundResults.mock(
       sceneID: roundSceneID,
-      players: final.map { (id: $0.id, name: $0.name, color: $0.color, isSelf: $0.isSelf, graded: $0.status == .done) }
+      players: final.map { (id: $0.id, name: $0.name, color: $0.color, isSelf: $0.isSelf, graded: $0.status == .done) },
+      selfSpeech: selfSpeech
     )
     // 待合に戻ったときのために、切断した人は切断中のまま、ほかの人は待合の状態に戻す
     members = final.map { p in

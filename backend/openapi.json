@@ -566,6 +566,40 @@
         "additionalProperties": false,
         "description": "振り返りの講評"
       },
+      "SpokenWord": {
+        "type": "object",
+        "properties": {
+          "word": {
+            "type": "string"
+          },
+          "accuracy": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 100,
+            "description": "発音の正確さ（Azure の単語の AccuracyScore）"
+          },
+          "offsetMs": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991,
+            "description": "録音の頭からの開始時刻（ミリ秒）"
+          },
+          "durationMs": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991,
+            "description": "長さ（ミリ秒）"
+          }
+        },
+        "required": [
+          "word",
+          "accuracy",
+          "offsetMs",
+          "durationMs"
+        ],
+        "additionalProperties": false,
+        "description": "発話の 1 単語"
+      },
       "PlayerResult": {
         "type": "object",
         "properties": {
@@ -618,6 +652,13 @@
               }
             ],
             "description": "振り返りに出す講評。全員分が届くが、詳しく出すのは本人の画面だけにする。採点できなかった人は null"
+          },
+          "words": {
+            "description": "発話の単語ごとの発音の点と、録音の中の位置（振り返りの単語の聞き比べに使う）。採点できなかった人・固定の点数のモードでは空。アプリとバックエンドは別々に出すので、この項目の無い results も読めるように省略可にしている",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/SpokenWord"
+            }
           }
         },
         "required": [
