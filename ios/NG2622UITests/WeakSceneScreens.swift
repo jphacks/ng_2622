@@ -97,6 +97,24 @@ final class WeakSceneScreens: XCTestCase {
     shot("s6-failed-after")
   }
 
+  /// 作れた場面が部屋の置き場に無い（-MockWeakScene missing）: スタートを断られ、難易度を選ぶふつうの待合に戻って一言を出す
+  @MainActor
+  func testPracticeRejected() throws {
+    guard outDir != nil else { throw XCTSkip("WEAK_SCENE_SHOT_DIR が無いので撮らない") }
+    let app = openWeakPoints(scene: "missing")
+    let practice = app.buttons["この苦手の場面で練習する"]
+    XCTAssert(practice.waitForExistence(timeout: 20))
+    practice.tap()
+    XCTAssert(element(app, "lobby-practice").waitForExistence(timeout: 15))
+    app.buttons["スタート"].tap()
+    let notice = element(app, "lobby-practice-notice")
+    XCTAssert(notice.waitForExistence(timeout: 10))
+    XCTAssert(app.buttons["かんたん"].waitForExistence(timeout: 5))
+    XCTAssertFalse(element(app, "lobby-practice").exists)
+    sleep(1)
+    shot("s7-lobby-rejected")
+  }
+
   @MainActor
   private func shot(_ name: String) {
     guard let outDir else { return }

@@ -150,6 +150,8 @@ nonisolated struct MockWeakSceneClient: WeakSceneClient {
     case off
     /// 通信できない
     case offline
+    /// 作れたが、部屋の置き場に無い（スタートすると部屋が unknown_scene で断る。MockGameClient.missingSceneID）
+    case missing
   }
 
   var behavior = Behavior.ok
@@ -164,14 +166,16 @@ nonisolated struct MockWeakSceneClient: WeakSceneClient {
     case .limit: throw WeakSceneFailure.rateLimited
     case .off: throw WeakSceneFailure.unavailable
     case .offline: throw WeakSceneFailure.offline
-    case .ok: break
+    case .ok, .missing: break
     }
     let kinds = request.kinds.compactMap { ChecklistKind(rawValue: $0.rawValue) }
     let grade = request.difficulty.rawValue
     let bundle = bundle
+    let missing = behavior == .missing
     let scene = await MainActor.run {
       Self.scene(
-        for: SceneDifficulty(rawValue: grade) ?? .eiken3, kinds: kinds, pool: ScenePool(bundle: bundle), bundle: bundle)
+        for: SceneDifficulty(rawValue: grade) ?? .eiken3, kinds: kinds, pool: ScenePool(bundle: bundle), bundle: bundle,
+        sceneID: missing ? MockGameClient.missingSceneID : "weak-" + UUID().uuidString.lowercased())
     }
     guard let scene else { throw WeakSceneFailure.failed }
     return scene

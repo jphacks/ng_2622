@@ -268,8 +268,10 @@ final class LiveGameClient: GameClient {
         if pendingJoin != nil {
           resolveJoin(.failure(GameError(code: code, message: message)))
         } else {
-          // 押した操作が受け付けられなかった（ホストでない・もう始まっているなど）。画面はそのままにする
+          // 押した操作が受け付けられなかった（ホストでない・もう始まっている・場面が無いなど）。画面に知らせる
+          // （ふつうは画面をそのままにし、苦手の場面のスタートだけはふつうの待合に戻す。RoomSession）
           liveLog.notice("部屋が受け付けませんでした: \(code.rawValue, privacy: .public) \(message, privacy: .public)")
+          continuation.yield(.rejected(code: code.rawValue, message: message))
         }
       }
     }

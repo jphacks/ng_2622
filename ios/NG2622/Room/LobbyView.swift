@@ -42,11 +42,16 @@ struct LobbyView: View {
             PracticeScene(scene: practice)
               .padding(.top, 16)
           } else if session.isHost {
+            if let notice = session.practiceNotice {
+              PracticeNotice(text: notice)
+                .padding(.top, 16)
+            }
             DifficultyPicker(selected: $difficulty, example: example(difficulty))
               .padding(.top, 16)
           }
         }
         .animation(.easeInOut(duration: 0.3), value: session.isGenerating)
+        .animation(.easeInOut(duration: 0.3), value: session.practice == nil)
         // カードの影が切れないよう、スクロールの枠だけ左右に広げる
         .padding(.horizontal, 16)
         .padding(.bottom, 12)
@@ -280,6 +285,31 @@ private struct PracticeScene: View {
     .background(CardBackground())
     .accessibilityElement(children: .combine)
     .accessibilityIdentifier("lobby-practice")
+  }
+}
+
+/// 苦手の場面のスタートを部屋に断られたときの一言（ホストだけ。難易度の選択の上に、次にスタートするまで出す）。
+/// 出たときに VoiceOver でも読み上げる
+private struct PracticeNotice: View {
+  let text: String
+
+  var body: some View {
+    HStack(alignment: .firstTextBaseline, spacing: 10) {
+      Image(systemName: "exclamationmark.circle.fill")
+        .font(.system(size: 18, weight: .bold))
+        .foregroundStyle(Theme.mismatch)
+        .accessibilityHidden(true)
+      Text(text)
+        .font(Theme.font(15, .heavy))
+        .fixedSize(horizontal: false, vertical: true)
+      Spacer(minLength: 0)
+    }
+    .padding(14)
+    .frame(maxWidth: .infinity, alignment: .leading)
+    .background(CardBackground())
+    .accessibilityElement(children: .combine)
+    .accessibilityIdentifier("lobby-practice-notice")
+    .onAppear { AccessibilityNotification.Announcement(text).post() }
   }
 }
 

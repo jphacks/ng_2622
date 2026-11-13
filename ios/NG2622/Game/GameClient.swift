@@ -43,6 +43,9 @@ enum GameEvent: Sendable, Equatable {
   /// ラウンド中か結果発表のときに、ホストが替わった（前のホストが抜けた）。isSelf なら自分が新しいホスト。
   /// 待合では room の members の isHost で分かるので送らない
   case hostChanged(isSelf: Bool)
+  /// 押した操作（スタートなど）を部屋が受け付けなかった（WebSocket の error。join の返事は除く）。code は ErrorCode の値。
+  /// 例: 苦手の場面が置き場に無くて unknown_scene
+  case rejected(code: String, message: String)
 }
 
 enum GameError: Error, Equatable {
