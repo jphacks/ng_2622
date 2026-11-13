@@ -4,13 +4,14 @@ import { test } from "node:test";
 import type { PartOrder } from "../src/parts/workshop";
 import {
   bundledThing,
+  MAX_NEW_PARTS,
   nearestLiving,
   parseLivingId,
   resolveParts,
 } from "../src/scenes/lookup";
 import { PARTS } from "../src/scenes/parts";
 import type { Part, PlanItem } from "../src/scenes/types";
-import { pickFocus } from "../src/scenes/weak";
+import { pickFocus, WEAK_NEW_THINGS, weakText } from "../src/scenes/weak";
 
 const LAMP: PartOrder = {
   id: "lamp_street",
@@ -250,4 +251,11 @@ test("人・動物・建物を「物」として注文したら、作らずに�
       [order.id],
     );
   }
+});
+
+test("新しい物の数は、1 回目の指示・2 回目とコードの上限でそろえる（4 個）", () => {
+  assert.equal(WEAK_NEW_THINGS, MAX_NEW_PARTS);
+  assert.equal(MAX_NEW_PARTS, 4);
+  const text = weakText({ kind: "center", habits: [] }, "eiken-3");
+  assert.ok(text.includes("you may also use up to 4 concrete everyday things"));
 });

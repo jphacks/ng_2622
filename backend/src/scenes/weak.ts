@@ -1,4 +1,5 @@
 import { GRADES, kindsOf } from "./grades";
+import { MAX_NEW_PARTS } from "./lookup";
 import type { ChecklistKind, GradeId } from "./types";
 
 // 苦手の場面（POST /weak-scenes）で、1 回目（英文）に足す苦手の指示。
@@ -17,8 +18,8 @@ export type WeakFocus = {
   nextTry?: { viewpoint: WeakViewpoint; text: string };
 };
 
-/** 苦手の場面で、一覧に無い物（その場で部品を作る物）を書いてよい数 */
-export const WEAK_NEW_THINGS = 3;
+/** 苦手の場面で、一覧に無い物（その場で部品を作る物）を書いてよい数。2 回目とコードの上限（lookup.ts）とそろえる */
+export const WEAK_NEW_THINGS = MAX_NEW_PARTS;
 
 /**
  * 狙う種類。kinds（言えた割合の低い順）のうち、その級に有る最初の種類。
