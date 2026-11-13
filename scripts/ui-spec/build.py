@@ -295,7 +295,7 @@ def flow_svg(screens: list[dict], app: dict, src: Path) -> str:
                 frame = st["node"] or 'style="rounded", color="transparent"'
                 # 長い名前は、枠からはみ出さないよう括弧の中を外す（カードには元の名前を出す）
                 title = s["title"] if len(s["title"]) <= 11 else re.sub(r"（.*?）", "", s["title"])
-                label = title if not st["node"] else f'{title}\\n（{status_tag(s["status"])}）'
+                label = title if not st["node"] else f'{title}\\n{status_tag(s["status"])}'
                 lines.append(
                     f'"{s["id"]}" [shape=box, {frame}, label="{label}", image="{shot.resolve()}", '
                     f'imagescale=true, imagepos="tc", labelloc=b, fixedsize=true, width=1.6, height={4.15 if st["node"] else 3.85}, URL="#{s["id"]}"];')
