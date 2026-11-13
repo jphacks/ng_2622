@@ -35,6 +35,9 @@ struct AppConfig {
     if let delay = string("MockHostStartDelay").flatMap(Double.init) {
       mock.hostStartDelay = max(0, delay)
     }
+    if let duration = string("MockGeneratingDuration").flatMap(Double.init) {
+      mock.generatingDuration = max(0, duration)
+    }
     // 値が読めないときは、通信しない Mock にしておく
     let mode = BackendMode(rawValue: raw) ?? .mock
     let samples = mode == .mock ? max(0, string("MockSampleRecords").flatMap(Int.init) ?? 0) : 0

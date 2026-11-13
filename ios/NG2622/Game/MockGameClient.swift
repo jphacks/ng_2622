@@ -21,6 +21,8 @@ final class MockGameClient: GameClient {
 
   /// このコードだけ「部屋が見つかりません」になる
   static let missingRoomCode = "0000"
+  /// このコードは、満員で入れない
+  static let fullOnJoinCode = "9999"
 
   let events: AsyncStream<GameEvent>
   private let continuation: AsyncStream<GameEvent>.Continuation
@@ -88,9 +90,15 @@ final class MockGameClient: GameClient {
     return code
   }
 
-  func joinRoom(code: String, as player: PlayerProfile) async throws {
-    try await Task.sleep(for: .milliseconds(600))
+  private func checkRoom(code: String) async throws {
+    try await Task.sleep(for: .milliseconds(300))
     guard code != Self.missingRoomCode else { throw GameError.roomNotFound }
+  }
+
+  func joinRoom(code: String, as player: PlayerProfile) async throws {
+    try await checkRoom(code: code)
+    try await Task.sleep(for: .milliseconds(300))
+    guard code != Self.fullOnJoinCode else { throw GameError.roomFull }
     self.code = code
     isHost = false
     // ホストは先にいる。ほかの人は後から入ってくる

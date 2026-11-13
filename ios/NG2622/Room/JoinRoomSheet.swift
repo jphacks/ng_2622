@@ -1,16 +1,26 @@
 import SwiftUI
 
-/// 部屋に入る。ホストの画面の 4 桁のコードを打つと、そろったところで自動で確かめる。
-/// 待合の QR を読み取っても、そのコードを打ったのと同じように確かめる
-struct JoinView: View {
-  let profile: PlayerProfile
-  /// コードの部屋に入る。部屋が無いと投げる
-  let join: (String) async throws -> Void
-  let onBack: () -> Void
+/// 待合（ホスト）の「他のルーム」で開くシート。QR を読み取るか、ほかの部屋の 4 桁のコードを打つと、
+/// そろったところでその部屋に移る（入れてから今の部屋を抜ける）。自分の部屋にほかの人がいるときは、
+/// このシートの上で「この部屋を抜けて、別のルームに入りますか？」と確かめてから移る。
+/// 入れないときは今の部屋のまま、このシートの中で枠を揺らして理由を出す（打ち直せるように）
+struct JoinRoomSheet: View {
+  /// このシートを開いたときの番号（OtherRoomFlow.ticket）。移るときに付けて渡す
+  let ticket: Int
+  /// コードがそろったときに、次にすること（通信しない）
+  let step: (String) -> RoomSession.MoveStep
+  /// code の部屋に移る。入れないと投げる（今の部屋のまま）
+  let move: (String, Int) async throws -> Void
+  /// 移っている途中。シートが消えたら止める
+  @State private var moveTask: Task<Void, Never>?
+  /// ほかの人がいるので、移るかを確かめている部屋のコード
+  @State private var confirming: String?
 
   @State private var code = ""
+  /// 移っている途中（入れるかの返事を待っている）。この間はキーを押せず、下に引いても閉じない
   @State private var checking = false
-  @State private var failed = false
+  /// 入れなかった理由
+  @State private var failure: String?
   /// 間違えたときに横に揺らす回数
   @State private var shakes = 0
   @State private var scanning = false
@@ -21,38 +31,26 @@ struct JoinView: View {
   /// この端末で QR を読めないときの一言
   @State private var scanNote: String?
 
-  private static let length = 4
+  private static let length = RoomLink.codeLength
 
   var body: some View {
     VStack(spacing: 0) {
-      HStack {
-        CircleIconButton(systemName: "chevron.left", label: "戻る", action: onBack)
-        Spacer()
-      }
-      .padding(.top, 8)
-
-      HStack(spacing: 8) {
-        Avatar(name: profile.name, color: profile.color, size: 30)
-        Text(profile.name).font(Theme.font(16, .heavy))
-      }
-      .padding(.leading, 5)
-      .padding(.trailing, 14)
-      .padding(.vertical, 5)
-      .background(.white, in: Capsule())
-      .shadow(color: Theme.ink.opacity(0.06), radius: 6, y: 3)
-      .padding(.top, 4)
-
+      Text("他のルームに入る")
+        .font(Theme.font(24, .black))
+        .padding(.top, 30)
+        .padding(.bottom, 20)
+      scanButton
       Text("部屋のコード")
         .font(Theme.font(17, .heavy))
         .foregroundStyle(Theme.muted)
-        .padding(.top, 30)
-        .padding(.bottom, 14)
+        .padding(.top, 22)
+        .padding(.bottom, 12)
       codeBoxes
         .modifier(Shake(amount: CGFloat(shakes)))
         .animation(.linear(duration: 0.35), value: shakes)
       ZStack {
-        if failed {
-          Text("部屋が見つかりません")
+        if let failure {
+          Text(failure)
             .foregroundStyle(Theme.red)
         } else if checking {
           ProgressView().tint(Theme.accent)
@@ -62,13 +60,10 @@ struct JoinView: View {
         }
       }
       .font(Theme.font(15, .heavy))
-      .frame(height: 44)
-
-      scanButton
-
-      Spacer(minLength: 8)
+      .frame(height: 40)
+      Spacer(minLength: 0)
       keypad
-        .padding(.bottom, 16)
+        .padding(.bottom, 12)
     }
     .frame(width: 346)
     .frame(maxWidth: .infinity)
@@ -83,12 +78,48 @@ struct JoinView: View {
       )
     }
     .sensoryFeedback(.success, trigger: scans)
+    .overlay {
+      if let pending = confirming {
+        ConfirmDialog(
+          title: "この部屋を抜けて、\n別のルームに入りますか？",
+          message: "残った人は、このまま遊べます。",
+          action: "入る",
+          onCancel: {
+            confirming = nil
+            code = ""
+          },
+          onAction: {
+            // 2 度押しても、移るのは 1 度だけ
+            guard confirming != nil else { return }
+            confirming = nil
+            start(pending)
+          })
+      }
+    }
+    .animation(.easeOut(duration: 0.15), value: confirming)
+    // 確かめている間と移っている途中は、下に引いて閉じない（閉じたシートの結果で移らないように）
+    .interactiveDismissDisabled(checking || confirming != nil)
+    // それでもシートが消えたら、移るのを止める（今の部屋のまま）
+    .onDisappear { moveTask?.cancel() }
+  }
+
+  /// 入れなかった理由の一言（シートの中に出す）。部屋が無いと分かったときだけ「部屋が見つかりません」にし、
+  /// 通信の失敗やそのほかは「つながりませんでした」にする。今いる部屋のコードは、通信せずに「いまいる部屋です」
+  static func message(for error: any Error) -> String {
+    switch error {
+    case GameError.roomNotFound: "部屋が見つかりません"
+    case RoomSession.MoveError.sameRoom: "いまいる部屋です"
+    case RoomSession.MoveError.sheetClosed: "もう一度打ってください"
+    case GameError.roomFull: "満員で入れません"
+    case GameError.alreadyStarted: "ゲーム中で入れません"
+    default: "つながりませんでした"
+    }
   }
 
   /// 「QR を読み取る」。読めない端末では、押したときに理由を出す
   private var scanButton: some View {
     Button {
-      failed = false
+      failure = nil
       scanNote = QRScannerView.unavailableReason
       if scanNote == nil { scanning = true }
     } label: {
@@ -103,11 +134,11 @@ struct JoinView: View {
     .disabled(checking)
   }
 
-  /// QR から読めたコードを、打ったときと同じように確かめる
+  /// QR から読めたコードを、打ったときと同じように扱う
   private func enterScanned() {
     guard let scanned = scannedCode else { return }
     scannedCode = nil
-    failed = false
+    failure = nil
     code = scanned
     submit()
   }
@@ -125,7 +156,7 @@ struct JoinView: View {
           .background(.white, in: RoundedRectangle(cornerRadius: 20))
           .overlay {
             RoundedRectangle(cornerRadius: 20)
-              .strokeBorder(failed ? Theme.red : isCursor ? Theme.accent : Theme.line, lineWidth: 2.5)
+              .strokeBorder(failure != nil ? Theme.red : isCursor ? Theme.accent : Theme.line, lineWidth: 2.5)
           }
           .animation(.spring(duration: 0.2, bounce: 0.4), value: digit)
       }
@@ -167,7 +198,7 @@ struct JoinView: View {
   }
 
   private func press(_ key: String) {
-    failed = false
+    failure = nil
     scanNote = nil
     if key == "del" {
       if !code.isEmpty { code.removeLast() }
@@ -178,19 +209,43 @@ struct JoinView: View {
     if code.count == Self.length { submit() }
   }
 
+  /// コードがそろった。今いる部屋なら通信せずに知らせ、ほかの人がいれば確かめ、いなければそのまま移る
   private func submit() {
-    checking = true
     let entered = code
-    Task {
+    switch step(entered) {
+    case .sameRoom:
+      fail(RoomSession.MoveError.sameRoom)
+    case .confirm:
+      confirming = entered
+    case .move:
+      start(entered)
+    }
+  }
+
+  /// code の部屋に移る。入れたら待合が移った先に替わり、このシートも閉じる
+  private func start(_ entered: String) {
+    guard !checking else { return }
+    checking = true
+    let ticket = ticket
+    moveTask = Task {
       do {
-        try await join(entered)
+        try await move(entered, ticket)
+      } catch RoomSession.MoveError.alreadyMoving {
+        // もう移り始めている。2 度目は何もしない
       } catch {
-        failed = true
-        shakes += 1
-        code = ""
+        if !Task.isCancelled { fail(error) }
       }
       checking = false
     }
+  }
+
+  /// 入れなかった。枠を揺らして理由を出し、読み上げる。打ち直せるようにコードを消す
+  private func fail(_ error: any Error) {
+    let message = Self.message(for: error)
+    failure = message
+    shakes += 1
+    code = ""
+    AccessibilityNotification.Announcement(message).post()
   }
 }
 
