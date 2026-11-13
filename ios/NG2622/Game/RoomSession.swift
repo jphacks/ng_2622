@@ -48,6 +48,8 @@ final class RoomSession {
     case sameRoom
     /// もう別の部屋に移り始めている
     case alreadyMoving
+    /// 閉じた（または開き直した）シートからの「移る」。受け付けない
+    case sheetClosed
   }
 
   private struct RoundRecord {

@@ -185,6 +185,15 @@ struct RoomMoveTests {
     #expect(JoinRoomSheet.message(for: GameError.alreadyStarted) == "ゲーム中で入れません")
     #expect(JoinRoomSheet.message(for: GameError.connectionFailed) == "つながりませんでした")
     #expect(JoinRoomSheet.message(for: URLError(.notConnectedToInternet)) == "つながりませんでした")
+    #expect(JoinRoomSheet.message(for: RoomSession.MoveError.sheetClosed) == "もう一度打ってください")
+  }
+
+  /// 部屋の画面は、今の場面がプレイならプレイから始める（移った直後に始まっていたラウンドで待合を挟まない）
+  @Test func roomViewStartsWithRound() {
+    let info = RoundInfo(sceneID: "gen-abcdefghij", startsAt: Date(), room: "4821")
+    #expect(RoomView.showsRound(.playing(info)))
+    #expect(!RoomView.showsRound(.lobby))
+    #expect(!RoomView.showsRound(.waiting(enteredAt: Date())))
   }
 
   /// 移っている途中にもう一度 move を呼んでも、2 つ目の部屋には入らない（幽霊の参加者を残さない）

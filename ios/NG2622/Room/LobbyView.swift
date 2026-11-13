@@ -69,8 +69,9 @@ struct LobbyView: View {
         ticket: flow.ticket,
         step: { session.step(for: $0) },
         move: { code, ticket in
-          // いま開いているシートからだけ移る（閉じたシートの古い操作では移らない）
-          guard flow.accepts(ticket) else { return }
+          // いま開いているシートからだけ移る（閉じたシートの古い操作では移らない）。
+          // 受け付けないときは投げ、シートが失敗として扱ってコードを消す（打ち直せるように）
+          guard flow.accepts(ticket) else { throw RoomSession.MoveError.sheetClosed }
           try await onMove(code)
         }
       )

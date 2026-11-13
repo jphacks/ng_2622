@@ -109,6 +109,7 @@ struct JoinRoomSheet: View {
     switch error {
     case GameError.roomNotFound: "部屋が見つかりません"
     case RoomSession.MoveError.sameRoom: "いまいる部屋です"
+    case RoomSession.MoveError.sheetClosed: "もう一度打ってください"
     case GameError.roomFull: "満員で入れません"
     case GameError.alreadyStarted: "ゲーム中で入れません"
     default: "つながりませんでした"
