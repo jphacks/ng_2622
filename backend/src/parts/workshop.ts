@@ -165,10 +165,8 @@ const makeOne = async (
     signal: opts.signal,
   });
   if (!outcome.ok) {
-    console.error(
-      `部品 ${order.id} を作れなかった（${outcome.kind}）`,
-      outcome.reason,
-    );
+    // 理由の文（Claude が書いた英文を含みうる）はログに出さない。種類だけを出し、文は呼んだ側に返す
+    console.error(`部品 ${order.id} を作れなかった（${outcome.kind}）`);
     return {
       ok: false,
       reason: `${outcome.kind}: ${outcome.reason}`,
