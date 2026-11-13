@@ -34,6 +34,8 @@ struct DioramaView: View {
   /// USDZ を読めずに fallback の場面を出したときに、読めなかった USDZ の場所を渡して呼ぶ
   /// （ホームが見本の字や振り方を戻すのに使う）
   var onFallback: ((URL) -> Void)?
+  /// 3D を世界に置き終えた（描き始める）ときに呼ぶ。ホームが、前の 3D を消す時を合わせるのに使う
+  var onShown: (() -> Void)?
 
   /// 形が出たか。読み込み済みなら最初から出す。まだなら、読み込めたらふわっと出す
   @State private var isShown: Bool
@@ -107,6 +109,7 @@ struct DioramaView: View {
         failed = true
       }
       isShown = true
+      onShown?()
     } update: { content in
       guard let world = content.entities.first(where: { $0.name == "world" }),
         let camera = content.entities.first(where: { $0.name == "camera" })
@@ -135,6 +138,15 @@ struct DioramaView: View {
       from: target + [0, distance * sin(t), distance * cos(t)],
       relativeTo: nil
     )
+  }
+}
+
+extension DioramaView {
+  /// 3D を世界に置き終えたときに呼ぶ処理を足す
+  func onShown(_ action: @escaping () -> Void) -> DioramaView {
+    var view = self
+    view.onShown = action
+    return view
   }
 }
 

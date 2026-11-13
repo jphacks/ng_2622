@@ -23,7 +23,7 @@ const schedule: TitleSchedule = {
       file: "hackathon.usdz",
       sha256:
         "ecc5df6420d58288105de59ecfde931755a1d345b0789245f9dca72f09719dae",
-      caption: "広告の見本：JPHACKS",
+      caption: "JPHACKS",
       startsAt: "2026-11-12T15:00:00Z",
       expiresAt: "2026-11-15T14:59:59Z",
     },
@@ -31,7 +31,7 @@ const schedule: TitleSchedule = {
       id: "other-sponsor",
       file: "other.usdz",
       sha256: "0".repeat(64),
-      caption: "広告の見本：ほか",
+      caption: "ほかの会社",
       startsAt: "2026-11-01T00:00:00Z",
       expiresAt: "2026-12-31T14:59:59Z",
     },
@@ -73,7 +73,7 @@ test("返す id（予定の id と sha256 の先頭 8 文字）は、アプリ�
 test("JPHACKS は日本時間 2026-11-15 23:59:59 まで", () => {
   const entry = TITLE_SCHEDULE.titles.find((e) => e.id === "jphacks-2026");
   assert.equal(entry?.expiresAt, "2026-11-15T14:59:59Z");
-  assert.equal(entry?.caption, "広告の見本：JPHACKS");
+  assert.equal(entry?.caption, "JPHACKS");
 });
 
 test("配るファイルは assets/title の直下の .usdz（assets/.assetsignore で戻すのはそれだけ）", () => {
@@ -102,7 +102,7 @@ test("期間の中なら、id に sha256 の先頭を付け、model は同じホ
   const title = currentTitle(schedule, ["jphacks-2026"], inside, ORIGIN);
   assert.deepEqual(title, {
     id: "jphacks-2026-ecc5df64",
-    caption: "広告の見本：JPHACKS",
+    caption: "JPHACKS",
     model: "https://example.workers.dev/title/hackathon.usdz?v=ecc5df64",
     sha256: schedule.titles[0].sha256,
     expiresAt: "2026-11-15T14:59:59Z",
