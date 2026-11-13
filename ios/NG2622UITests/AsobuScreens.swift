@@ -136,6 +136,37 @@ final class AsobuScreens: XCTestCase {
     XCTAssert(play.waitForExistence(timeout: 10))
   }
 
+  /// 移った先のラウンドが、移った直後（閉じかけのシートの下）に始まる道。プレイの 3D が回ってから止まって描かれるかを、
+  /// 続けて撮ったコマで見る。MOCK_HOST_START_DELAY=0・MOCK_GENERATING_DURATION=0 でビルドし、
+  /// 環境変数 ASOBU_FAST_START（xcodebuild には TEST_RUNNER_ASOBU_FAST_START）を付けたときだけ動かす
+  @MainActor
+  func testMoveIntoStartingRound() throws {
+    guard outDir != nil, ProcessInfo.processInfo.environment["ASOBU_FAST_START"] != nil else {
+      throw XCTSkip("ASOBU_SHOT_DIR と ASOBU_FAST_START が無いので撮らない")
+    }
+    let app = XCUIApplication()
+    app.launchArguments += ["-player.name", "Mika", "-player.color", "0"]
+    app.launch()
+    let play = app.buttons["あそぶ"]
+    XCTAssert(play.waitForExistence(timeout: 20))
+    sleep(2)
+    play.tap()
+    XCTAssert(app.buttons["スタート"].waitForExistence(timeout: 20))
+    sleep(2)
+    app.buttons["他のルーム"].tap()
+    XCTAssert(app.staticTexts["他のルームに入る"].waitForExistence(timeout: 5))
+    for key in ["4", "8", "2"] { app.buttons[key].tap() }
+    app.buttons["1"].tap()
+    let enter = app.buttons["入る"]
+    if enter.waitForExistence(timeout: 2) { enter.tap() }
+    let moved = Date()
+    for _ in 0..<70 {
+      shot(String(format: "fast-f-%05d", Int(Date().timeIntervalSince(moved) * 1000)))
+    }
+    finishRound(app)
+    XCTAssert(play.waitForExistence(timeout: 10))
+  }
+
   /// 「あそぶ」→ スタート、と「あそぶ」→ 他のルームで移る、を 3 回ずつくり返し、回転中と録音中の場面を続けて撮る
   @MainActor
   func testPlayRotates() throws {
