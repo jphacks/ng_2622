@@ -127,6 +127,12 @@ struct WeakPointsView: View {
       }
     }
     .animation(.spring(duration: 0.4), value: showsNotice)
+    // 作っている → できた に替わったら、VoiceOver に読み上げで知らせる
+    .onChange(of: scenePhase) { old, new in
+      if old == .making, case .ready(let scene) = new {
+        AccessibilityNotification.Announcement("苦手の場面ができました。\(scene.name)").post()
+      }
+    }
     .task(id: analyzer.scenes?.notices ?? 0) {
       guard let scenes = analyzer.scenes, scenes.notices > scenes.noticed else { return }
       scenes.markNoticed()

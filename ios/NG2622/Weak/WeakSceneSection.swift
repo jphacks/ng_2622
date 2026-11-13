@@ -32,6 +32,7 @@ struct WeakSceneNotice: View {
         .font(.system(size: 26, weight: .bold))
         .symbolRenderingMode(.palette)
         .foregroundStyle(.white, Theme.mismatch)
+        .accessibilityHidden(true)
       Text(Self.text)
         .font(Theme.font(18, .heavy))
         .foregroundStyle(Theme.ink)
@@ -82,8 +83,10 @@ private struct WeakSceneReady: View {
   var body: some View {
     VStack(alignment: .leading, spacing: 16) {
       HStack(alignment: .center, spacing: 14) {
+        // 名前は右の文で読むので、3D の「〜の場面」は読ませない（2 度読まない）
         WeakSceneThumbnail(scene: scene)
           .frame(width: Self.thumbnail, height: Self.thumbnail)
+          .accessibilityHidden(true)
         VStack(alignment: .leading, spacing: 4) {
           Text("苦手の場面ができました")
             .font(Theme.font(14, .heavy))

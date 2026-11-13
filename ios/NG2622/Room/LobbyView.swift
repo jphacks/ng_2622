@@ -268,6 +268,7 @@ private struct PracticeScene: View {
           .foregroundStyle(Theme.accent)
           .frame(width: 52, height: 52)
           .background(Theme.accentSoft, in: Circle())
+          .accessibilityHidden(true)
         VStack(alignment: .leading, spacing: 4) {
           Text(scene.name)
             .font(Theme.font(22, .black))
