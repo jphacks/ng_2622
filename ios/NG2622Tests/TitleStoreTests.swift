@@ -36,7 +36,7 @@ struct TitleStoreTests {
   let source = StubSource()
   /// テストの bundle には同梱の 3D が無いので、いつも通信で取る
   let testBundle = Bundle(for: BundleToken.self)
-  let now = Date(timeIntervalSince1970: 1_794_700_000)  // 2026-11-15 0:26（UTC）
+  let now = Date(timeIntervalSince1970: 1_794_700_000)  // 2026-11-14T23:46:40Z（日本時間 11/15 8:46:40）
 
   func store(bundle: Bundle? = nil) -> TitleStore {
     TitleStore(directory: directory, source: source, bundle: bundle ?? testBundle)
@@ -184,6 +184,47 @@ struct TitleStoreTests {
     #expect(store.current(now: now) == nil)
   }
 
+  /// 前に覚えたものがあるときにつながらなければ、期限まではそのまま出す（取り直さない）
+  @Test func keepsStoredWhenOffline() async throws {
+    defer { cleanUp() }
+    let store = store()
+    source.latestResult = .success(remote("jphacks-2026-aaaaaaaa", Data("usdz-a".utf8)))
+    await store.refresh(now: { now })
+    source.latestResult = .failure(Offline())
+    await store.refresh(now: { now })
+    #expect(source.downloads == 1)
+    #expect(store.current(now: now)?.title.id == "jphacks-2026-aaaaaaaa")
+    #expect(usdzFiles() == ["jphacks-2026-aaaaaaaa.usdz"])
+  }
+
+  /// 前に覚えたものがあるときに、新しい 3D の sha256 が合わなければ、新しい方を捨て、前のものも消す
+  /// （サーバーは前のものを「今のもの」としていないため）。次に確かめたときに、もう一度取る
+  @Test func digestMismatchAfterStoredClearsBoth() async throws {
+    defer { cleanUp() }
+    let store = store()
+    source.latestResult = .success(remote("jphacks-2026-aaaaaaaa", Data("usdz-a".utf8)))
+    await store.refresh(now: { now })
+    let next = remote("jphacks-2026-bbbbbbbb", Data("usdz-b".utf8))
+    source.files[next.model] = Data("tampered".utf8)
+    source.latestResult = .success(next)
+    await store.refresh(now: { now })
+    #expect(store.current(now: now) == nil)
+    #expect(usdzFiles().isEmpty)
+    source.files[next.model] = Data("usdz-b".utf8)
+    await store.refresh(now: { now })
+    #expect(store.current(now: now)?.title.id == "jphacks-2026-bbbbbbbb")
+  }
+
+  /// 取り途中で止まったファイル（download-*）は、次に確かめるときに消す
+  @Test func removesLeftoverDownloads() async throws {
+    defer { cleanUp() }
+    try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+    try Data("partial".utf8).write(to: directory.appending(path: "download-left.usdz"))
+    source.latestResult = .success(nil)
+    await store().refresh(now: { now })
+    #expect(((try? FileManager.default.contentsOfDirectory(atPath: directory.path)) ?? []).isEmpty)
+  }
+
   /// 期限の過ぎたタイトルが届いたら、出さない
   @Test func ignoresExpiredRemote() async throws {
     defer { cleanUp() }
@@ -241,6 +282,95 @@ struct TitleStoreTests {
     #expect(HomeTitle.current(config: plain, store: store(), now: now) == .park)
     #expect(HomeTitle.park.caption == nil)
   }
+}
+
+/// 本物のバックエンドを呼ぶ LiveTitleSource。通信は URLProtocol で差し替える
+struct LiveTitleSourceTests {
+  let base = URL(string: "https://live-title-\(UUID().uuidString.lowercased()).example")!
+
+  func source(_ routes: [String: (Int, Data)]) -> LiveTitleSource {
+    for (path, response) in routes { StubURLProtocol.set(base.host()! + path, response) }
+    let configuration = URLSessionConfiguration.ephemeral
+    configuration.protocolClasses = [StubURLProtocol.self]
+    return LiveTitleSource(baseURL: base, configuration: configuration)
+  }
+
+  /// 200 の本文から今出すタイトルを読み、3D をそのまま書く
+  @Test func readsTitleAndDownloads() async throws {
+    let data = Data("usdz-a".utf8)
+    let json = #"{"title":{"id":"jphacks-2026-ecc5df64","caption":"広告の見本：JPHACKS","model":"https://example.workers.dev/title/hackathon.usdz?v=ecc5df64","sha256":"ecc5df6420d58288105de59ecfde931755a1d345b0789245f9dca72f09719dae","expiresAt":"2026-11-15T14:59:59Z"}}"#
+    let live = source(["/title": (200, Data(json.utf8)), "/title/hackathon.usdz": (200, data)])
+    let title = try #require(try await live.latest())
+    #expect(title.id == "jphacks-2026-ecc5df64")
+    #expect(title.expiresAt == Date(timeIntervalSince1970: 1_794_754_799))
+    let destination = URL.temporaryDirectory.appending(path: "live-\(UUID().uuidString).usdz")
+    defer { try? FileManager.default.removeItem(at: destination) }
+    try await live.download(base.appending(path: "title/hackathon.usdz"), to: destination)
+    #expect(try Data(contentsOf: destination) == data)
+    let none = source(["/title": (200, Data(#"{"title":null}"#.utf8))])
+    #expect(try await none.latest() == nil)
+  }
+
+  /// GET /title が 404（/title の無い古いバックエンド）なら投げ、覚えているものは残す
+  @Test func notFoundKeepsStored() async throws {
+    let directory = URL.temporaryDirectory.appending(path: "title-live-\(UUID().uuidString)", directoryHint: .isDirectory)
+    defer { try? FileManager.default.removeItem(at: directory) }
+    let now = Date(timeIntervalSince1970: 1_794_700_000)
+    let data = Data("usdz-a".utf8)
+    let stub = TitleStoreTests.StubSource()
+    let model = URL(string: "https://example.workers.dev/title/a.usdz")!
+    stub.files[model] = data
+    stub.latestResult = .success(
+      RemoteTitle(
+        id: "jphacks-2026-aaaaaaaa", caption: "広告の見本：JPHACKS", model: model,
+        sha256: SHA256.hash(data: data).map { String(format: "%02x", $0) }.joined(), expiresAt: now + 3600))
+    let bundle = Bundle(for: BundleToken.self)
+    await TitleStore(directory: directory, source: stub, bundle: bundle).refresh(now: { now })
+
+    let live = source(["/title": (404, Data("Not Found".utf8))])
+    await #expect(throws: (any Error).self) { try await live.latest() }
+    let store = TitleStore(directory: directory, source: live, bundle: bundle)
+    await store.refresh(now: { now })
+    #expect(store.current(now: now)?.title.id == "jphacks-2026-aaaaaaaa")
+  }
+
+  /// 3D が 404 なら投げる（TitleStore は取れなかったものとして扱う）
+  @Test func downloadNotFoundThrows() async throws {
+    let live = source([:])
+    let destination = URL.temporaryDirectory.appending(path: "live-\(UUID().uuidString).usdz")
+    defer { try? FileManager.default.removeItem(at: destination) }
+    await #expect(throws: (any Error).self) {
+      try await live.download(base.appending(path: "title/missing.usdz"), to: destination)
+    }
+  }
+}
+
+/// 決めた状態と本文を返す通信の代わり。routes のキーはホストとパス（テストごとにホストを変えて、並べて流してもぶつからない）
+nonisolated final class StubURLProtocol: URLProtocol {
+  nonisolated(unsafe) private static var routes: [String: (Int, Data)] = [:]
+  private static let lock = NSLock()
+
+  static func set(_ key: String, _ response: (Int, Data)) {
+    lock.withLock { routes[key] = response }
+  }
+
+  override class func canInit(with request: URLRequest) -> Bool { true }
+  override class func canonicalRequest(for request: URLRequest) -> URLRequest { request }
+
+  override func startLoading() {
+    let url = request.url!
+    let key = (url.host() ?? "") + url.path()
+    let (status, body) = Self.lock.withLock { Self.routes[key] } ?? (404, Data())
+    let response = HTTPURLResponse(
+      url: url, statusCode: status, httpVersion: "HTTP/1.1",
+      headerFields: ["Content-Type": status == 200 && url.pathExtension != "usdz" ? "application/json" : "text/plain",
+                     "Content-Length": "\(body.count)"])!
+    client?.urlProtocol(self, didReceive: response, cacheStoragePolicy: .notAllowed)
+    client?.urlProtocol(self, didLoad: body)
+    client?.urlProtocolDidFinishLoading(self)
+  }
+
+  override func stopLoading() {}
 }
 
 /// テストの bundle を指すための印

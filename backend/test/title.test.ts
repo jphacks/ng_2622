@@ -58,6 +58,18 @@ test("予定の期間は始まりが終わりより前で、id は重ならな�
   assert.equal(new Set(ids).size, ids.length);
 });
 
+test("返す id（予定の id と sha256 の先頭 8 文字）は、アプリがファイルの名前に使える形と長さ（64 文字まで）", () => {
+  // アプリの TitleStore.isValid と同じ形: 英小文字か数字で始まり、英小文字・数字・ハイフンで 64 文字まで
+  for (const entry of TITLE_SCHEDULE.titles) {
+    const id = `${entry.id}-${entry.sha256.slice(0, 8)}`;
+    assert.match(
+      id,
+      /^[a-z0-9][a-z0-9-]{0,63}$/,
+      `${id} はアプリで受け付けない`,
+    );
+  }
+});
+
 test("JPHACKS は日本時間 2026-11-15 23:59:59 まで", () => {
   const entry = TITLE_SCHEDULE.titles.find((e) => e.id === "jphacks-2026");
   assert.equal(entry?.expiresAt, "2026-11-15T14:59:59Z");

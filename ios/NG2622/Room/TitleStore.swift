@@ -48,8 +48,9 @@ final class TitleStore {
     directory: URL.cachesDirectory.appending(path: "title", directoryHint: .isDirectory),
     source: AppConfig.current.mode == .live ? AppConfig.current.backendURL.map { LiveTitleSource(baseURL: $0) } : nil)
 
-  /// 取る 3D の大きさの上限（今の会場は 2.4 MB）
-  static let maxBytes = 25 * 1024 * 1024
+  /// 取る 3D の大きさの上限（今の会場は 2.4 MB）。LiveTitleSource は取る途中でも見て、超えたら止める。
+  /// ここでは、取ったあとのファイルでも見る（同梱から写すときと、差し替えた通信のため）
+  nonisolated static let maxBytes = 25 * 1024 * 1024
 
   private let directory: URL
   private let source: (any TitleSource)?
@@ -104,6 +105,8 @@ final class TitleStore {
 
   private func update(now: () -> Date) async {
     guard let source else { return }
+    // 前に取り途中で終わった（アプリが止められた）ファイルを消す。refresh は重ならないので、今取っているものは無い
+    removeDownloads()
     // つながらなくても、期限の過ぎたものは消す
     _ = current(now: now())
     let latest: RemoteTitle?
@@ -115,10 +118,9 @@ final class TitleStore {
       return
     }
     guard let latest else {
-      if readStored() != nil {
-        sceneLog.notice("サーバーが出すタイトルが無くなったので消しました")
-        clear()
-      }
+      // 覚えているものが無くても、置き場に残ったファイルごと消す
+      if readStored() != nil { sceneLog.notice("サーバーが出すタイトルが無くなったので消しました") }
+      clear()
       return
     }
     guard Self.isValid(latest), now() <= latest.expiresAt else {
@@ -203,6 +205,15 @@ final class TitleStore {
     removeFiles(except: nil)
   }
 
+  /// 取り途中のファイル（download-*）を消す
+  private func removeDownloads() {
+    let fm = FileManager.default
+    let files = (try? fm.contentsOfDirectory(at: directory, includingPropertiesForKeys: nil)) ?? []
+    for url in files where url.lastPathComponent.hasPrefix("download-") {
+      try? fm.removeItem(at: url)
+    }
+  }
+
   /// 置き場の 3D のうち、keep 以外を消す。読み込んでおいた場面も忘れる
   private func removeFiles(except keep: String?) {
     let fm = FileManager.default
@@ -241,7 +252,7 @@ final class TitleStore {
   }()
 }
 
-enum TitleStoreError: Error {
+nonisolated enum TitleStoreError: Error {
   case tooLarge(Int)
   case digestMismatch
   case badStatus(Int)
@@ -253,17 +264,19 @@ struct LiveTitleSource: TitleSource {
   private let client: Client
   private let session: URLSession
 
-  init(baseURL: URL) {
-    let short = URLSessionConfiguration.default
+  /// configuration はテストで通信を差し替えるのに使う（protocolClasses）
+  init(baseURL: URL, configuration: URLSessionConfiguration = .default) {
+    let short = configuration.copy() as! URLSessionConfiguration
     short.timeoutIntervalForRequest = 5
     client = Client(
       serverURL: baseURL, transport: URLSessionTransport(configuration: .init(session: URLSession(configuration: short))))
-    let long = URLSessionConfiguration.default
+    let long = configuration.copy() as! URLSessionConfiguration
     long.timeoutIntervalForRequest = 30
     long.timeoutIntervalForResource = 120
     session = URLSession(configuration: long)
   }
 
+  /// 今出すタイトル。200 でない（古いバックエンドで 404 など）・読めないときは投げる（覚えているものはそのまま）
   func latest() async throws -> RemoteTitle? {
     let body = try await client.getTitle().ok.body.json
     // null を許す型は allOf で包まれ、中身は value1 に入る
@@ -273,13 +286,36 @@ struct LiveTitleSource: TitleSource {
       id: title.id, caption: title.caption, model: model, sha256: title.sha256, expiresAt: title.expiresAt)
   }
 
+  /// 3D を取って destination に書く。大きさの上限（TitleStore.maxBytes）は、知らせられた大きさと、受け取りながらの両方で見る
   func download(_ url: URL, to destination: URL) async throws {
-    let (file, response) = try await session.download(from: url)
+    try await Self.fetch(url, to: destination, session: session)
+  }
+
+  /// 受け取りと書き込みは main の外で行う
+  @concurrent nonisolated private static func fetch(_ url: URL, to destination: URL, session: URLSession) async throws {
+    let (bytes, response) = try await session.bytes(from: url)
     let status = (response as? HTTPURLResponse)?.statusCode ?? 0
-    guard status == 200 else {
-      try? FileManager.default.removeItem(at: file)
-      throw TitleStoreError.badStatus(status)
+    guard status == 200 else { throw TitleStoreError.badStatus(status) }
+    guard response.expectedContentLength <= Int64(TitleStore.maxBytes) else {
+      throw TitleStoreError.tooLarge(Int(response.expectedContentLength))
     }
-    try FileManager.default.moveItem(at: file, to: destination)
+    guard FileManager.default.createFile(atPath: destination.path, contents: nil) else {
+      throw CocoaError(.fileWriteUnknown)
+    }
+    let handle = try FileHandle(forWritingTo: destination)
+    defer { try? handle.close() }
+    var buffer = Data()
+    buffer.reserveCapacity(1 << 16)
+    var total = 0
+    for try await byte in bytes {
+      buffer.append(byte)
+      total += 1
+      guard total <= TitleStore.maxBytes else { throw TitleStoreError.tooLarge(total) }
+      if buffer.count >= 1 << 16 {
+        try handle.write(contentsOf: buffer)
+        buffer.removeAll(keepingCapacity: true)
+      }
+    }
+    try handle.write(contentsOf: buffer)
   }
 }

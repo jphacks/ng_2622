@@ -78,7 +78,7 @@ Mock の仮の結果（`MockResults.swift`）は公園の場面向けの文な�
 
 ### Award Day の TestFlight 版の作り方
 
-Award Day（2026-11-15）の会場で使う版。App Store の版との違いは、つなぎ先が staging のバックエンドになることだけ。ホームの 3D を企業の 3D 広告の見本（ハッカソンの会場。[`assets/title/`](../../assets/title/README.md)、タイトルの下に「広告の見本：JPHACKS」）にするのは、アプリではなく staging のバックエンドが決める（`GET /title`。staging にだけ `TITLE_CAMPAIGN` を付けてデプロイする。手順は [`backend/README.md`](../../backend/README.md) の「staging だけで出す」、決め方は [ADR](../adr/20261113-decide-title-diorama-on-server-with-expiry.md)）。アプリは、起動時と前に戻ったときに確かめ、次にホームを開いたときから会場を出し、期限（日本時間 11/15 23:59:59）を過ぎたら公園に戻す。scheme と構成は App Store の版と同じ `NG2622 Store` のまま、Archive のコマンドでつなぎ先と版の番号だけを上書きする（別の構成や scheme は作らない）。
+Award Day（2026-11-15）の会場で使う版。App Store の版との違いは、つなぎ先が staging のバックエンドになることだけ。ホームの 3D を企業の 3D 広告の見本（ハッカソンの会場。[`assets/title/`](../../assets/title/README.md)、タイトルの下に「広告の見本：JPHACKS」）にするのは、アプリではなく staging のバックエンドが決める（`GET /title`。staging にだけ `TITLE_CAMPAIGN` を付けてデプロイする。手順は [`backend/README.md`](../../backend/README.md) の「staging だけで出す」、決め方は [ADR](../adr/20261113-decide-title-diorama-on-server-with-expiry.md)）。アプリは、起動時と前に戻ったときに確かめ、次にホームを開いたとき（下の 3 つのどれか）から会場を出し、期限（日本時間 11/15 23:59:59）を過ぎたら公園に戻す。scheme と構成は App Store の版と同じ `NG2622 Store` のまま、Archive のコマンドでつなぎ先と版の番号だけを上書きする（別の構成や scheme は作らない）。
 
 **この版は App Store の審査に出さない。** TestFlight で配るだけにする。使い捨ての staging のつなぎ先が入っているため。App Store Connect で審査に出すビルドを選ぶときに取り違えないよう、版の番号を App Store の版と分ける。
 
@@ -95,9 +95,18 @@ xcodebuild -exportArchive -archivePath build/NG2622-awardday.xcarchive -exportPa
 - `TITLE_DIORAMA` は付けない。Live（ストアの構成も）では使わず、サーバーが決める（`TITLE_DIORAMA` は Mock だけで効く）。
 - `MARKETING_VERSION`: 審査に出している版と別の番号にする（例 `1.0.1`）。App Store Connect は、承認済みの版より低い番号を受け付けない。App Store に出す次の版は、この番号より上にする。
 - `CURRENT_PROJECT_VERSION`: その `MARKETING_VERSION` で上げたことのある番号より大きい数（初めての版なら `1` でよい）。
-- 上げたビルドは TestFlight の「内部テスト」のグループに入れて配る。App Store Connect の「提出準備中」の版には選ばない。
+- 上げたビルドは TestFlight のグループに入れて配る。App Store Connect の「提出準備中」の版には選ばない。
+  - 当日の主は、デモの端末（内部テストのグループで入れたチームの端末）。
+  - 来場者の自分の端末に入れてもらうのは、外部テストのグループ（公開リンク）の Beta App Review が通った場合だけ。通るまでは公開リンクから入れられないので、来場者が入れられるとは約束しない。
 - 上書きが効いたかは、`build/NG2622-awardday.xcarchive/Products/Applications/NG2622.app/Info.plist` の `BackendURL`・`CFBundleShortVersionString`・`CFBundleVersion` で確かめられる（`plutil -p`）。
-- 会場が出るかは、配る前に `curl -s <staging の URL>/title` で `title` が返ることを確かめる。アプリは 1 回目の起動で 3D を取り、2 回目に開いたときから会場を出す（1 回目は公園）。
+- 会場が出るかは、配る前に `curl -s <staging の URL>/title` で `title` が返ることを確かめる。
+- アプリは、起動時と前に戻ったときに裏で 3D を取り、次にホームを開いたときから会場を出す。初めて入れた端末では 1 回目の起動は公園で、会場が出るのは次のどれかをしたとき。アプリを裏に回して前に戻すだけでは替わらないので、デモの端末は前もってこのどれかをしておく。
+  1. アプリを終了して起動し直す
+  2. きろくか設定を開いて閉じる
+  3. 部屋から戻る
+- ストアの版（審査に出す版）にも、会場の 3D（`assets/title/hackathon.usdz`、2.4 MB）がアプリの中に入る。Mock でビルド設定 `TITLE_DIORAMA` のときに出すのと、Live でサーバーの 3D と中身が同じなら通信で取らずに写す（会場の回線で取り直さない）ためで、構成ごとに写し分けていない。本番の `GET /title` は null なので、ストアの版の画面には出ない。
+  - 下の審査メモの「no protected third-party material」は、3D をチームが作ったことを言っている。この 3D には JPHACKS（本作品が出るハッカソンの主催）の名前の文字が入る（ロゴの画像は使わず、フォントの文字に色を付けたもの）。画面に出ないファイルでも審査で気になるなら、ストアの構成では写さない（`ios/project.yml` の Copy title dioramas を構成で分ける）か、審査メモに一言足す。
+- 本番で `TITLE_CAMPAIGN` を入れて広告の 3D を出すときは、先に「年齢制限の質問」の「広告」の答えと、App Review に関する情報の審査メモを直す。
 
 ## 入れる値
 
