@@ -33,9 +33,9 @@ final class WeakPointAnalyzer {
   static let app: WeakPointAnalyzer = {
     // Mock では、起動の引数（-MockForgetWeakPoints YES）で覚えた分析を忘れてから始められる（UI テストで、作っている間を撮る）
     if AppConfig.current.mode == .mock, UserDefaults.standard.bool(forKey: "MockForgetWeakPoints") {
-      try? WeakPointStore.shared.delete()
+      try? WeakPointStore.app.delete()
     }
-    return WeakPointAnalyzer(client: WeakPointClients.make(), store: .shared)
+    return WeakPointAnalyzer(client: WeakPointClients.make(), store: .app)
   }()
 
   init(client: any WeakPointClient, store: WeakPointStore) {

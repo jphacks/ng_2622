@@ -86,6 +86,7 @@ final class RecordLibrary {
     store: AppConfig.current.mockIgnoresSavedRecords
       ? PlayRecordStore(directory: URL.temporaryDirectory.appending(path: "records-ignored", directoryHint: .isDirectory))
       : .shared,
+    analysis: .app,
     samples: PlayRecord.samples(count: AppConfig.current.mockSampleRecords))
 
   private let store: PlayRecordStore

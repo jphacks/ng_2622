@@ -119,6 +119,13 @@ nonisolated struct WeakPointStore: Sendable {
   static let shared = WeakPointStore(
     directory: URL.applicationSupportDirectory.appending(path: "analysis", directoryHint: .isDirectory))
 
+  /// アプリが使う所。Mock で端末に保存した記録を読まないとき（UI テスト。-MockIgnoresSavedRecords）は、
+  /// 記録と同じく、端末に覚えた分析にも触れない別のフォルダにする
+  @MainActor static let app =
+    AppConfig.current.mockIgnoresSavedRecords
+    ? WeakPointStore(directory: URL.temporaryDirectory.appending(path: "analysis-ignored", directoryHint: .isDirectory))
+    : shared
+
   /// テスト用。一時フォルダの下に置く
   static func temporary() -> WeakPointStore {
     WeakPointStore(directory: FileManager.default.temporaryDirectory.appending(path: "analysis-\(UUID().uuidString)"))
