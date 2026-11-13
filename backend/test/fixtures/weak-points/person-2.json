@@ -1,6 +1,6 @@
 {
   "id": "person-2",
-  "label": "3級 10 回。三単現の s を忘れる（6 回）。良くなった点は仕込まない（横ばい）。1 回だけの誤り（場面に無い猫）を混ぜる",
+  "label": "3級 10 回。三単現の s を忘れる（6 回。have・like・want・need など、進行形では直せない状態の動詞で）。良くなった点は仕込まない（横ばい）。1 回だけの誤り（場面に無い猫）を混ぜる",
   "planted": [
     {
       "key": "third-person-s",
@@ -21,49 +21,49 @@
       "n": 1,
       "scene": "gen-v2-eiken3-park-01",
       "content": 100,
-      "expression": 50
+      "expression": 78
     },
     {
       "n": 2,
       "scene": "gen-v2-eiken3-beach-09",
       "content": 100,
-      "expression": 88
+      "expression": 90
     },
     {
       "n": 3,
       "scene": "gen-v2-eiken3-bus-stop-11",
-      "content": 100,
-      "expression": 42
+      "content": 73,
+      "expression": 62
     },
     {
       "n": 4,
       "scene": "gen-v2-eiken3-cafe-02",
       "content": 100,
-      "expression": 55
+      "expression": 78
     },
     {
       "n": 5,
       "scene": "gen-v2-eiken3-classroom-06",
       "content": 89,
-      "expression": 82
+      "expression": 80
     },
     {
       "n": 6,
       "scene": "gen-v2-eiken3-kitchen-05",
       "content": 100,
-      "expression": 55
+      "expression": 78
     },
     {
       "n": 7,
       "scene": "gen-v2-eiken3-library-08",
       "content": 62,
-      "expression": 82
+      "expression": 85
     },
     {
       "n": 8,
       "scene": "gen-v2-eiken3-playground-12",
       "content": 95,
-      "expression": 45
+      "expression": 72
     },
     {
       "n": 9,
@@ -74,8 +74,8 @@
     {
       "n": 10,
       "scene": "gen-v2-eiken3-train-station-04",
-      "content": 95,
-      "expression": 42
+      "content": 73,
+      "expression": 60
     }
   ],
   "request": {
@@ -83,22 +83,16 @@
       {
         "n": 1,
         "grade": "eiken-3",
-        "transcript": "A dog sit on the grass. A boy run in the park. There is a bench next to the tree.",
+        "transcript": "A dog is sitting on the grass. A boy is running in the park. The boy like the dog. There is a bench next to the tree.",
         "claims": [
           {
-            "quote": "A dog sit",
+            "quote": "A dog is sitting on the grass",
             "verdict": "correct",
             "item": "dog_sit",
             "note": null
           },
           {
-            "quote": "on the grass",
-            "verdict": "correct",
-            "item": null,
-            "note": null
-          },
-          {
-            "quote": "A boy run",
+            "quote": "A boy is running",
             "verdict": "correct",
             "item": "boy_run",
             "note": null
@@ -111,16 +105,16 @@
           }
         ],
         "rewrite": {
-          "before": "A boy run in the park.",
-          "after": "A boy is running in the park.",
-          "reason": "現在進行形は be動詞 + 動詞ing の形にします。"
+          "before": "The boy like the dog",
+          "after": "The boy likes the dog.",
+          "reason": "主語が三人称単数 (the boy) なので、動詞に s をつけます。"
         },
         "nextStep": {
           "kind": "expression",
-          "text": "動作を言うときは be動詞 + ing を使おう。\"A dog is sitting on the grass.\"",
+          "text": "三人称単数のsを忘れないようにしよう。\"The boy likes the dog.\"",
           "item": null
         },
-        "expressionBasis": "The player used 'There is a bench next to the tree' and 'on the grass' correctly, but dropped the be-verb and -ing in 'A dog sit' and 'A boy run'.",
+        "expressionBasis": "The player used present continuous, there is, and prepositions of place correctly, with one error in 'The boy like the dog' (missing -s on the verb).",
         "scene": {
           "description": "A dog is sitting on the grass. A boy is running. There is a bench next to the tree.",
           "missedItems": []
@@ -153,10 +147,10 @@
         "rewrite": null,
         "nextStep": {
           "kind": "expression",
-          "text": "次は because を使って理由も足してみよう。\"The girl is carrying a bucket because she wants to help the boy.\"",
+          "text": "次は because を使って理由を足してみよう。\"The girl is carrying a bucket because she wants to make water.\"",
           "item": null
         },
-        "expressionBasis": "The player used present continuous and there is correctly with proper articles and prepositions, with no errors, but no next-grade forms.",
+        "expressionBasis": "The player used present continuous and there is correctly with proper articles and prepositions, with no errors.",
         "scene": {
           "description": "A boy is building a sand castle. A girl is carrying a bucket. There is a ball on the beach.",
           "missedItems": []
@@ -165,44 +159,38 @@
       {
         "n": 3,
         "grade": "eiken-3",
-        "transcript": "A woman wait at the bus stop. A boy sit on the bench. He look happy.",
+        "transcript": "A woman is waiting at the bus stop. She have a big bag. A boy is sitting on the bench. He want to go home.",
         "claims": [
           {
-            "quote": "A woman wait",
+            "quote": "A woman is waiting at the bus stop",
             "verdict": "correct",
             "item": "woman_wait",
             "note": null
           },
           {
-            "quote": "at the bus stop",
-            "verdict": "correct",
+            "quote": "She have a big bag",
+            "verdict": "contradiction",
             "item": null,
-            "note": null
+            "note": "かばんはベンチの下にあり、女の人は持っていない。"
           },
           {
-            "quote": "A boy sit",
+            "quote": "A boy is sitting on the bench",
             "verdict": "correct",
             "item": "boy_sit",
-            "note": null
-          },
-          {
-            "quote": "on the bench",
-            "verdict": "correct",
-            "item": null,
             "note": null
           }
         ],
         "rewrite": {
-          "before": "A boy sit on the bench.",
-          "after": "A boy is sitting on the bench.",
-          "reason": "現在進行形は be動詞 + 動詞ing の形にします。"
+          "before": "She have a big bag.",
+          "after": "She has a big bag.",
+          "reason": "主語が she のときは have ではなく has を使います。"
         },
         "nextStep": {
           "kind": "content",
-          "text": "次はベンチの下にあるかばんを足してみよう。\"There is a bag under the bench.\"",
+          "text": "次はかばんがベンチの下にあることを足してみよう。\"There is a bag under the bench.\"",
           "item": "bag_under"
         },
-        "expressionBasis": "The player used correct noun phrases and prepositions of place (at the bus stop, on the bench), but left out the -ing and be-verb in the present continuous and the -s in 'look'.",
+        "expressionBasis": "The player used present continuous correctly in two sentences, but made third-person -s errors in \"She have\" and \"He want\".",
         "scene": {
           "description": "A woman is waiting at the bus stop. A boy is sitting on the bench. There is a bag under the bench.",
           "missedItems": [
@@ -219,16 +207,16 @@
       {
         "n": 4,
         "grade": "eiken-3",
-        "transcript": "A woman drink from a cup. A man read a book. There is a table in the cafe.",
+        "transcript": "A woman is drinking from a cup. She like coffee. A man is reading a book. There is a table in the cafe.",
         "claims": [
           {
-            "quote": "A woman drink from a cup",
+            "quote": "A woman is drinking from a cup",
             "verdict": "correct",
             "item": "woman_drink",
             "note": null
           },
           {
-            "quote": "A man read a book",
+            "quote": "A man is reading a book",
             "verdict": "correct",
             "item": "man_read",
             "note": null
@@ -241,16 +229,16 @@
           }
         ],
         "rewrite": {
-          "before": "A man read a book",
-          "after": "A man is reading a book",
-          "reason": "今の動作を表すときは be動詞 + 動詞ing（現在進行形）を使います。"
+          "before": "She like coffee",
+          "after": "She likes coffee",
+          "reason": "主語が She（三人称単数）なので、動詞に s をつけます。"
         },
         "nextStep": {
           "kind": "expression",
-          "text": "今していることは〈be動詞 + 動詞ing〉で言おう。\"A woman is drinking from a cup.\"",
+          "text": "主語が she や he のときは動詞に s をつけよう。\"She likes coffee.\"",
           "item": null
         },
-        "expressionBasis": "The player used 'there is a table in the cafe' correctly, but dropped the be-verb and -ing in the present continuous ('A woman drink', 'A man read').",
+        "expressionBasis": "The player used present continuous and there is correctly in complete sentences, with one error in 'She like coffee' (missing third-person -s).",
         "scene": {
           "description": "A woman is drinking from a cup. A man is reading a book. There is a table in the cafe.",
           "missedItems": []
@@ -280,7 +268,7 @@
           "text": "次は机の上に本があることを足してみよう。\"There is a book on the desk.\"",
           "item": "book_desk"
         },
-        "expressionBasis": "The player used the present continuous correctly in two complete sentences with correct articles and prepositions, and there are no errors.",
+        "expressionBasis": "The player used the present continuous correctly in two complete sentences with correct articles and prepositions, and made no errors.",
         "scene": {
           "description": "A woman is writing on the blackboard. A boy is sleeping at his desk. There is a book on the desk.",
           "missedItems": [
@@ -297,10 +285,10 @@
       {
         "n": 6,
         "grade": "eiken-3",
-        "transcript": "A woman cook in the kitchen. A boy carry a box. There is a table in the kitchen.",
+        "transcript": "A woman is cooking in the kitchen. A boy is carrying a box. He need help. There is a table in the kitchen.",
         "claims": [
           {
-            "quote": "A woman cook",
+            "quote": "A woman is cooking",
             "verdict": "correct",
             "item": "woman_cook",
             "note": null
@@ -312,7 +300,7 @@
             "note": null
           },
           {
-            "quote": "A boy carry a box",
+            "quote": "A boy is carrying a box",
             "verdict": "correct",
             "item": "boy_carry",
             "note": null
@@ -325,16 +313,16 @@
           }
         ],
         "rewrite": {
-          "before": "A boy carry a box.",
-          "after": "A boy is carrying a box.",
-          "reason": "現在進行形は「be動詞 + 動詞ing」の形にします。"
+          "before": "He need help.",
+          "after": "He needs help.",
+          "reason": "主語が He なので、動詞は needs にします。"
         },
         "nextStep": {
           "kind": "expression",
-          "text": "動作を言うときは be動詞と ing を忘れずに言おう。\"A woman is cooking.\"",
+          "text": "主語が he や she のときは動詞に s をつけよう。\"He needs help.\"",
           "item": null
         },
-        "expressionBasis": "The player used 'There is a table in the kitchen' and 'in the kitchen' correctly, but dropped the be-verb and -ing form in 'A woman cook' and 'A boy carry a box'.",
+        "expressionBasis": "The player used present continuous and there is correctly with prepositions of place, with one error in the third-person verb form (He need help).",
         "scene": {
           "description": "A woman is cooking in the kitchen. A boy is carrying a box. There is a table in the kitchen.",
           "missedItems": []
@@ -365,18 +353,18 @@
           },
           {
             "quote": "under the table",
-            "verdict": "absent",
+            "verdict": "contradiction",
             "item": null,
-            "note": "猫はいないので、テーブルの下にいるものはありません。"
+            "note": "猫はいないので、テーブルの下に何かがいるという説明は合いません。"
           }
         ],
         "rewrite": null,
         "nextStep": {
           "kind": "content",
-          "text": "次は本棚の隣にテーブルがあることを足してみよう。\"There is a table next to the bookshelf.\"",
+          "text": "次は本棚とテーブルの位置関係を足してみよう。\"There is a table next to the bookshelf.\"",
           "item": "shelf_table"
         },
-        "expressionBasis": "The player used present continuous and there is correctly with proper articles and prepositions, with no grammatical errors.",
+        "expressionBasis": "The player used present continuous, there is, and prepositions of place correctly in complete sentences with no grammar errors.",
         "scene": {
           "description": "A man is reading a book. A girl is looking at the bookshelf. There is a table next to the bookshelf.",
           "missedItems": [
@@ -393,16 +381,16 @@
       {
         "n": 8,
         "grade": "eiken-3",
-        "transcript": "A boy play with a ball. A girl look far away. There is a tree.",
+        "transcript": "A boy is playing with a ball. He like soccer. A girl is looking far away. There is a tree.",
         "claims": [
           {
-            "quote": "A boy play with a ball",
+            "quote": "A boy is playing with a ball",
             "verdict": "correct",
             "item": "boy_ball",
             "note": null
           },
           {
-            "quote": "A girl look far away",
+            "quote": "A girl is looking far away",
             "verdict": "correct",
             "item": "girl_look",
             "note": null
@@ -415,16 +403,16 @@
           }
         ],
         "rewrite": {
-          "before": "A boy play with a ball",
-          "after": "A boy is playing with a ball.",
-          "reason": "今していることは be動詞 + 動詞ing（現在進行形）で言います。"
+          "before": "He like soccer",
+          "after": "He likes soccer.",
+          "reason": "主語が He（三人称単数）のときは動詞に s をつけて likes にします。"
         },
         "nextStep": {
-          "kind": "expression",
-          "text": "動詞は「is + ing」の形にしよう。\"A boy is playing with a ball.\"",
-          "item": null
+          "kind": "content",
+          "text": "木がどこにあるかも足してみよう。\"There is a tree on the ground.\"",
+          "item": "tree_ground"
         },
-        "expressionBasis": "The player used 'There is a tree' and 'with a ball' correctly, but dropped the present continuous (-ing and is) in 'A boy play' and 'A girl look'.",
+        "expressionBasis": "The player used present continuous and there is correctly in complete sentences, but made a third-person -s error in 'He like soccer'.",
         "scene": {
           "description": "A boy is playing with a ball. A girl is looking far away. There is a tree on the ground.",
           "missedItems": [
@@ -471,10 +459,10 @@
         "rewrite": null,
         "nextStep": {
           "kind": "expression",
-          "text": "次は because を使って理由も足してみよう。\"The man is walking because it is a nice day.\"",
+          "text": "次は because や so を使って理由をつなげてみよう。\"The girl is carrying a box because she is helping.\"",
           "item": null
         },
-        "expressionBasis": "The player used present continuous, there is, and the preposition on correctly in complete sentences with no errors.",
+        "expressionBasis": "The player used present continuous, there is, and the preposition of place 'on' correctly in complete sentences with no errors.",
         "scene": {
           "description": "A man is walking on the sidewalk. A girl is carrying a box. There is a car on the road.",
           "missedItems": []
@@ -483,38 +471,38 @@
       {
         "n": 10,
         "grade": "eiken-3",
-        "transcript": "A man look at his smartphone. A woman walk on the platform.",
+        "transcript": "A man is looking at a smartphone. He have a bag. A woman is walking on the platform. She want to take the train.",
         "claims": [
           {
-            "quote": "A man look at his smartphone",
+            "quote": "A man is looking at a smartphone",
             "verdict": "correct",
             "item": "man_phone",
             "note": null
           },
           {
-            "quote": "A woman walk",
-            "verdict": "correct",
-            "item": "woman_walk",
-            "note": null
+            "quote": "He have a bag",
+            "verdict": "absent",
+            "item": null,
+            "note": "男の人がかばんを持っている様子はシーンにありません。"
           },
           {
-            "quote": "on the platform",
+            "quote": "A woman is walking on the platform",
             "verdict": "correct",
-            "item": null,
+            "item": "woman_walk",
             "note": null
           }
         ],
         "rewrite": {
-          "before": "A man look at his smartphone",
-          "after": "A man is looking at his smartphone.",
-          "reason": "今していることは「be動詞 + ing」の現在進行形で言います。"
+          "before": "He have a bag",
+          "after": "He has a bag",
+          "reason": "主語が he のときは have ではなく has を使います。"
         },
         "nextStep": {
           "kind": "content",
           "text": "次は電車がホームにあることを足してみよう。\"There is a train at the platform.\"",
           "item": "train"
         },
-        "expressionBasis": "The player used a sensible sentence pattern with a correct preposition (on the platform) and articles, but dropped the be-verb and -ing form in both sentences (look, walk).",
+        "expressionBasis": "The player used present continuous correctly with a preposition of place, but made third-person -s errors in \"He have\" and \"She want\".",
         "scene": {
           "description": "A man is looking at a smartphone. A woman is walking on the platform. There is a train at the platform.",
           "missedItems": [
@@ -544,21 +532,21 @@
         }
       ],
       "verdicts": {
-        "correct": 32,
-        "contradiction": 0,
+        "correct": 28,
+        "contradiction": 2,
         "absent": 2,
         "offtopic": 0
       },
       "halves": {
         "first": {
           "rounds": 5,
-          "content": 97.8,
-          "expression": 63.4
+          "content": 92.4,
+          "expression": 77.6
         },
         "second": {
           "rounds": 5,
-          "content": 90.4,
-          "expression": 61.8
+          "content": 86,
+          "expression": 76
         }
       }
     }
