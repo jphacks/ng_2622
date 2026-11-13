@@ -19,19 +19,42 @@ struct HomeView: View {
   private static let gearRow: CGFloat = 60
   /// ジオラマの枠の高さ（いちばん大きいとき）。キーボードが出たときなどは縮む。
   /// 場面は枠の下寄りに描かれ、回って斜めになると手前の角が下に伸びるので、角が枠の下で切れないだけの余裕を取る
-  /// （枠の外は描かれないため）。下の余裕は、そのままタイトルとの間の余白にもなる
+  /// （枠の外は描かれないため）。下の余裕は、そのままタイトルとの間の余白にもなる。
+  /// 余裕は、ホームに出す場面（かんたんの例、今は gen-v2-eiken3-park-01）で測ったもの。斜めのときの角から枠の下まで
+  /// 27pt ほど（iPhone 17）。例の場面を、もっと広い・背の高い場面に替えたら、回して切れないかを確かめ直す
   private static let sceneHeight: CGFloat = 340
   /// カメラから場面の中心までの距離。縦の画角が決まっているので、場面の大きさは「枠の高さ / 距離」で決まる。
   /// 枠を高くしたぶん離して、場面を画面の幅の 8 割ほどに保つ（枠が縮むと、場面も同じ比で縮むので切れない）
   private static let sceneDistance: Float = 5.3
 
+  /// 打つための文字の欄
   @FocusState private var editing: Bool
 
+  /// 下の安全域がこれより大きければ、キーボードが出ているとみなす（ホームバーの所は 34pt ほど）
+  private static let keyboardInset: CGFloat = 100
+
   var body: some View {
+    // 最初の画面で名前を打っている（キーボードが出ている）間は、並びを詰める。キーボードが出ているかは、フォーカスでも
+    // キーボードの知らせでもなく、並べる所の下の安全域で決める。キーボードを避けて並べ直すのと同じ計算の中で決まるので、
+    // 並びはキーボードと一緒に動き、欄を押した瞬間に跳ばない（閉じるときも同じ）
+    GeometryReader { geometry in
+      layout(compact: profile.needsName && geometry.safeAreaInsets.bottom > Self.keyboardInset)
+    }
+    .overlay(alignment: .topTrailing) {
+      if !profile.needsName {
+        CircleIconButton(systemName: "gearshape.fill", label: "設定", action: onSettings)
+          .padding(.top, 8)
+          .padding(.trailing, 16)
+          .transition(.opacity)
+      }
+    }
+  }
+
+  /// 並び。compact なら、歯車の行と下の余白を詰め、ジオラマをさらに縮めて、小さい画面でも「はじめる」が
+  /// キーボードに隠れないようにする（最初の画面には歯車を出さない）
+  private func layout(compact: Bool) -> some View {
     VStack(spacing: 0) {
-      // 名前を打っている間（キーボードが出ている間）は、歯車の行と下の余白を詰め、ジオラマをさらに縮めて、
-      // 小さい画面でも「はじめる」がキーボードに隠れないようにする（最初の画面には歯車を出さない）
-      Color.clear.frame(height: editing ? 0 : Self.gearRow)
+      Color.clear.frame(height: compact ? 0 : Self.gearRow)
       // ジオラマとタイトルのまとまりは、歯車の行と下のボタンの間の空きに置き、見た目の重心を少し上にする
       // （見た目の空きが上 2 : 下 3 ほど。docs/design/ui/screens/home.md）。場面はジオラマの枠の下寄りに描かれ、
       // 枠の上に場面の無い所があるので、空き（Spacer）は上 1 : 下 4 で分ける
@@ -39,7 +62,7 @@ struct HomeView: View {
       // 枠の高さとカメラの距離で、ジオラマが画面の幅の 8 割ほどになるようにする（回って斜めになると少し広がる）
       SpinningScene(distance: Self.sceneDistance)
         .unmountedWhileCovered(isCovered)
-        .frame(maxWidth: .infinity, minHeight: editing ? 64 : 120, maxHeight: Self.sceneHeight)
+        .frame(maxWidth: .infinity, minHeight: compact ? 28 : 120, maxHeight: Self.sceneHeight)
         .layoutPriority(1)
         .contentShape(Rectangle())
         .onTapGesture { editing = false }
@@ -48,7 +71,7 @@ struct HomeView: View {
         .foregroundStyle(Theme.accent)
         .padding(.top, 6)
       // タイトルと下のボタンの間は、小さい画面でも詰まりすぎないよう、少しは空ける
-      Spacer(minLength: editing ? 8 : 28)
+      Spacer(minLength: compact ? 8 : 28)
       ForEach(0..<3, id: \.self) { _ in Spacer(minLength: 0) }
       ZStack(alignment: .bottom) {
         if profile.needsName {
@@ -61,17 +84,10 @@ struct HomeView: View {
       }
       .frame(width: 346)
       .animation(.easeInOut(duration: 0.3), value: profile.needsName)
-      .padding(.bottom, editing ? 8 : 56)
+      // 名前を打っている間は 16。「はじめる」の影の下とキーボードの間に 10pt ほど空く
+      .padding(.bottom, compact ? 16 : 56)
     }
-    .frame(maxWidth: .infinity)
-    .overlay(alignment: .topTrailing) {
-      if !profile.needsName {
-        CircleIconButton(systemName: "gearshape.fill", label: "設定", action: onSettings)
-          .padding(.top, 8)
-          .padding(.trailing, 16)
-          .transition(.opacity)
-      }
-    }
+    .frame(maxWidth: .infinity, maxHeight: .infinity)
   }
 
   /// 「あそぶ」（塗り）と「きろく」（枠だけ）。同じ大きさ・同じ幅で、文字だけ
