@@ -19,17 +19,19 @@ export const partMetaKey = (id: string, version: number) =>
 export const recipeKey = (id: string, version: number) =>
   `recipes/${id}/${version}.json`;
 
-/** R2 の部品の版の一覧（json があるものだけ。小さい順） */
+/** R2 の部品の版の一覧（既定は json があるもの。ext に usdz を渡せば usdz があるもの。小さい順） */
 export const listVersions = async (
   bucket: R2Bucket,
   id: string,
+  ext: "json" | "usdz" = "json",
 ): Promise<number[]> => {
   const versions: number[] = [];
+  const pattern = new RegExp(`/([1-9][0-9]*)\\.${ext}$`);
   let cursor: string | undefined;
   do {
     const page = await bucket.list({ prefix: `parts/${id}/`, cursor });
     for (const o of page.objects) {
-      const m = /\/([1-9][0-9]*)\.json$/.exec(o.key);
+      const m = pattern.exec(o.key);
       if (m) versions.push(Number(m[1]));
     }
     cursor = page.truncated ? page.cursor : undefined;
@@ -53,7 +55,7 @@ export const readPartMeta = async (
 /** 置き直すときに版を上げる回数の上限 */
 const MAX_VERSION_TRIES = 5;
 
-/** 無いときだけ置く。既にあれば false（R2 の条件付きの put。If-None-Match: * と同じ） */
+/** 無いときだけ置く。既にあれば false（R2 の条件付きの put。公式の文書にある If-None-Match: * の形） */
 const putIfAbsent = async (
   bucket: R2Bucket,
   key: string,
@@ -62,13 +64,15 @@ const putIfAbsent = async (
 ): Promise<boolean> =>
   (await bucket.put(key, body, {
     httpMetadata: { contentType },
-    onlyIf: { etagDoesNotMatch: "*" },
+    onlyIf: new Headers({ "If-None-Match": "*" }),
   })) !== null;
 
 /**
  * 作った部品を置き、置いた版のメタデータを返す。
- * まず usdz を「無いときだけ」置いてその版を取る（同じ ID を別の所で同時に作っていて、その版が既にあれば、版を 1 つ上げて置き直す）。
- * 版が決まってから recipes → json の順に、これも無いときだけ置く。一度置いた版は書き換えない
+ * まず usdz を「無いときだけ」置いてその版を取る。試す版は、今ある usdz の版の最大＋1（無ければ meta.version）から。
+ * 同じ ID を別の所で同時に作っていて、その版が既にあれば、版を 1 つ上げて置き直す。
+ * 版が決まってから recipes → json の順に、これも無いときだけ置く（recipes を置けなければ json は置かずに投げる）。
+ * 一度置いた版は書き換えない
  */
 export const savePart = async (
   bucket: R2Bucket,
@@ -76,7 +80,9 @@ export const savePart = async (
   usdz: Uint8Array,
   record: RecipeRecord,
 ): Promise<Part> => {
-  let version = meta.version;
+  const existing = (await listVersions(bucket, meta.id, "usdz")).at(-1);
+  let version = Math.max(meta.version, (existing ?? 0) + 1);
+  const first = version;
   let claimed = false;
   for (let i = 0; i < MAX_VERSION_TRIES && !claimed; i++) {
     if (i > 0) version++;
@@ -89,7 +95,7 @@ export const savePart = async (
   }
   if (!claimed) {
     throw new Error(
-      `部品 ${meta.id} の版を取れなかった（${meta.version}〜${version} が既にある）`,
+      `部品 ${meta.id} の版を取れなかった（${first}〜${version} が既にある）`,
     );
   }
   const placed: Part = {
@@ -98,23 +104,26 @@ export const savePart = async (
     file: partUsdzKey(meta.id, version),
   };
   const json = "application/json";
-  const okRecipe = await putIfAbsent(
-    bucket,
-    recipeKey(meta.id, version),
-    JSON.stringify({ ...record, version }),
-    json,
-  );
-  const okMeta = await putIfAbsent(
-    bucket,
-    partMetaKey(meta.id, version),
-    JSON.stringify(placed),
-    json,
-  );
-  // usdz で版を取ったので、ここで既にあることは無いはず（あれば、その版はほかの物と混ざっている）
-  if (!okRecipe || !okMeta) {
-    throw new Error(
-      `部品 ${meta.id}@${version} の記録かメタデータが既にあった`,
-    );
+  // usdz で版を取ったので、ここで既にあることは無いはず（あれば、その版はほかの物と混ざっているので、json を置かずに投げる）
+  if (
+    !(await putIfAbsent(
+      bucket,
+      recipeKey(meta.id, version),
+      JSON.stringify({ ...record, version }),
+      json,
+    ))
+  ) {
+    throw new Error(`部品 ${meta.id}@${version} の記録が既にあった`);
+  }
+  if (
+    !(await putIfAbsent(
+      bucket,
+      partMetaKey(meta.id, version),
+      JSON.stringify(placed),
+      json,
+    ))
+  ) {
+    throw new Error(`部品 ${meta.id}@${version} のメタデータが既にあった`);
   }
   return placed;
 };

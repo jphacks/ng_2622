@@ -316,6 +316,37 @@ test("savePart を同時に 2 回呼ぶと、別々の版に置く（後の方�
   }
 });
 
+test("json の無い usdz が版 1〜5 にそろっていても、今ある版の最大＋1（版 6）に置ける", async () => {
+  for (let v = 1; v <= 5; v++) {
+    await bucket.put(`parts/lamp_tall/${v}.usdz`, new Uint8Array([v]));
+  }
+  const claude = fakeClaude([STAND]);
+  const env = { BUCKET: bucket, CLAUDE_API_KEY: "test" };
+  const result = await ensureParts(env, [order("lamp_tall")], {
+    maxNew: 4,
+    deps: { create: claude.create },
+  });
+  assert.deepEqual(result.failed, []);
+  assert.equal(result.parts[0].version, 6);
+  assert.equal(result.parts[0].file, "parts/lamp_tall/6.usdz");
+});
+
+test("savePart は記録（recipes）を置けなかったら、メタデータ（json）を置かずに投げる", async () => {
+  const { savePart } = await import("../src/parts/store");
+  const { metaOf } = await import("../src/parts/make");
+  // 版 1 の記録だけが（何かの間違いで）先にある
+  await bucket.put("recipes/stool/1.json", "{}");
+  const meta = metaOf(order("stool"), 1, [0.3, 0.5, 0.3], undefined);
+  await assert.rejects(
+    savePart(bucket, meta, new Uint8Array([1]), {
+      id: "stool",
+      version: 1,
+    } as never),
+    /記録が既にあった/,
+  );
+  assert.equal(await bucket.head("parts/stool/1.json"), null);
+});
+
 test("先の注文が止めて作れなかったら、同じ ID を待っていた後の注文は自分で作り直す", async () => {
   // signal が付いた呼び出しは止められるまで返さず、付いていない呼び出しはすぐ答える偽の Claude
   let calls = 0;
