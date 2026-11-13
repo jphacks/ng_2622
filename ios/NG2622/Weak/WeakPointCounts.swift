@@ -211,7 +211,7 @@ nonisolated struct NextHint: Equatable, Sendable {
     switch kind {
     case .center: "だれが何をしているかを、1 人ずつ言ってみよう。"
     case .reason: "because を足してみよう。"
-    case .link: "so や to で、そのあとどうなるかをつなげてみよう。"
+    case .link: "so や to で、何のためか・そのあとどうなるかをつなげてみよう。"
     case .detail: "物の場所を、on や next to で言ってみよう。"
     }
   }
