@@ -1,7 +1,9 @@
 import SwiftUI
 
-/// きろく。遊んだ場面が横に並び（最後に遊んだのが新しい順）、その下に、選んだ場面を遊んだ回の振り返りが
-/// 新しい順に縦に続く（1 枚の縦の流れ。押して別の画面に移る所は無い）
+/// きろく。遊んだ場面（画面の幅いっぱいの 3D と名前）が横に並び（最後に遊んだのが新しい順）、その下に、
+/// 選んだ場面を遊んだ回の振り返りが新しい順に縦に続く（1 枚の縦の流れ。押して別の画面に移る所は無い）。
+/// 下へスクロールすると、3D は上端に着いた所で止まり、小さくなって、名前と一緒に上に残る。
+/// その下では、上がってくる中身が地の色のぼかしに溶けて消える
 struct RecordsView: View {
   let library: RecordLibrary
   let onBack: () -> Void
@@ -10,21 +12,22 @@ struct RecordsView: View {
   enum SceneMode {
     /// 選んでいる場面と、その両隣（同時に 3 つまで）
     case neighbors
-    /// 選んでいる場面だけ。両隣は名前だけの板にする
+    /// 選んでいる場面だけ。両隣は印だけにする
     case selectedOnly
   }
 
   /// 3D を同時にいくつ出すか。3 つ出して遊ぶ側の 3D に障りが出るときは .selectedOnly にする
   static let sceneMode = SceneMode.neighbors
-  /// 「苦手」への入口を出すか。押した先（苦手の画面）を作るまで隠しておく
+  /// 下のフッターに「苦手」への入口を出すか。押した先（苦手の画面）を作るまで隠しておく
   static let showsWeakPointEntry = false
 
   /// 選んでいる場面の ID
   @State private var selected: String?
-  /// 場面の名前の行が、スクロールで上に隠れたか（隠れたら、同じ行を上に残す）
-  @State private var barHidden = false
   /// 回ごとの録音を鳴らす口。1 つを共有し、別の回を押したら前のを止める（2 本同時に鳴らさない）
   @State private var player = VoicePlayer()
+  /// 3D が上に止まってから縮み切るまでの進み
+  @State private var stick = ShelfStick()
+  @State private var position = ScrollPosition(edge: .top)
 
   private var scenes: [RecordScene] { library.scenes }
   private var current: RecordScene? {
@@ -32,12 +35,18 @@ struct RecordsView: View {
   }
 
   var body: some View {
-    list
-      .environment(\.sharedVoicePlayer, player)
-      .onDisappear { player.stop() }
-      .task { await library.reload() }
-      // きろくを閉じたら、組んで覚えた場面を忘れる（遊ぶたびに増えるので、持ち続けない）
-      .onDisappear { SceneLibrary.shared.forgetComposedLayouts() }
+    Group {
+      if let current {
+        records(current)
+      } else {
+        empty
+      }
+    }
+    .environment(\.sharedVoicePlayer, player)
+    .onDisappear { player.stop() }
+    .task { await library.reload() }
+    // きろくを閉じたら、組んで覚えた場面を忘れる（遊ぶたびに増えるので、持ち続けない）
+    .onDisappear { SceneLibrary.shared.forgetComposedLayouts() }
   }
 
   /// 隣の場面を選ぶ（読み上げの操作から）。横の並びは、選んだ場面まで送られる
@@ -48,80 +57,91 @@ struct RecordsView: View {
     selected = scenes[index + offset].id
   }
 
-  private var list: some View {
+  private func records(_ current: RecordScene) -> some View {
+    VStack(spacing: 0) {
+      ScrollView {
+        // 横の並びは遅延しない VStack に置く（下にスクロールして戻っても、3D と横の位置がそのまま残る）。
+        // 回の振り返りは数が多いことがあるので、その部分だけ遅延にする
+        VStack(spacing: 0) {
+          // 戻るボタンは上に浮かせて残すので、ここは見出しだけ（スクロールで流れて消える）
+          Text("きろく")
+            .font(Theme.font(20, .black))
+            .frame(height: 52)
+            .frame(maxWidth: .infinity)
+            .padding(.top, 8)
+            .frame(height: Shelf.titleHeight, alignment: .top)
+            .accessibilityAddTraits(.isHeader)
+            .accessibilityIdentifier("records-title")
+          SceneShelf(scenes: scenes, selected: $selected, mode: Self.sceneMode, stick: stick, onStep: step)
+            // 上に止まった 3D と名前の下を、振り返りが通る
+            .zIndex(1)
+          SceneRounds(scene: current, recordings: library.recordings)
+            .resultColumn()
+            .padding(.top, 10)
+            .padding(.bottom, 56)
+            // 場面を替えたら、棒の伸びる動きなどを初めからにする
+            .id(current.id)
+        }
+      }
+      .scrollPosition($position)
+      // 上端は地の色でふさぐので、システムのぼかし（状態バーの下）は付けない
+      .scrollEdgeEffectHidden(true, for: .top)
+      // 縮んだまま場面を替えたら（読み上げの操作から）、その場面の最新の回から読めるようにする
+      .onChange(of: current.id) {
+        if stick.progress > 0 { position.scrollTo(y: Shelf.settledOffset) }
+      }
+    }
+    // 上に止まった 3D の上（画面の上端まで）を、地の色でふさぐ（流れていく見出しや中身を見せない）
+    .overlay(alignment: .top) {
+      Color.clear
+        .frame(height: Shelf.stickTop)
+        .background(Theme.background.ignoresSafeArea(edges: .top))
+        .allowsHitTesting(false)
+    }
+    .overlay(alignment: .top) {
+      HStack {
+        CircleIconButton(systemName: "chevron.left", label: "戻る", action: onBack)
+        Spacer()
+      }
+      .frame(height: 52)
+      .resultColumn()
+      .padding(.top, 8)
+    }
+    // 最下部は、下に行くほど地の色に溶かして、続きがあることを示す
+    .overlay(alignment: .bottom) {
+      LinearGradient(colors: [Theme.background.opacity(0), Theme.background], startPoint: .top, endPoint: .bottom)
+        .frame(height: 72)
+        .ignoresSafeArea(edges: .bottom)
+        .allowsHitTesting(false)
+        .accessibilityHidden(true)
+    }
+    .overlay(alignment: .bottom) {
+      if Self.showsWeakPointEntry {
+        WeakPointFooter(stick: stick)
+      }
+    }
+    .coordinateSpace(.named(Shelf.space))
+  }
+
+  private var empty: some View {
     VStack(spacing: 0) {
       ResultSubHeader(title: "きろく", onBack: onBack)
         .resultColumn()
         .padding(.top, 8)
-      if let current {
-        ScrollView {
-          // 横の並びは遅延しない VStack に置く（下にスクロールして戻っても、3D と横の位置がそのまま残る）。
-          // 回の振り返りは数が多いことがあるので、その部分だけ遅延にする
-          VStack(spacing: 0) {
-            if Self.showsWeakPointEntry {
-              // 押した先は次の PR で作る
-              Button {
-              } label: {
-                Label("苦手をぶっとばせ！", systemImage: "bolt.fill")
-              }
-              .buttonStyle(BigButtonStyle(kind: .primary))
-              .resultColumn()
-              .padding(.top, 12)
-              .padding(.bottom, 14)
-            }
-            Text("りれき")
-              .font(Theme.font(26, .black))
-              .frame(maxWidth: .infinity, alignment: .leading)
-              .resultColumn()
-              .padding(.top, 12)
-            SceneCarousel(scenes: scenes, selected: $selected, mode: Self.sceneMode)
-            PageDots(count: scenes.count, index: scenes.firstIndex { $0.id == current.id } ?? 0)
-              .padding(.top, 4)
-            SceneBar(scene: current, onStep: step)
-              .onGeometryChange(for: Bool.self) { proxy in
-                proxy.frame(in: .scrollView).minY < 0
-              } action: { hidden in
-                barHidden = hidden
-              }
-            SceneRounds(scene: current, recordings: library.recordings)
-              .resultColumn()
-              .padding(.top, 8)
-              .padding(.bottom, 56)
-              // 場面を替えたら、棒の伸びる動きなどを初めからにする
-              .id(current.id)
-          }
-        }
-        // 下にスクロールしても、場面の名前は上に残す（下の中身と重ならないよう、地の色と下の線を付ける）
-        .overlay(alignment: .top) {
-          if barHidden {
-            SceneBar(scene: current, onStep: step, pinned: true)
-              .accessibilityHidden(true)
-          }
-        }
-        // 最下部は、下に行くほど地の色に溶かして、続きがあることを示す
-        .overlay(alignment: .bottom) {
-          LinearGradient(colors: [Theme.background.opacity(0), Theme.background], startPoint: .top, endPoint: .bottom)
-            .frame(height: 72)
-            .ignoresSafeArea(edges: .bottom)
-            .allowsHitTesting(false)
-            .accessibilityHidden(true)
-        }
-      } else {
-        Spacer()
-        VStack(spacing: 10) {
-          Image(systemName: "clock.arrow.circlepath")
-            .font(.system(size: 40, weight: .bold))
-            .foregroundStyle(Theme.gray)
-          Text("まだきろくがありません")
-            .font(Theme.font(20, .heavy))
-          Text("あそぶと、ここに場面と採点がたまります。")
-            .font(Theme.font(15, .bold))
-            .foregroundStyle(Theme.muted)
-            .multilineTextAlignment(.center)
-        }
-        .resultColumn()
-        Spacer()
+      Spacer()
+      VStack(spacing: 10) {
+        Image(systemName: "clock.arrow.circlepath")
+          .font(.system(size: 40, weight: .bold))
+          .foregroundStyle(Theme.gray)
+        Text("まだきろくがありません")
+          .font(Theme.font(20, .heavy))
+        Text("あそぶと、ここに場面と採点がたまります。")
+          .font(Theme.font(15, .bold))
+          .foregroundStyle(Theme.muted)
+          .multilineTextAlignment(.center)
       }
+      .resultColumn()
+      Spacer()
     }
   }
 
@@ -133,47 +153,124 @@ struct RecordsView: View {
   }
 }
 
-// MARK: - 横の並び
+// MARK: - 場面の横の並び
 
-/// 場面の横の並び。真ん中に 1 つ大きく出し、左右に隣の場面が少しのぞく。端はフェードで消す
-private struct SceneCarousel: View {
+/// 場面の並びの寸法と、縦のスクロールで上に止まって縮む動き。
+/// 止まってから縮み切るまでのスクロールの量を、3D と名前が縮む量と同じにする。
+/// そうすると、下の中身の上端が、縮んでいく名前の下端にちょうど付いてくる（縮む間は中身が名前の下に潜らない）
+nonisolated private enum Shelf {
+  /// 位置を測る座標（画面の、上の安全な領域の下端が 0）
+  static let space = "records"
+  /// 見出しの行（上の空き 8・行 52・3D までの空き 4）
+  static let titleHeight: CGFloat = 64
+  /// 3D の所の高さ（横は画面いっぱい）
+  static let sceneHeight: CGFloat = 250
+  /// 名前の行の高さ
+  static let nameHeight: CGFloat = 30
+  /// 名前の下の空き（止まる前だけ）
+  static let bottomPadding: CGFloat = 8
+  static let height = sceneHeight + nameHeight + bottomPadding
+  /// 3D を見る距離（m）
+  static let distance: Float = 4.6
+  /// 止まった後の 3D の大きさ（止まる前に対する割合）
+  static let stuckScale: CGFloat = 0.54
+  /// 3D が止まる位置（上の安全な領域の下端から。戻るボタンの上端にそろえる）
+  static let stickTop: CGFloat = 8
+  /// 止まった後に、名前の下に重ねるぼかしの高さ
+  static let wallHeight: CGFloat = 20
+  /// ぼかしを、名前の行の下端より上（文字のすぐ下）から始める量
+  static let wallOverlap: CGFloat = 4
+  /// 3D が縮む量
+  static let sceneShrink = sceneHeight * (1 - stuckScale)
+  /// 止まってから縮み切るまでのスクロールの量
+  static let shrinkDistance = sceneShrink + bottomPadding
+  /// 3D が止まり始めるスクロールの量
+  static let stickStart = titleHeight - stickTop
+  /// 縮み切るスクロールの量
+  static let settledOffset = stickStart + shrinkDistance
+
+  /// 並びの上端（minY）が止まる位置より上に来た分。その分だけ下に戻して、止まって見せる
+  static func push(_ minY: CGFloat) -> CGFloat { max(0, stickTop - minY) }
+  /// 止まってから縮み切るまでの進み（0〜1）
+  static func progress(_ minY: CGFloat) -> CGFloat { min(1, push(minY) / shrinkDistance) }
+  /// 見えている並びの高さ（止まった後は、小さくした 3D と名前の高さ）
+  static func visibleHeight(_ progress: CGFloat) -> CGFloat { height - shrinkDistance * progress }
+  static func sceneScale(_ progress: CGFloat) -> CGFloat { 1 - (1 - stuckScale) * progress }
+}
+
+/// 3D が上に止まってから縮み切るまでの進み（0 は止まる前、1 は縮み切った後）。
+/// 縮む間だけ変わる。読むのは、進みで見た目を変える小さな部分だけにする（3D の入った場面は作り直さない）
+@Observable private final class ShelfStick {
+  var progress: CGFloat = 0
+}
+
+/// 進みに合わせて、大きさ・位置・濃さを変える。進みが変わって作り直すのはこの部分だけで、中身（3D など）は作り直さない
+private struct ShelfMotion: ViewModifier {
+  let stick: ShelfStick
+  let scale: (CGFloat) -> CGSize
+  let lift: (CGFloat) -> CGFloat
+  let opacity: (CGFloat) -> Double
+
+  func body(content: Content) -> some View {
+    let p = stick.progress
+    content
+      .scaleEffect(scale(p), anchor: .top)
+      .offset(y: lift(p))
+      .opacity(opacity(p))
+  }
+}
+
+extension View {
+  fileprivate func shelfMotion(
+    _ stick: ShelfStick,
+    scale: @escaping (CGFloat) -> CGSize = { _ in CGSize(width: 1, height: 1) },
+    lift: @escaping (CGFloat) -> CGFloat = { _ in 0 },
+    opacity: @escaping (CGFloat) -> Double = { _ in 1 }
+  ) -> some View {
+    modifier(ShelfMotion(stick: stick, scale: scale, lift: lift, opacity: opacity))
+  }
+}
+
+/// 縮み切って上に残っている間は、横に送らない。押したところは、後ろの地の色が受け止め、下に隠れた中身には渡さない
+private struct ShelfHitTesting: ViewModifier {
+  let stick: ShelfStick
+
+  func body(content: Content) -> some View {
+    content.allowsHitTesting(stick.progress < 1)
+  }
+}
+
+/// 場面の横の並び。1 つの場面（3D と名前）を画面の幅いっぱいに出し、横に 1 つずつ送る。隣の場面はのぞかせない。
+/// 縦のスクロールでは、上端に着いた所で止まり、縮む
+private struct SceneShelf: View {
   let scenes: [RecordScene]
   @Binding var selected: String?
   let mode: RecordsView.SceneMode
+  let stick: ShelfStick
+  /// 隣の場面を選ぶ（-1 で前、+1 で次）。読み上げでは横に送れないので、場面の操作で替える
+  let onStep: (Int) -> Void
 
-  /// いま真ん中にある場面が何番目か（送っている途中も変わる）。隣を小さく薄くするのに使う
+  /// いま画面にある場面が何番目か（送っている途中も変わる）
   @State private var middle = 0
-
-  /// 1 つの場面の幅（画面の幅に対する割合）
-  private static let tileRatio = 0.58
-  private static let height: CGFloat = 250
 
   var body: some View {
     GeometryReader { geo in
-      let tile = geo.size.width * Self.tileRatio
+      let width = geo.size.width
       ScrollViewReader { proxy in
         ScrollView(.horizontal) {
           HStack(spacing: 0) {
             ForEach(Array(scenes.enumerated()), id: \.element.id) { index, scene in
-              let isMiddle = index == middle
-              SceneTile(scene: scene, shows3D: shows3D(at: index), isMiddle: isMiddle)
-                .frame(width: tile, height: Self.height)
-                // 隣の場面は少し小さく、薄くする。後ろの印が 3D から透けないよう、まとめてから薄くする
-                .compositingGroup()
-                .scaleEffect(isMiddle ? 1 : 0.85)
-                .opacity(isMiddle ? 1 : 0.7)
-                .animation(.easeOut(duration: 0.2), value: isMiddle)
+              ScenePage(scene: scene, shows3D: shows3D(at: index), isMiddle: index == middle, stick: stick, onStep: onStep)
+                .frame(width: width, height: Shelf.height)
             }
           }
           .scrollTargetLayout()
         }
         .scrollIndicators(.hidden)
-        .scrollTargetBehavior(.viewAligned)
-        // 初めと終わりの場面も真ん中に来るよう、両端を空ける
-        .safeAreaPadding(.horizontal, (geo.size.width - tile) / 2)
-        // 真ん中に来た場面を、スクロールの位置から数える
+        .scrollTargetBehavior(.paging)
+        // 画面にある場面を、スクロールの位置から数える
         .onScrollGeometryChange(for: Int.self) { geometry in
-          Int(((geometry.contentOffset.x + geometry.contentInsets.leading) / max(1, tile)).rounded())
+          Int((geometry.contentOffset.x / max(1, width)).rounded())
         } action: { _, index in
           if scenes.indices.contains(index) { middle = index }
         }
@@ -186,16 +283,34 @@ private struct SceneCarousel: View {
           guard let id, scenes.indices.contains(middle), scenes[middle].id != id else { return }
           withAnimation(.easeInOut(duration: 0.25)) { proxy.scrollTo(id, anchor: .center) }
         }
-      }
-      .mask {
-        LinearGradient(
-          stops: [
-            .init(color: .clear, location: 0), .init(color: .black, location: 0.1),
-            .init(color: .black, location: 0.9), .init(color: .clear, location: 1),
-          ], startPoint: .leading, endPoint: .trailing)
+        .modifier(ShelfHitTesting(stick: stick))
       }
     }
-    .frame(height: Self.height)
+    .frame(height: Shelf.height)
+    .background(alignment: .top) {
+      ZStack(alignment: .top) {
+        // 止まった後に、下を通る中身を隠す地の色（名前の文字の下端まで）
+        Theme.background
+          .frame(height: Shelf.height)
+          .shelfMotion(
+            stick, scale: { CGSize(width: 1, height: (Shelf.visibleHeight($0) - Shelf.wallOverlap) / Shelf.height) })
+        // 名前のすぐ下で、上がってくる中身を地の色のぼかしに溶かす（疑似的な壁）。名前の文字より後ろに置く
+        ShelfWall()
+          .frame(height: Shelf.wallHeight)
+          .shelfMotion(stick, lift: { Shelf.visibleHeight($0) - Shelf.wallOverlap }, opacity: { Double($0) })
+          .allowsHitTesting(false)
+      }
+      .accessibilityHidden(true)
+    }
+    // 上端に着いたら、そこで止める（スクロールした分だけ下に戻す）
+    .visualEffect { content, proxy in
+      content.offset(y: Shelf.push(proxy.frame(in: .named(Shelf.space)).minY))
+    }
+    .onGeometryChange(for: CGFloat.self) { proxy in
+      Shelf.progress(proxy.frame(in: .named(Shelf.space)).minY)
+    } action: { progress in
+      stick.progress = progress
+    }
     .onAppear { if selected == nil { selected = scenes.first?.id } }
     .onChange(of: scenes.map(\.id)) { _, ids in
       if let selected, !ids.contains(selected) { self.selected = ids.first }
@@ -215,85 +330,89 @@ private struct SceneCarousel: View {
   }
 }
 
-/// 横の並びの 1 つ。3D（ゆっくり回り続け、触れない）か、名前だけの板
-private struct SceneTile: View {
+/// 1 つの場面。3D（ゆっくり回り続け、触れない）か印と、その下に場面の名前。枠は付けない。
+/// 上に止まって縮むと、同じ 3D を小さくして、名前をその下に寄せる
+private struct ScenePage: View {
   let scene: RecordScene
   let shows3D: Bool
-  /// 真ん中の場面か。隣の場面では名前を出さない（薄くしたときに 3D の後ろから透けないよう）
+  /// 画面にある場面か。それ以外は読み上げに出さない
   let isMiddle: Bool
-
-  var body: some View {
-    if shows3D, let layout = scene.layout {
-      RecordSceneView(layout: layout, key: scene.sceneKey, name: scene.name, showsName: isMiddle)
-    } else {
-      ScenePlaceholder(name: scene.name, showsName: isMiddle)
-    }
-  }
-}
-
-/// 何番目の場面かの点。多いときは「3 / 12」と数で出す
-private struct PageDots: View {
-  let count: Int
-  let index: Int
-
-  var body: some View {
-    Group {
-      if count <= 1 {
-        EmptyView()
-      } else if count <= 8 {
-        HStack(spacing: 8) {
-          ForEach(0..<count, id: \.self) { i in
-            Circle()
-              .fill(i == index ? Theme.accent : Theme.accentSoft)
-              .frame(width: 8, height: 8)
-          }
-        }
-      } else {
-        Text("\(index + 1) / \(count)")
-          .font(Theme.font(13, .heavy))
-          .foregroundStyle(Theme.muted)
-          .monospacedDigit()
-      }
-    }
-    .frame(height: 12)
-    .accessibilityHidden(true)
-  }
-}
-
-// MARK: - 選んでいる場面
-
-/// 場面の名前と遊んだ回数。下にスクロールしても上に残る
-private struct SceneBar: View {
-  let scene: RecordScene
-  /// 隣の場面を選ぶ（-1 で前、+1 で次）。読み上げでは横に送れないので、ここの操作で替える
+  let stick: ShelfStick
   let onStep: (Int) -> Void
-  /// 上に残している行か。下の線を引き、下の中身と分ける
-  var pinned = false
 
   var body: some View {
-    VStack(spacing: 2) {
+    VStack(spacing: 0) {
+      Group {
+        if shows3D, let layout = scene.layout {
+          RecordSceneView(layout: layout, key: scene.sceneKey, name: scene.name, distance: Shelf.distance)
+        } else {
+          ScenePlaceholder()
+        }
+      }
+      .frame(height: Shelf.sceneHeight)
+      // 止まった後は、同じ 3D を小さくする（作り直さない）
+      .shelfMotion(
+        stick,
+        scale: {
+          let s = Shelf.sceneScale($0)
+          return CGSize(width: s, height: s)
+        })
       Text(scene.name)
         .font(Theme.font(22, .black))
-        .multilineTextAlignment(.center)
-      Text("\(scene.entries.count) 回あそんだ")
-        .font(Theme.font(13, .heavy))
-        .foregroundStyle(Theme.muted)
+        .lineLimit(1)
+        .minimumScaleFactor(0.6)
+        .frame(height: Shelf.nameHeight)
+        .resultColumn()
+        .shelfMotion(stick, lift: { -Shelf.sceneShrink * $0 })
+      Spacer(minLength: 0)
     }
-    .resultColumn()
-    .padding(.vertical, 8)
-    .frame(maxWidth: .infinity)
-    .background(Theme.background)
-    .overlay(alignment: .bottom) {
-      if pinned {
-        Rectangle().fill(Theme.line).frame(height: 1.5)
-      }
-    }
-    .shadow(color: Theme.ink.opacity(pinned ? 0.06 : 0), radius: 6, y: 3)
-    .accessibilityElement(children: .combine)
+    .accessibilityElement(children: .ignore)
+    .accessibilityLabel("\(scene.name)の場面")
+    .accessibilityValue("\(scene.entries.count) 回あそんだ")
     .accessibilityAction(named: "次の場面") { onStep(1) }
     .accessibilityAction(named: "前の場面") { onStep(-1) }
+    .accessibilityHidden(!isMiddle)
+    // UI テストが、場面の所を撮って 3D が描かれたかを見るための名前
+    .accessibilityIdentifier("record-scene")
   }
 }
+
+/// 疑似的な壁。上ほど地の色で濃くぼかし、下で消える
+private struct ShelfWall: View {
+  private static let fade = LinearGradient(colors: [.black, .clear], startPoint: .top, endPoint: .bottom)
+
+  var body: some View {
+    ZStack {
+      Rectangle()
+        .fill(.ultraThinMaterial)
+        .mask(Self.fade)
+      LinearGradient(colors: [Theme.background, Theme.background.opacity(0)], startPoint: .top, endPoint: .bottom)
+    }
+  }
+}
+
+/// 下に固定する「苦手」への入口。下へスクロールして振り返りを読み始めたら（3D が止まったら）下に隠れ、上に戻ると出る
+private struct WeakPointFooter: View {
+  let stick: ShelfStick
+
+  var body: some View {
+    let hidden = stick.progress > 0
+    Button {
+      // 押した先（苦手の画面）は次の PR で作る
+    } label: {
+      Text("苦手をぶっとばせ！")
+    }
+    .buttonStyle(BigButtonStyle(kind: .primary))
+    .resultColumn()
+    .padding(.bottom, 8)
+    .offset(y: hidden ? 160 : 0)
+    .animation(.easeInOut(duration: 0.25), value: hidden)
+    .allowsHitTesting(!hidden)
+    .accessibilityHidden(hidden)
+  }
+}
+
+// MARK: - 選んでいる場面の回
 
 /// 選んでいる場面を遊んだ回の振り返り。新しい順に、日付の見出しで区切って縦に並べる。
 /// 中身は遊んだ直後の振り返りと同じ（ReviewBody。順位は出さない）
@@ -304,10 +423,9 @@ private struct SceneRounds: View {
 
   var body: some View {
     LazyVStack(spacing: 20) {
-      ForEach(Array(scene.entries.enumerated()), id: \.element.id) { index, entry in
+      ForEach(scene.entries) { entry in
         VStack(spacing: 14) {
-          RoundDivider(
-            text: index == 0 ? "最新 \(RecordsView.dayAndTime(entry.playedAt))" : RecordsView.dayAndTime(entry.playedAt))
+          RoundDivider(text: RecordsView.dayAndTime(entry.playedAt))
           if let me = entry.results.me, let score = me.score {
             ReviewBody(
               me: me, score: score, review: entry.results.myReview, layout: entry.layout,
@@ -319,7 +437,7 @@ private struct SceneRounds: View {
   }
 }
 
-/// 回の区切り（─── 11/11 ───）
+/// 回の区切り（─── 11/13 3:02 ───）
 private struct RoundDivider: View {
   let text: String
 
