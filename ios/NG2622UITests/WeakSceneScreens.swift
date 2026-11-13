@@ -54,8 +54,8 @@ final class WeakSceneScreens: XCTestCase {
     XCTAssert(ready.waitForExistence(timeout: 20))
     XCTAssertFalse(element(app, "weak-scene-making").exists)
     XCTAssert(ready.label.contains("苦手の場面ができました"))
-    // 小さな 3D が組み上がるまで待つ
-    sleep(6)
+    // 出てくる動きが終わるまで待つ
+    sleep(1)
     shot("s2-ready")
 
     let practice = app.buttons["この苦手の場面で練習する"]

@@ -127,9 +127,12 @@ struct WeakPointsView: View {
       }
     }
     .animation(.spring(duration: 0.4), value: showsNotice)
+    // できたら、その場で作った部品を先に取っておく（3D は出さず、部品を読むだけ）。
     // 作っている → できた に替わったら、VoiceOver に読み上げで知らせる
-    .onChange(of: scenePhase) { old, new in
-      if old == .making, case .ready(let scene) = new {
+    .onChange(of: scenePhase, initial: true) { old, new in
+      guard case .ready(let scene) = new else { return }
+      for part in scene.createdParts { PartLibrary.shared.preload(PartRef(part)) }
+      if old == .making {
         AccessibilityNotification.Announcement("苦手の場面ができました。\(scene.name)").post()
       }
     }
