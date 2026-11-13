@@ -424,12 +424,14 @@ test("苦手の場面を作る: 足りない部品を作り、配置では id@�
     workshop,
     store,
     newId: () => "0f8fad5b-d9cb-469f-a165-70867728950e",
-    // 残りの半分が 35 秒より短く、端数の出る締め切り
-    budgetMs: 60_001,
+    // 残りが 35 秒より短い締め切り
+    budgetMs: 30_000,
   });
-  // 部品を作る Claude の 1 回の上限は整数（SDK が整数でないと失敗する）で 35 秒まで。全体の締め切りの signal も渡す
+  // 部品を作る Claude の 1 回の上限は、締め切りまでの残り（整数。SDK が整数でないと失敗する。35 秒まで）。
+  // 半分に削らない（1 個 3.6〜16 秒かかる）。全体の締め切りの signal も渡す
   assert.ok(Number.isInteger(options[0].timeoutMs));
-  assert.ok((options[0].timeoutMs ?? 0) <= 35_000);
+  assert.ok((options[0].timeoutMs ?? 0) > 25_000);
+  assert.ok((options[0].timeoutMs ?? 0) <= 30_000);
   assert.ok(options[0].signal);
   assert.ok(outcome.ok, JSON.stringify(outcome));
   const body = outcome.body;
@@ -718,4 +720,49 @@ test("癖・直し方・次に試すこと・Claude の英文は、成功でも�
     { id: "lamp_street", kind: "refused" },
   ]);
   assertNoPrivateText(parts, ["looks like a private thing"]);
+});
+
+test("部品を作る前に締め切りまで 10 秒を切っていたら、作らずに 502", async () => {
+  const realNow = Date.now;
+  let offset = 0;
+  Date.now = () => realNow() + offset;
+  try {
+    const { create } = fakeClaude([
+      () => message(ANSWER),
+      () => {
+        // 2 回目の応答に 15 秒かかったことにする
+        offset += 15_000;
+        return message({
+          items: conventionItems([LAMP_ITEM]),
+          newParts: [LAMP_ORDER],
+        });
+      },
+    ]);
+    const { workshop, ensured } = fakeWorkshop();
+    const { store, put } = fakeStore();
+    const outcome = await makeWeakScene(ENV, WeakSceneRequest.parse(BODY), {
+      create,
+      workshop,
+      store,
+      budgetMs: 20_000,
+    });
+    assert.ok(!outcome.ok && outcome.status === 502);
+    assert.equal(ensured.length, 0, "部品を作り始めない");
+    assert.equal(put.length, 0);
+  } finally {
+    Date.now = realNow;
+  }
+});
+
+test("作る所が上限の時間（90 秒）までに返さなければ 502", async () => {
+  const { usage } = fakeUsage();
+  const routes = makeWeakSceneRoutes({
+    usage: () => usage,
+    make: () => new Promise<WeakSceneOutcome>(() => {}),
+    timeLimitMs: 20,
+  });
+  const res = await post(routes, BODY);
+  assert.equal(res.status, 502);
+  const body = (await res.json()) as { error: { code: string } };
+  assert.equal(body.error.code, "generation_failed");
 });

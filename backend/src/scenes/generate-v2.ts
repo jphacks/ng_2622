@@ -739,6 +739,8 @@ export type GenerateV2Options = GenerateOptions & { deadline?: number };
 const MIN_CALL_MS = 12_000;
 /** 部品を作る Claude の 1 回の上限（ms）。実測は 1 個 3.6〜16 秒 */
 const PART_CALL_TIMEOUT_MS = 35_000;
+/** 部品を作り始めるのに要る、締め切りまでの残り時間（ms） */
+const MIN_PART_MS = 10_000;
 
 type Call = {
   create: CreateMessage;
@@ -1203,19 +1205,29 @@ const conventionItems = async (
   }
   if (problems.length > 0) return { items, problems, previous, ...none };
 
-  // 作り直し（検査に落ちたら 1 回だけ書き直す）は部品を作る口の中で行う。締め切りまでの残りを 1 回の上限にする
+  // 作り直し（検査に落ちたら 1 回だけ書き直す）は部品を作る口の中で行う
   const made: Part[] = [];
   let partLogs: ItemsOutcome["partLogs"] = [];
   if (resolved.orders.length > 0 && lookup.workshop) {
-    // 部品 1 個は Claude を最悪 2 回呼ぶので、1 回の上限は残りの半分（35 秒まで）。締め切りでは signal で止まる
-    const left =
+    // 1 回の上限は締め切りまでの残り（35 秒まで）。1 個 3.6〜16 秒かかるので、1 回目を半分に削らない。
+    // 書き直しの 2 回目は締め切りの signal で止まる。残りが MIN_PART_MS を切っていれば作らずに失敗にする
+    const remaining =
       options.deadline === undefined
         ? undefined
-        : Math.min(
-            PART_CALL_TIMEOUT_MS,
-            // SDK の timeout は整数でないと失敗する
-            Math.max(5_000, Math.floor((options.deadline - Date.now()) / 2)),
-          );
+        : options.deadline - Date.now();
+    if (remaining !== undefined && remaining < MIN_PART_MS) {
+      throw new PartBuildError(
+        resolved.orders.map((o) => ({
+          id: o.id,
+          reason: "unavailable: 締め切りまでに部品を作る時間が足りない",
+        })),
+      );
+    }
+    const left =
+      remaining === undefined
+        ? undefined
+        : // SDK の timeout は整数でないと失敗する
+          Math.min(PART_CALL_TIMEOUT_MS, Math.floor(remaining));
     const result = await lookup.workshop.ensure(resolved.orders, {
       signal: options.signal,
       maxNew,

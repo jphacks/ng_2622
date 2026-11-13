@@ -14,6 +14,7 @@ import {
 import {
   makeWithLimits,
   WEAK_SCENE_MAX_BODY_BYTES,
+  WEAK_SCENE_TIME_LIMIT_MS,
   type WeakSceneInput,
   type WeakSceneOutcome,
   weakScenesEnabled,
@@ -53,6 +54,36 @@ export type WeakSceneRouteDeps = {
     env: AppEnv["Bindings"],
     input: WeakSceneInput,
   ) => Promise<WeakSceneOutcome>;
+  /** 待つ時間の上限（ms。テスト用）。無ければ WEAK_SCENE_TIME_LIMIT_MS */
+  timeLimitMs?: number;
+};
+
+/**
+ * 作る関数を、上限の時間（90 秒）まで待つ。生成は 84 秒で締め切るが、作る所が返ってこないときの安全網として、
+ * 時間が来たら 502 を返す（作る所はそのまま止まらずに終わることがあるが、その結果は使わない）
+ */
+const withinTimeLimit = async (
+  make: Promise<WeakSceneOutcome>,
+  ms: number,
+): Promise<WeakSceneOutcome> => {
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  const timeout = new Promise<WeakSceneOutcome>((resolve) => {
+    timer = setTimeout(
+      () =>
+        resolve({
+          ok: false,
+          code: "generation_failed",
+          status: 502,
+          message: "苦手の場面を作れませんでした（時間切れ）",
+        }),
+      ms,
+    );
+  });
+  try {
+    return await Promise.race([make, timeout]);
+  } finally {
+    if (timer !== undefined) clearTimeout(timer);
+  }
 };
 
 /** 1 回ごとに新しい WeakSceneMaker で作る（CPU の重い裏取りと座標の計算を Worker で動かさない） */
@@ -137,7 +168,11 @@ export const makeWeakSceneRoutes = (deps: WeakSceneRouteDeps = {}) =>
         usage,
         ip,
         c.req.valid("json"),
-        (input) => make(c.env, input),
+        (input) =>
+          withinTimeLimit(
+            make(c.env, input),
+            deps.timeLimitMs ?? WEAK_SCENE_TIME_LIMIT_MS,
+          ),
       );
       if (!result.ok) {
         return c.json(errorBody(result.code, result.message), result.status);
