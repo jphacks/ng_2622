@@ -188,15 +188,16 @@ CLAUDE_API_KEY=... pnpm tsx scripts/make-pool-v2.ts ~/pool-v2 --grade eiken-2 --
 | ファイル | 中身 |
 | --- | --- |
 | `workshop.ts` | 口。`ensureParts(env, orders, { maxNew, signal?, timeoutMs? })` は R2 に既にある ID は作らずにメタデータを返し、無い物だけ並べて作る。`lookupPart(env, id, version?)` は R2 の部品のメタデータを引く（同梱の部品は引かない）。組み立ては呼んだ側の CPU で動く（1 個で初回 7〜12 ms。Worker の無料プランの 10 ms を超えるので、Durable Object の中から呼ぶ） |
-| `write.ts` | Claude に部品表を書かせる。構造化出力（`recipe.ts` の JSON Schema）、system に `cache_control`。見本は同じ category の今の部品の部品表 2〜3 個（`samples.json`）。人の名前・武器・暴力・性的な物の注文は断らせる。モデルと effort は `CLAUDE_PART_MODEL`・`CLAUDE_PART_EFFORT`、無ければ `CLAUDE_SCENE_*`（既定 `claude-sonnet-5-5` の `low`） |
+| `write.ts` | Claude に部品表を書かせる。構造化出力（`recipe.ts` の JSON Schema）、system に `cache_control`。見本は同じ category の今の部品の部品表 2〜3 個（`samples.json`）。人の名前・武器・暴力・性的な物・憎しみの記号・薬物・たばこ・酒など、中高生の場面に合わない物の注文は断らせる（料理の道具の刃物は作る）。モデルと effort は `CLAUDE_PART_MODEL`・`CLAUDE_PART_EFFORT`、無ければ `CLAUDE_SCENE_*`（既定 `claude-sonnet-5-5` の `low`） |
 | `make.ts` | 1 個を作る流れ。書かせる → 確かめる → 組む → 検査する。検査に落ちたら、落ちた理由（英語）を付けて 1 回だけ書き直させる |
 | `recipe.ts`・`materials.json` | 部品表の形（box・cyl・sphere・limb・slab・poly、座標は Blender の Z が上）と zod。材質は `scripts/scene/parts.py` の `make_materials()` の 248 種（`python3 -I scripts/scene/export_materials.py` で書き出す） |
 | `build.ts` | 部品表 → 形 → USDA → 64 バイト境界の無圧縮 zip（USDZ）。原点は外接箱の底面の中心、Y が上・正面 +Z に直す。`top` の注文には上に置ける面の高さ（`anchors.top`）を付ける |
 | `check.ts` | 形の検査（下の表） |
 | `ids.ts` | 部品の ID の規約（物は `名詞` か `名詞_区別`、人は `person_動作_誰_変種`、動物は `animal_動作_種類_変種`） |
-| `store.ts` | R2（binding `BUCKET`）の置き場。`parts/<id>/<v>.usdz`・`parts/<id>/<v>.json`（index.json の 1 件と同じ形）・`recipes/<id>/<v>.json`（部品表と注文・回ごとの時間と費用）。json を最後に書く |
+| `policy.ts` | 作らない物の語（英語と日本語）。注文の ID・words・label・description に含めば、Claude を呼ばずに断る |
+| `store.ts` | R2（binding `BUCKET`）の置き場。`parts/<id>/<v>.usdz`・`parts/<id>/<v>.json`（index.json の 1 件と同じ形）・`recipes/<id>/<v>.json`（部品表と注文・回ごとの時間と費用）。usdz → recipes → json の順に、どれも「無いときだけ置く」（R2 の条件付きの put）。usdz を置けたらその版を取ったことにし、同じ ID を別の Durable Object で同時に作って版が既にあれば、版を上げて置き直す（5 回まで）。json の無い版は無いものとして扱う |
 
-作った部品の USDZ は `GET /parts/{id}/{version}.usdz` で取れる（`cache-control: public, max-age=31536000, immutable`、無ければ 404）。
+作った部品の USDZ は `GET /parts/{id}/{version}.usdz` で取れる（`cache-control: public, max-age=31536000, immutable`。無い版と、json がまだ無い版は 404）。
 
 形の検査の値（`check.ts` の `LIMITS`）:
 
@@ -207,7 +208,8 @@ CLAUDE_API_KEY=... pnpm tsx scripts/make-pool-v2.ts ~/pool-v2 --grade eiken-2 --
 | 三角形の数 | 6,000 まで（組む前に見積もり、組んだあとにも数える） | 同梱の物は多くて 3,300、人は 6,800 |
 | 材質の数 | 10 まで | 同梱の物は多くて電車の 9 |
 | 頼んだ寸法との差 | 軸ごとに、頼んだ寸法の 35% か 2 cm の大きい方まで | 形の向き（幅と奥行きの取り違え）や桁の間違いを落とし、形の工夫は許す |
-| 浮いた基本形 | 基本形ごとの外接箱を、部品の最も長い辺の 2% か 5 mm の大きい方だけ膨らませ、触れ合うものをつなぐ。1 つにつながらなければ落とす | 同梱の物（破片・雨・ろうそくなど、もともと離れた物を除く）は全部通る |
+| 数でない点 | 形の点に NaN・無限があれば落とす（長さ 0 の limb は部品表の確かめでも落とす） | 寸法と浮いた基本形の比べが素通りしないように |
+| 浮いた基本形 | 基本形ごとの外接箱どうしの隙間が、部品の最も長い辺の 2% か 5 mm の大きい方まで（重なりも含む）なら触れ合うとみなしてつなぐ。1 つにつながらなければ落とす。外接箱で見るので、斜めの limb の近くに浮いた物は見逃すことがある | 同梱の物（破片・雨・ろうそくなど、もともと離れた物を除く）は全部通る |
 
 ### 手元で部品を作ってみる
 
