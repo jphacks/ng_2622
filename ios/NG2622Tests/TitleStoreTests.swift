@@ -1,5 +1,6 @@
 import CryptoKit
 import Foundation
+import Observation
 import Testing
 
 @testable import NG2622
@@ -47,7 +48,7 @@ struct TitleStoreTests {
   }
 
   /// 中身 data の 3D を、id で出すタイトル
-  func remote(_ id: String, _ data: Data, caption: String = "広告の見本：JPHACKS", expiresIn: TimeInterval = 3600)
+  func remote(_ id: String, _ data: Data, caption: String = "JPHACKS", expiresIn: TimeInterval = 3600)
     -> RemoteTitle
   {
     let url = URL(string: "https://example.workers.dev/title/\(id).usdz")!
@@ -65,7 +66,7 @@ struct TitleStoreTests {
 
   // MARK: - 取る・取らない
 
-  /// 覚えている id と違えば取り、sha256 が合えば置いて覚える。次にホームを開いたときに出せる
+  /// 覚えている id と違えば取り、sha256 が合えば置いて覚える
   @Test func downloadsWhenIDDiffers() async throws {
     defer { cleanUp() }
     let data = Data("usdz-a".utf8)
@@ -75,7 +76,7 @@ struct TitleStoreTests {
     #expect(source.downloads == 1)
     let current = try #require(store.current(now: now))
     #expect(current.title.id == "jphacks-2026-aaaaaaaa")
-    #expect(current.title.caption == "広告の見本：JPHACKS")
+    #expect(current.title.caption == "JPHACKS")
     #expect(try Data(contentsOf: current.url) == data)
     #expect(usdzFiles() == ["jphacks-2026-aaaaaaaa.usdz"])
   }
@@ -87,12 +88,12 @@ struct TitleStoreTests {
     source.latestResult = .success(remote("jphacks-2026-aaaaaaaa", data))
     let store = store()
     await store.refresh(now: { now })
-    source.latestResult = .success(remote("jphacks-2026-aaaaaaaa", data, caption: "広告の見本：ほか", expiresIn: 7200))
+    source.latestResult = .success(remote("jphacks-2026-aaaaaaaa", data, caption: "ほかの会社", expiresIn: 7200))
     await store.refresh(now: { now })
     #expect(source.latestCalls == 2)
     #expect(source.downloads == 1)
     let current = try #require(store.current(now: now))
-    #expect(current.title.caption == "広告の見本：ほか")
+    #expect(current.title.caption == "ほかの会社")
     #expect(current.title.expiresAt == now + 7200)
   }
 
@@ -129,7 +130,7 @@ struct TitleStoreTests {
     let bundled = try #require(TitleDiorama.hackathon.url(in: .main))
     let data = try Data(contentsOf: bundled)
     let title = RemoteTitle(
-      id: "jphacks-2026-\(digest(data).prefix(8))", caption: "広告の見本：JPHACKS",
+      id: "jphacks-2026-\(digest(data).prefix(8))", caption: "JPHACKS",
       model: URL(string: "https://example.workers.dev/title/hackathon.usdz")!, sha256: digest(data),
       expiresAt: now + 3600)
     source.latestResult = .success(title)
@@ -179,9 +180,88 @@ struct TitleStoreTests {
     #expect(store.current(now: now + 30) != nil)
     #expect(store.current(now: now + 60) != nil)  // 期限ちょうどは出す
     #expect(store.current(now: now + 61) == nil)
+    // current は消さない（ホームの描画の途中で呼ぶため）。次の refresh で、つながらなくても消す
+    #expect(usdzFiles() == ["jphacks-2026-aaaaaaaa.usdz"])
+    await store.refresh(now: { now + 61 })
     #expect(usdzFiles().isEmpty)
     // 消したあとは、戻した時刻でも出さない
     #expect(store.current(now: now) == nil)
+  }
+
+  // MARK: - ホームへ知らせる
+
+  /// 次に revision が変わったら呼ばれる印（Observation）。HomeView も同じ値を見て入れ替える
+  nonisolated final class ChangeFlag: @unchecked Sendable {
+    private let lock = NSLock()
+    private var value = false
+    var fired: Bool { lock.withLock { value } }
+    func fire() { lock.withLock { value = true } }
+  }
+
+  func watch(_ store: TitleStore) -> ChangeFlag {
+    let flag = ChangeFlag()
+    withObservationTracking { _ = store.revision } onChange: { flag.fire() }
+    return flag
+  }
+
+  /// 取り終えた・消したときは、ホームに知らせる（見ている途中でも入れ替えるため）
+  @Test func notifiesWhenStoredTitleChanges() async throws {
+    defer { cleanUp() }
+    let store = store()
+    source.latestResult = .success(remote("jphacks-2026-aaaaaaaa", Data("usdz-a".utf8), expiresIn: 60))
+    var flag = watch(store)
+    await store.refresh(now: { now })
+    #expect(flag.fired, "取り終えたのに知らせない")
+
+    source.latestResult = .success(nil)
+    flag = watch(store)
+    await store.refresh(now: { now })
+    #expect(flag.fired, "null で消したのに知らせない")
+
+    // 期限切れで消したときも知らせる（つながらなくても）
+    source.latestResult = .success(remote("jphacks-2026-aaaaaaaa", Data("usdz-a".utf8), expiresIn: 60))
+    await store.refresh(now: { now })
+    source.latestResult = .failure(Offline())
+    flag = watch(store)
+    await store.refresh(now: { now + 61 })
+    #expect(flag.fired, "期限切れで消したのに知らせない")
+  }
+
+  /// 替わらなければ知らせない（同じ id を確かめ直しただけ・つながらないだけ・覚えていないものを消すだけ）
+  @Test func doesNotNotifyWithoutChange() async throws {
+    defer { cleanUp() }
+    let store = store()
+    let title = remote("jphacks-2026-aaaaaaaa", Data("usdz-a".utf8))
+    source.latestResult = .success(title)
+    await store.refresh(now: { now })
+    var flag = watch(store)
+    await store.refresh(now: { now })
+    source.latestResult = .failure(Offline())
+    await store.refresh(now: { now })
+    #expect(!flag.fired)
+
+    let empty = TitleStore(directory: directory.appending(path: "empty"), source: source, bundle: testBundle)
+    source.latestResult = .success(nil)
+    flag = watch(empty)
+    await empty.refresh(now: { now })
+    #expect(!flag.fired)
+  }
+
+  /// 知らせを受けたホームが読み直すと、新しい 3D になる（HomeView の follow と同じ読み方）
+  @Test func homeTitleFollowsStore() async throws {
+    defer { cleanUp() }
+    let live = AppConfig(mode: .live, backendURL: nil, mock: .init())
+    let store = store()
+    #expect(HomeTitle.current(config: live, store: store, now: now) == .park)
+    source.latestResult = .success(remote("jphacks-2026-aaaaaaaa", Data("usdz-a".utf8)))
+    let flag = watch(store)
+    await store.refresh(now: { now })
+    #expect(flag.fired)
+    guard case .advert(let url, _) = HomeTitle.current(config: live, store: store, now: now) else {
+      Issue.record("広告の 3D にならない")
+      return
+    }
+    #expect(url.lastPathComponent == "jphacks-2026-aaaaaaaa.usdz")
   }
 
   /// 前に覚えたものがあるときにつながらなければ、期限まではそのまま出す（取り直さない）
@@ -269,14 +349,14 @@ struct TitleStoreTests {
     source.latestResult = .success(remote("jphacks-2026-aaaaaaaa", Data("usdz-a".utf8)))
     await store.refresh(now: { now })
     let url = try #require(store.current(now: now)?.url)
-    #expect(HomeTitle.current(config: live, store: store, now: now) == .advert(url, caption: "広告の見本：JPHACKS"))
+    #expect(HomeTitle.current(config: live, store: store, now: now) == .advert(url, caption: "JPHACKS"))
     #expect(HomeTitle.current(config: live, store: store, now: now + 7200) == .park)
   }
 
   /// 読めなかった 3D が今出しているものかを見分ける（前の 3D の読み込みの失敗で、新しい 3D を消さない）
   @Test func isShowingOnlyCurrentAdvert() {
     let current = URL(filePath: "/tmp/title/jphacks-2026-bbbbbbbb.usdz")
-    let title = HomeTitle.advert(current, caption: "広告の見本：JPHACKS")
+    let title = HomeTitle.advert(current, caption: "JPHACKS")
     #expect(title.isShowing(current))
     #expect(title.isShowing(URL(filePath: "/tmp/title/./jphacks-2026-bbbbbbbb.usdz")))
     #expect(!title.isShowing(URL(filePath: "/tmp/title/jphacks-2026-aaaaaaaa.usdz")))
@@ -287,7 +367,7 @@ struct TitleStoreTests {
   @Test func mockUsesBuildSetting() throws {
     let mock = AppConfig(mode: .mock, backendURL: nil, mock: .init(), titleDiorama: .hackathon)
     let url = try #require(TitleDiorama.hackathon.url())
-    #expect(HomeTitle.current(config: mock, store: store(), now: now) == .advert(url, caption: "広告の見本：JPHACKS"))
+    #expect(HomeTitle.current(config: mock, store: store(), now: now) == .advert(url, caption: "JPHACKS"))
     let plain = AppConfig(mode: .mock, backendURL: nil, mock: .init())
     #expect(HomeTitle.current(config: plain, store: store(), now: now) == .park)
     #expect(HomeTitle.park.caption == nil)
@@ -308,7 +388,7 @@ struct LiveTitleSourceTests {
   /// 200 の本文から今出すタイトルを読み、3D をそのまま書く
   @Test func readsTitleAndDownloads() async throws {
     let data = Data("usdz-a".utf8)
-    let json = #"{"title":{"id":"jphacks-2026-ecc5df64","caption":"広告の見本：JPHACKS","model":"https://example.workers.dev/title/hackathon.usdz?v=ecc5df64","sha256":"ecc5df6420d58288105de59ecfde931755a1d345b0789245f9dca72f09719dae","expiresAt":"2026-11-15T14:59:59Z"}}"#
+    let json = #"{"title":{"id":"jphacks-2026-ecc5df64","caption":"JPHACKS","model":"https://example.workers.dev/title/hackathon.usdz?v=ecc5df64","sha256":"ecc5df6420d58288105de59ecfde931755a1d345b0789245f9dca72f09719dae","expiresAt":"2026-11-15T14:59:59Z"}}"#
     let live = source(["/title": (200, Data(json.utf8)), "/title/hackathon.usdz": (200, data)])
     let title = try #require(try await live.latest())
     #expect(title.id == "jphacks-2026-ecc5df64")
@@ -332,7 +412,7 @@ struct LiveTitleSourceTests {
     stub.files[model] = data
     stub.latestResult = .success(
       RemoteTitle(
-        id: "jphacks-2026-aaaaaaaa", caption: "広告の見本：JPHACKS", model: model,
+        id: "jphacks-2026-aaaaaaaa", caption: "JPHACKS", model: model,
         sha256: SHA256.hash(data: data).map { String(format: "%02x", $0) }.joined(), expiresAt: now + 3600))
     let bundle = Bundle(for: BundleToken.self)
     await TitleStore(directory: directory, source: stub, bundle: bundle).refresh(now: { now })

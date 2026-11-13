@@ -78,7 +78,7 @@ Mock の仮の結果（`MockResults.swift`）は公園の場面向けの文な�
 
 ### Award Day の TestFlight 版の作り方
 
-Award Day（2026-11-15）の会場で使う版。App Store の版との違いは、つなぎ先が staging のバックエンドになることだけ。ホームの 3D を企業の 3D 広告の見本（ハッカソンの会場。[`assets/title/`](../../assets/title/README.md)、タイトルの下に「広告の見本：JPHACKS」）にするのは、アプリではなく staging のバックエンドが決める（`GET /title`。staging にだけ `TITLE_CAMPAIGN` を付けてデプロイする。手順は [`backend/README.md`](../../backend/README.md) の「staging だけで出す」、決め方は [ADR](../adr/20261113-decide-title-diorama-on-server-with-expiry.md)）。アプリは、起動時と前に戻ったときに確かめ、次にホームを開いたとき（下の 3 つのどれか）から会場を出し、期限（日本時間 11/15 23:59:59）を過ぎたら公園に戻す。scheme と構成は App Store の版と同じ `NG2622 Store` のまま、Archive のコマンドでつなぎ先と版の番号だけを上書きする（別の構成や scheme は作らない）。
+Award Day（2026-11-15）の会場で使う版。App Store の版との違いは、つなぎ先が staging のバックエンドになることだけ。ホームの 3D を企業の 3D 広告の見本（ハッカソンの会場。[`assets/title/`](../../assets/title/README.md)、3D の下に「PR」の札と「JPHACKS」）にするのは、アプリではなく staging のバックエンドが決める（`GET /title`。staging にだけ `TITLE_CAMPAIGN` を付けてデプロイする。手順は [`backend/README.md`](../../backend/README.md) の「staging だけで出す」、決め方は [ADR](../adr/20261113-decide-title-diorama-on-server-with-expiry.md) と [ADR](../adr/20261113-swap-title-diorama-in-place-and-label-as-pr.md)）。アプリは、起動時と前に戻ったときに確かめ、確かめが終わった時点でその場で会場に替え、期限（日本時間 11/15 23:59:59）を過ぎたら公園に戻す。scheme と構成は App Store の版と同じ `NG2622 Store` のまま、Archive のコマンドでつなぎ先と版の番号だけを上書きする（別の構成や scheme は作らない）。
 
 **この版は App Store の審査に出さない。** TestFlight で配るだけにする。使い捨ての staging のつなぎ先が入っているため。App Store Connect で審査に出すビルドを選ぶときに取り違えないよう、版の番号を App Store の版と分ける。
 
@@ -100,10 +100,8 @@ xcodebuild -exportArchive -archivePath build/NG2622-awardday.xcarchive -exportPa
   - 来場者の自分の端末に入れてもらうのは、外部テストのグループ（公開リンク）の Beta App Review が通った場合だけ。通るまでは公開リンクから入れられないので、来場者が入れられるとは約束しない。
 - 上書きが効いたかは、`build/NG2622-awardday.xcarchive/Products/Applications/NG2622.app/Info.plist` の `BackendURL`・`CFBundleShortVersionString`・`CFBundleVersion` で確かめられる（`plutil -p`）。
 - 会場が出るかは、配る前に `curl -s <staging の URL>/title` で `title` が返ることを確かめる。
-- アプリは、起動時と前に戻ったときに裏で 3D を取り、次にホームを開いたときから会場を出す。初めて入れた端末では 1 回目の起動は公園で、会場が出るのは次のどれかをしたとき。アプリを裏に回して前に戻すだけでは替わらないので、デモの端末は前もってこのどれかをしておく。
-  1. アプリを終了して起動し直す
-  2. きろくか設定を開いて閉じる
-  3. 部屋から戻る
+- アプリは、起動時と前に戻ったときに `GET /title` を確かめ、確かめが終わった時点で、ホームを見ている途中でもその場で会場に替える（短いクロスフェード）。初めて入れた端末では、公園が一瞬出てから会場に替わる。替わらないときは、アプリを裏に回して前に戻す（確かめ直す）。
+- 配ってある 1.0.1 (4) は、前の決め（次にホームを開いたときから出す）のままで、タイトルの下に `caption` を字で出す。staging の `caption` を「JPHACKS」にしたあとは、1.0.1 (4) では「JPHACKS」の字だけが出る（「PR」の札は、この直しを入れた版から）。
 - ストアの版（審査に出す版）にも、会場の 3D（`assets/title/hackathon.usdz`、2.4 MB）がアプリの中に入る。Mock でビルド設定 `TITLE_DIORAMA` のときに出すのと、Live でサーバーの 3D と中身が同じなら通信で取らずに写す（会場の回線で取り直さない）ためで、構成ごとに写し分けていない。本番の `GET /title` は null なので、ストアの版の画面には出ない。
   - 下の審査メモの「no protected third-party material」は、3D をチームが作ったことを言っている。この 3D には JPHACKS（本作品が出るハッカソンの主催）の名前の文字が入る（ロゴの画像は使わず、フォントの文字に色を付けたもの）。画面に出ないファイルでも審査で気になるなら、ストアの構成では写さない（`ios/project.yml` の Copy title dioramas を構成で分ける）か、審査メモに一言足す。
 - 本番で `TITLE_CAMPAIGN` を入れて広告の 3D を出すときは、先に「年齢制限の質問」の「広告」の答えと、App Review に関する情報の審査メモを直す。
@@ -176,7 +174,7 @@ ScenEnglish（シーングリッシュ）は、友達と iPhone で同時に遊�
 - サインイン情報: 不要（アカウントが無い）。「サインインが必要」のチェックを外す。
 - 連絡先: 自分の氏名・電話番号・メールアドレスを入れる（公開されない）。
 - 画面収録: 実機（最新の iOS）で、アプリを起動するところから 1 ラウンドの終わりまでを録る（2026-11-03 の Guideline 2.1 Information Needed で求められた）。App Review に関する情報の「添付ファイル」に上げるか、限定公開の動画の URL をメモに書く。
-- メモ（Apple が求めた 1〜6 の順に答える。審査員はふつう一人で見るので、一人で通しで遊べることを書く。4000 文字まで）:
+- メモ（Apple が求めた 1〜6 の順に答える。審査員はふつう一人で見るので、一人で通しで遊べることを書く。4000 文字まで）。2026-11-13 に場面の★評価をアプリから外したので、3. の 5) の末尾の「and rate the scene」を消した:
 
 ```
 1. Screen recording
@@ -191,7 +189,7 @@ ScenEnglish is an English speaking game for Japanese learners of English (studen
 2) In the lobby, choose a difficulty ("かんたん" = easy) and tap "スタート" (Start). Other players are not required.
 3) The server generates a 3D scene with AI (about 10-20 seconds; a running character is shown while waiting).
 4) After the countdown, describe the scene in English for up to 20 seconds (e.g. "There is a park. A boy is playing with a dog."), then tap "話し終えた" (Done).
-5) After scoring (about 10-20 seconds), the ranking, everyone's descriptions, your score breakdown and feedback are shown. You can replay your voice and rate the scene.
+5) After scoring (about 10-20 seconds), the ranking, everyone's descriptions, your score breakdown and feedback are shown. You can replay your voice.
 "部屋に入る" (Join room) needs the 4-digit code or QR code of a room created on another device. The camera is used only to scan this QR code.
 
 4. External services
@@ -216,6 +214,7 @@ The app is not in a regulated industry. It contains no protected third-party mat
 - 収集するデータの種類:
   - **ユーザコンテンツ → オーディオデータ**: 用途 App の機能。ユーザに関連付けない。トラッキングに使わない。
   - **ユーザコンテンツ → その他のユーザコンテンツ**（表示名、場面の評価とコメント、文字にした英文）: 用途 App の機能。ユーザに関連付けない。トラッキングに使わない。
+    - 2026-11-13 に、結果の画面から場面の★評価を外し、アプリは評価とコメントを送らなくなった（理由: 結果の画面のノイズ。サーバーの口とデータは残してあり、戻せる）。今送るのは表示名と文字にした英文だけ。それでも「その他のユーザコンテンツ」には当たるので、ここの答えは変えない。評価のためだけに端末で作っていた乱数の ID も、今の版では作らず送らないので、「識別子」の申告は要らない。
 - それ以外（連絡先、位置情報、識別子、使用状況、診断など）は収集しない。
 - 遊んだ記録（自分の結果と録音。[`docs/design/play-record.md`](../design/play-record.md)）を端末の中に保存することは、ここの答えを変えない（2026-11-12 に確かめた）。App Store の「収集」は、データを端末の外へ送り、その場の処理より長く持つこと。記録そのもの（録音を含む）は端末の外へ送らない。苦手の分析のときに送る文字は下のとおり。録音を採点のために送ることは、上の「オーディオデータ」でもう答えている。
 - 苦手の分析（2026-11-13。[`docs/design/weak-point-analysis.md`](../design/weak-point-analysis.md)）では、直近の記録の文字（文字にした英文・採点の判定と講評・場面の見本の答え。録音は除く）を、分析のときだけサーバーを通して Claude へ送り、サーバーには残さない。ここの答えは変えない。送るのは文字にした英文とその採点の結果で、上の「その他のユーザコンテンツ」（文字にした英文）として申告済みのため。ユーザに関連付けず、トラッキングにも使わない。

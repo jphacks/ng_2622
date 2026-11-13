@@ -20,12 +20,11 @@ struct TitleDioramaTests {
     #expect(Bundle.main.infoDictionary?["TitleDiorama"] is String)
   }
 
-  /// 見本の字は「提供」と書かず、見本と分かる書き方にする
-  @Test func captionSaysSample() {
-    for diorama in TitleDiorama.allCases {
-      #expect(diorama.caption.hasPrefix("広告の見本"))
-      #expect(!diorama.caption.contains("提供"))
-    }
+  /// caption は広告主の名前だけ。広告と分かる「PR」の札はアプリに固定で、VoiceOver では「PR、名前」と 1 つで読む
+  @Test func labelShowsFixedPRWithAdvertiser() {
+    #expect(TitleDiorama.hackathon.caption == "JPHACKS")
+    #expect(AdvertLabel.spoken("JPHACKS") == "PR、JPHACKS")
+    #expect(HomeTitle.park.caption == nil)
   }
 
   /// USDZ は設定にかかわらずアプリに入る（project.yml の Copy title dioramas）。入っていない bundle では出さない

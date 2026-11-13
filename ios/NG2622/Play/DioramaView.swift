@@ -34,12 +34,15 @@ struct DioramaView: View {
   /// USDZ を読めずに fallback の場面を出したときに、読めなかった USDZ の場所を渡して呼ぶ
   /// （ホームが見本の字や振り方を戻すのに使う）
   var onFallback: ((URL) -> Void)?
+  /// 置いた 3D が描かれたと見なせたときに 1 度だけ呼ぶ（ShownWatch）。ホームが、前の 3D を消す時を合わせるのに使う
+  var onShown: (() -> Void)?
 
   /// 形が出たか。読み込み済みなら最初から出す。まだなら、読み込めたらふわっと出す
   @State private var isShown: Bool
   /// 場面を出せなかった（部品が 1 つも置けない・配置の JSON が取れない）
   @State private var failed = false
   @State private var motion = SceneMotionDriver()
+  @State private var shownWatch = ShownWatch()
 
   init(sceneID: String, yaw: Double, tilt: Double, startsAt: Date? = nil, distance: Float = 7.8, room: String? = nil) {
     source = .id(sceneID, room: room)
@@ -107,6 +110,18 @@ struct DioramaView: View {
         failed = true
       }
       isShown = true
+      // 置いた 3D が描かれたかは RealityKit から直接は分からないので、時間と場面の更新で見なす（ShownWatch）。
+      // 知らせる先が無い（ホーム以外の）ときは見ない
+      if let onShown {
+        let watch = shownWatch
+        watch.begin(onShown)
+        watch.subscription = content.subscribe(to: SceneEvents.Update.self) { _ in watch.tick() }
+        watch.timeoutTask = Task {
+          try? await Task.sleep(for: ShownWatch.timeout)
+          guard !Task.isCancelled else { return }
+          watch.finish()
+        }
+      }
     } update: { content in
       guard let world = content.entities.first(where: { $0.name == "world" }),
         let camera = content.entities.first(where: { $0.name == "camera" })
@@ -122,7 +137,11 @@ struct DioramaView: View {
         SceneUnavailable()
       }
     }
-    .onDisappear { motion.stop() }
+    .onDisappear {
+      motion.stop()
+      // 外れた view からは知らせない（購読と上限の待ちを止める）
+      shownWatch.cancel()
+    }
   }
 
   /// 中身を縦の軸まわりに回し、カメラを見下ろす角度の位置に置く
@@ -135,6 +154,15 @@ struct DioramaView: View {
       from: target + [0, distance * sin(t), distance * cos(t)],
       relativeTo: nil
     )
+  }
+}
+
+extension DioramaView {
+  /// 3D を世界に置き終えたときに呼ぶ処理を足す
+  func onShown(_ action: @escaping () -> Void) -> DioramaView {
+    var view = self
+    view.onShown = action
+    return view
   }
 }
 
@@ -197,6 +225,56 @@ private struct SceneUnavailable: View {
         .foregroundStyle(Theme.muted)
     }
     .accessibilityElement(children: .combine)
+  }
+}
+
+/// 置いた 3D が描かれたと見なせたときに、1 度だけ知らせる。RealityKit は置いた 3D を最初に描いた時を知らせない。
+/// 場面の更新（SceneEvents.Update）は、置いた直後から描くかどうかにかかわらず 16.7ms ごとに来る（シミュレータで測った）ので、
+/// 更新の回数だけでは描かれたか分からない。そこで、置いてから minDelay たち、かつ場面の更新が来ている（場面が動いている）
+/// ときに描かれたと見なす。大きい 3D（会場）は、前に戻した直後に、置いてから最初に描かれるまで 0.4〜0.5 秒かかった。
+/// 更新が来ないときも、上限の時間で知らせる
+final class ShownWatch {
+  /// 置いてから、描かれたと見なすまでの時間
+  static let minDelay: TimeInterval = 0.6
+  /// その間に来ているべき場面の更新の回数
+  static let updatesBeforeShown = 3
+  /// 更新が来なくても知らせるまでの時間
+  static let timeout: Duration = .milliseconds(1500)
+
+  var subscription: EventSubscription?
+  var timeoutTask: Task<Void, Never>?
+  private var action: (() -> Void)?
+  private var updates = 0
+  private var begun = Date()
+  private var done = false
+
+  func begin(_ action: (() -> Void)?) {
+    self.action = action
+    updates = 0
+    begun = Date()
+    done = false
+  }
+
+  func tick() {
+    updates += 1
+    if updates >= Self.updatesBeforeShown, Date().timeIntervalSince(begun) >= Self.minDelay { finish() }
+  }
+
+  func finish() {
+    guard !done else { return }
+    let action = self.action
+    cancel()
+    action?()
+  }
+
+  /// 知らせずに止める
+  func cancel() {
+    done = true
+    subscription?.cancel()
+    subscription = nil
+    timeoutTask?.cancel()
+    timeoutTask = nil
+    action = nil
   }
 }
 

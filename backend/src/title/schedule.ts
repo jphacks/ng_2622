@@ -8,7 +8,7 @@ import raw from "./schedule.json";
 // - id: 広告の名前。環境の変数 TITLE_CAMPAIGN（カンマ区切り）に入っているものだけを出す。本番は空で何も出さない
 // - file: assets/title の中の USDZ の名前
 // - sha256: file の中身の sha256（16 進数の小文字）。test/title.test.ts が実物と突き合わせる。ファイルを作り直したら書き直す
-// - caption: タイトルの下に出す字
+// - caption: 広告主の名前。アプリは、アプリに固定の「PR」の札の横に出す（「PR」はサーバーから変えられない）
 // - startsAt・expiresAt: 出す期間（秒までの UTC。両端を含む）。期間の判定はサーバーの時刻で行う
 //   jphacks-2026 は日本時間 2026-11-13 0:00 から 11-15 23:59:59 まで
 

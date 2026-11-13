@@ -84,6 +84,12 @@ final class SceneLibrary {
     loadedUSDZ.contains(url.standardizedFileURL.path)
   }
 
+  /// USDZ のファイルを先に読んでおく（入れ替えるときに、読み終えてから替える）。読めたか
+  @discardableResult
+  func preload(usdzAt url: URL) async -> Bool {
+    await loadUSDZ(url).value != nil
+  }
+
   /// USDZ のファイル（同梱か、端末に取っておいたもの）を読んだ場面の複製。組んだ場面と同じく、地面の中心を原点に置き、
   /// 横幅を footprint にそろえ、光を足す。無い・読めないときは nil
   func instance(usdzAt url: URL) async -> SceneComposer.Composed? {

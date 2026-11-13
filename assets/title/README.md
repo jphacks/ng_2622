@@ -30,7 +30,7 @@
 ## アプリでの出し方
 
 - バックエンドは、`assets/title/*.usdz` を Worker の静的アセットとして `/title/<file>` で配り、`GET /title` で今出すもの（id・caption・sha256・期限）を返す（`backend/README.md` の「タイトル画面の 3D」）。作り直したら `backend/src/title/schedule.json` の `sha256` を書き直す。
-- Live のアプリは、起動時と前に戻ったときに `GET /title` を確かめ、id が変われば 3D を取って端末のキャッシュに置き、次にホームを開いたときから出す（`ios/NG2622/Room/TitleStore.swift`）。期限を過ぎたら消す。
+- Live のアプリは、起動時と前に戻ったときに `GET /title` を確かめ、id が変われば 3D を取って端末のキャッシュに置き、確かめが終わった時点でホームをその場で入れ替える（`ios/NG2622/Room/TitleStore.swift`・`HomeView.swift`）。期限を過ぎたら消す。広告の 3D の間は、3D の下に「PR」の札と広告主の名前（`caption`）を出す。
 - `hackathon.usdz` は、ビルドのたびにアプリの `title/hackathon.usdz` にも写す（`ios/project.yml` の Copy title dioramas）。Mock でビルド設定 `TITLE_DIORAMA` が `hackathon` のときに出すほか、Live でサーバーの 3D と中身が同じなら、通信で取らずにこれを写す。
 - 選び方と回し方は `ios/NG2622/Room/TitleDiorama.swift`（`HomeTitle`）、読み込みは `SceneLibrary.instance(usdzAt:fallback:)`（遊ぶ場面と同じく横幅 2.3 m に縮め、光を足す。読めなければ作り置きの場面に戻す）。
 - 見え方は [`docs/design/ui/screens/home.md`](../../docs/design/ui/screens/home.md)、TestFlight の版の作り方は [`docs/app-store/README.md`](../../docs/app-store/README.md) の「Award Day の TestFlight 版の作り方」。

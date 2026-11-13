@@ -185,7 +185,7 @@ CLAUDE_API_KEY=... pnpm tsx scripts/make-pool-v2.ts ~/pool-v2 --grade eiken-2 --
 
 タイトル画面（ホーム）に、既定の場面（公園）の代わりに期間つきで出す 3D（企業の 3D 広告。今は JPHACKS が提供した場合の見本）。決め方は [ADR](../docs/adr/20261113-decide-title-diorama-on-server-with-expiry.md)。
 
-- 予定は `src/title/schedule.json`（`id`・`file`・`sha256`・`caption`・`startsAt`・`expiresAt`。日時は秒までの UTC）。`GET /title` は、環境の変数 `TITLE_CAMPAIGN`（予定の `id`、カンマ区切り）に入っていて、サーバーの時刻で期間の中にある予定を返す。無ければ `{ "title": null }`。
+- 予定は `src/title/schedule.json`（`id`・`file`・`sha256`・`caption`・`startsAt`・`expiresAt`。日時は秒までの UTC）。`caption` は広告主の名前だけを書く（アプリは、アプリに固定の「PR」の札の横に出す。広告と分かる「PR」はサーバーからは変えられない）。`GET /title` は、環境の変数 `TITLE_CAMPAIGN`（予定の `id`、カンマ区切り）に入っていて、サーバーの時刻で期間の中にある予定を返す。無ければ `{ "title": null }`。
 - 3D のファイルは repo の `assets/title/<file>` を Worker の静的アセット（`wrangler.jsonc` の `assets`）として一緒にデプロイし、`/title/<file>` で配る。配るのは `assets/.assetsignore` で戻した `title/*.usdz` だけ（README・画像・部品は配らない）。
 - 本番の `TITLE_CAMPAIGN` は空（`wrangler.jsonc` の `vars`）で、何も出さない。PR のプレビューも空。
 - 静的アセットは変数にかかわらず一緒にデプロイされるので、main に入ると本番にも `/title/hackathon.usdz` が置かれる。本番の `GET /title` は null なのでアプリは取りに行かず、URL を知っている人が取れるだけで害は無い（中身は repo の `assets/title/` と同じ）。
@@ -198,7 +198,7 @@ CLAUDE_API_KEY=... pnpm tsx scripts/make-pool-v2.ts ~/pool-v2 --grade eiken-2 --
 
 ### staging だけで出す（Award Day）
 
-本番の設定は変えず、staging の Worker にデプロイするときだけ変数を付ける。`--var` はそのデプロイだけに効くので、staging にデプロイし直すたびに付ける（付け忘れると `title` が null になり、アプリは公園に戻る）。
+本番の設定は変えず、staging の Worker にデプロイするときだけ変数を付ける。`caption` を替える staging のデプロイは、新しい版を配って TestFlight の build 4（1.0.1 (4)）を期限切れにした後にする（build 4 は `caption` を「PR」の札なしで、タイトルの下に字として出すため）。`--var` はそのデプロイだけに効くので、staging にデプロイし直すたびに付ける（付け忘れると `title` が null になり、アプリは公園に戻る）。
 
 ```sh
 pnpm exec wrangler deploy --minify --name <staging の Worker の名前> --var TITLE_CAMPAIGN:jphacks-2026

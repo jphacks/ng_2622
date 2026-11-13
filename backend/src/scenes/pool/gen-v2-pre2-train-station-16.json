@@ -3,7 +3,7 @@
   "id": "gen-v2-pre2-train-station-16",
   "name": "駅で切符を買う",
   "difficulty": "eiken-pre2",
-  "description": "There is a ticket machine on the platform. A woman is using the ticket machine because a train is at the platform. A boy is sitting on a bench. A man is drinking from a cup. There is a sign on the platform.",
+  "description": "There is a ticket machine on the platform. A woman is using the ticket machine because she needs a ticket for the train. A boy is sitting on a bench. A man is drinking from a cup. There is a sign on the platform.",
   "checklist": [
     {
       "id": "woman_press",
@@ -30,8 +30,8 @@
       "id": "why_press",
       "kind": "reason",
       "label": "女の人が券売機を使っている理由",
-      "accept": "a woman is using the ticket machine because a train is at the platform",
-      "refs": ["woman", "train"]
+      "accept": "a woman is using the ticket machine because she needs a ticket for the train",
+      "refs": ["woman", "ticket_machine", "train"]
     },
     {
       "id": "machine",
