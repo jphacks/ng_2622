@@ -13,21 +13,22 @@ flowchart LR
   subgraph CF[Cloudflare]
     W[Worker<br>入口・回数の上限]
     R[Durable Object<br>部屋ごとに 1 つ]
-    G[Durable Object<br>全体の利用量 1 つ]
+    G[Durable Object<br>全体の利用量 1 つ<br>UsageCounter]
   end
   Az[Azure AI Speech<br>REST・短い音声用]
   Cl[Claude API<br>Haiku 5.5 / Sonnet 5.5]
   UI <-->|WebSocket| W
   Rec -->|音声をアップロード| W
   W <--> R
-  R --> G
+  W <--> G
+  W -->|苦手の分析| Cl
   R -->|文字起こし・発音評価| Az
   R -->|内容・表現の採点と講評| Cl
 ```
 
-- iPhone はキーを持たず、Cloudflare の Worker とだけ話す。外部 API（Azure・Claude）は部屋の Durable Object が呼ぶ。
+- iPhone はキーを持たず、Cloudflare の Worker とだけ話す。採点の外部 API（Azure・Claude）は部屋の Durable Object が呼ぶ。部屋の外の口（苦手の分析の `POST /weak-points`、手元だけの `POST /score`・`POST /scenes/generate`）は、Worker が Claude を直に呼ぶ。
 - 部屋の状態（参加者、進行、点数）は、部屋ごとの Durable Object がメモリと保存領域に持つ。ThatsFight の `server/rooms.ts` の考え方（部屋の ID、端末ごとの合言葉、切断からの復帰）を移植する。
-- 全体の利用量を数える Durable Object を 1 つ置き、1 日あたりの採点回数の上限を効かせる（推測）。
+- 全体の利用量を数える Durable Object `UsageCounter` を 1 つ置く。今は苦手の分析の、IP ごとの 1 時間の回数と全体の 1 日の回数だけを数える（2026-11-13。[`weak-point-analysis.md`](./weak-point-analysis.md) の 8）。採点の 1 日の上限は、まだ乗せていない。
 
 ## 1 ラウンドの流れ
 
@@ -70,6 +71,7 @@ sequenceDiagram
 | `GET /parts` | HTTP | 部品のメタデータの一覧（Worker に同梱した一覧） |
 | `POST /scenes/generate` | HTTP | 作り置きのスクリプト（手元）が使う。級（`difficulty`）とテーマから、Claude が 2 段（見本の答えとチェックリスト → 部品と関係）で書き、バックエンドが裏取りをして座標に直した配置の JSON（`scenenglish.scene/2`）を返す（保存しない）。合言葉が要る。形は [`scene-protocol.md`](./scene-protocol.md) |
 | `PUT /scenes/:id/reviews` | HTTP | シーンを評価する（★ 1〜5、コメントは 200 文字までで任意）。端末ごとの ID を付け、同じ ID で送り直すと上書きする（結果発表の下で送る） |
+| `POST /weak-points` | HTTP | 苦手の分析。端末に残した直近の記録（内容の内訳のある 5〜10 件）の文字（文字起こし・描写の判定・言い直し・次の一つ・級・表現の根拠と、場面の見本の答え・言えなかった項目）と、端末で数えた値を送ると、Claude（Sonnet 5.5 の low）がくり返す癖（最大 3 件、自分の文の実例つき）・前より良くなった点・次の 1 回で試すことを書いて返す。実例の引用はバックエンドが文字起こしと照らして確かめ、無いものは返さない。録音・名前・端末の ID は送らず、サーバーは保存しない。認証は無く、本文の大きさ・IP ごとの 1 時間の回数・全体の 1 日の回数の上限と、止めるスイッチ（`WEAK_POINT_ANALYSIS`）で守る（[`weak-point-analysis.md`](./weak-point-analysis.md)） |
 | `POST /score` | HTTP | 配置の JSON（`layout` の `difficulty`・`checklist`・`items`・`description`）と文字起こしを送ると、部屋の採点と同じチェックリストの採点で、内容と表現の点・内容の内訳・講評を返す。話し方の点は付けないが、Azure の 3 つの点（`speech`）を送ると次に伸ばす一つに話し方も選ばれる。手元で試すときだけ開く（`ENABLE_DEV_ROUTES`）（[ADR](../adr/20261111-score-only-with-checklist-and-drop-handmade-scenes.md)） |
 
 API の型の正本は `backend/src/schemas/`（zod）で、そこから生成した `backend/openapi.json` を iOS が読む（2026-10-24 に決定）。WebSocket のメッセージは OpenAPI の `components.schemas` の `ClientMessage`・`ServerMessage` に載せる。
@@ -86,7 +88,7 @@ WebSocket のメッセージ（ThatsFight の `src/shared/protocol.ts` に倣う
 - シーンの定義（ID、名前、Claude に渡す場面の説明、描写してほしい要素の一覧、3D モデルのファイル名）は、リポジトリに JSON で置き、Worker とアプリの両方が読む（推測）。
 - 3D モデルはアプリに同梱する（推測）。会場の回線に左右されないため。
 - サーバーは、音声を保存しない（採点が終われば捨てる）。部屋の中の採点の結果は、部屋が閉じたら消す。長く保存しない。
-- 端末には、遊んだ本人の記録を残す（2026-11-12 に決定。[ADR](../adr/20261112-keep-play-records-on-device-one-file-per-round.md)）。自分の採点の結果が届いたら、場面の配置の JSON・自分の結果・自分の録音を、アプリ用の領域に 1 ラウンド 1 ファイルで置く。順位とほかの人の結果は入れない。サーバーには送らない。形と消し方は [`play-record.md`](./play-record.md)。
+- 端末には、遊んだ本人の記録を残す（2026-11-12 に決定。[ADR](../adr/20261112-keep-play-records-on-device-one-file-per-round.md)）。自分の採点の結果が届いたら、場面の配置の JSON・自分の結果・自分の録音を、アプリ用の領域に 1 ラウンド 1 ファイルで置く。順位とほかの人の結果は入れない。サーバーへは、苦手の分析（`POST /weak-points`）のときだけ、直近の記録の文字（録音は除く）を送り、サーバーには残さない（2026-11-13。[`weak-point-analysis.md`](./weak-point-analysis.md)）。形と消し方は [`play-record.md`](./play-record.md)。
 - シーンの評価（★とコメント）は、全体で 1 つの Durable Object `SceneReviews` の SQLite に残す（[ADR](../adr/20261024-store-scene-reviews-in-a-global-durable-object.md)）。今後のユーザーが作るシーンも同じ表に足す。
 
 ## コスト破産への備え（[`cost-safety.md`](./cost-safety.md) の具体化）
@@ -94,10 +96,10 @@ WebSocket のメッセージ（ThatsFight の `src/shared/protocol.ts` に倣う
 | 層 | 対策 |
 | --- | --- |
 | 端末 | キーを持たない。音声は最長 20 秒で切る |
-| Worker | Cloudflare の回数制限で、IP ごとの呼び出しを絞る。音声の大きさ（1 MB 程度まで）と形式を確かめてから受け取る |
+| Worker | 音声の大きさ（1 MB 程度まで）と形式を確かめてから受け取る。苦手の分析（`POST /weak-points`）は、本文の大きさ（64 KB）と、IP ごとの 1 時間の回数を `UsageCounter`（Durable Object）で数えて絞る。Cloudflare の Rate Limiting の binding は期間が 10 秒か 60 秒だけで、場所ごとの近似の数なので使わない（2026-11-13 に Cloudflare の文書で確かめた） |
 | 部屋 | 1 人 1 ラウンド 1 回だけ採点する。部屋の人数の上限と、1 時間あたりのラウンド数の上限を置く |
-| 全体 | 1 日あたりの採点回数の上限を置く。超えたら固定の点数を返すモードに切り替える |
-| スイッチ | 環境変数ひとつで外部 API の呼び出しを止める |
+| 全体 | 1 日あたりの採点回数の上限を置く。超えたら固定の点数を返すモードに切り替える（まだ無い）。苦手の分析は、Claude を呼んだ回数を 1 日ごとに `UsageCounter` で数え、上限で 429 にする |
+| スイッチ | 環境変数ひとつで外部 API の呼び出しを止める（採点は `SCORING_MODE`、場面の生成は `SCENE_GENERATION`、苦手の分析は `WEAK_POINT_ANALYSIS`） |
 | 外部 | Claude は専用のワークスペースのキーで、月の支出上限とレート上限を掛ける。Azure for Students はクレジットが尽きると止まる |
 
 - 本物のアプリからの呼び出しかを確かめる仕組み（Apple の App Attest など）は入れない（2026-10-21 に決定）。青天井の課金は起きにくく（Azure も Claude もクレジットが尽きると止まる）、守るべきは本番の前にクレジットを使い切られないことで、それは回数の上限で足りるため。
@@ -112,6 +114,9 @@ WebSocket のメッセージ（ThatsFight の `src/shared/protocol.ts` に倣う
 | 1 部屋の 1 時間あたりのラウンド数 | 20 | 1 ラウンド約 1 分なので、普通に遊ぶ分には届かない |
 | 全体の 1 日あたりの採点回数 | 300 回 | 2 段の呼び方でも Azure は約 300 × 40 秒 ≈ 3.3 時間 ≈ 4.3 USD、Claude は Haiku 5.5 で約 0.15 USD |
 | 1 回の音声 | 20 秒・1 MB まで | 16 kHz・16 bit・モノラルの WAV で 20 秒 ≈ 0.64 MB |
+| 苦手の分析の IP ごとの 1 時間の回数 | 10 回（Award Day 当日は 60 回） | `wrangler.jsonc` の `WEAK_POINT_IP_PER_HOUR`。EXPO の会場は同じ Wi-Fi（同じ IP）から使うので当日は増やす |
+| 苦手の分析の全体の 1 日の回数 | 200 回（当日は 500 回） | `WEAK_POINT_DAILY_LIMIT`。Claude を呼んだ回数（呼び直しも 1 回）。1 回約 0.05 USD なので約 10 USD（当日は約 25 USD） |
+| 苦手の分析の本文 | 64 KB | `WEAK_POINT_MAX_BODY_BYTES`。測定の記録の組（10 件）は 11〜20 KB。大きいほど 1 回の費用が上がるので、余裕は少なめにした |
 
 ## Workers の無料プランで足りるか（2026-10-21 に確認）
 
