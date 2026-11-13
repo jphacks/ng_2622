@@ -10,7 +10,7 @@
 	<false/>
 	<key>NSPrivacyTrackingDomains</key>
 	<array/>
-	<!-- 外に送るもの。どれも遊ぶため（採点・場面の評価）だけに使い、本人とは結び付けない -->
+	<!-- 外に送るもの。どれも遊ぶため（採点・苦手の分析）だけに使い、本人とは結び付けない -->
 	<key>NSPrivacyCollectedDataTypes</key>
 	<array>
 		<!-- 話した声の録音（採点のためにバックエンドへ送り、Azure と Claude で採点する。サーバーには保存しない。
@@ -27,7 +27,7 @@
 				<string>NSPrivacyCollectedDataTypePurposeAppFunctionality</string>
 			</array>
 		</dict>
-		<!-- 表示名、場面の評価の ★ とコメント -->
+		<!-- 表示名と、文字にした英文。場面の評価の ★ とコメントは、2026-11-13 に結果の画面から評価を外したので送らない -->
 		<dict>
 			<key>NSPrivacyCollectedDataType</key>
 			<string>NSPrivacyCollectedDataTypeOtherUserContent</string>
@@ -41,7 +41,7 @@
 			</array>
 		</dict>
 	</array>
-	<!-- 理由の申告が要る API。UserDefaults はアプリ自身の設定（名前・色・評価の ID）を覚えるだけ -->
+	<!-- 理由の申告が要る API。UserDefaults はアプリ自身の設定（名前・色）を覚えるだけ -->
 	<key>NSPrivacyAccessedAPITypes</key>
 	<array>
 		<dict>
