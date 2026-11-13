@@ -174,7 +174,7 @@ ScenEnglish（シーングリッシュ）は、友達と iPhone で同時に遊�
 - サインイン情報: 不要（アカウントが無い）。「サインインが必要」のチェックを外す。
 - 連絡先: 自分の氏名・電話番号・メールアドレスを入れる（公開されない）。
 - 画面収録: 実機（最新の iOS）で、アプリを起動するところから 1 ラウンドの終わりまでを録る（2026-11-03 の Guideline 2.1 Information Needed で求められた）。App Review に関する情報の「添付ファイル」に上げるか、限定公開の動画の URL をメモに書く。
-- メモ（Apple が求めた 1〜6 の順に答える。審査員はふつう一人で見るので、一人で通しで遊べることを書く。4000 文字まで）:
+- メモ（Apple が求めた 1〜6 の順に答える。審査員はふつう一人で見るので、一人で通しで遊べることを書く。4000 文字まで）。2026-11-13 に場面の★評価をアプリから外したので、3. の 5) の末尾の「and rate the scene」を消した:
 
 ```
 1. Screen recording
@@ -189,7 +189,7 @@ ScenEnglish is an English speaking game for Japanese learners of English (studen
 2) In the lobby, choose a difficulty ("かんたん" = easy) and tap "スタート" (Start). Other players are not required.
 3) The server generates a 3D scene with AI (about 10-20 seconds; a running character is shown while waiting).
 4) After the countdown, describe the scene in English for up to 20 seconds (e.g. "There is a park. A boy is playing with a dog."), then tap "話し終えた" (Done).
-5) After scoring (about 10-20 seconds), the ranking, everyone's descriptions, your score breakdown and feedback are shown. You can replay your voice and rate the scene.
+5) After scoring (about 10-20 seconds), the ranking, everyone's descriptions, your score breakdown and feedback are shown. You can replay your voice.
 "部屋に入る" (Join room) needs the 4-digit code or QR code of a room created on another device. The camera is used only to scan this QR code.
 
 4. External services
@@ -214,6 +214,7 @@ The app is not in a regulated industry. It contains no protected third-party mat
 - 収集するデータの種類:
   - **ユーザコンテンツ → オーディオデータ**: 用途 App の機能。ユーザに関連付けない。トラッキングに使わない。
   - **ユーザコンテンツ → その他のユーザコンテンツ**（表示名、場面の評価とコメント、文字にした英文）: 用途 App の機能。ユーザに関連付けない。トラッキングに使わない。
+    - 2026-11-13 に、結果の画面から場面の★評価を外し、アプリは評価とコメントを送らなくなった（理由: 結果の画面のノイズ。サーバーの口とデータは残してあり、戻せる）。今送るのは表示名と文字にした英文だけ。それでも「その他のユーザコンテンツ」には当たるので、ここの答えは変えない。評価のためだけに端末で作っていた乱数の ID も、今の版では作らず送らないので、「識別子」の申告は要らない。
 - それ以外（連絡先、位置情報、識別子、使用状況、診断など）は収集しない。
 - 遊んだ記録（自分の結果と録音。[`docs/design/play-record.md`](../design/play-record.md)）を端末の中に保存することは、ここの答えを変えない（2026-11-12 に確かめた）。App Store の「収集」は、データを端末の外へ送り、その場の処理より長く持つこと。記録そのもの（録音を含む）は端末の外へ送らない。苦手の分析のときに送る文字は下のとおり。録音を採点のために送ることは、上の「オーディオデータ」でもう答えている。
 - 苦手の分析（2026-11-13。[`docs/design/weak-point-analysis.md`](../design/weak-point-analysis.md)）では、直近の記録の文字（文字にした英文・採点の判定と講評・場面の見本の答え。録音は除く）を、分析のときだけサーバーを通して Claude へ送り、サーバーには残さない。ここの答えは変えない。送るのは文字にした英文とその採点の結果で、上の「その他のユーザコンテンツ」（文字にした英文）として申告済みのため。ユーザに関連付けず、トラッキングにも使わない。

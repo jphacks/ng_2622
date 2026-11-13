@@ -67,12 +67,12 @@ sequenceDiagram
 | `GET /rooms/:id/ws` | WebSocket | 部屋に入る。最初に `join`（名前とアバターの色。ホストと復帰する人は参加者 ID と合言葉も）を送る。以後、部屋の状態・開始・進み具合・結果を受け取る |
 | `POST /rooms/:id/rounds/:n/audio` | HTTP | 自分の音声（WAV、最長 20 秒、約 0.6 MB）を本文にそのまま載せて送る。参加者 ID と合言葉をヘッダーに付ける。すぐ 202 を返し、採点は裏で続ける |
 | `GET /scenes/:id/layout` | HTTP | 作り置きの場面の配置の JSON（`scenenglish.scene/2`）を、`backend/src/scenes/pool/` の JSON のまま返す。round で届いた場面を組み立てるのに使う。部屋が AI で作った場面は `?room=<部屋のコード>` を付けて取る。無い場面は 404 `unknown_scene` |
-| `GET /scenes/:id/reviews` | HTTP | シーンの評価（★とコメント）を新しい順に返す |
+| `GET /scenes/:id/reviews` | HTTP | シーンの評価（★とコメント）を新しい順に返す（アプリの画面からは呼んでいなかった。2026-11-13 にアプリの評価の口を消した後も、下の `PUT` と同じくサーバーの口は残す） |
 | `GET /parts` | HTTP | 部品のメタデータの一覧（Worker に同梱した一覧） |
 | `GET /title` | HTTP | タイトル画面（ホーム）に今出す 3D（`{ title: { id, caption, model, sha256, expiresAt } }` か `{ title: null }`）。予定（`backend/src/title/schedule.json`）のうち、環境の変数 `TITLE_CAMPAIGN` に入っていて、サーバーの時刻で期間の中のもの。本番は空で null、staging だけ付ける。id は予定の id と 3D の sha256 の先頭 8 文字。`expiresAt` は秒までの UTC。アプリは起動時と前に戻ったときに毎回呼び、id が変われば取り直し、期限を過ぎたら端末で消す（[ADR](../adr/20261113-decide-title-diorama-on-server-with-expiry.md)） |
 | `GET /title/<file>` | HTTP（静的アセット） | タイトル画面の 3D（USDZ）。repo の `assets/title/*.usdz` を Worker の静的アセットとして一緒にデプロイして配る（`assets/.assetsignore` でそれだけに絞る）。`GET /title` の `model` がこの URL を指す |
 | `POST /scenes/generate` | HTTP | 作り置きのスクリプト（手元）が使う。級（`difficulty`）とテーマから、Claude が 2 段（見本の答えとチェックリスト → 部品と関係）で書き、バックエンドが裏取りをして座標に直した配置の JSON（`scenenglish.scene/2`）を返す（保存しない）。合言葉が要る。形は [`scene-protocol.md`](./scene-protocol.md) |
-| `PUT /scenes/:id/reviews` | HTTP | シーンを評価する（★ 1〜5、コメントは 200 文字までで任意）。端末ごとの ID を付け、同じ ID で送り直すと上書きする（結果発表の下で送る） |
+| `PUT /scenes/:id/reviews` | HTTP | シーンを評価する（★ 1〜5、コメントは 200 文字までで任意）。端末ごとの ID を付け、同じ ID で送り直すと上書きする（結果発表の下で送る）。2026-11-13 にアプリから評価のカードを外し、アプリは送らなくなった（理由: 結果の画面のノイズ。[`ui/screens/ranking.md`](./ui/screens/ranking.md) の「決定」）。口と、送られた評価は残してあり、戻せる |
 | `POST /weak-points` | HTTP | 苦手の分析。端末に残した直近の記録（内容の内訳のある 5〜10 件）の文字（文字起こし・描写の判定・言い直し・次の一つ・級・表現の根拠と、場面の見本の答え・言えなかった項目）と、端末で数えた値を送ると、Claude（Sonnet 5.5 の low）がくり返す癖（最大 3 件、自分の文の実例つき）・前より良くなった点・次の 1 回で試すことを書いて返す。実例の引用はバックエンドが文字起こしと照らして確かめ、無いものは返さない。録音・名前・端末の ID は送らず、サーバーは保存しない。認証は無く、本文の大きさ・IP ごとの 1 時間の回数・全体の 1 日の回数の上限と、止めるスイッチ（`WEAK_POINT_ANALYSIS`）で守る（[`weak-point-analysis.md`](./weak-point-analysis.md)） |
 | `POST /score` | HTTP | 配置の JSON（`layout` の `difficulty`・`checklist`・`items`・`description`）と文字起こしを送ると、部屋の採点と同じチェックリストの採点で、内容と表現の点・内容の内訳・講評を返す。話し方の点は付けないが、Azure の 3 つの点（`speech`）を送ると次に伸ばす一つに話し方も選ばれる。手元で試すときだけ開く（`ENABLE_DEV_ROUTES`）（[ADR](../adr/20261111-score-only-with-checklist-and-drop-handmade-scenes.md)） |
 
@@ -92,7 +92,7 @@ WebSocket のメッセージ（ThatsFight の `src/shared/protocol.ts` に倣う
 - タイトル画面の 3D だけは、サーバーが期間つきで出すものを決め、アプリは取った 3D を端末のキャッシュ（Caches）に置き、期限（`expiresAt`）を過ぎたら消す（2026-11-13 に決定。[ADR](../adr/20261113-decide-title-diorama-on-server-with-expiry.md)）。送る情報は無い。
 - サーバーは、音声を保存しない（採点が終われば捨てる）。部屋の中の採点の結果は、部屋が閉じたら消す。長く保存しない。
 - 端末には、遊んだ本人の記録を残す（2026-11-12 に決定。[ADR](../adr/20261112-keep-play-records-on-device-one-file-per-round.md)）。自分の採点の結果が届いたら、場面の配置の JSON・自分の結果・自分の録音を、アプリ用の領域に 1 ラウンド 1 ファイルで置く。順位とほかの人の結果は入れない。サーバーへは、苦手の分析（`POST /weak-points`）のときだけ、直近の記録の文字（録音は除く）を送り、サーバーには残さない（2026-11-13。[`weak-point-analysis.md`](./weak-point-analysis.md)）。形と消し方は [`play-record.md`](./play-record.md)。
-- シーンの評価（★とコメント）は、全体で 1 つの Durable Object `SceneReviews` の SQLite に残す（[ADR](../adr/20261024-store-scene-reviews-in-a-global-durable-object.md)）。今後のユーザーが作るシーンも同じ表に足す。
+- シーンの評価（★とコメント）は、全体で 1 つの Durable Object `SceneReviews` の SQLite に残す（[ADR](../adr/20261024-store-scene-reviews-in-a-global-durable-object.md)）。今後のユーザーが作るシーンも同じ表に足す。2026-11-13 にアプリから評価を外した（結果の画面のノイズになるため）。表と口は残してあり、戻せる。評価のためだけに端末で作っていた ID（`sceneReviews.reviewerID`）も、アプリは作らなくなった。
 
 ## コスト破産への備え（[`cost-safety.md`](./cost-safety.md) の具体化）
 

@@ -3,7 +3,7 @@
   "id": "gen-v2-eiken2-cafe-02",
   "name": "カフェでの注文とこぼれたジュース",
   "difficulty": "eiken-2",
-  "description": "A woman is sitting at the table. A waiter is taking an order because the woman is sitting at the table. There is spilled juice next to the table, so a man is cleaning the floor to make it dry. A boy is sitting on the sofa. A boy is looking at the man. There are two chairs next to the table.",
+  "description": "A woman is sitting at the table. A waiter is taking an order because the woman wants to order something. There is spilled juice next to the table, so a man is cleaning the floor to make it dry. A boy is sitting on the sofa. A boy is looking at the man. There are two chairs next to the table.",
   "checklist": [
     {
       "id": "woman_sit",
@@ -37,8 +37,8 @@
       "id": "why_order",
       "kind": "reason",
       "label": "ウェイターが注文を取る理由",
-      "accept": "a waiter is taking an order because the woman is sitting at the table",
-      "refs": ["waiter", "woman", "table"]
+      "accept": "a waiter is taking an order because the woman wants to order something",
+      "refs": ["waiter", "woman"]
     },
     {
       "id": "link_clean",

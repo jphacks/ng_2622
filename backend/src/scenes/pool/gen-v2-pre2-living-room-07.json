@@ -3,7 +3,7 @@
   "id": "gen-v2-pre2-living-room-07",
   "name": "誕生日の部屋",
   "difficulty": "eiken-pre2",
-  "description": "A girl is blowing out the candles on the cake. A boy is celebrating because the candles are on the cake. A man is sitting on the sofa. There is a table in the room. There are two chairs next to the table.",
+  "description": "A girl is blowing out the candles on the cake. A boy is celebrating because the girl is blowing out the candles. A man is sitting on the sofa. There is a table in the room. There are two chairs next to the table.",
   "checklist": [
     {
       "id": "girl_blow",
@@ -30,8 +30,8 @@
       "id": "why_clap",
       "kind": "reason",
       "label": "男の子がお祝いしている理由",
-      "accept": "a boy is celebrating because the candles are on the cake",
-      "refs": ["boy", "candle", "cake"]
+      "accept": "a boy is celebrating because the girl is blowing out the candles",
+      "refs": ["boy", "girl", "candle"]
     },
     {
       "id": "table",
