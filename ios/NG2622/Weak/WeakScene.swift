@@ -28,8 +28,8 @@ nonisolated struct WeakScene: Codable, Sendable, Equatable {
   var focusKind: ChecklistKind? { ChecklistKind(rawValue: focus) }
 }
 
-/// 端末に覚える苦手の場面（scenenglish.weakscene/1）。元にした記録の ID（AI の分析の basedOn。分析を作れなかったときは、
-/// 頼んだ分析の元の記録）を一緒に持ち、分析を作り直したら（記録が 5 件ずつ増えた・元の記録が消えた）場面も作り直す
+/// 端末に覚える苦手の場面（scenenglish.weakscene/1）。作ったときの区切り（stage）と、返った場面（scene）を持つ。
+/// 場面は区切り（内容の内訳のある記録の数 ÷ 5 の商）ごとに 1 つだけ作る（2026-11-14 指揮役が決めた）
 nonisolated struct SavedWeakScene: Codable, Sendable, Equatable {
   static let protocolName = "scenenglish.weakscene/1"
 
@@ -37,15 +37,16 @@ nonisolated struct SavedWeakScene: Codable, Sendable, Equatable {
   let `protocol`: String
   /// 場面を受け取った日時
   let createdAt: Date
-  /// 元にした記録の ID（古い順）
-  let basedOn: [String]
+  /// 作ったときの区切り（内容の内訳のある記録の数 ÷ 5 の商。WeakSceneMaker.stage）
+  let stage: Int
+  /// 返った場面
   let scene: WeakScene
 
-  init(createdAt: Date, basedOn: [String], scene: WeakScene) {
+  init(createdAt: Date, stage: Int, scene: WeakScene) {
     self.protocol = Self.protocolName
     // ファイルには秒までしか書かないので、読み戻したものと同じになるよう秒にそろえる
     self.createdAt = Date(timeIntervalSince1970: createdAt.timeIntervalSince1970.rounded(.down))
-    self.basedOn = basedOn
+    self.stage = stage
     self.scene = scene
   }
 

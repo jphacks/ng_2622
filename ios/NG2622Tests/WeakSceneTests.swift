@@ -132,14 +132,18 @@ struct WeakSceneTests {
     let analysisStore = WeakPointStore.temporary()
     let store = WeakSceneStore(directory: analysisStore.directory)
     defer { try? analysisStore.delete() }
-    let saved = SavedWeakScene(createdAt: Date(), basedOn: ["r1", "r0"], scene: try Self.scene())
+    let saved = SavedWeakScene(createdAt: Date(), stage: 2, scene: try Self.scene())
     try store.save(saved)
     #expect(store.load() == saved)
+    #expect(store.load()?.stage == 2)
+    // 覚える欄の名前（stage・scene）
+    let json = try #require(String(data: saved.encoded(), encoding: .utf8))
+    #expect(json.contains("\"stage\" : 2"))
+    #expect(json.contains("\"scene\" : {"))
     #expect(try store.load()?.scene.document().layout.items.isEmpty == false)
 
-    var json = try #require(String(data: saved.encoded(), encoding: .utf8))
-    json = json.replacingOccurrences(of: SavedWeakScene.protocolName, with: "scenenglish.weakscene/9")
-    try Data(json.utf8).write(to: store.fileURL)
+    let unknown = json.replacingOccurrences(of: SavedWeakScene.protocolName, with: "scenenglish.weakscene/9")
+    try Data(unknown.utf8).write(to: store.fileURL)
     #expect(store.load() == nil)
 
     try store.save(saved)
@@ -155,42 +159,52 @@ struct WeakSceneTests {
     return (WeakSceneMaker(client: client, store: store, timeout: timeout), store)
   }
 
-  /// 分析を待つ間 → 分析が届いたら頼む → できた。同じ記録の分析では、開き直しても起動し直しても頼まずに覚えた場面を出す。
-  /// 分析を作り直す（元の記録が替わる）ときは「作っている」から作り直す
-  @Test func makesOncePerRecordsAndRebuilds() async throws {
+  /// 分析を待つ間 → 分析が届いたら頼む → できた。同じ区切り（記録の数 ÷ 5）の中では、開き直しても、起動し直しても、
+  /// 分析を作り直しても（元の記録が消えたなど）頼まずに覚えた場面を出す。区切りが替わったら「作っている」から作り直す
+  @Test func makesOncePerStageAndRebuilds() async throws {
     let client = StubSceneClient()
     let (maker, store) = maker(client)
     defer { try? FileManager.default.removeItem(at: store.directory) }
     let analysis = Self.analysis(basedOn: ["r1", "r0"])
+    #expect(WeakSceneMaker.stage(total: 10) == 2)
+    #expect(WeakSceneMaker.stage(total: 14) == 2)
+    #expect(WeakSceneMaker.stage(total: 15) == 3)
 
-    maker.waiting(basedOn: analysis.basedOn)
+    maker.waiting(stage: 2)
     #expect(maker.phase == .making)
-    maker.make(analysis: analysis, recent: Self.recent())
+    maker.make(analysis: analysis, recent: Self.recent(), stage: 2)
     #expect(maker.phase == .making)
     await maker.waitForPending()
     guard case .ready(let scene) = maker.phase else { Issue.record("できていない: \(maker.phase)"); return }
     #expect(store.load()?.scene == scene)
-    #expect(store.load()?.basedOn == ["r1", "r0"])
+    #expect(store.load()?.stage == 2)
     #expect(await client.calls == 1)
     #expect(await client.requests.first?.kinds == [.reason, .detail, .center])
     #expect(await client.requests.first?.habits?.count == 2)
 
     // 開き直す（同じ分析）: 頼まない。起動し直しても、覚えた場面を出す
-    maker.make(analysis: analysis, recent: Self.recent())
+    maker.reopen()
+    maker.make(analysis: analysis, recent: Self.recent(), stage: 2)
     #expect(maker.phase == .ready(scene))
     let relaunched = WeakSceneMaker(client: client, store: store)
-    relaunched.make(analysis: analysis, recent: Self.recent())
+    relaunched.make(analysis: analysis, recent: Self.recent(), stage: 2)
     #expect(relaunched.phase == .ready(scene))
+    // 同じ区切りの中で分析を作り直しても（元の記録が替わった）、頼まない
+    let redone = Self.analysis(basedOn: ["r2", "r1"], createdAt: Date(timeIntervalSince1970: 1_794_050_000))
+    maker.waiting(stage: 2)
+    #expect(maker.phase == .ready(scene))
+    maker.make(analysis: redone, recent: Self.recent(), stage: 2)
+    #expect(maker.phase == .ready(scene))
     #expect(await client.calls == 1)
 
-    // 分析を作り直している間は「作っている」。新しい分析が届いたら作り直す
+    // 区切りが替わったら（15 件目）、分析を待つ間は「作っている」。新しい分析が届いたら作り直す
     let newer = Self.analysis(basedOn: ["r1", "r0", "new"], createdAt: Date(timeIntervalSince1970: 1_794_100_000))
-    maker.waiting(basedOn: newer.basedOn)
+    maker.waiting(stage: 3)
     #expect(maker.phase == .making)
-    maker.make(analysis: newer, recent: Self.recent())
+    maker.make(analysis: newer, recent: Self.recent(), stage: 3)
     await maker.waitForPending()
     #expect(await client.calls == 2)
-    #expect(store.load()?.basedOn == newer.basedOn)
+    #expect(store.load()?.stage == 3)
   }
 
   /// 作れなかったら（理由を問わず）カードに出さず、知らせる数を 1 つ増やす。開き直す（reopen）までは頼み直さず、
@@ -201,7 +215,7 @@ struct WeakSceneTests {
     let (maker, store) = maker(client)
     defer { try? FileManager.default.removeItem(at: store.directory) }
     let analysis = Self.analysis()
-    maker.make(analysis: analysis, recent: Self.recent())
+    maker.make(analysis: analysis, recent: Self.recent(), stage: 2)
     await maker.waitForPending()
     #expect(maker.phase == .failed(.rateLimited))
     #expect(!maker.phase.showsInCard)
@@ -211,13 +225,13 @@ struct WeakSceneTests {
     #expect(maker.noticed == 1)
 
     // 開き直すまでは頼み直さない
-    maker.make(analysis: analysis, recent: Self.recent())
+    maker.make(analysis: analysis, recent: Self.recent(), stage: 2)
     #expect(maker.phase == .failed(.rateLimited))
     #expect(await client.calls == 1)
 
     // 開き直すと、もう一度頼む。また上限なら、また知らせる
     maker.reopen()
-    maker.make(analysis: analysis, recent: Self.recent())
+    maker.make(analysis: analysis, recent: Self.recent(), stage: 2)
     #expect(maker.phase == .making)
     await maker.waitForPending()
     #expect(maker.phase == .failed(.rateLimited))
@@ -228,7 +242,7 @@ struct WeakSceneTests {
     await client.fail(with: nil)
     maker.reopen()
     #expect(maker.noticed == maker.notices)
-    maker.make(analysis: analysis, recent: Self.recent())
+    maker.make(analysis: analysis, recent: Self.recent(), stage: 2)
     await maker.waitForPending()
     guard case .ready = maker.phase else { Issue.record("できていない: \(maker.phase)"); return }
     #expect(await client.calls == 3)
@@ -241,7 +255,7 @@ struct WeakSceneTests {
     await client.hold()
     let (maker, store) = maker(client, timeout: .milliseconds(50))
     defer { try? FileManager.default.removeItem(at: store.directory) }
-    maker.make(analysis: Self.analysis(), recent: Self.recent())
+    maker.make(analysis: Self.analysis(), recent: Self.recent(), stage: 2)
     // 打ち切っても、止められない頼み（このスタブ）は終わるまで待つので、打ち切りのあとで返させる
     // （本物の通信は止めると返る）
     Task {
@@ -253,13 +267,13 @@ struct WeakSceneTests {
     #expect(maker.notices == 1)
   }
 
-  /// AI の分析を作れなかった: 級と種類だけで頼む（癖と次に試すことは付けない）。同じ記録の分析を頼み直している間と、
-  /// あとで分析が届いたときは、その場面を出して頼み直さない
+  /// AI の分析を作れなかった: 級と種類だけで頼む（癖と次に試すことは付けない）。同じ区切りで分析を頼み直している間と、
+  /// あとで分析が通ったときは、その場面を出して頼み直さない
   @Test func analysisFailureSendsKindsOnly() async throws {
     let client = StubSceneClient()
     let (maker, store) = maker(client)
     defer { try? FileManager.default.removeItem(at: store.directory) }
-    maker.makeWithoutAnalysis(basedOn: ["r1", "r0"], recent: Self.recent())
+    maker.makeWithoutAnalysis(recent: Self.recent(), stage: 2)
     await maker.waitForPending()
     guard case .ready(let scene) = maker.phase else { Issue.record("できていない: \(maker.phase)"); return }
     let request = try #require(await client.requests.first)
@@ -268,24 +282,24 @@ struct WeakSceneTests {
     #expect(request.kinds == [.reason, .detail, .center])
     #expect(request.difficulty == .eikenPre2)
 
-    maker.waiting(basedOn: ["r1", "r0"])
+    maker.waiting(stage: 2)
     #expect(maker.phase == .ready(scene))
-    maker.make(analysis: Self.analysis(basedOn: ["r1", "r0"]), recent: Self.recent())
+    maker.make(analysis: Self.analysis(basedOn: ["r1", "r0"]), recent: Self.recent(), stage: 2)
     #expect(maker.phase == .ready(scene))
     #expect(await client.calls == 1)
   }
 
-  /// 作っている途中に開き直しても（同じ記録）、頼んだものを止めずに待つ（アプリの中で 1 本だけ）
+  /// 作っている途中に開き直しても（同じ区切り）、頼んだものを止めずに待つ（アプリの中で 1 本だけ）
   @Test func reopeningWhileMakingKeepsTheRequest() async throws {
     let client = StubSceneClient()
     await client.hold()
     let (maker, store) = maker(client)
     defer { try? FileManager.default.removeItem(at: store.directory) }
     let analysis = Self.analysis()
-    maker.make(analysis: analysis, recent: Self.recent())
+    maker.make(analysis: analysis, recent: Self.recent(), stage: 2)
     await client.waitUntilCalled(1)
-    maker.waiting(basedOn: analysis.basedOn)
-    maker.make(analysis: analysis, recent: Self.recent())
+    maker.waiting(stage: 2)
+    maker.make(analysis: analysis, recent: Self.recent(), stage: 2)
     #expect(maker.phase == .making)
     await client.release()
     await maker.waitForPending()
@@ -299,7 +313,7 @@ struct WeakSceneTests {
     await client.hold()
     let (maker, store) = maker(client)
     defer { try? FileManager.default.removeItem(at: store.directory) }
-    maker.make(analysis: Self.analysis(), recent: Self.recent())
+    maker.make(analysis: Self.analysis(), recent: Self.recent(), stage: 2)
     await client.waitUntilCalled(1)
     maker.forget()
     #expect(maker.phase == .idle)
@@ -308,7 +322,7 @@ struct WeakSceneTests {
     #expect(maker.phase == .idle)
     #expect(store.load() == nil)
 
-    maker.make(analysis: Self.analysis(), recent: Self.recent())
+    maker.make(analysis: Self.analysis(), recent: Self.recent(), stage: 2)
     await maker.waitForPending()
     #expect(store.load() != nil)
     maker.reset()
@@ -325,7 +339,8 @@ struct WeakSceneTests {
     return (WeakPointAnalyzer(client: analysisClient, store: analysisStore, scenes: maker), maker, analysisStore)
   }
 
-  /// 分析が届いたら、画面を待たずにすぐ場面を頼む。すべて消すと、場面も忘れる
+  /// 分析を待っている間に画面を閉じても（開いたあと何も呼ばない）、分析は裏で続き、届いたらすぐ場面を頼む。
+  /// すべて消すと、場面も忘れる
   @Test func analyzerAsksForSceneWhenAnalysisArrives() async throws {
     let sceneClient = StubSceneClient()
     let (analyzer, maker, store) = Self.analyzer(StubClient(), scenes: sceneClient)
@@ -404,25 +419,56 @@ struct WeakSceneTests {
     #expect(await sceneClient.calls == 2)
   }
 
-  /// 分析を作れなかったら、級と種類だけで場面を頼む。開き直して分析を頼み直しても、同じ記録なら場面は頼み直さない
-  @Test func analyzerFailureMakesKindsOnlyScene() async throws {
+  /// 分析を作れなかったら（失敗・429・503 のどれも）、級と種類だけで場面を頼む。開き直して分析を頼み直しても、
+  /// 同じ区切りなら場面は頼み直さない（あとで分析が通っても）
+  @Test(arguments: [WeakPointFailure.failed, .rateLimited, .unavailable])
+  func analyzerFailureMakesKindsOnlyScene(failure: WeakPointFailure) async throws {
     let analysisClient = StubClient()
-    await analysisClient.fail(with: .failed)
+    await analysisClient.fail(with: failure)
     let sceneClient = StubSceneClient()
     let (analyzer, maker, store) = Self.analyzer(analysisClient, scenes: sceneClient)
     defer { try? store.delete() }
     let records = Records.records(10)
     analyzer.open(records: records, existing: { Set(records.map(\.id)) })
     await analyzer.waitForPending()
-    #expect(analyzer.phase == .failed(.failed))
+    #expect(analyzer.phase == .failed(failure))
     await maker.waitForPending()
     guard case .ready(let scene) = maker.phase else { Issue.record("できていない: \(maker.phase)"); return }
-    #expect(await sceneClient.requests.first?.habits == nil)
+    let request = try #require(await sceneClient.requests.first)
+    #expect(request.habits == nil)
+    #expect(request.nextTry == nil)
 
+    // 開き直して分析を頼み直し、今度は通る: 場面はそのまま
+    await analysisClient.fail(with: nil)
     analyzer.open(records: records, existing: { Set(records.map(\.id)) })
     #expect(analyzer.phase == .loading)
     #expect(maker.phase == .ready(scene))
     await analyzer.waitForPending()
+    #expect(analyzer.phase == .ready)
+    #expect(maker.phase == .ready(scene))
+    #expect(await analysisClient.calls == 2)
+    #expect(await sceneClient.calls == 1)
+  }
+
+  /// 同じ区切りの中で元の記録が消えて分析を作り直しても（12 → 11 件）、場面は作り直さない
+  @Test func analyzerKeepsSceneWhenRebuildingInTheSameStage() async throws {
+    let analysisClient = StubClient()
+    let sceneClient = StubSceneClient()
+    let (analyzer, maker, store) = Self.analyzer(analysisClient, scenes: sceneClient)
+    defer { try? store.delete() }
+    let records = Records.records(12)
+    analyzer.open(records: records, existing: { Set(records.map(\.id)) })
+    await analyzer.waitForPending()
+    await maker.waitForPending()
+    guard case .ready(let scene) = maker.phase else { Issue.record("できていない: \(maker.phase)"); return }
+
+    let remaining = records.filter { $0.id != "r2" }
+    analyzer.open(records: remaining, existing: { Set(remaining.map(\.id)) })
+    #expect(analyzer.phase == .loading)
+    #expect(maker.phase == .ready(scene))
+    await analyzer.waitForPending()
+    await maker.waitForPending()
+    #expect(analyzer.phase == .ready)
     #expect(maker.phase == .ready(scene))
     #expect(await analysisClient.calls == 2)
     #expect(await sceneClient.calls == 1)

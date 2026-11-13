@@ -2,7 +2,8 @@ import BackendAPI
 import Foundation
 import Observation
 
-/// 苦手の画面の AI の分析を、作る・覚える・出す。アプリ全体で 1 つ（画面を閉じても、作っている途中の分析は捨てない）。
+/// 苦手の画面の AI の分析を、作る・覚える・出す。アプリ全体で 1 つ（画面を閉じても、作っている途中の分析は裏で続けて
+/// 捨てない。頼むのは 1 本だけ）。
 /// docs/design/weak-point-analysis.md の 7 章（覚える形・作り直す条件）と 9 章（失敗）。
 /// 作り直すのは記録が 5 件ずつ増えたときだけ（2026-11-14 リーダーが決めた。WeakPointAnalysis.needsRebuild）。
 /// 分析の様子に合わせて、苦手の場面（scenes）を出すか頼む
@@ -57,6 +58,7 @@ final class WeakPointAnalyzer {
   func open(records: [PlayRecord], existing: @escaping @MainActor () -> Set<String>) {
     let recent = WeakPointCounts.recent(records)
     let total = WeakPointCounts.countable(records)
+    let stage = WeakSceneMaker.stage(total: total)
     let ids = Set(records.map(\.id))
     // 作れなかった苦手の場面は、開き直したらもう一度頼む
     scenes?.reopen()
@@ -81,19 +83,19 @@ final class WeakPointAnalyzer {
       isPrevious = false
       phase = .ready
       // 作り直す区切りまでは、覚えた場面を出して頼まない（無ければ頼む）
-      scenes?.make(analysis: stored, recent: recent)
+      scenes?.make(analysis: stored, recent: recent, stage: stage)
       return
     }
     guard let built = WeakPointRequestBuilder.build(recent: recent) else {
       analysis = stored
       isPrevious = stored != nil
       phase = .failed(.failed)
-      scenes?.makeWithoutAnalysis(basedOn: recent.reversed().map(\.id), recent: recent)
+      scenes?.makeWithoutAnalysis(recent: recent, stage: stage)
       return
     }
     // 同じ記録で作っている途中なら、それを待つ（開き直しても二重に頼まない）
     if task != nil, pendingIDs == built.recordIDs {
-      scenes?.waiting(basedOn: built.recordIDs)
+      scenes?.waiting(stage: stage)
       return
     }
     task?.cancel()
@@ -101,7 +103,7 @@ final class WeakPointAnalyzer {
     isPrevious = stored != nil
     phase = .loading
     pendingIDs = built.recordIDs
-    scenes?.waiting(basedOn: built.recordIDs)
+    scenes?.waiting(stage: stage)
     let client = client
     let request = built.request
     task = Task { [weak self] in
@@ -129,10 +131,11 @@ final class WeakPointAnalyzer {
     pendingIDs = []
     switch outcome {
     case .success(let response):
-      // 作っている間に元の記録が 1 つでも消えていたら、覚えずに捨てる（苦手の場面も頼まない。開き直すと作り直す）
+      // 作っている間に元の記録が 1 つでも消えていたら、覚えずに捨てる（分析を作れなかったときと同じく、
+      // 苦手の場面は級と種類だけで頼む）
       guard basedOn.allSatisfy(existing.contains) else {
         phase = .failed(.failed)
-        scenes?.hide()
+        scenes?.makeWithoutAnalysis(recent: recent, stage: WeakSceneMaker.stage(total: total))
         return
       }
       let made = WeakPointAnalysis(response, basedOn: basedOn, createdAt: Date(), records: total)
@@ -145,11 +148,11 @@ final class WeakPointAnalyzer {
       isPrevious = false
       phase = .ready
       // 分析が届いたら、すぐ苦手の場面を頼む（画面を閉じていても）
-      scenes?.make(analysis: made, recent: recent)
+      scenes?.make(analysis: made, recent: recent, stage: WeakSceneMaker.stage(total: total))
     case .failure(let failure):
       phase = .failed(failure)
-      // 分析を作れなかったら、級と種類だけで苦手の場面を頼む
-      scenes?.makeWithoutAnalysis(basedOn: basedOn, recent: recent)
+      // 分析を作れなかったら（429・503 も）、級と種類だけで苦手の場面を頼む
+      scenes?.makeWithoutAnalysis(recent: recent, stage: WeakSceneMaker.stage(total: total))
     }
   }
 
