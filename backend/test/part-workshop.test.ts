@@ -1,0 +1,217 @@
+// 部品をその場で作る口（src/parts/workshop.ts の ensureParts・lookupPart）。
+// R2 は miniflare の本物に近い偽物、Claude は偽の応答
+import assert from "node:assert/strict";
+import { after, before, test } from "node:test";
+import type Anthropic from "@anthropic-ai/sdk";
+import { convertV4MiniflareOptions, Miniflare } from "miniflare";
+import { ensureParts, lookupPart } from "../src/parts/workshop";
+import type { CreateMessage } from "../src/scenes/generate";
+
+type Answer = { decision: "build" | "refuse"; reason: string; ops: unknown[] };
+
+// 傘立て: 筒と、底の板（つながっている）
+const STAND: Answer = {
+  decision: "build",
+  reason: "a cylinder on a base plate",
+  ops: [
+    {
+      op: "cyl",
+      r1: 0.12,
+      r2: 0.13,
+      depth: 0.5,
+      loc: [0, 0, 0.27],
+      mat: "metal",
+      segs: 20,
+    },
+    { op: "box", size: [0.3, 0.3, 0.04], loc: [0, 0, 0.02], mat: "dark" },
+  ],
+};
+// 底の板から 30 cm 浮いた球が付いた、落ちる答え
+const FLOATING: Answer = {
+  ...STAND,
+  ops: [...STAND.ops, { op: "sphere", r: 0.03, loc: [0, 0, 0.6], mat: "ball" }],
+};
+
+let mf: Miniflare;
+let bucket: R2Bucket;
+
+before(async () => {
+  mf = new Miniflare(
+    convertV4MiniflareOptions({
+      modules: true,
+      script: "export default { fetch: () => new Response(null) }",
+      r2Buckets: ["BUCKET"],
+    }),
+  );
+  bucket = (await mf.getR2Bucket("BUCKET")) as unknown as R2Bucket;
+});
+
+after(() => mf.dispose());
+
+/** 偽の Claude。answers を順に返し、受け取った messages を残す */
+const fakeClaude = (answers: Answer[]) => {
+  const calls: Anthropic.MessageParam[][] = [];
+  const create: CreateMessage = async (params) => {
+    calls.push(structuredClone(params.messages));
+    const answer = answers[Math.min(calls.length - 1, answers.length - 1)];
+    return {
+      stop_reason: "end_turn",
+      content: [{ type: "text", text: JSON.stringify(answer) }],
+      usage: {
+        input_tokens: 3000,
+        output_tokens: 1500,
+        cache_read_input_tokens: 4000,
+        cache_creation_input_tokens: 0,
+      },
+    } as unknown as Anthropic.Message;
+  };
+  return { create, calls };
+};
+
+const order = (id: string, extra: Record<string, unknown> = {}) => ({
+  id,
+  category: "thing" as const,
+  label: "傘立て",
+  words: ["umbrella stand"],
+  size: [0.3, 0.5, 0.3] as [number, number, number],
+  description: "A round metal umbrella stand on a dark square base.",
+  ...extra,
+});
+
+test("無い部品は Claude に部品表を書かせて組み、R2 に置く。2 回目は作らずに R2 から返す", async () => {
+  const claude = fakeClaude([STAND]);
+  const env = { BUCKET: bucket, CLAUDE_API_KEY: "test" };
+  const first = await ensureParts(env, [order("umbrella_stand")], {
+    maxNew: 4,
+    deps: { create: claude.create },
+  });
+  assert.deepEqual(first.failed, []);
+  assert.equal(first.parts.length, 1);
+  const part = first.parts[0];
+  assert.equal(part.id, "umbrella_stand");
+  assert.equal(part.version, 1);
+  assert.equal(part.file, "parts/umbrella_stand/1.usdz");
+  assert.deepEqual(part.words, [{ word: "umbrella stand", pos: "noun" }]);
+  assert.deepEqual(part.size, [0.3, 0.52, 0.3]);
+  assert.equal(part.anchors, undefined);
+  assert.equal(claude.calls.length, 1);
+
+  // R2 の 3 つの置き場
+  const usdz = await bucket.get("parts/umbrella_stand/1.usdz");
+  assert.equal(usdz?.httpMetadata?.contentType, "model/vnd.usdz+zip");
+  assert.deepEqual(
+    await (await bucket.get("parts/umbrella_stand/1.json"))?.json(),
+    part,
+  );
+  const recipe = (await (
+    await bucket.get("recipes/umbrella_stand/1.json")
+  )?.json()) as { ops: unknown[]; attempts: unknown[] };
+  assert.equal(recipe.ops.length, 2);
+  assert.equal(recipe.attempts.length, 1);
+
+  const again = await ensureParts(env, [order("umbrella_stand")], {
+    maxNew: 4,
+    deps: { create: claude.create },
+  });
+  assert.deepEqual(again.parts, [part]);
+  assert.equal(claude.calls.length, 1);
+  assert.deepEqual(await lookupPart(env, "umbrella_stand"), part);
+  assert.deepEqual(await lookupPart(env, "umbrella_stand", 1), part);
+  assert.equal(await lookupPart(env, "umbrella_stand", 2), null);
+  assert.equal(await lookupPart(env, "no_such_part"), null);
+});
+
+test("形の違う注文・同梱の ID・上限を超えた注文は作らずに失敗として返す", async () => {
+  const claude = fakeClaude([STAND]);
+  const env = { BUCKET: bucket, CLAUDE_API_KEY: "test" };
+  const result = await ensureParts(
+    env,
+    [
+      order("chair"),
+      order("Person_A"),
+      order("person_stand_man_a"),
+      order("lunch_box", { size: [0.2, 0, 0.1] }),
+      order("globe_small", { top: true }),
+      order("globe_large"),
+    ],
+    { maxNew: 1, deps: { create: claude.create } },
+  );
+  assert.deepEqual(
+    result.parts.map((p) => p.id),
+    ["globe_small"],
+  );
+  assert.deepEqual(
+    result.failed.map((f) => f.id),
+    ["chair", "Person_A", "person_stand_man_a", "lunch_box", "globe_large"],
+  );
+  assert.match(result.failed[0].reason, /同梱/);
+  assert.match(result.failed[4].reason, /上限/);
+  // 上に置ける物は anchors.top（筒の上のふち）
+  assert.equal(result.parts[0].anchors?.top, 0.52);
+  assert.equal(claude.calls.length, 1);
+});
+
+test("検査に落ちたら、落ちた理由を付けて 1 回だけ書き直させる", async () => {
+  const claude = fakeClaude([FLOATING, STAND]);
+  const env = { BUCKET: bucket, CLAUDE_API_KEY: "test" };
+  const result = await ensureParts(env, [order("trash_can")], {
+    maxNew: 4,
+    deps: { create: claude.create },
+  });
+  assert.deepEqual(result.failed, []);
+  assert.equal(claude.calls.length, 2);
+  const retry = claude.calls[1];
+  assert.equal(retry.length, 3);
+  assert.equal(retry[1].role, "assistant");
+  assert.match(String(retry[2].content), /#2 .*do not touch/);
+  const recipe = (await (
+    await bucket.get("recipes/trash_can/1.json")
+  )?.json()) as { attempts: { problems: { code: string }[] }[] };
+  assert.deepEqual(
+    recipe.attempts.map((a) => a.problems.map((p) => p.code)),
+    [["floating"], []],
+  );
+});
+
+test("2 回とも検査に落ちたら失敗として返し、R2 には置かない", async () => {
+  const claude = fakeClaude([FLOATING]);
+  const env = { BUCKET: bucket, CLAUDE_API_KEY: "test" };
+  const result = await ensureParts(env, [order("flower_vase")], {
+    maxNew: 4,
+    deps: { create: claude.create },
+  });
+  assert.deepEqual(result.parts, []);
+  assert.equal(result.failed[0].id, "flower_vase");
+  assert.match(result.failed[0].reason, /^invalid: 検査に落ちた/);
+  assert.equal(claude.calls.length, 2);
+  assert.equal(await bucket.head("parts/flower_vase/1.usdz"), null);
+});
+
+test("Claude が断った注文（人の名前・武器など）は失敗として返す", async () => {
+  const claude = fakeClaude([
+    { decision: "refuse", reason: "It is a weapon.", ops: [] },
+  ]);
+  const env = { BUCKET: bucket, CLAUDE_API_KEY: "test" };
+  const result = await ensureParts(
+    env,
+    [order("sword", { words: ["sword"] })],
+    { maxNew: 4, deps: { create: claude.create } },
+  );
+  assert.deepEqual(result.parts, []);
+  assert.match(result.failed[0].reason, /^refused: .*weapon/);
+  assert.equal(claude.calls.length, 1);
+});
+
+test("止めたら、できていない部品を失敗として返す", async () => {
+  const controller = new AbortController();
+  const create: CreateMessage = () => new Promise(() => {});
+  const env = { BUCKET: bucket, CLAUDE_API_KEY: "test" };
+  const pending = ensureParts(env, [order("kite")], {
+    maxNew: 4,
+    signal: controller.signal,
+    deps: { create },
+  });
+  setTimeout(() => controller.abort(), 10);
+  const result = await pending;
+  assert.deepEqual(result.failed, [{ id: "kite", reason: "止めた" }]);
+});
