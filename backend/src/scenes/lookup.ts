@@ -410,6 +410,19 @@ const refusedOrder = (
   if (bad) {
     return `${order.id} は作れない物（${bad}）。この物を使わない場面にする`;
   }
+  // 地面（芝生・砂・床など）そのものは作らない。refs の grass などは、地面の部品の key にする。
+  // 語の一部（street lamp の street）では断らず、注文の名前が地面の語そのものかで見る
+  const groundWords = new Set(
+    [...byId.values()]
+      .filter((p) => p.category === "ground")
+      .flatMap((p) => p.words.map((w) => w.word)),
+  );
+  const ground = [order.id, ...order.words].find((w) =>
+    groundWords.has(w.replace(/_/g, " ")),
+  );
+  if (ground) {
+    return `${order.id} は地面（${ground}）。地面は作らない。英文の ${ground} は、地面の部品（grass_patch・sand_beach・floor_wood など）の item の key にする`;
+  }
   return undefined;
 };
 

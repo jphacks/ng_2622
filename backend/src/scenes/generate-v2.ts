@@ -518,6 +518,7 @@ ${ITEM_RULES}
 - These nouns already have a part; write the noun (or the id named in the rules above) and no order: ${thingNouns(parts)}.
 - For any other thing, also write an order in newParts with the same id: category (thing, furniture, food, plant or vehicle), label (short Japanese), words (English nouns), size in meters (width, height, depth of the real thing), description (one English sentence: the shape and the colors), and top (true if other things can be put on it). The program makes a simple 3D part from the order. At most ${MAX_NEW_PARTS} new things in one scene; prefer things that already have a part.
 - Never order people, animals, body parts, grounds, walls, rooms or buildings, liquids that are not in a container, weapons, violent or sexual things, brand names or names of real people.
+- When a key is a ground (grass, sand, floor, road, sidewalk, platform), it is the ground item itself: give that key to the ground part (grass_patch, sand_beach, floor_wood and the others), never a new thing.
 - When a part has "holds" or "uses" in the table, follow the same rules as above (holds is part of the person; add the uses parts).
 
 # People and animals (id pattern | action | says: verbs that can say it | who can do it | holds | uses | sitting)

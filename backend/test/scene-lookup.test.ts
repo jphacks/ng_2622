@@ -148,10 +148,11 @@ test("規約で引く: 同梱・寄せる・前に作った部品（R2）・注�
     ["too_many_new_parts"],
   );
 
-  // 武器・規約の形でない ID・同梱と重なる注文は断る
+  // 武器・規約の形でない ID・地面（芝生など）の注文は断る
   for (const order of [
     { ...LAMP, id: "toy_gun", words: ["gun"] },
     { ...LAMP, id: "Lamp-1" },
+    { ...LAMP, id: "grass_tuft", words: ["grass"] },
   ]) {
     const refused = await resolveParts(
       [{ key: "x", part: order.id, place: { relation: "ground" } }],
