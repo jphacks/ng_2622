@@ -96,10 +96,12 @@ nonisolated enum WeakPointRequestBuilder {
       }
     }
     let basis = feedback?.expressionBasis?.trimmingCharacters(in: .whitespacesAndNewlines)
+    // 文字起こしは 1 文字以上と決まっている（空だと 400）。何も言えなかった回は "-" を送る
+    let transcript = clip(result.transcript.trimmingCharacters(in: .whitespacesAndNewlines), caps.transcript)
     return Round(
       n: n,
       grade: record.difficulty.flatMap(Round.GradePayload.init(rawValue:)),
-      transcript: clip(result.transcript.trimmingCharacters(in: .whitespacesAndNewlines), caps.transcript),
+      transcript: transcript.isEmpty ? "-" : transcript,
       claims: claims,
       rewrite: rewrite,
       nextStep: nextStep,
@@ -148,9 +150,17 @@ nonisolated enum WeakPointRequestBuilder {
         second: .init(rounds: half, content: h?.back.content ?? 0, expression: h?.back.expression ?? 0)))
   }
 
-  /// 長さ（文字の数）の上限で切る
+  /// 長さの上限で切る。長さはバックエンド（zod の max）と同じ UTF-16 の数で数え、文字の途中では切らない
   static func clip(_ text: String, _ limit: Int) -> String {
-    text.count > limit ? String(text.prefix(limit)) : text
+    guard text.utf16.count > limit else { return text }
+    var length = 0
+    var end = text.startIndex
+    for character in text {
+      length += character.utf16.count
+      if length > limit { break }
+      end = text.index(after: end)
+    }
+    return String(text[..<end])
   }
 }
 

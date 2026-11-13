@@ -115,6 +115,25 @@ struct WeakPointAnalysisTests {
     #expect(WeakPointRequestBuilder.build(recent: Self.records(4)) == nil)
   }
 
+  /// 文字起こしが空（空白だけ）の回は "-" を送る（API は 1 文字以上で、空だと 400）
+  @Test func sendsDashForEmptyTranscript() throws {
+    var records = Self.records(5)
+    records[0] = Self.record("r0", transcript: "  \n")
+    let built = try #require(WeakPointRequestBuilder.build(recent: records))
+    #expect(built.recordIDs.last == "r0")
+    #expect(built.request.rounds.last?.transcript == "-")
+    #expect(built.request.rounds.first?.transcript == "A boy is running.")
+  }
+
+  /// 長さはバックエンド（zod の max）と同じ UTF-16 の数で切り、文字の途中では切らない（絵文字は 2）
+  @Test func clipsByUTF16Length() {
+    #expect(WeakPointRequestBuilder.clip("😀😀😀", 3) == "😀")
+    #expect(WeakPointRequestBuilder.clip("😀😀😀", 4) == "😀😀")
+    #expect(WeakPointRequestBuilder.clip("あいう", 2) == "あい")
+    #expect(WeakPointRequestBuilder.clip("abc", 3) == "abc")
+    #expect(WeakPointRequestBuilder.clip("😀", 1) == "")
+  }
+
   /// 本文は整形しない JSON で、ふつうの記録 10 件なら詰めずに 64 KB に収まる
   @Test func typicalBodyFitsWithoutShrinking() throws {
     let samples = PlayRecord.samples(count: 12, now: Date(timeIntervalSince1970: 1_794_000_000))
@@ -402,6 +421,16 @@ struct WeakPointAnalysisTests {
     #expect(analyzer.phase == .ready)
     #expect(analyzer.analysis == made)
     #expect(await client.calls == 1)
+  }
+
+  /// 返るまで待つ長さを過ぎたら failed
+  @Test func timesOut() async {
+    await #expect(throws: WeakPointFailure.failed) {
+      try await WeakPointClients.withTimeout(.milliseconds(50)) {
+        try await Task.sleep(for: .seconds(10))
+        return 1
+      }
+    }
   }
 
   /// 自分の文: 別の回の同じ文は 1 行にまとめ、回の数と一番新しい日時を持つ。並びは初めて出た順

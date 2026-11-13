@@ -1,5 +1,8 @@
 import BackendAPI
 import Foundation
+import os
+
+nonisolated let weakPointLog = Logger(subsystem: "jp.jphacks.ng2622", category: "WeakPoints")
 
 /// 苦手の分析を頼む口（POST /weak-points）。Live はバックエンドに、Mock は決まった分析を返す
 nonisolated protocol WeakPointClient: Sendable {
@@ -12,7 +15,9 @@ nonisolated enum WeakPointFailure: Error, Equatable, Sendable {
   case rateLimited
   /// 止めている・使えない（503）
   case unavailable
-  /// Claude の失敗（502）・時間切れ・通信できない・本文が受け付けられない（400・413）
+  /// 本文が受け付けられない（400・413）。開き直しても同じ本文になるので、もう一度作るとは書かない
+  case rejected
+  /// Claude の失敗（502）・時間切れ・通信できない・知らない応答
   case failed
 }
 
@@ -50,28 +55,49 @@ nonisolated enum WeakPointClients {
 nonisolated struct LiveWeakPointClient: WeakPointClient {
   let client: Client
 
-  init(baseURL: URL) {
-    client = Client(
-      serverURL: baseURL, configuration: .init(jsonEncodingOptions: [.sortedKeys]), transport: URLSessionTransport())
+  /// transport はテストで偽物に替える
+  init(baseURL: URL, transport: any ClientTransport = URLSessionTransport()) {
+    client = Client(serverURL: baseURL, configuration: .init(jsonEncodingOptions: [.sortedKeys]), transport: transport)
   }
 
+  /// 失敗は状態コードだけをログに出す（本文には自分の文が入りうるので出さない）
   func analyze(_ request: Components.Schemas.WeakPointRequest) async throws -> Components.Schemas.WeakPointResponse {
     let output: Operations.AnalyzeWeakPoints.Output
     do {
       output = try await client.analyzeWeakPoints(body: .json(request))
     } catch {
-      throw WeakPointFailure.failed
+      // 応答の本文が読めなかった（手前で返った 429 など）ときも、状態コードで分ける。応答が無ければ通信の失敗
+      let status = (error as? ClientError)?.response?.status.code
+      weakPointLog.notice("苦手の分析を作れませんでした: \(status.map { "\($0)" } ?? "応答なし", privacy: .public)")
+      throw Self.failure(status: status)
     }
-    switch output {
-    case .ok(let ok):
-      guard let body = try? ok.body.json else { throw WeakPointFailure.failed }
+    if case .ok(let ok) = output, let body = try? ok.body.json {
       return body
-    case .tooManyRequests:
-      throw WeakPointFailure.rateLimited
-    case .serviceUnavailable:
-      throw WeakPointFailure.unavailable
-    default:
-      throw WeakPointFailure.failed
+    }
+    let status = Self.status(of: output)
+    weakPointLog.notice("苦手の分析を作れませんでした: \(status, privacy: .public)")
+    throw Self.failure(status: status)
+  }
+
+  /// 状態コードから、画面の 1 行を分ける失敗へ
+  static func failure(status: Int?) -> WeakPointFailure {
+    switch status {
+    case 400, 413: .rejected
+    case 429: .rateLimited
+    case 503: .unavailable
+    default: .failed
+    }
+  }
+
+  static func status(of output: Operations.AnalyzeWeakPoints.Output) -> Int {
+    switch output {
+    case .ok: 200
+    case .badRequest: 400
+    case .contentTooLarge: 413
+    case .tooManyRequests: 429
+    case .badGateway: 502
+    case .serviceUnavailable: 503
+    case .undocumented(let statusCode, _): statusCode
     }
   }
 }

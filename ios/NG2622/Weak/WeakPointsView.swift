@@ -128,8 +128,9 @@ struct WeakPointsView: View {
 
   static func failureText(_ failure: WeakPointFailure) -> String {
     switch failure {
-    case .rateLimited: "いまは AI の分析の回数の上限です。時間をおいて開いてください。"
+    case .rateLimited: "AI の分析は、いまは使える回数をこえています。しばらくしてから、もう一度開いてください。"
     case .unavailable: "いまは AI の分析をお休みしています。"
+    case .rejected: "AI の分析を作れませんでした。"
     case .failed: "AI の分析を作れませんでした。開き直すと、もう一度作ります。"
     }
   }
