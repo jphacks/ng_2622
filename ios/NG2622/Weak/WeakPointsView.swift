@@ -248,18 +248,21 @@ private struct HabitCard: View {
       Rectangle().fill(Theme.line).frame(height: 1.5)
       VStack(alignment: .leading, spacing: 8) {
         InnerLabel("自分の文")
-        ForEach(Array(habit.examples.enumerated()), id: \.offset) { _, example in
+        // 同じ文を別の回でも言っていたら、1 行にまとめて「2 回」と一番新しい日を出す
+        ForEach(Array(QuoteLine.group(habit.examples, dates: dates).enumerated()), id: \.offset) { _, line in
           HStack(alignment: .firstTextBaseline, spacing: 10) {
-            Text(example.quote)
+            Text(line.quote)
               .font(Theme.font(17, .heavy))
               .fixedSize(horizontal: false, vertical: true)
               .frame(maxWidth: .infinity, alignment: .leading)
-            if let day = dayText(dates[example.record]) {
-              Text(day)
-                .font(Theme.font(14, .heavy))
-                .foregroundStyle(Theme.muted)
-                .monospacedDigit()
+            HStack(alignment: .firstTextBaseline, spacing: 8) {
+              if line.count > 1 { Text("\(line.count) 回") }
+              if let day = dayText(line.latest) { Text(day) }
             }
+            .font(Theme.font(14, .heavy))
+            .foregroundStyle(Theme.muted)
+            .monospacedDigit()
+            .fixedSize()
           }
         }
       }

@@ -322,6 +322,39 @@ struct WeakPointAnalysisTests {
     #expect(!store.exists())
     #expect(await client.calls == 0)
   }
+
+  /// 自分の文: 別の回の同じ文は 1 行にまとめ、回の数と一番新しい日時を持つ。並びは初めて出た順
+  @Test func quoteLinesMergeTheSameSentence() {
+    let now = Date(timeIntervalSince1970: 1_800_000_000)
+    let dates = ["r1": now.addingTimeInterval(-7200), "r2": now.addingTimeInterval(-3600), "r3": now]
+    let lines = QuoteLine.group(
+      [
+        .init(record: "r1", quote: "A girl is happy."),
+        .init(record: "r2", quote: "The dog is sleeping."),
+        .init(record: "r3", quote: "a girl is  happy"),
+      ], dates: dates)
+    #expect(
+      lines == [
+        QuoteLine(quote: "a girl is  happy", count: 2, latest: now),
+        QuoteLine(quote: "The dog is sleeping.", count: 1, latest: now.addingTimeInterval(-3600)),
+      ])
+  }
+
+  /// 同じ回の同じ文は 1 回と数える。日時の分からない回だけなら日時は nil。違う文はまとめない
+  @Test func quoteLinesCountRoundsOnce() {
+    let lines = QuoteLine.group(
+      [
+        .init(record: "r1", quote: "He is running."),
+        .init(record: "r1", quote: "He is running."),
+        .init(record: "r2", quote: "He is runnings."),
+      ], dates: [:])
+    #expect(
+      lines == [
+        QuoteLine(quote: "He is running.", count: 1, latest: nil),
+        QuoteLine(quote: "He is runnings.", count: 1, latest: nil),
+      ])
+    #expect(QuoteLine.key(" Is it  raining?! ") == "is it raining")
+  }
 }
 
 /// 呼ばれた回数を数え、決まった分析か失敗を返す

@@ -110,6 +110,42 @@ nonisolated struct WeakPointAnalysis: Codable, Sendable, Equatable {
   }
 }
 
+/// 癖の「自分の文」に出す 1 行。同じ文を別の回でも言っていたら、1 行にまとめて回の数と一番新しい日を出す。
+/// まとめるのは画面に出すときだけで、覚える形（examples）は変えない
+nonisolated struct QuoteLine: Equatable, Sendable {
+  /// 出す文（まとめた中で一番新しい回のもの）
+  let quote: String
+  /// その文を言った回の数（同じ回の重なりは 1 回）
+  let count: Int
+  /// まとめた回のうち一番新しい日時。日時の分かる回が無ければ nil
+  let latest: Date?
+
+  /// 引用を同じ文ごとにまとめる。並びは、その文が初めて出た順。dates は記録の ID から遊んだ日時
+  static func group(_ examples: [WeakPointAnalysis.Quote], dates: [String: Date]) -> [QuoteLine] {
+    var keys: [String] = []
+    var groups: [String: [WeakPointAnalysis.Quote]] = [:]
+    for example in examples {
+      let same = Self.key(example.quote)
+      if groups[same] == nil { keys.append(same) }
+      groups[same, default: []].append(example)
+    }
+    return keys.compactMap { same in
+      guard let group = groups[same], let first = group.first else { return nil }
+      // 日時の分からない回は一番古いとみなす（同じなら先に出た方）
+      let newest = group.max { (dates[$0.record] ?? .distantPast) < (dates[$1.record] ?? .distantPast) } ?? first
+      return QuoteLine(
+        quote: newest.quote, count: Set(group.map(\.record)).count, latest: group.compactMap { dates[$0.record] }.max())
+    }
+  }
+
+  /// 同じ文かを見る形。大文字と小文字、空白の数、文末の . ! ? の違いは見ない（文字起こしの揺れ）
+  static func key(_ quote: String) -> String {
+    var text = Substring(quote.lowercased().split(whereSeparator: \.isWhitespace).joined(separator: " "))
+    while let last = text.last, last == " " || ".!?".contains(last) { text = text.dropLast() }
+    return String(text)
+  }
+}
+
 /// 分析を 1 つだけ覚える所。アプリ用の領域（Application Support）の下の analysis/weak-points.json。
 /// 記録の records/ とは分ける。端末のバックアップには入れない（記録と同じ）
 nonisolated struct WeakPointStore: Sendable {
