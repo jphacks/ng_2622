@@ -29,6 +29,9 @@ struct RoundResults: Sendable, Equatable {
     let rewrite: Rewrite?
     /// 話し方のコツ
     let speechTip: SpeechTip
+    /// 表現の点の根拠（英語 1 文。採点の Claude が書く）。画面には出さず、記録と苦手の分析に使う。
+    /// 根拠が無いとき（3 語未満で Claude を呼ばなかった・呼び直しても空だった・固定の点数のモード）と、欄が無い前の記録は nil
+    var expressionBasis: String? = nil
 
     struct NextStep: Sendable, Equatable {
       enum Kind: String, Sendable { case content, expression, speech }

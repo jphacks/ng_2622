@@ -53,6 +53,9 @@ export type Feedback = {
   rewrite: Rewrite | null;
   // 話し方のコツ。Azure の点からコードが作る
   speechTip: { aspect: SpeechAspect; text: string };
+  // 表現の点の根拠（英語 1 文）。採点の Claude が書く。
+  // 3 語未満で Claude を呼ばなかった・呼び直しても空だった・固定の点数のモードは null
+  expressionBasis: string | null;
 };
 
 export type ScoreResult =

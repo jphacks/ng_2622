@@ -264,6 +264,7 @@ test("結果発表は、全員分の内容の内訳と講評を同じ形で送�
           },
           rewrite: null,
           speechTip: { aspect: "fluency", text: "ひと続きで言ってみよう。" },
+          expressionBasis: "Uses the present continuous correctly.",
         },
       },
     });
@@ -305,8 +306,13 @@ test("結果発表は、全員分の内容の内訳と講評を同じ形で送�
     "nextStep",
     "rewrite",
     "speechTip",
+    "expressionBasis",
   ]);
   assert.equal(first.feedback?.nextStep.gain, 12);
+  assert.equal(
+    first.feedback?.expressionBasis,
+    "Uses the present continuous correctly.",
+  );
   // 採点できなかった人は、内訳も講評も null
   assert.equal(ungraded.score, null);
   assert.equal(ungraded.content, null);

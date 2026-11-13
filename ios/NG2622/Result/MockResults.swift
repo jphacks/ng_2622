@@ -92,6 +92,8 @@ private struct MockSample {
     var rewrite: RoundResults.Review.Rewrite?
     var tip: RoundResults.Review.SpeechTip
     var shortText: String?
+    // 表現の点の根拠（バックエンドでは採点の Claude が書く英語 1 文）。無いときは nil
+    var basis: String?
 
     switch variant {
     case .rich:
@@ -108,6 +110,7 @@ private struct MockSample {
       }
       nextStep = Self.contentStep(checklist.first { $0.id == missingID }, gain: 6)
       tip = .init(aspect: .fluency, text: "文と文の間で止まりすぎないように、続けて言ってみよう。")
+      basis = "Uses the present continuous correctly, but one sentence is unfinished."
     case .half:
       for (i, item) in checklist.enumerated() where i < max(1, n / 2) { say(item, .full) }
       claims.insert(contradiction, at: min(1, claims.count))
@@ -115,6 +118,7 @@ private struct MockSample {
       speaking = 86
       nextStep = Self.contentStep(checklist.dropFirst(max(1, n / 2)).first, gain: 9)
       tip = .init(aspect: .prosody, text: "文の終わりを少し下げると、抑揚が伝わりやすくなります。")
+      basis = "Uses short present continuous sentences correctly."
     case .short:
       // 3 語未満はバックエンドが Claude を呼ばず、内容・表現を 0 点にする（docs/design/usecase.md）
       shortText = "A girl."
@@ -122,6 +126,8 @@ private struct MockSample {
       speaking = 55
       nextStep = .init(kind: .content, text: "もう少し長く、文にして話してみよう。", item: nil, gain: nil)
       tip = .init(aspect: .accuracy, text: "一語ずつ、はっきり発音してみよう。")
+      // 3 語未満はバックエンドが Claude を呼ばないので、根拠は無い（null で届く）
+      basis = nil
     case .clean:
       for item in checklist { say(item, item.id == partialID ? .partial : .full) }
       expression = 64
@@ -130,6 +136,7 @@ private struct MockSample {
         before: "There is a boy. He is running.", after: "A boy is running.", reason: "二文を一文にまとめると、なめらかになります。")
       nextStep = .init(kind: .expression, text: "二つの文を and や because でつないでみよう。", item: nil, gain: nil)
       tip = .init(aspect: .accuracy, text: "“th” の音を、舌を歯にあてて言ってみよう。")
+      basis = "Uses there is and the present continuous correctly, but repeats short sentences."
     }
 
     let items = checklist.map { ContentBreakdown.Item(id: $0.id, kind: $0.kind, label: $0.label, level: levels[$0.id] ?? .none) }
@@ -158,7 +165,7 @@ private struct MockSample {
         + speaking * RoundResults.Weights.speech) / 100).rounded()
     score = .init(content: contentScore, expression: expression, speaking: speaking, total: Int(total))
     transcript = shortText ?? claims.map(\.quote).joined(separator: " ")
-    review = .init(nextStep: nextStep, rewrite: rewrite, speechTip: tip)
+    review = .init(nextStep: nextStep, rewrite: rewrite, speechTip: tip, expressionBasis: basis)
   }
 
   static func contentStep(_ item: SceneLayout.ChecklistItem?, gain: Int) -> RoundResults.Review.NextStep {

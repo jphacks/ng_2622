@@ -390,6 +390,10 @@ export const ScoreResponse = z
         rewrite: Rewrite.nullable().meta({
           description: "直す所が無ければ null",
         }),
+        expressionBasis: z.string().nullable().meta({
+          description:
+            "表現の点の根拠（英語 1 文）。部屋の結果の Feedback.expressionBasis と同じ。根拠が無いとき（3 語未満、呼び直しても空、固定の点数のモード）は null",
+        }),
       })
       .meta({
         ref: "ContentFeedback",

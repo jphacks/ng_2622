@@ -77,7 +77,8 @@ struct MessageDecodingTests {
       + #""items":[{"id":"dog","kind":"center","label":"犬","level":"partial"}],"others":0,"#
       + #""recall":{"earned":1,"max":2},"precision":{"correct":1,"said":2}}"#
     let feedback =
-      #"{"nextStep":{"kind":"content","text":"t","item":"dog","gain":4},"rewrite":null,"speechTip":{"aspect":"prosody","text":"s"}}"#
+      #"{"nextStep":{"kind":"content","text":"t","item":"dog","gain":4},"rewrite":null,"speechTip":{"aspect":"prosody","text":"s"},"#
+      + #""expressionBasis":"Uses the present continuous correctly."}"#
     let message = try decode(
       #"{"type":"results","round":1,"sceneId":"temp-eiken-3-park","sceneName":"公園","players":[{"id":"\#(playerID)","name":"はなこ","color":5987302,"rank":1,"score":{"content":50,"expression":60,"speech":70,"total":58},"transcript":"A dog is sleeping. A cat.","content":\#(content),"feedback":\#(feedback)}]}"#
     )
@@ -95,6 +96,40 @@ struct MessageDecodingTests {
     #expect(breakdown.precision.said == 2)
     #expect(review.nextStep.gain == 4)
     #expect(review.speechTip.aspect.rawValue == "prosody")
+    // 表現の点の根拠（画面には出さず、記録と苦手の分析に使う）
+    #expect(review.expressionBasis == "Uses the present continuous correctly.")
+  }
+
+  /// 根拠が無い回（3 語未満・呼び直しても空・固定の点数のモード）は null で届き、nil で読める
+  @Test func resultsWithNullExpressionBasis() throws {
+    let feedback =
+      #"{"nextStep":{"kind":"content","text":"t","item":null,"gain":null},"rewrite":null,"speechTip":{"aspect":"accuracy","text":"s"},"#
+      + #""expressionBasis":null}"#
+    let message = try decode(
+      #"{"type":"results","round":1,"sceneId":"temp-eiken-3-park","sceneName":"公園","players":[{"id":"\#(playerID)","name":"はなこ","color":5987302,"rank":1,"score":{"content":0,"expression":0,"speech":40,"total":10},"transcript":"A dog.","content":null,"feedback":\#(feedback)}]}"#
+    )
+    guard case .results(let results) = message, let review = results.players.first?.feedback?.value1 else {
+      Issue.record("results の講評が読めない: \(message)")
+      return
+    }
+    #expect(review.expressionBasis == nil)
+  }
+
+  /// 講評に知らない欄があると、results ごと読めない（openapi.json の additionalProperties: false）。
+  /// 欄を足すと、足す前のビルドのアプリは結果の画面に進めなくなる（2026-11-12 に受け入れた。互換の切れ目は docs/design/usecase.md の
+  /// 「採点のときに Claude が返す形」の表現の点の根拠の項）
+  @Test func resultsWithUnknownFeedbackField() throws {
+    let known =
+      #"{"nextStep":{"kind":"expression","text":"t","item":null,"gain":null},"rewrite":null,"speechTip":{"aspect":"prosody","text":"s"},"#
+      + #""expressionBasis":"b""#
+    let results = { (feedback: String) in
+      #"{"type":"results","round":1,"sceneId":"temp-eiken-3-park","sceneName":"公園","players":[{"id":"\#(self.playerID)","name":"はなこ","color":5987302,"rank":1,"score":{"content":50,"expression":60,"speech":70,"total":58},"transcript":"A dog.","content":null,"feedback":\#(feedback)}]}"#
+    }
+    // 対照: 知らない欄を除いた同じ JSON は読める
+    _ = try decode(results(known + "}"))
+    #expect(throws: (any Error).self) {
+      try decode(results(known + #","newField":"x"}"#))
+    }
   }
 
   /// iPhone から送る join は、type と name だけの JSON になる
