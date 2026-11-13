@@ -124,8 +124,10 @@ private struct WeakSceneThumbnail: View {
   var body: some View {
     ZStack {
       if let layout = try? scene.document().layout {
-        // 小さな枠なので、きろくの 3D（5.4）より少し近づける（回っても盤の角が枠から大きく切れない近さ）
-        RecordSceneView(layout: layout, key: scene.sceneId, name: scene.name, distance: 4.6)
+        // 正方形の小さな枠。回って盤の対角が横を向いても角が切れない遠さにし（盤の対角は約 3.3 m、画角 32° で
+        // 5.8 m 先の横幅が約 3.3 m）、見下ろす点が地面より上にあるぶん盤が下に寄るので、少し上げて真ん中に置く
+        RecordSceneView(layout: layout, key: scene.sceneId, name: scene.name, distance: 5.8)
+          .offset(y: -10)
       } else {
         ScenePlaceholder()
       }
