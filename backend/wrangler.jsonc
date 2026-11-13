@@ -11,14 +11,15 @@
   // CLAUDE_MODEL・CLAUDE_EFFORT は採点に使う Claude。Haiku 5.5 の high は 1 回 7〜8 秒かかったので、Sonnet 5.5 の low（3〜4 秒）にしている
   // SCENE_GENERATION は "on" のときだけ場面を AI で作る。POST /scenes/generate（それ以外は 503）と、
   // 部屋が難易度のスタートで作る生成（それ以外は作り置きの場面から選ぶ）の両方のスイッチ。
-  // 作り置きは手元の wrangler dev で行う。本番は部屋での生成のために on、PR のプレビューは費用を抑えるため off
+  // 作り置きは手元の wrangler dev（.dev.vars* で on）で行う。本番は作り置きの場面（級ごとに 9）から選ぶため off（Award Day の当日は部屋での生成を止める。
+  // docs/design/scene-protocol.md）。PR のプレビューも費用を抑えるため off
   "vars": {
     "SCORING_MODE": "live",
     "SCORE_WEIGHTS": "50,25,25",
     "AZURE_LOCATION": "japaneast",
     "CLAUDE_MODEL": "claude-sonnet-5-5",
     "CLAUDE_EFFORT": "low",
-    "SCENE_GENERATION": "on"
+    "SCENE_GENERATION": "off"
   },
   // SCENE_REVIEWS はシーンの評価（全シーンで 1 つ）
   "durable_objects": {
