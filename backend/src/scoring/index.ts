@@ -9,7 +9,7 @@ import {
   toSentContent,
 } from "./checklist";
 import { gradeWithChecklist } from "./checklistGrade";
-import { checkedRewrite, speechTip } from "./feedback";
+import { checkedRewrite, preferSpeech, speechTip } from "./feedback";
 import { describeLayoutWithRelations } from "./layout";
 import type {
   NextStep,
@@ -22,6 +22,7 @@ import type {
 export type { Feedback, ScoreResult, ScoringEnv } from "./types";
 
 // 1 人分の採点。話し方は Azure の発音評価、内容・表現と講評は Claude（チェックリストの採点の 1 通り）。
+// 端末の文字起こしがあれば Azure と Claude を同時に呼ぶ。次の一つを話し方にするかは、Azure の点からコードが決める。
 // 決めた経緯は docs/adr/20261111-score-only-with-checklist-and-drop-handmade-scenes.md
 
 // 16 kHz・16 bit・モノラルで 20 秒 ≈ 0.64 MB。余裕を見て 1 MB まで
@@ -176,11 +177,15 @@ export async function score(
     transcript,
     breakdown: toSentContent(graded.breakdown),
     feedback: {
-      nextStep: withGain(graded.nextStep, weights, {
-        content: graded.content,
-        expression: graded.expression,
-        speech: speech.score,
-      }),
+      nextStep: withGain(
+        preferSpeech(graded.nextStep, graded, speech),
+        weights,
+        {
+          content: graded.content,
+          expression: graded.expression,
+          speech: speech.score,
+        },
+      ),
       // 引用と言い換え元は、文字起こしに含まれるものだけを出す
       rewrite: checkedRewrite(transcript, graded.rewrite),
       speechTip: speechTip(speech),
@@ -217,35 +222,21 @@ export async function score(
     );
   }
 
-  try {
-    const azureStarted = Date.now();
-    const fromDevice = deviceTranscript?.trim() ?? "";
-    const speech = await assessSpeech(env, wav, fromDevice);
-    const azureMs = Date.now() - azureStarted;
-    const transcript = fromDevice || speech?.transcript.trim() || "";
-    if (!speech || transcript === "") {
-      return {
-        ok: false,
-        sceneId,
-        reason: "no_speech",
-        message: "英語の発話を聞き取れなかった",
-      };
-    }
-    const sceneData = describeLayoutWithRelations(scene.items);
-    if (!sceneData) {
-      return {
-        ok: false,
-        sceneId,
-        reason: "api_error",
-        message: "場面の部品が 1 つも見つからない",
-      };
-    }
+  const sceneData = describeLayoutWithRelations(scene.items);
+  if (!sceneData) {
+    return {
+      ok: false,
+      sceneId,
+      reason: "api_error",
+      message: "場面の部品が 1 つも見つからない",
+    };
+  }
+
+  // Claude には話し方の点を渡さない。次の一つを話し方にするかは、Azure の点が出てからコードが決める（feedback.ts の preferSpeech）
+  const grade = async (transcript: string) => {
     const words = transcript.split(/\s+/).filter(Boolean).length;
-    const claudeStarted = Date.now();
-    let graded: Graded;
-    let retries: number | null = null;
     if (words < MIN_WORDS) {
-      graded = {
+      const graded: Graded = {
         content: 0,
         expression: 0,
         breakdown: emptyContent(scene.checklist),
@@ -259,39 +250,81 @@ export async function score(
         // Claude を呼んでいないので根拠は無い（null で送る）
         expressionBasis: "",
       };
+      return { graded, words, claudeMs: null, retries: null };
+    }
+    const claudeStarted = Date.now();
+    const scored = await gradeWithChecklist(env, {
+      grade: scene.difficulty,
+      checklist: scene.checklist,
+      sceneData,
+      description: scene.description.trim() || undefined,
+      ...grammarFor(scene.difficulty),
+      transcript,
+    });
+    return {
+      graded: scored,
+      words,
+      claudeMs: Date.now() - claudeStarted,
+      retries: scored.expressionRetries,
+    };
+  };
+  const assess = async (referenceText: string) => {
+    const azureStarted = Date.now();
+    const speech = await assessSpeech(env, wav, referenceText);
+    return { speech, azureMs: Date.now() - azureStarted };
+  };
+  const noSpeech: ScoreResult = {
+    ok: false,
+    sceneId,
+    reason: "no_speech",
+    message: "英語の発話を聞き取れなかった",
+  };
+
+  try {
+    const fromDevice = deviceTranscript?.trim() ?? "";
+    let speech: SpeechScore;
+    let azureMs: number;
+    let claude: Awaited<ReturnType<typeof grade>>;
+    let transcript: string;
+    if (fromDevice) {
+      // 端末の文字起こしがあれば、Azure と Claude を同時に呼ぶ（採点の待ちが、足し算から遅いほうだけになる）。
+      // 聞き取れなかった（Azure が null）ときは、Claude が失敗していても今までどおり no_speech にする
+      const [a, c] = await Promise.allSettled([
+        assess(fromDevice),
+        grade(fromDevice),
+      ]);
+      if (a.status === "rejected") throw a.reason;
+      if (!a.value.speech) return noSpeech;
+      if (c.status === "rejected") throw c.reason;
+      speech = a.value.speech;
+      azureMs = a.value.azureMs;
+      claude = c.value;
+      transcript = fromDevice;
     } else {
-      const scored = await gradeWithChecklist(env, {
-        grade: scene.difficulty,
-        checklist: scene.checklist,
-        sceneData,
-        description: scene.description.trim() || undefined,
-        ...grammarFor(scene.difficulty),
-        transcript,
-        speech: {
-          accuracy: speech.accuracy,
-          fluency: speech.fluency,
-          prosody: speech.prosody,
-        },
-      });
-      graded = scored;
-      retries = scored.expressionRetries;
+      // 端末の文字起こしが無ければ、Azure の文字起こしを待ってから Claude を呼ぶ
+      const azure = await assess("");
+      transcript = azure.speech?.transcript.trim() ?? "";
+      if (!azure.speech || transcript === "") return noSpeech;
+      speech = azure.speech;
+      azureMs = azure.azureMs;
+      claude = await grade(transcript);
     }
     // 採点の所要時間の内訳（Cloudflare の Observability で見る）。claudeMs は Claude を呼ばなかったとき null
     console.log({
       event: "scoring_timing",
       sceneId,
       audioBytes: wav.byteLength,
-      words,
-      // 文字起こしがどちらから来たか（端末の精度を Azure と見比べるため、Azure の分も残す）
+      words: claude.words,
+      // 文字起こしがどちらから来たか（端末の精度を Azure と見比べるため、Azure の分も残す）。device なら Azure と Claude は同時
       transcriptSource: fromDevice ? "device" : "azure",
       azureTranscript: speech.transcript,
       azureMs,
-      claudeMs: words < MIN_WORDS ? null : Date.now() - claudeStarted,
+      claudeMs: claude.claudeMs,
       // 表現 0 点か空の根拠で Claude を呼び直した回数
-      claudeRetries: retries,
+      claudeRetries: claude.retries,
       totalMs: Date.now() - started,
     });
-    return result(graded, speech, transcript, "live");
+    return result(claude.graded, speech, transcript, "live");
   } catch (e) {
     if (e instanceof Error) {
       console.error("採点に失敗", e);

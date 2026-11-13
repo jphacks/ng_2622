@@ -8,7 +8,7 @@ import {
 } from "./checklist";
 import { gradeWithChecklist } from "./checklistGrade";
 import { ClaudeError } from "./claude";
-import { checkedRewrite } from "./feedback";
+import { checkedRewrite, preferSpeech } from "./feedback";
 import {
   grammarFor,
   MIN_WORDS,
@@ -83,11 +83,21 @@ export async function scoreLayout(
     breakdown: toSentContent(graded.breakdown),
     feedback: {
       // 話し方の点は付けないので、gain は話し方を変えないとしたときの合計の伸び（話し方の項は差で消える）
-      nextStep: withGain(graded.nextStep, weights, {
-        content: graded.content,
-        expression: graded.expression,
-        speech: 0,
-      }),
+      // 話し方の点が送られたときだけ、部屋の採点と同じ基準で次の一つを話し方にするかを決める
+      nextStep: withGain(
+        input.speech
+          ? preferSpeech(graded.nextStep, graded, {
+              ...input.speech,
+              words: [],
+            })
+          : graded.nextStep,
+        weights,
+        {
+          content: graded.content,
+          expression: graded.expression,
+          speech: 0,
+        },
+      ),
       rewrite: checkedRewrite(transcript, graded.rewrite),
       expressionBasis: sentBasis(graded.expressionBasis),
     },
@@ -151,7 +161,6 @@ export async function scoreLayout(
       description: layout.description?.trim() || undefined,
       ...grammarFor(layout.difficulty),
       transcript,
-      speech: input.speech,
     });
     console.log({
       event: "layout_scoring_timing",

@@ -15,6 +15,7 @@ import {
   weightedTotal,
   withGain,
 } from "../src/scoring";
+import { preferSpeech, speechTip } from "../src/scoring/feedback";
 import { toGrade } from "../src/usecases/submitAudio";
 
 const realFetch = globalThis.fetch;
@@ -79,25 +80,20 @@ const JUDGED = {
   },
 };
 
+const SPEECH = { AccuracyScore: 90, FluencyScore: 70, ProsodyScore: 80 };
+
 const stubFetch = (
   claudeBodies: string[],
   judged: unknown = JUDGED,
   display = TRANSCRIPT,
+  speech: Record<string, unknown> = SPEECH,
 ) => {
   globalThis.fetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
     const url = String(input instanceof Request ? input.url : input);
     if (url.includes("stt.speech.microsoft.com")) {
       return Response.json({
         RecognitionStatus: "Success",
-        NBest: [
-          {
-            Display: display,
-            AccuracyScore: 90,
-            FluencyScore: 70,
-            ProsodyScore: 80,
-            Words: [],
-          },
-        ],
+        NBest: [{ Display: display, ...speech }],
       });
     }
     if (url.includes("api.anthropic.com")) {
@@ -182,7 +178,7 @@ test("作り置きの場面は、チェックリストの採点（Claude 1 回�
   assert.equal(r.feedback.speechTip.aspect, "fluency");
 });
 
-test("Claude には、級・級の文法の一覧（GRADES）・関係つきの場面・checklist・見本・話し方の点・文字起こしを渡す", async () => {
+test("Claude には、級・級の文法の一覧（GRADES）・関係つきの場面・checklist・見本・文字起こしを渡す。話し方の点は渡さない", async () => {
   const bodies: string[] = [];
   stubFetch(bodies);
   await score(env, wav(), SCENE_ID);
@@ -199,7 +195,12 @@ test("Claude には、級・級の文法の一覧（GRADES）・関係つきの�
   assert.match(user, / {2}place: sit_on bench/);
   assert.ok(user.includes(`- ${CENTER_1.id} [center] ${CENTER_1.label}`));
   assert.ok(user.includes(`Model answer (supplement): ${SCENE.description}`));
-  assert.match(user, /pronunciation 90, fluency 70, intonation 80/);
+  // Azure と同時に呼べるよう、話し方の点は渡さず、次の一つに speech も選ばせない（話し方にするかはコードが決める）
+  assert.doesNotMatch(user, /Speech scores/);
+  assert.deepEqual(
+    sent.output_config.format.schema.properties.nextStep.properties.kind.enum,
+    ["content", "expression"],
+  );
   assert.ok(user.endsWith(`Transcript: ${TRANSCRIPT}`));
   // 良かった所は書かせない
   assert.ok(!("strength" in sent.output_config.format.schema.properties));
@@ -265,16 +266,20 @@ test("3 語未満の発話は Claude を呼ばず、内容・表現を 0 点に�
   assert.equal(r.feedback.expressionBasis, null);
 });
 
-test("表現・話し方を勧めたときと、項目を全部言えたときは、item も gain も null", async () => {
+test("表現を勧めたときと、項目を全部言えたときは、item も gain も null", async () => {
   stubFetch([], {
     ...JUDGED,
-    nextStep: { kind: "speech", text: "ゆっくり話そう", item: CENTER_2.id },
+    nextStep: {
+      kind: "expression",
+      text: "be 動詞を足そう",
+      item: CENTER_2.id,
+    },
   });
-  const speech = await score(env, wav(), SCENE_ID);
-  assert.ok(speech.ok);
-  assert.deepEqual(speech.feedback.nextStep, {
-    kind: "speech",
-    text: "ゆっくり話そう",
+  const expression = await score(env, wav(), SCENE_ID);
+  assert.ok(expression.ok);
+  assert.deepEqual(expression.feedback.nextStep, {
+    kind: "expression",
+    text: "be 動詞を足そう",
     item: null,
     gain: null,
   });
@@ -468,6 +473,147 @@ test("score() の結果を部屋に書き込み、結果発表の形（ResultsMe
   assert.equal(me.feedback?.nextStep.gain, 15);
 });
 
+test("話し方の一番低い点が、内容と表現の低いほうより 20 点以上低ければ、次の一つをコードが話し方にする", async () => {
+  // 内容 44・表現 60 → 低いほうは 44。なめらかさ 24 は 44 − 20 以下なので差し替える
+  stubFetch([], JUDGED, TRANSCRIPT, { ...SPEECH, FluencyScore: 24 });
+  const low = await score(env, wav(), SCENE_ID);
+  assert.ok(low.ok, JSON.stringify(low));
+  assert.deepEqual(low.feedback.nextStep, {
+    kind: "speech",
+    text: low.feedback.speechTip.text,
+    item: null,
+    gain: null,
+  });
+  assert.equal(low.feedback.speechTip.aspect, "fluency");
+
+  // 25 なら差が 19 点なので、Claude が選んだ次の一つのまま
+  stubFetch([], JUDGED, TRANSCRIPT, { ...SPEECH, FluencyScore: 25 });
+  const near = await score(env, wav(), SCENE_ID);
+  assert.ok(near.ok);
+  assert.equal(near.feedback.nextStep.kind, "content");
+});
+
+test("preferSpeech: 差が 20 点以上でも、話し方が 80 点以上なら差し替えない", () => {
+  const step = {
+    kind: "content" as const,
+    text: "t",
+    item: "x",
+    contentIfSaid: 90,
+  };
+  const speech = { accuracy: 90, fluency: 85, prosody: 80, words: [] };
+  assert.deepEqual(
+    preferSpeech(step, { content: 100, expression: 100 }, speech),
+    step,
+  );
+  const low = { ...speech, prosody: 79 };
+  assert.deepEqual(preferSpeech(step, { content: 100, expression: 100 }, low), {
+    kind: "speech",
+    text: speechTip(low).text,
+    item: null,
+    contentIfSaid: null,
+  });
+  // 3 語未満（内容・表現 0 点）では差し替えない
+  assert.deepEqual(
+    preferSpeech(
+      step,
+      { content: 0, expression: 0 },
+      { ...speech, fluency: 0 },
+    ),
+    step,
+  );
+});
+
+// Azure の応答を、Claude が呼ばれるまで（最長 1 秒）返さない。同時に呼んでいれば待たずに済む
+const stubOrdered = (events: string[], azure: () => Response) => {
+  let claudeCalled: () => void = () => {};
+  const claudeStarted = new Promise<void>((r) => {
+    claudeCalled = r;
+  });
+  globalThis.fetch = (async (input: RequestInfo | URL) => {
+    const url = String(input instanceof Request ? input.url : input);
+    if (url.includes("stt.speech.microsoft.com")) {
+      events.push("azure:start");
+      await Promise.race([
+        claudeStarted,
+        new Promise((r) => setTimeout(r, 1000)),
+      ]);
+      events.push("azure:end");
+      return azure();
+    }
+    if (url.includes("api.anthropic.com")) {
+      events.push("claude:start");
+      claudeCalled();
+      return Response.json({
+        id: "msg_1",
+        type: "message",
+        role: "assistant",
+        model: "claude",
+        stop_reason: "end_turn",
+        stop_sequence: null,
+        usage: { input_tokens: 1, output_tokens: 1 },
+        content: [{ type: "text", text: JSON.stringify(JUDGED) }],
+      });
+    }
+    throw new Error(`想定しない fetch: ${url}`);
+  }) as typeof fetch;
+};
+const azureOk = () =>
+  Response.json({
+    RecognitionStatus: "Success",
+    NBest: [{ Display: TRANSCRIPT, ...SPEECH }],
+  });
+
+test("端末の文字起こしがあれば、Azure と Claude を同時に呼ぶ", async () => {
+  const events: string[] = [];
+  stubOrdered(events, azureOk);
+  const r = await score(env, wav(), SCENE_ID, TRANSCRIPT);
+  assert.ok(r.ok, JSON.stringify(r));
+  assert.deepEqual(events.slice(0, 2).sort(), ["azure:start", "claude:start"]);
+  assert.equal(r.content, 44);
+  assert.equal(r.speech, 80);
+});
+
+test("端末の文字起こしが無ければ、Azure の文字起こしを待ってから Claude を呼ぶ", async () => {
+  const events: string[] = [];
+  stubOrdered(events, azureOk);
+  const r = await score(env, wav(), SCENE_ID);
+  assert.ok(r.ok, JSON.stringify(r));
+  assert.deepEqual(events, ["azure:start", "azure:end", "claude:start"]);
+});
+
+test("同時に呼んだとき、Azure が聞き取れなければ Claude の成否によらず no_speech、Azure の失敗は api_error", async () => {
+  for (const judged of [JUDGED, new Error("Claude が落ちた")]) {
+    stubFetch([], judged);
+    const realStub = globalThis.fetch;
+    globalThis.fetch = (async (
+      input: RequestInfo | URL,
+      init?: RequestInit,
+    ) => {
+      const url = String(input instanceof Request ? input.url : input);
+      if (url.includes("stt.speech.microsoft.com")) {
+        return Response.json({ RecognitionStatus: "NoMatch" });
+      }
+      return realStub(input, init);
+    }) as typeof fetch;
+    const r = await score(env, wav(), SCENE_ID, TRANSCRIPT);
+    assert.ok(!r.ok);
+    assert.equal(r.reason, "no_speech");
+  }
+
+  stubFetch([]);
+  const realStub = globalThis.fetch;
+  globalThis.fetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
+    const url = String(input instanceof Request ? input.url : input);
+    if (url.includes("stt.speech.microsoft.com")) {
+      return new Response("down", { status: 500 });
+    }
+    return realStub(input, init);
+  }) as typeof fetch;
+  const failed = await score(env, wav(), SCENE_ID, TRANSCRIPT);
+  assert.ok(!failed.ok);
+  assert.equal(failed.reason, "api_error");
+});
+
 // ---- POST /score（部屋を通さない採点の口。ENABLE_DEV_ROUTES のときだけ開く） ----
 
 const post = (body: unknown, vars: Record<string, string> = {}) =>
@@ -554,4 +700,27 @@ test("POST /score は、形が違えば 400、fixed なら固定の点、口を�
     { ENABLE_DEV_ROUTES: "false" },
   );
   assert.equal(closed.status, 404);
+});
+
+test("POST /score は、話し方の点を Claude に渡さず、部屋の採点と同じ基準で次の一つを話し方にする", async () => {
+  const bodies: string[] = [];
+  stubFetch(bodies);
+  const res = await post(
+    {
+      layout: LAYOUT,
+      transcript: TRANSCRIPT,
+      speech: { accuracy: 90, fluency: 20, prosody: 80 },
+    },
+    { CLAUDE_API_KEY: "c", SCORING_MODE: "live" },
+  );
+  assert.equal(res.status, 200);
+  const body = (await res.json()) as { feedback: { nextStep: unknown } };
+  assert.deepEqual(body.feedback.nextStep, {
+    kind: "speech",
+    text: "言葉の間を短くして、ひと続きで言ってみよう。",
+    item: null,
+    gain: null,
+  });
+  const user = JSON.parse(bodies[0]).messages[0].content as string;
+  assert.doesNotMatch(user, /Speech scores/);
 });
