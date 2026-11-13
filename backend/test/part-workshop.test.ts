@@ -202,6 +202,65 @@ test("Claude が断った注文（人の名前・武器など）は失敗とし�
   assert.equal(claude.calls.length, 1);
 });
 
+test("同じ ID を別の所で同時に作って版 1 が先に取られていたら、版を上げて置き、前の版は書き換えない", async () => {
+  // 別の Durable Object が版 1 の usdz を置いた直後（json はまだ）
+  const theirs = new Uint8Array([1, 2, 3]);
+  await bucket.put("parts/kite_red/1.usdz", theirs);
+  const claude = fakeClaude([STAND]);
+  const env = { BUCKET: bucket, CLAUDE_API_KEY: "test" };
+  const result = await ensureParts(env, [order("kite_red")], {
+    maxNew: 4,
+    deps: { create: claude.create },
+  });
+  assert.deepEqual(result.failed, []);
+  const part = result.parts[0];
+  assert.equal(part.version, 2);
+  assert.equal(part.file, "parts/kite_red/2.usdz");
+  assert.deepEqual(
+    new Uint8Array(
+      await (
+        (await bucket.get("parts/kite_red/1.usdz")) as R2ObjectBody
+      ).arrayBuffer(),
+    ),
+    theirs,
+  );
+  assert.deepEqual(
+    await (await bucket.get("parts/kite_red/2.json"))?.json(),
+    part,
+  );
+  const recipe = (await (
+    await bucket.get("recipes/kite_red/2.json")
+  )?.json()) as { version: number };
+  assert.equal(recipe.version, 2);
+  assert.equal(await bucket.head("parts/kite_red/1.json"), null);
+});
+
+test("savePart を同時に 2 回呼ぶと、別々の版に置く（後の方が前の版を上書きしない）", async () => {
+  const { savePart } = await import("../src/parts/store");
+  const { metaOf } = await import("../src/parts/make");
+  const meta = (h: number) =>
+    metaOf(order("tent", { size: [1, h, 1] }), 1, [1, h, 1], undefined);
+  const record = (h: number) =>
+    ({ id: "tent", version: 1, ops: [], attempts: [], tris: h }) as never;
+  const [a, b] = await Promise.all([
+    savePart(bucket, meta(0.5), new Uint8Array([5]), record(5)),
+    savePart(bucket, meta(0.6), new Uint8Array([6]), record(6)),
+  ]);
+  assert.deepEqual([a.version, b.version].sort(), [1, 2]);
+  for (const placed of [a, b]) {
+    const json = (await (
+      await bucket.get(`parts/tent/${placed.version}.json`)
+    )?.json()) as { size: number[] };
+    assert.deepEqual(json.size, placed.size);
+    const usdz = new Uint8Array(
+      await (
+        (await bucket.get(`parts/tent/${placed.version}.usdz`)) as R2ObjectBody
+      ).arrayBuffer(),
+    );
+    assert.deepEqual([...usdz], [placed.size[1] === 0.5 ? 5 : 6]);
+  }
+});
+
 test("止めたら、できていない部品を失敗として返す", async () => {
   const controller = new AbortController();
   const create: CreateMessage = () => new Promise(() => {});

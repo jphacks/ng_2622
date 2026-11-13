@@ -1,7 +1,7 @@
 import { Hono } from "hono";
 import { describeRoute } from "hono-openapi";
 import { isObjectId } from "../parts/ids";
-import { partUsdzKey, USDZ_CONTENT_TYPE } from "../parts/store";
+import { partMetaKey, partUsdzKey, USDZ_CONTENT_TYPE } from "../parts/store";
 import { PARTS } from "../scenes/parts";
 import { ListPartsResponse } from "../schemas/http";
 import { type AppEnv, jsonContent } from "./shared";
@@ -58,13 +58,19 @@ export const partRoutes = new Hono<AppEnv>()
             },
           },
         },
-        404: { description: "その版の部品が無い" },
+        404: {
+          description:
+            "その版の部品が無い（作っている途中で、メタデータがまだ無い版も 404）",
+        },
       },
     }),
     async (c) => {
       const id = c.req.param("id");
       const version = Number(c.req.param("version").replace(/\.usdz$/, ""));
       if (!isObjectId(id)) return c.body(null, 404);
+      // メタデータ（json）の無い版は、作っている途中か置きそこねた物なので返さない（immutable で配らない）
+      const meta = await c.env.BUCKET.head(partMetaKey(id, version));
+      if (!meta) return c.body(null, 404);
       const object = await c.env.BUCKET.get(partUsdzKey(id, version));
       if (!object) return c.body(null, 404);
       return c.body(object.body, 200, {

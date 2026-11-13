@@ -115,7 +115,8 @@ type One =
   | { ok: true; part: MadePart; log: MadeLog }
   | { ok: false; reason: string };
 
-// 同じ isolate で同じ ID を同時に作らない（後から来た注文は先の結果を待つ）
+// 同じ isolate で同じ ID を同時に作らない（後から来た注文は先の結果を待つ）。
+// 別の isolate（別の Durable Object）で同時に作ったときは、R2 に置くときに版を分ける（store.ts の savePart）
 const inflight = new Map<string, Promise<One>>();
 
 const makeOne = async (
@@ -144,7 +145,12 @@ const makeOne = async (
     );
     return { ok: false, reason: `${outcome.kind}: ${outcome.reason}` };
   }
-  await savePart(env.BUCKET, outcome.meta, outcome.usdz, outcome.record);
+  const placed = await savePart(
+    env.BUCKET,
+    outcome.meta,
+    outcome.usdz,
+    outcome.record,
+  );
   const log: MadeLog = {
     id: order.id,
     made: true,
@@ -154,9 +160,9 @@ const makeOne = async (
     tris: outcome.record.tris,
   };
   console.log(
-    `部品 ${order.id}@${outcome.meta.version} を作った（${log.ms} ms、$${log.usd.toFixed(4)}、${log.attempts} 回、${log.tris} 三角形）`,
+    `部品 ${order.id}@${placed.version} を作った（${log.ms} ms、$${log.usd.toFixed(4)}、${log.attempts} 回、${log.tris} 三角形）`,
   );
-  return { ok: true, part: outcome.meta, log };
+  return { ok: true, part: placed, log };
 };
 
 const aborted = (signal: AbortSignal | undefined) =>

@@ -5,7 +5,9 @@ import type { RecipeRecord } from "./make";
 //   parts/<id>/<version>.usdz   部品の 3D モデル（GET /parts/{id}/{version}.usdz が返す）
 //   parts/<id>/<version>.json   メタデータ（assets/parts/index.json の 1 件と同じ形）
 //   recipes/<id>/<version>.json 部品表と、作ったときの注文・時間・費用（RecipeRecord）
-// 書く順は usdz → recipes → json。json があれば、その版はそろっている（読む側は json を見て有無を決める）。
+// 書く順は usdz → recipes → json で、どれも「無いときだけ置く」（R2 の条件付きの put）。usdz を置けたらその版を取ったことにし、
+// 既にあれば版を上げて置き直す（同じ ID を別の Durable Object で同時に作ったとき）。json があれば、その版はそろっている
+// （読む側は json を見て有無を決める。GET /parts/{id}/{version}.usdz も json の無い版は返さない）。
 // 一度置いた版は書き換えない（アプリは版ごとに取っておくので、中身を変えるときは版を上げる）
 
 export const USDZ_CONTENT_TYPE = "model/vnd.usdz+zip";
@@ -48,25 +50,71 @@ export const readPartMeta = async (
   return (await object.json()) as Part;
 };
 
-/** 作った部品を置く（usdz → recipes → json の順） */
+/** 置き直すときに版を上げる回数の上限 */
+const MAX_VERSION_TRIES = 5;
+
+/** 無いときだけ置く。既にあれば false（R2 の条件付きの put。If-None-Match: * と同じ） */
+const putIfAbsent = async (
+  bucket: R2Bucket,
+  key: string,
+  body: string | Uint8Array,
+  contentType: string,
+): Promise<boolean> =>
+  (await bucket.put(key, body, {
+    httpMetadata: { contentType },
+    onlyIf: { etagDoesNotMatch: "*" },
+  })) !== null;
+
+/**
+ * 作った部品を置き、置いた版のメタデータを返す。
+ * まず usdz を「無いときだけ」置いてその版を取る（同じ ID を別の所で同時に作っていて、その版が既にあれば、版を 1 つ上げて置き直す）。
+ * 版が決まってから recipes → json の順に、これも無いときだけ置く。一度置いた版は書き換えない
+ */
 export const savePart = async (
   bucket: R2Bucket,
   meta: Part,
   usdz: Uint8Array,
   record: RecipeRecord,
-): Promise<void> => {
-  const json = { httpMetadata: { contentType: "application/json" } };
-  await bucket.put(partUsdzKey(meta.id, meta.version), usdz, {
-    httpMetadata: { contentType: USDZ_CONTENT_TYPE },
-  });
-  await bucket.put(
-    recipeKey(meta.id, meta.version),
-    JSON.stringify(record),
+): Promise<Part> => {
+  let version = meta.version;
+  let claimed = false;
+  for (let i = 0; i < MAX_VERSION_TRIES && !claimed; i++) {
+    if (i > 0) version++;
+    claimed = await putIfAbsent(
+      bucket,
+      partUsdzKey(meta.id, version),
+      usdz,
+      USDZ_CONTENT_TYPE,
+    );
+  }
+  if (!claimed) {
+    throw new Error(
+      `部品 ${meta.id} の版を取れなかった（${meta.version}〜${version} が既にある）`,
+    );
+  }
+  const placed: Part = {
+    ...meta,
+    version,
+    file: partUsdzKey(meta.id, version),
+  };
+  const json = "application/json";
+  const okRecipe = await putIfAbsent(
+    bucket,
+    recipeKey(meta.id, version),
+    JSON.stringify({ ...record, version }),
     json,
   );
-  await bucket.put(
-    partMetaKey(meta.id, meta.version),
-    JSON.stringify(meta),
+  const okMeta = await putIfAbsent(
+    bucket,
+    partMetaKey(meta.id, version),
+    JSON.stringify(placed),
     json,
   );
+  // usdz で版を取ったので、ここで既にあることは無いはず（あれば、その版はほかの物と混ざっている）
+  if (!okRecipe || !okMeta) {
+    throw new Error(
+      `部品 ${meta.id}@${version} の記録かメタデータが既にあった`,
+    );
+  }
+  return placed;
 };

@@ -23,6 +23,9 @@ after(() => mf.dispose());
 test("GET /parts/{id}/{version}.usdz は R2 の USDZ を返し、無ければ 404", async () => {
   const usdz = new Uint8Array([0x50, 0x4b, 0x03, 0x04, 1, 2, 3, 4]);
   await bucket.put("parts/mailbox/1.usdz", usdz);
+  await bucket.put("parts/mailbox/1.json", "{}");
+  // 作っている途中（json がまだ無い）の版は返さない
+  await bucket.put("parts/mailbox/2.usdz", usdz);
   const env = { BUCKET: bucket };
   const res = await partRoutes.request("/parts/mailbox/1.usdz", {}, env);
   assert.equal(res.status, 200);
