@@ -86,7 +86,8 @@ struct ScenePool {
   /// アプリの中で作り置きの場面を置くフォルダ。ビルドのときに backend/src/scenes/pool から写す（project.yml の Copy scene pool）
   static let directory = "pool"
 
-  /// アプリに同梱した作り置きの場面（pool/index.json と pool/<sceneId>.json）。Mock の出題と、待合の例に使う
+  /// アプリに同梱した作り置きの場面（pool/index.json と pool/<sceneId>.json）。Mock の出題、待合の例、
+  /// 起動したときの先読み（RootView）、ホームで回す場面（HomeView）、仮の結果と記録（MockResults・MockRecords）に使う
   static let bundled = ScenePool(bundle: .main)
 
   /// 作り置きの場面の一覧（backend/src/scenes/pool/index.json）の、1 つの難易度の分。
