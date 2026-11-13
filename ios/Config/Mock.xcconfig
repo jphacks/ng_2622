@@ -16,6 +16,9 @@ MOCK_GENERATING_DURATION = 3
 MOCK_SAMPLE_RECORDS = 12
 // 苦手の分析（3 秒待ってから返す）。ok: 癖 2 件など / empty: 癖が 0 件 / fail: 作れない / limit: 回数の上限
 MOCK_WEAK_POINTS = ok
+// 苦手の場面（分析が届いてから 4 秒待って、作り置きの場面の一つを返す）。ok / fail: 作れない / limit: 回数の上限 /
+// off: 止めている / offline: 通信できない
+MOCK_WEAK_SCENE = ok
 
 // 各自の設定で上書きする（無くてもよい）
 #include? "Local.xcconfig"
