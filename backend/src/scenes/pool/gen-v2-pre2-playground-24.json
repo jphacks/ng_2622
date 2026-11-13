@@ -3,7 +3,7 @@
   "id": "gen-v2-pre2-playground-24",
   "name": "校庭で転んだ自転車",
   "difficulty": "eiken-pre2",
-  "description": "A bicycle is lying on the ground next to a bench. A woman has fallen down on the ground because the bicycle is lying next to her. A man is helping the woman get up. A boy is sitting on the bench. There is a tree behind the bench.",
+  "description": "A bicycle is lying on the ground next to a bench. A woman has fallen down because she fell off her bicycle. A man is helping the woman get up. A boy is sitting on the bench. There is a tree behind the bench.",
   "checklist": [
     {
       "id": "woman_fall",
@@ -30,7 +30,7 @@
       "id": "why_fall",
       "kind": "reason",
       "label": "女の人が転んでいる理由",
-      "accept": "a woman has fallen down on the ground because the bicycle is lying next to her",
+      "accept": "a woman has fallen down because she fell off her bicycle",
       "refs": ["woman", "bicycle"]
     },
     {

@@ -3,7 +3,7 @@
   "id": "gen-v2-pre2-cafe-02",
   "name": "カフェでこぼれたジュース",
   "difficulty": "eiken-pre2",
-  "description": "A woman is cleaning the table because the juice was spilled. A waiter is bringing drinks. A man is sitting on a chair. There is a cup on the table. There are two chairs next to the table.",
+  "description": "A woman is cleaning the table because there is spilled juice on it. A waiter is bringing drinks. A man is sitting on a chair. There is a cup on the table. There are two chairs next to the table.",
   "checklist": [
     {
       "id": "woman_clean",
@@ -30,7 +30,7 @@
       "id": "why_clean",
       "kind": "reason",
       "label": "女の人がテーブルを拭く理由",
-      "accept": "a woman is cleaning the table because the juice was spilled",
+      "accept": "a woman is cleaning the table because there is spilled juice on it",
       "refs": ["woman", "juice"]
     },
     {
