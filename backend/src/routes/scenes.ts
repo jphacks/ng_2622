@@ -61,6 +61,23 @@ const requireWriteToken = createMiddleware<AppEnv>(async (c, next) => {
   await next();
 });
 
+/** 置き場（R2）の苦手の場面の配置。無い・読めなければ null（読めないときは 404 にし、500 にしない） */
+const findWeakLayout = async (bucket: R2Bucket, sceneId: string) => {
+  try {
+    return (
+      (await createWeakSceneRepository(bucket).find(sceneId))?.layout ?? null
+    );
+  } catch (e) {
+    console.error(
+      JSON.stringify({
+        event: "weak_scene_read_failed",
+        name: e instanceof Error ? e.name : "Error",
+      }),
+    );
+    return null;
+  }
+};
+
 const GENERATION_STATUS = {
   refused: { code: "generation_refused", status: 422 },
   invalid: { code: "generation_failed", status: 422 },
@@ -160,8 +177,7 @@ export const sceneRoutes = new Hono<AppEnv>()
           : null) ??
         // 苦手の場面（weak-）は、部屋が写す前でも置き場（R2）から読める
         (isWeakSceneId(sceneId) && c.env.BUCKET
-          ? ((await createWeakSceneRepository(c.env.BUCKET).find(sceneId))
-              ?.layout ?? null)
+          ? await findWeakLayout(c.env.BUCKET, sceneId)
           : null);
       if (!scene) {
         return c.json(errorBody("unknown_scene", "場面が無い"), 404);

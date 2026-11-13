@@ -308,3 +308,19 @@ test("採点の場面の情報は、作った部品のメタデータを渡せ�
   assert.ok(text?.includes("- lamp: 街灯 / thing"));
   assert.ok(text?.includes("words: lamp, street lamp"));
 });
+
+test("GET /scenes/{id}/layout で置き場（R2）が読めなければ、500 でなく 404", async () => {
+  const broken = {
+    get: async () => {
+      throw new Error("R2 is down");
+    },
+  };
+  const res = await app.request(
+    "/scenes/weak-0f8fad5b-d9cb-469f-a165-70867728950e/layout",
+    {},
+    { BUCKET: broken },
+  );
+  assert.equal(res.status, 404);
+  const body = (await res.json()) as { error: { code: string } };
+  assert.equal(body.error.code, "unknown_scene");
+});
