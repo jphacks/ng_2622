@@ -212,3 +212,42 @@ test("作れない道（canMake が false）では、注文があっても同梱
   assert.deepEqual(result.orders, []);
   assert.equal(looked, 0, "前に作った部品も引かない");
 });
+
+test("人・動物・建物を「物」として注文したら、作らずに英文から書き直させる（語の一部では断らない）", async () => {
+  const resolve = (order: PartOrder) =>
+    resolveParts(
+      [{ key: "x", part: order.id, place: { relation: "ground" } }],
+      [order],
+      PARTS,
+      async () => null,
+    );
+  for (const order of [
+    { ...LAMP, id: "boy_small", words: ["boy"] },
+    { ...LAMP, id: "cat", words: ["cat"] },
+    { ...LAMP, id: "pet", words: ["kitten"] },
+    { ...LAMP, id: "dog_brown", words: ["brown dog"] },
+    { ...LAMP, id: "door_red", words: ["door"] },
+    { ...LAMP, id: "house", words: ["house"] },
+  ]) {
+    const result = await resolve(order);
+    assert.deepEqual(
+      result.problems.map((p) => [p.code, p.stage]),
+      [["bad_part_order", "sentences"]],
+      order.id,
+    );
+    assert.deepEqual(result.orders, [], order.id);
+  }
+  // 語の一部・物の語は断らない（door mat・bus・menu）
+  for (const order of [
+    { ...LAMP, id: "mat_door", words: ["door mat"] },
+    { ...LAMP, id: "bus", category: "vehicle" as const, words: ["bus"] },
+    { ...LAMP, id: "menu_card", words: ["menu"] },
+  ]) {
+    const result = await resolve(order);
+    assert.deepEqual(result.problems, [], order.id);
+    assert.deepEqual(
+      result.orders.map((o) => o.id),
+      [order.id],
+    );
+  }
+});

@@ -3,7 +3,7 @@ import { isObjectId, MAX_ID_LENGTH, parsePartId, partRef } from "../parts/ids";
 import { orderProblem, type PartOrder, refusedTerm } from "../parts/workshop";
 import { POSE_VERBS, poseVerbsOf, postureOf, whoOf } from "./pose-verbs";
 import type { LayoutItemV2, Part, PlanItem, SceneLayoutV2 } from "./types";
-import { nounFits, type Problem } from "./verify";
+import { nounFits, PERSON_NOUNS, type Problem } from "./verify";
 
 // 部品を ID の規約で引く 2 回目（docs/design/part-generation.md）。部品の一覧を prompt に出さず、
 // Claude は規約どおりの ID を書く。コードが引く:
@@ -398,16 +398,23 @@ const refusedOrder = (
   }
   // 地面（芝生・砂・床など）そのものは作らない。refs の grass などは、地面の部品の key にする。
   // 語の一部（street lamp の street）では断らず、注文の名前が地面の語そのものかで見る
-  const groundWords = new Set(
-    [...byId.values()]
+  // 地面の部品の words には bus・station など物の語も入っているので、地面の ID と地面の語の一覧で見る
+  const groundWords = new Set([
+    ...[...byId.values()]
       .filter((p) => p.category === "ground")
-      .flatMap((p) => p.words.map((w) => w.word)),
-  );
+      .map((p) => p.id.replace(/_/g, " ")),
+    ...GROUND_WORDS,
+  ]);
   const ground = [order.id, ...order.words].find((w) =>
     groundWords.has(w.replace(/_/g, " ")),
   );
   if (ground) {
     return `${order.id} は地面（${ground}）。地面は作らない。英文の ${ground} は、地面の部品（grass_patch・sand_beach・floor_wood など）の item の key にする`;
+  }
+  // 人・動物・建物は「物」として作らない（作るのは thing・furniture・food・plant・vehicle だけ）
+  const kind = notAThing(order, byId);
+  if (kind) {
+    return `${order.id} は${kind.what}（${kind.word}）なので作れない物。この物を使わない場面にする（英文からも外す。人と動物は表の person_・animal_ の ID で書く）`;
   }
   // 作らない物の語は、部品を作る口と同じ網（id・words・label・description の全部を見る）で先に見る
   const refused = refusedTerm(order);
@@ -418,6 +425,101 @@ const refusedOrder = (
   if (problem) {
     return `注文 ${order.id} の形が違う（${problem}）。注文を直すか、もう部品のある物にする`;
   }
+  return undefined;
+};
+
+// 地面の語（地面の部品の ID に足す）
+const GROUND_WORDS = [
+  "grass",
+  "lawn",
+  "sand",
+  "beach",
+  "floor",
+  "ground",
+  "dirt",
+  "field",
+  "road",
+  "street",
+  "sidewalk",
+  "pavement",
+  "crosswalk",
+  "platform",
+  "carpet",
+];
+
+// 同梱の人・動物の「誰」「種類」の語（verify.ts の PERSON_NOUNS と部品の words）に足す、よく出る人と動物の語
+const MORE_LIVING = [
+  "person",
+  "people",
+  "baby",
+  "cat",
+  "kitten",
+  "puppy",
+  "horse",
+  "cow",
+  "pig",
+  "sheep",
+  "goat",
+  "rabbit",
+  "duck",
+  "chicken",
+  "hen",
+  "fish",
+  "mouse",
+  "bear",
+  "lion",
+  "tiger",
+  "elephant",
+  "monkey",
+  "giraffe",
+  "penguin",
+  "frog",
+  "turtle",
+  "hamster",
+];
+// 建物の部品の words に足す、建物と部屋の語
+const MORE_BUILDING = [
+  "wall",
+  "door",
+  "window",
+  "floor",
+  "room",
+  "house",
+  "building",
+  "roof",
+  "ceiling",
+  "stairs",
+];
+
+/**
+ * 注文が人・動物・建物か。注文の id（_ を空白にしたもの）か words のどれかが、その語そのものなら当たる。
+ * 人と動物は id の先頭の語（名詞_区別 の名詞。dog_brown の dog）でも当てる。
+ * 語の一部（street lamp・door mat の door）では当てない
+ */
+const notAThing = (
+  order: PartOrder,
+  byId: Map<string, Part>,
+): { what: string; word: string } | undefined => {
+  const parts = [...byId.values()];
+  const living = new Set([
+    ...Object.keys(PERSON_NOUNS),
+    ...parts.filter(isLiving).map((p) => whoOf(p)),
+    ...MORE_LIVING,
+  ]);
+  // 建物の部品は ID で見る（words には bus・menu・shelf など物の語も入っているので使わない）
+  const building = new Set([
+    ...parts
+      .filter((p) => p.category === "building")
+      .map((p) => p.id.replace(/_/g, " ")),
+    ...MORE_BUILDING,
+  ]);
+  const names = [order.id.replace(/_/g, " "), ...order.words];
+  const head = order.id.split("_")[0];
+  const person =
+    names.find((n) => living.has(n)) ?? (living.has(head) ? head : undefined);
+  if (person) return { what: "人や動物", word: person };
+  const built = names.find((n) => building.has(n));
+  if (built) return { what: "建物や壁", word: built };
   return undefined;
 };
 
