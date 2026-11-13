@@ -2,7 +2,8 @@ import Foundation
 import RealityKit
 
 /// 3D シーンを読み込んでおく所。同じシーンは 1 度だけ読み（組み立て）、使うたびに複製して渡す。
-/// どの場面も配置の JSON（作り置きは同梱、部屋がその場で作った場面はバックエンド）を取って部品を並べる
+/// 遊ぶ場面は配置の JSON（作り置きは同梱、部屋がその場で作った場面はバックエンド）を取って部品を並べる。
+/// ホームの広告の見本（TitleDiorama）だけは、同梱の USDZ を 1 つ読む
 final class SceneLibrary {
   static let shared = SceneLibrary()
 
@@ -15,6 +16,9 @@ final class SceneLibrary {
   private var loaded: Set<String> = []
   /// 手元の配置から組んだ場面（key ごと）。遊んだ記録の場面を、きろくの画面で何度も出すので覚えておく
   private var composed: [String: Task<SceneComposer.Composed?, Never>] = [:]
+  /// USDZ のファイルを読んだ場面（ファイルの場所ごと）
+  private var usdzLoads: [String: Task<SceneComposer.Composed?, Never>] = [:]
+  private var loadedUSDZ: Set<String> = []
 
   func isLoaded(_ id: String) -> Bool {
     loaded.contains(id)
@@ -66,6 +70,77 @@ final class SceneLibrary {
     composed.removeAll()
   }
 
+  // MARK: - 1 つの USDZ でできた場面
+
+  /// アプリに同梱した、1 つの USDZ でできた場面を置くフォルダ。ビルドのときに assets/title から写す（project.yml の Copy title dioramas）
+  static let usdzDirectory = "title"
+
+  /// 同梱の USDZ（title/<name>.usdz）の場所。無ければ nil
+  static func bundledUSDZ(_ name: String, in bundle: Bundle = .main) -> URL? {
+    bundle.url(forResource: name, withExtension: "usdz", subdirectory: usdzDirectory)
+  }
+
+  func isLoaded(usdzAt url: URL) -> Bool {
+    loadedUSDZ.contains(url.standardizedFileURL.path)
+  }
+
+  /// USDZ のファイル（同梱か、端末に取っておいたもの）を読んだ場面の複製。組んだ場面と同じく、地面の中心を原点に置き、
+  /// 横幅を footprint にそろえ、光を足す。無い・読めないときは nil
+  func instance(usdzAt url: URL) async -> SceneComposer.Composed? {
+    guard let template = await loadUSDZ(url).value else { return nil }
+    return Self.copy(of: template)
+  }
+
+  /// 同梱の USDZ（title/<name>.usdz）を読んだ場面の複製。無い・読めないときは nil
+  func instance(usdz name: String) async -> SceneComposer.Composed? {
+    guard let url = Self.bundledUSDZ(name) else {
+      sceneLog.error("USDZ の場面がアプリにありません（\(name, privacy: .public)）")
+      return nil
+    }
+    return await instance(usdzAt: url)
+  }
+
+  /// USDZ の場面を出す。読めなければ fallback（作り置きの場面の ID）を組み、fellBack を true にする（ホームを空にしないため）
+  func instance(usdzAt url: URL, fallback sceneID: String?) async -> (scene: SceneComposer.Composed?, fellBack: Bool) {
+    if let scene = await instance(usdzAt: url) { return (scene, false) }
+    guard let sceneID else { return (nil, false) }
+    return (await instance(of: sceneID), true)
+  }
+
+  /// 覚えた USDZ の場面を忘れる（端末に取っておいた 3D を消したとき）
+  func forget(usdzAt url: URL) {
+    let key = url.standardizedFileURL.path
+    usdzLoads[key] = nil
+    loadedUSDZ.remove(key)
+  }
+
+  private func loadUSDZ(_ url: URL) -> Task<SceneComposer.Composed?, Never> {
+    let key = url.standardizedFileURL.path
+    let name = url.lastPathComponent
+    if let task = usdzLoads[key] { return task }
+    let task = Task { () -> SceneComposer.Composed? in
+      do {
+        let model = try await Entity(contentsOf: url)
+        let bounds = model.visualBounds(relativeTo: model)
+        guard max(bounds.extents.x, bounds.extents.z) > 0 else {
+          sceneLog.error("USDZ の場面に形がありません（\(name, privacy: .public)）")
+          return nil
+        }
+        loadedUSDZ.insert(key)
+        return SceneComposer.Composed(root: Self.fit(model, bounds: bounds, minSpan: 0), moving: [])
+      } catch {
+        sceneLog.error("USDZ の場面を読めませんでした（\(name, privacy: .public)）: \(error, privacy: .public)")
+        return nil
+      }
+    }
+    usdzLoads[key] = task
+    Task {
+      // 読めなかったものは覚えず、次にまた読む
+      if await task.value == nil, usdzLoads[key] == task { usdzLoads[key] = nil }
+    }
+    return task
+  }
+
   /// 組んだ場面の複製。動かす部品は、複製の中から名前で探し直す
   private static func copy(of template: SceneComposer.Composed) -> SceneComposer.Composed {
     let root = template.root.clone(recursive: true)
@@ -96,7 +171,8 @@ final class SceneLibrary {
       root: fit(composed.root, bounds: bounds, minSpan: minComposedSpan), moving: composed.moving)
   }
 
-  /// 範囲（model の座標）から、地面の中心を原点に置き、横幅を footprint にそろえる。地面（y = 0）の高さは変えない
+  /// 範囲（model の座標）から、地面の中心を原点に置き、横幅を footprint にそろえる。地面（y = 0）の高さは変えない。
+  /// 組んだ場面にも USDZ の場面にも使い、同じ光を足す
   private static func fit(_ model: Entity, bounds: BoundingBox, minSpan: Float) -> Entity {
     let size = bounds.extents
     let scale = footprint / max(size.x, size.z, minSpan)

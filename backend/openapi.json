@@ -2402,6 +2402,68 @@
           "counts"
         ],
         "description": "苦手の分析に送る、直近の記録の文字と端末で数えた値。録音・名前・端末や記録の ID・遊んだ日時・場面の ID は送らない。サーバーは保存しない"
+      },
+      "Title": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "広告の名前と 3D のファイルの sha256 の先頭 8 文字。アプリは覚えている id と違えば取り直す",
+            "example": "jphacks-2026-ecc5df64"
+          },
+          "caption": {
+            "type": "string",
+            "description": "タイトルの下に小さく出す字",
+            "example": "広告の見本：JPHACKS"
+          },
+          "model": {
+            "type": "string",
+            "description": "3D（USDZ）の絶対 URL。Worker の静的アセットとして同じホストで配る",
+            "example": "https://example.workers.dev/title/hackathon.usdz?v=ecc5df64"
+          },
+          "sha256": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{64}$",
+            "description": "3D のファイルの中身の sha256（16 進数の小文字）。合わなければアプリは捨てる"
+          },
+          "expiresAt": {
+            "type": "string",
+            "format": "date-time",
+            "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$",
+            "description": "出す期間の終わり（秒までの UTC）。過ぎたら、サーバーにつながらなくてもアプリは消して既定の場面に戻す",
+            "example": "2026-11-15T14:59:59Z"
+          }
+        },
+        "required": [
+          "id",
+          "caption",
+          "model",
+          "sha256",
+          "expiresAt"
+        ],
+        "additionalProperties": false,
+        "description": "タイトル画面（ホーム）に、既定の場面の代わりに出す 3D"
+      },
+      "TitleResponse": {
+        "type": "object",
+        "properties": {
+          "title": {
+            "type": [
+              "object",
+              "null"
+            ],
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/Title"
+              }
+            ],
+            "description": "今出すタイトル。出すものが無ければ null（アプリは覚えているものを消し、既定の場面を出す）"
+          }
+        },
+        "required": [
+          "title"
+        ],
+        "additionalProperties": false
       }
     }
   },
@@ -3115,6 +3177,28 @@
             "application/json": {
               "schema": {
                 "$ref": "#/components/schemas/WeakPointRequest"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/title": {
+      "get": {
+        "operationId": "getTitle",
+        "tags": [
+          "title"
+        ],
+        "summary": "タイトル画面に今出す 3D",
+        "description": "予定（src/title/schedule.json）のうち、環境の変数 TITLE_CAMPAIGN に入っていて、今が期間の中にあるもの。無ければ title が null。期間の判定はサーバーの時刻で行う。アプリは起動時と前に戻ったときに毎回呼び、id が変われば model を取り直す。3D のファイル（model）は Worker の静的アセットで、この API とは別に GET で取る。",
+        "responses": {
+          "200": {
+            "description": "今出すタイトル",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TitleResponse"
+                }
               }
             }
           }

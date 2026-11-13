@@ -20,6 +20,9 @@
 	<string>$(MOCK_SAMPLE_RECORDS)</string>
 	<key>MockWeakPoints</key>
 	<string>$(MOCK_WEAK_POINTS)</string>
+	<!-- ホームの 3D（Config/Shared.xcconfig の TITLE_DIORAMA）。空なら作り置きの場面 -->
+	<key>TitleDiorama</key>
+	<string>$(TITLE_DIORAMA)</string>
 	<!-- 手元のバックエンド（http://localhost:8787 や Mac の IP）に http でつなげるよう、ローカルのネットワークだけ ATS を緩める -->
 	<key>NSAppTransportSecurity</key>
 	<dict>

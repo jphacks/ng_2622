@@ -505,15 +505,16 @@ def setup_render(samples: int, lens: float = 46, env: dict | None = None) -> Non
     scene.camera = cam
 
 
-def run(scene_id: str, build, lens: float = 46, env: dict | None = None) -> None:
+def run(scene_id: str, build, lens: float = 46, env: dict | None = None, out: Path | None = None) -> None:
     """build() で組み立てたシーンを、USDZ と画像に書き出す。build() はルートの空オブジェクトを返す。
 
     lens は画像のカメラの焦点距離（mm）。背の高いシーンは小さくして画面に収める。
     env は画像の光と背景のうち、ENV から変えるもの（雨の日の暗い空など）。
+    out は書き出す先の既定（無ければ assets/scenes）。--out で替えられる。
     """
     argv = sys.argv[sys.argv.index("--") + 1:] if "--" in sys.argv else []
     ap = argparse.ArgumentParser(prog=f"{scene_id}.py")
-    ap.add_argument("--out", type=Path, default=REPO / "assets" / "scenes")
+    ap.add_argument("--out", type=Path, default=out or REPO / "assets" / "scenes")
     ap.add_argument("--no-render", action="store_true", help="発表用の画像を作らない")
     ap.add_argument("--samples", type=int, default=128)
     args = ap.parse_args(argv)

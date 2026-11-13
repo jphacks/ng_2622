@@ -181,9 +181,43 @@ CLAUDE_API_KEY=... pnpm tsx scripts/make-pool-v2.ts ~/pool-v2 --grade eiken-2 --
 
 `--count` は級ごとに試す数、`--grade` は級（`,` 区切り）、`--start` は開始番号（テーマの回し始めと id の連番。同じ id のファイルがあれば飛ばす）。ここで出来るのは候補で、絵に描いて（`scripts/scene/render_layout.py`）人が選んでから `src/scenes/pool/` に入れる。
 
+## タイトル画面の 3D（`GET /title`、`src/title/`）
+
+タイトル画面（ホーム）に、既定の場面（公園）の代わりに期間つきで出す 3D（企業の 3D 広告。今は JPHACKS が提供した場合の見本）。決め方は [ADR](../docs/adr/20261113-decide-title-diorama-on-server-with-expiry.md)。
+
+- 予定は `src/title/schedule.json`（`id`・`file`・`sha256`・`caption`・`startsAt`・`expiresAt`。日時は秒までの UTC）。`GET /title` は、環境の変数 `TITLE_CAMPAIGN`（予定の `id`、カンマ区切り）に入っていて、サーバーの時刻で期間の中にある予定を返す。無ければ `{ "title": null }`。
+- 3D のファイルは repo の `assets/title/<file>` を Worker の静的アセット（`wrangler.jsonc` の `assets`）として一緒にデプロイし、`/title/<file>` で配る。配るのは `assets/.assetsignore` で戻した `title/*.usdz` だけ（README・画像・部品は配らない）。
+- 本番の `TITLE_CAMPAIGN` は空（`wrangler.jsonc` の `vars`）で、何も出さない。PR のプレビューも空。
+- 静的アセットは変数にかかわらず一緒にデプロイされるので、main に入ると本番にも `/title/hackathon.usdz` が置かれる。本番の `GET /title` は null なのでアプリは取りに行かず、URL を知っている人が取れるだけで害は無い（中身は repo の `assets/title/` と同じ）。
+
+### 3D を作り直す・予定を変える
+
+1. `assets/title/<file>` を作り直したら、`shasum -a 256 assets/title/<file>` の値を `schedule.json` の `sha256` に書く。`pnpm test`（`test/title.test.ts`）が実物と突き合わせ、書き忘れを止める。id も変わるので、アプリは次に起動したときに取り直す。
+2. 期間を変えるときは `startsAt`・`expiresAt` を書き換える（両端を含む。日本時間の 23:59:59 は前の日の 14:59:59Z）。
+3. PR を出して merge する。本番のデプロイには `TITLE_CAMPAIGN` が付かないので、本番では出ない。
+
+### staging だけで出す（Award Day）
+
+本番の設定は変えず、staging の Worker にデプロイするときだけ変数を付ける。`--var` はそのデプロイだけに効くので、staging にデプロイし直すたびに付ける（付け忘れると `title` が null になり、アプリは公園に戻る）。
+
+```sh
+pnpm exec wrangler deploy --minify --name <staging の Worker の名前> --var TITLE_CAMPAIGN:jphacks-2026
+curl -s <staging の URL>/title          # title が返る（期間の外なら null）
+curl -sI <staging の URL>/title/hackathon.usdz   # 200 で model/vnd.usdz+zip
+```
+
+### 手元で試す
+
+```sh
+pnpm dev --var TITLE_CAMPAIGN:jphacks-2026
+curl -s http://localhost:8787/title
+```
+
+期間の外を試すときは、`schedule.json` の `expiresAt` を過去にして（commit しない）起動し直す。
+
 ## デプロイ
 
-main に `backend/` の変更が入ると、GitHub Actions（`.github/workflows/deploy-backend.yml`）が自動でデプロイする。手で出すときは `pnpm run deploy`（要 `pnpm exec wrangler login`）。
+main に `backend/` の変更が入ると、GitHub Actions（`.github/workflows/deploy-backend.yml`）が自動でデプロイする。手で出すときは `pnpm run deploy`（要 `pnpm exec wrangler login`）。タイトル画面の 3D（`assets/title/**`）と `assets/.assetsignore` が変わったときもデプロイする。
 
 ## 部屋の仕組み
 
@@ -267,6 +301,7 @@ API の型は zod で書き、[hono-openapi](https://hono.dev/examples/hono-open
 
 - 本番とは別の Worker として動き、Durable Objects の保存領域も PR ごとに分かれる。
 - `wrangler.jsonc` の上の階層に書いた vars と Durable Objects の binding は引き継がれない。プレビューでも使うものは `previews` の中にも書く。
+- 静的アセット（`assets`）は `previews` に書けず、上の階層の設定がそのまま使われる（タイトル画面の 3D もプレビューから配られる）。
 
 ## secret
 

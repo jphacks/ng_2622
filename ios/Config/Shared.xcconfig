@@ -6,3 +6,9 @@ DEVELOPMENT_TEAM =
 
 // xcconfig では // がコメントになるので、URL は https:/$()/ と書く
 BACKEND_URL = https:/$()/ng-2622-backend.jphacks-ng2622.workers.dev
+
+// ホーム（タイトル画面）の 3D を、Mock で同梱の広告の 3D にする。空なら作り置きの場面（公園）を 1 周させる。hackathon で、
+// 企業の 3D 広告の見本のハッカソン会場を左右に振り、タイトルの下に「広告の見本：JPHACKS」と出す（assets/title。USDZ は設定に
+// かかわらずアプリに入る）。Live（ストアと TestFlight の版も）では使わず、サーバーの GET /title が決める
+// （docs/adr/20261113-decide-title-diorama-on-server-with-expiry.md）。開発では Local.xcconfig に書く
+TITLE_DIORAMA =

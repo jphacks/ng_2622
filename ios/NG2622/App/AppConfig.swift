@@ -20,6 +20,9 @@ struct AppConfig {
   var mockIgnoresSavedRecords = false
   /// Mock の苦手の分析の振る舞い（ok・empty・fail・limit）
   var mockWeakPoints = MockWeakPointClient.Behavior.ok
+  /// ホーム（タイトル画面）に、作り置きの場面の代わりに出す同梱の 3D（TITLE_DIORAMA）。nil なら作り置きの場面。
+  /// Mock だけで使う（Live はサーバーの GET /title が決める。HomeTitle）
+  var titleDiorama: TitleDiorama?
 
   static let current: AppConfig = {
     let info = Bundle.main.infoDictionary ?? [:]
@@ -56,6 +59,6 @@ struct AppConfig {
       .flatMap { MockWeakPointClient.Behavior(rawValue: $0.lowercased()) } ?? .ok
     return AppConfig(
       mode: mode, backendURL: url, mock: mock, mockSampleRecords: samples, mockIgnoresSavedRecords: ignoresSaved,
-      mockWeakPoints: weak)
+      mockWeakPoints: weak, titleDiorama: TitleDiorama(setting: string("TitleDiorama")))
   }()
 }

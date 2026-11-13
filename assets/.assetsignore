@@ -1,0 +1,6 @@
+# Worker の静的アセット（backend/wrangler.jsonc の assets。このフォルダが根）として配るファイルを絞る。書き方は .gitignore と同じ。
+# 全部を外してから、配るものだけを戻す。親のフォルダを外したままでは中のファイルを戻せないので、先にフォルダを戻す。
+# 今はタイトル画面の 3D（title/*.usdz、/title/<file> で配る）だけ。README・確かめの画像・部品・手作りの場面は配らない
+*
+!title/
+!title/*.usdz

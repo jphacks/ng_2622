@@ -8,6 +8,9 @@ on:
     types: [opened, synchronize, reopened, closed]
     paths:
       - "backend/**"
+      # タイトル画面の 3D（Worker の静的アセット）と、配るファイルの絞り込み
+      - "assets/title/**"
+      - "assets/.assetsignore"
       - ".github/workflows/backend-preview.yml"
 
 permissions:
@@ -55,7 +58,8 @@ jobs:
           set -o pipefail
           # --json の出力にはデプロイした人のメールアドレスが入るので、公開ログには URL だけを出す
           output="$(pnpm exec wrangler preview --name "$PREVIEW_NAME" --json)"
-          preview_url="$(printf '%s' "$output" | jq -er '.preview.urls[0]')"
+          # 静的なアセット（assets/title）を上げると、--json でも JSON の前に進み具合の行（🌀 …）が出るので、{ で始まる行から後だけを読む
+          preview_url="$(printf '%s\n' "$output" | sed -n '/^{/,$p' | jq -er '.preview.urls[0]')"
           echo "preview_url=$preview_url" >> "$GITHUB_OUTPUT"
           echo "Preview: $preview_url" >> "$GITHUB_STEP_SUMMARY"
       - name: PR に URL をコメントする

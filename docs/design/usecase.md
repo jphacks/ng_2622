@@ -186,6 +186,7 @@ ScenEnglish（シーングリッシュ）。Scene と English を合わせた造
   - 各自の無料 Apple ID で入れる（7 日で期限が切れる）
   - アカウントの持ち主がまとめて入れる
   - TestFlight の内部テストで配る（App Store Connect のユーザーとして招待、最大 100 人、ビルドは 90 日で期限が切れる）
+  - Award Day（2026-11-15）は、デモの端末（内部テストで入れたチームの端末）が主。来場者の自分の端末に入れてもらうのは、外部テスト（公開リンク）の Beta App Review が通った場合だけ（[`docs/app-store/README.md`](../app-store/README.md) の「Award Day の TestFlight 版の作り方」）。
 - 仕様の正本を `docs/design/` に置くことは ADR に残した: [`20261021-keep-product-specs-in-docs-design`](../adr/20261021-keep-product-specs-in-docs-design.md)。
 - 仕様書と仮の画面の扱い（2026-10-21 に決定）:
   - 仕様書は `docs/design/` の Markdown を正本にする。生成物は無いので、仕様書そのものは gitignore しない。

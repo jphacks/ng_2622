@@ -6,6 +6,9 @@ on:
   pull_request:
     paths:
       - "backend/**"
+      # タイトル画面の 3D（Worker の静的アセット）と、配るファイルの絞り込み
+      - "assets/title/**"
+      - "assets/.assetsignore"
       - ".github/workflows/backend-checks.yml"
 
 permissions:

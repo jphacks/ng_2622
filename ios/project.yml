@@ -85,6 +85,13 @@ targets:
         script: |
           rsync -a --delete --include='/*.json' --exclude='*' \
             "$SRCROOT/../backend/src/scenes/pool/" "$TARGET_BUILD_DIR/$UNLOCALIZED_RESOURCES_FOLDER_PATH/pool/"
+      # ホームの広告の見本の 3D（assets/title の USDZ）を写す。README.md と確かめの画像は入れない。
+      # 出すかはビルド設定 TITLE_DIORAMA で決め、ファイルは設定にかかわらず入れる。アプリの中では title/<name>.usdz になる
+      - name: Copy title dioramas
+        basedOnDependencyAnalysis: false
+        script: |
+          rsync -a --delete --include='/*.usdz' --exclude='*' \
+            "$SRCROOT/../assets/title/" "$TARGET_BUILD_DIR/$UNLOCALIZED_RESOURCES_FOLDER_PATH/title/"
     dependencies:
       - package: BackendAPI
   # アプリの中の、通信や画面に依らない変換（部屋のメッセージ → 画面のできごとなど）を確かめる
