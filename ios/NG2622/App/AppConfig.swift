@@ -15,6 +15,9 @@ struct AppConfig {
   let mock: MockGameClient.Options
   /// Mock で、きろくの画面に初めから出す例の記録の数（0 なら出さない）。端末には書かない
   var mockSampleRecords = 0
+  /// Mock で、端末に保存した記録を読まない（例の記録だけを出す）か。UI テストで、シミュレータに前から残っている記録に
+  /// 左右されないためのもの。起動の引数 -MockIgnoresSavedRecords YES で入れる。Live では使わない
+  var mockIgnoresSavedRecords = false
   /// Mock の苦手の分析の振る舞い（ok・empty・fail・limit）
   var mockWeakPoints = MockWeakPointClient.Behavior.ok
 
@@ -43,10 +46,13 @@ struct AppConfig {
     let argument = UserDefaults.standard.object(forKey: "MockSampleRecords")
     let sampleCount = (argument as? String) ?? (argument as? NSNumber)?.stringValue ?? string("MockSampleRecords")
     let samples = mode == .mock ? max(0, sampleCount.flatMap(Int.init) ?? 0) : 0
+    let ignoresSaved = mode == .mock && UserDefaults.standard.bool(forKey: "MockIgnoresSavedRecords")
     // 苦手の分析の振る舞いも、起動の引数（-MockWeakPoints fail）で替えられる（UI テストで、失敗や癖が 0 件のときを撮る）
     let weak =
       (UserDefaults.standard.string(forKey: "MockWeakPoints") ?? string("MockWeakPoints"))
       .flatMap { MockWeakPointClient.Behavior(rawValue: $0.lowercased()) } ?? .ok
-    return AppConfig(mode: mode, backendURL: url, mock: mock, mockSampleRecords: samples, mockWeakPoints: weak)
+    return AppConfig(
+      mode: mode, backendURL: url, mock: mock, mockSampleRecords: samples, mockIgnoresSavedRecords: ignoresSaved,
+      mockWeakPoints: weak)
   }()
 }

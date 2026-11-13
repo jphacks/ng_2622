@@ -10,6 +10,7 @@ data_shown = ["遊んだ場面の 3D と名前（最後に遊んだのが新し�
 note = "中身は端末に残した記録（docs/design/play-record.md）だけから出す。通信しない。"
 entry_points = [
   { from = "home", how = "push", trigger = "きろく" },
+  { from = "weak", how = "戻る", trigger = "戻る" },
 ]
 exits = [
   { to = "home", how = "戻る", trigger = "戻る" },
