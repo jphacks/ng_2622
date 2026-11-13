@@ -99,7 +99,7 @@ python3 scripts/scene/make_pool.py --url http://localhost:8799 --out <dir> --cou
 (cd backend && pnpm test)                   # バックエンドの単体テスト（関係 → 座標の計算・場面の生成と裏取り・チェックリストの採点・部屋など）
 (cd backend && pnpm openapi)                # API の型から backend/openapi.json を生成（iOS が読む。生成物も commit する）
 (cd ios && xcodegen)                        # ios/NG2622.xcodeproj を作る（clone 後と ios/project.yml を変えたあと）
-open ios/NG2622.xcodeproj                   # scheme「NG2622 Mock」（仮のデータ）か「NG2622 Live」（BACKEND_URL の本物のバックエンド）を選んでビルド。Mock の振る舞い（参加者の数・切断など）は ios/Config/Local.xcconfig の MOCK_* で、待合のシーンの選び方（難易度か一覧か）は SCENE_PICK で変える（ios/Config/Local.xcconfig.example）
+open ios/NG2622.xcodeproj                   # scheme「NG2622 Mock」（仮のデータ）か「NG2622 Live」（BACKEND_URL の本物のバックエンド）を選んでビルド。Mock の振る舞い（参加者の数・切断など）は ios/Config/Local.xcconfig の MOCK_* で、待合のシーンの選び方（難易度か一覧か）は SCENE_PICK で、ホームの 3D を広告の見本（ハッカソン会場）にするのは TITLE_DIORAMA = hackathon で変える（ios/Config/Local.xcconfig.example）
 # ↑ 初めてビルドすると「Validate plug-in “OpenAPIGenerator”」のエラーが出るので、Issue navigator で Trust & Enable を押す（Mac ごとに一度。generator の版を上げたらもう一度）
 # API の型（import BackendAPI）は backend/openapi.json からビルドのたびに作られ、commit しない。openapi.json が変わればビルドし直すだけでよい
 xcodebuild -project ios/NG2622.xcodeproj -scheme "NG2622 Mock" -destination 'generic/platform=iOS Simulator' -skipPackagePluginValidation build   # コマンドラインでビルドするときは -skipPackagePluginValidation を付ける

@@ -27,6 +27,12 @@
 - 部品は名前付きの Xform に分けてある: `room` `banner` `banner_logo` `whiteboard` `monument`（看板。中に `monument_jp` `monument_hacks`）`table_back` `table_front` `snacks` `cans` `plant` `coder_1`〜`coder_5` `presenter` `snacker`。
 - ノートパソコンの画面は自己発光（emissive）のマテリアル。
 
+## アプリでの出し方
+
+- `hackathon.usdz` は、ビルドのたびにアプリの `title/hackathon.usdz` に写す（`ios/project.yml` の Copy title dioramas。設定にかかわらず入る）。
+- ホームに出すのは、ビルド設定 `TITLE_DIORAMA` が `hackathon` のときだけ（`ios/Config/Shared.xcconfig`。既定は空）。選び方と回し方は `ios/NG2622/Room/TitleDiorama.swift`、読み込みは `SceneLibrary.instance(usdz:fallback:)`（遊ぶ場面と同じく横幅 2.3 m に縮め、光を足す。読めなければ作り置きの場面に戻す）。
+- 見え方は [`docs/design/ui/screens/home.md`](../../docs/design/ui/screens/home.md)、TestFlight の版の作り方は [`docs/app-store/README.md`](../../docs/app-store/README.md) の「Award Day の TestFlight 版の作り方」。
+
 ## 作り直す
 
 ```sh
