@@ -3,12 +3,19 @@ import { bodyLimit } from "hono/body-limit";
 import { createMiddleware } from "hono/factory";
 import { describeRoute, validator } from "hono-openapi";
 import {
+  createUsageCounterRepository,
+  type UsageCounterRepository,
+} from "../repositories/usageCounterRepository";
+import {
   ErrorResponse,
   WeakSceneRequest,
   WeakSceneResponse,
 } from "../schemas/http";
 import {
+  makeWithLimits,
   WEAK_SCENE_MAX_BODY_BYTES,
+  type WeakSceneInput,
+  type WeakSceneOutcome,
   weakScenesEnabled,
 } from "../usecases/weakScenes";
 import { type AppEnv, errorBody, jsonContent } from "./shared";
@@ -38,7 +45,25 @@ const limitBody = bodyLimit({
   onError: (c) => c.json(errorBody("invalid_message", "本文が大きすぎる"), 413),
 });
 
-export const makeWeakSceneRoutes = () =>
+export type WeakSceneRouteDeps = {
+  /** 数える場所の差し替え（テスト用）。無ければ USAGE_COUNTER の weak-scenes の分 */
+  usage?: (env: AppEnv["Bindings"]) => UsageCounterRepository;
+  /** 作る関数の差し替え（テスト用）。無ければ Durable Object（WEAK_SCENE_MAKER）の中で作る */
+  make?: (
+    env: AppEnv["Bindings"],
+    input: WeakSceneInput,
+  ) => Promise<WeakSceneOutcome>;
+};
+
+/** 1 回ごとに新しい WeakSceneMaker で作る（CPU の重い裏取りと座標の計算を Worker で動かさない） */
+const makeInDurableObject = (
+  env: AppEnv["Bindings"],
+  input: WeakSceneInput,
+): Promise<WeakSceneOutcome> =>
+  env.WEAK_SCENE_MAKER.get(env.WEAK_SCENE_MAKER.newUniqueId()).make(input);
+
+/** deps はテストで数える場所と作る関数を差し替えるためのもの */
+export const makeWeakSceneRoutes = (deps: WeakSceneRouteDeps = {}) =>
   new Hono<AppEnv>().post(
     "/weak-scenes",
     describeRoute({
@@ -82,11 +107,22 @@ export const makeWeakSceneRoutes = () =>
       }
     }),
     async (c) => {
-      // 中身はこの後の commit でつなぐ
-      return c.json(
-        errorBody("generation_unavailable", "苦手の場面の生成はまだ無い"),
-        503,
+      const usage = deps.usage
+        ? deps.usage(c.env)
+        : createUsageCounterRepository(c.env.USAGE_COUNTER, "weak-scenes");
+      const ip = c.req.header("cf-connecting-ip") ?? "unknown";
+      const make = deps.make ?? makeInDurableObject;
+      const result = await makeWithLimits(
+        c.env,
+        usage,
+        ip,
+        c.req.valid("json"),
+        (input) => make(c.env, input),
       );
+      if (!result.ok) {
+        return c.json(errorBody(result.code, result.message), result.status);
+      }
+      return c.json(result.body, 200);
     },
   );
 

@@ -2512,7 +2512,7 @@
             "items": {
               "$ref": "#/components/schemas/ChecklistKind"
             },
-            "description": "項目の種類を、端末が数えた言えた割合の低い順に（分母 0 の種類は除く）。サーバーはその級に有る最初の種類を狙う（eiken-3 に reason・link、eiken-pre2 に link は無い）。どれも級に無ければ、その級の項目のうち最も低い種類（center より detail）にする"
+            "description": "項目の種類を、端末が数えた言えた割合の低い順に（分母 0 の種類は除く）。サーバーはその級に有る最初の種類を狙う（eiken-3 に reason・link、eiken-pre2 に link は無い）。どれも級に無ければ center にする。重なった種類は 1 つとみる"
           },
           "habits": {
             "description": "AI の分析の癖（0〜3 個）。表現の癖は使わせる文法に、内容の癖は描く物に効かせる",

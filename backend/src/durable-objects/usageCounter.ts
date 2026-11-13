@@ -1,7 +1,8 @@
 import { DurableObject } from "cloudflare:workers";
 
-// 外部 API の使い過ぎを数える。インスタンスは全体で 1 つだけ（getByName("global")）。
-// 今は苦手の分析（POST /weak-points）の、IP ごとの 1 時間の回数と、全体の 1 日の回数を数える
+// 外部 API の使い過ぎを数える。インスタンスは数えるものごとに全体で 1 つだけ（getByName("global") が苦手の分析、
+// getByName("weak-scenes") が苦手の場面。保存のキーはどちらも同じ KEY で、インスタンスごとに別に持つ）。
+// 苦手の分析（POST /weak-points）の、IP ごとの 1 時間の回数と、全体の 1 日の回数を数える
 // （docs/design/weak-point-analysis.md の 8）。Cloudflare の Rate Limiting の binding は期間が 10 秒か 60 秒だけで、
 // 場所ごとの近似の数なので、1 時間の回数と全体の上限はここで数える。
 //

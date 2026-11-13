@@ -758,7 +758,7 @@ export const WeakSceneRequest = z
     difficulty: Difficulty,
     kinds: z.array(ChecklistKind).min(1).max(4).meta({
       description:
-        "項目の種類を、端末が数えた言えた割合の低い順に（分母 0 の種類は除く）。サーバーはその級に有る最初の種類を狙う（eiken-3 に reason・link、eiken-pre2 に link は無い）。どれも級に無ければ、その級の項目のうち最も低い種類（center より detail）にする",
+        "項目の種類を、端末が数えた言えた割合の低い順に（分母 0 の種類は除く）。サーバーはその級に有る最初の種類を狙う（eiken-3 に reason・link、eiken-pre2 に link は無い）。どれも級に無ければ center にする。重なった種類は 1 つとみる",
     }),
     habits: z.array(WeakSceneHabit).max(3).optional().meta({
       description:
