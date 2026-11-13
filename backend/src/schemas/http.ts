@@ -805,7 +805,7 @@ export const WeakSceneResponse = z
       .max(WEAK_SCENE_MAX_NEW_PARTS)
       .meta({
         description:
-          "その場で作った部品の id@版（0〜4 個）。アプリに同梱していない部品で、GET /parts/{id}/{version}.usdz で取る",
+          "配置が使う、アプリに同梱していない部品の id@版（0〜4 個）。この場面でその場で作った部品と、前の場面で作った部品（置き場にあったもの）の両方が入る。GET /parts/{id}/{version}.usdz で取り、先に取っておける",
         example: ["teapot_red@1"],
       }),
   })
