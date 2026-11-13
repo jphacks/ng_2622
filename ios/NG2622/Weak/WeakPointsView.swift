@@ -8,6 +8,9 @@ struct WeakPointsView: View {
   let library: RecordLibrary
   let onBack: () -> Void
 
+  /// 下にスクロールしたか（戻るボタンの後ろの帯を、スクロールしたときだけ出す。一番上では見出しを隠さない）
+  @State private var scrolled = false
+
   var body: some View {
     // 数えるのは記録から毎回（覚えない）。数は多くても数百件で、すぐ終わる
     let counts = WeakPointCounts(records: library.records)
@@ -39,6 +42,30 @@ struct WeakPointsView: View {
       }
       .resultColumn()
       .padding(.bottom, 40)
+    }
+    // 上端は、下の帯で地の色に溶かすので、システムのぼかし（状態バーの下）は付けない
+    .scrollEdgeEffectHidden(true, for: .top)
+    .onScrollGeometryChange(for: Bool.self) { geometry in
+      geometry.contentOffset.y + geometry.contentInsets.top > 8
+    } action: { _, value in
+      scrolled = value
+    }
+    // 下にスクロールしたら、戻るボタンの後ろを、上ほど地の色に溶かす（流れていく中身がボタンと重なって読みにくくならないよう）
+    .overlay(alignment: .top) {
+      // 帯は、上の安全な領域（状態バー）まで広げる
+      Color.clear
+        .frame(height: 76)
+        .background {
+          LinearGradient(
+            stops: [.init(color: Theme.background, location: 0.6), .init(color: Theme.background.opacity(0), location: 1)],
+            startPoint: .top, endPoint: .bottom
+          )
+          .ignoresSafeArea(edges: .top)
+        }
+        .opacity(scrolled ? 1 : 0)
+        .animation(.easeOut(duration: 0.15), value: scrolled)
+        .allowsHitTesting(false)
+        .accessibilityHidden(true)
     }
     .overlay(alignment: .top) {
       HStack {
@@ -160,7 +187,7 @@ private struct TrendChart: View {
   @State private var drawn = false
 
   /// 目盛りの文字の幅
-  private static let gutter: CGFloat = 34
+  private static let gutter: CGFloat = 42
   /// 上の空き（最後の点の「いま N点」の分）
   private static let top: CGFloat = 26
   /// 下の空き（回の番号の分）
@@ -184,6 +211,8 @@ private struct TrendChart: View {
             .font(Theme.font(13, .heavy))
             .foregroundStyle(Theme.gray)
             .monospacedDigit()
+            .lineLimit(1)
+            .fixedSize()
             .frame(width: Self.gutter - 8, alignment: .trailing)
             .position(x: (Self.gutter - 8) / 2, y: y)
         }

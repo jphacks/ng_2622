@@ -42,11 +42,14 @@ final class WeakPointsScreens: XCTestCase {
     shot("w1-records-entry")
 
     entry.tap()
-    XCTAssert(app.staticTexts["weak-title"].waitForExistence(timeout: 10))
-    XCTAssert(app.staticTexts["直近 10 回から"].exists)
-    XCTAssert(app.descendants(matching: .any)["weak-next"].exists)
+    let title = app.staticTexts["weak-title"]
+    let opened = title.waitForExistence(timeout: 10)
     sleep(2)
     shot("w2-weak-top")
+    if !opened { print(app.debugDescription) }
+    XCTAssert(opened)
+    XCTAssert(app.staticTexts["直近 10 回から"].exists)
+    XCTAssert(app.descendants(matching: .any)["weak-next"].exists)
 
     // 下まで送る
     let window = app.windows.firstMatch
