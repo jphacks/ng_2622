@@ -701,7 +701,11 @@ export type Workshop = {
     logs?: { id: string; made: boolean; ms: number; usd: number }[];
   }>;
 };
-export type PartLookup = { workshop: Workshop; maxNew?: number };
+/**
+ * workshop を渡したときだけ、前に作った部品（R2）を引き、足りない部品を作る（苦手の場面の道だけ）。
+ * 渡さなければ同梱の部品だけを引き、無い物は作らずに裏取りの問題にする（部屋のスタート・作り置きの生成）
+ */
+export type PartLookup = { workshop?: Workshop; maxNew?: number };
 
 /** 部品を作れなかった（作り直しても）。場面の生成を失敗にする（作り直しの理由にはしない） */
 export class PartBuildError extends SceneGenerationError {
@@ -1143,8 +1147,9 @@ const conventionItems = async (
     second.items,
     second.orders,
     parts,
-    lookup.workshop.lookup,
+    lookup.workshop?.lookup ?? (async () => null),
     maxNew,
+    lookup.workshop !== undefined,
   );
   if (resolved.mapped.length > 0) {
     console.log(
@@ -1170,7 +1175,7 @@ const conventionItems = async (
   // 作り直し（検査に落ちたら 1 回だけ書き直す）は部品を作る口の中で行う。締め切りまでの残りを 1 回の上限にする
   const made: Part[] = [];
   let partLogs: ItemsOutcome["partLogs"] = [];
-  if (resolved.orders.length > 0) {
+  if (resolved.orders.length > 0 && lookup.workshop) {
     // 部品 1 個は Claude を最悪 2 回呼ぶので、1 回の上限は残りの半分（35 秒まで）。締め切りでは signal で止まる
     const left =
       options.deadline === undefined

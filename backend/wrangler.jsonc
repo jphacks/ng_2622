@@ -17,8 +17,8 @@
   // スイッチ（それ以外は 503。PR のプレビューは off）。IP_PER_HOUR は IP ごとの 1 時間の回数、DAILY_LIMIT は全体の 1 日（日本時間）の回数
   // （呼び直しも数える。1 回約 0.05 USD）、MAX_BODY_BYTES は本文の大きさ。普段は 10・200・65536（64 KB。記録の組 10 件は 11〜20 KB。大きいほど 1 回の費用が上がる）。
   // Award Day の当日は 60・500 に書き換えてデプロイし、終わったら戻す（docs/design/cost-safety.md）
-  // SCENE_PART_LOOKUP は場面の生成の 2 回目の部品の引き方。"convention" なら ID の規約で引き（部品の一覧を出さず、無い物は作る）、
-  // それ以外は部品の一覧を出す今の道（既定）。苦手の場面はいつも規約で引く
+  // SCENE_PART_LOOKUP は部屋のスタート・作り置きの生成の 2 回目の部品の引き方。"convention" なら ID の規約で引き（部品の一覧を出さない）、
+  // それ以外は部品の一覧を出す今の道（既定）。どちらでも部品は作らない。部品をその場で作るのは苦手の場面（いつも規約で引く）だけ
   // WEAK_SCENE_* は苦手の場面（POST /weak-scenes、docs/design/part-generation.md）。WEAK_SCENE_GENERATION は "on" のときだけ作る
   // スイッチ（それ以外は 503。SCENE_GENERATION とは別。PR のプレビューは off）。IP_PER_HOUR は IP ごとの 1 時間の回数、
   // DAILY_LIMIT は全体の 1 日（日本時間）の回数（受け付けた 1 回で 1 つ。1 回約 0.2〜0.4 USD）。普段は 5・40

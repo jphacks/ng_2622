@@ -16,14 +16,12 @@ import { newSceneId } from "../scenes/id";
 import { withVersions } from "../scenes/lookup";
 import { PARTS } from "../scenes/parts";
 import type { Part, SceneLayoutV2 } from "../scenes/types";
-import { workshopOf } from "./workshop";
 
 export type SceneGenerationEnv = GenerateEnv & {
-  // 作った部品の置き場（R2）。ID の規約で引く道で、前に作った部品を引き、足りない部品を作って置く
-  BUCKET?: R2Bucket;
   SCENE_GENERATION?: string;
-  // 2 回目の部品の引き方。"convention" なら ID の規約で引き（部品の一覧を出さず、無い物は作る）、
-  // それ以外（既定）は今の道（部品の一覧を出す）。苦手の場面（POST /weak-scenes）はいつも規約で引く
+  // 2 回目の部品の引き方。"convention" なら ID の規約で引き（部品の一覧を出さない）、それ以外（既定）は今の道（部品の一覧を出す）。
+  // どちらでも、ここ（部屋のスタート・作り置きの生成）では部品を作らない（同梱に無い物は裏取りで落とす）。
+  // 部品をその場で作るのは苦手の場面（POST /weak-scenes。いつも規約で引く）だけ
   SCENE_PART_LOOKUP?: string;
 };
 
@@ -59,7 +57,7 @@ export const generateScene = async (
 
 /**
  * generateScene と同じ。配置と一緒に、配置が使う同梱に無い部品（ID の規約で引いた道で、前に作った・その場で作った部品）の
- * メタデータも返す（部屋が配置と一緒に置き、採点に渡す）。部品の一覧を出す道では parts は空
+ * メタデータも返す（部屋が配置と一緒に置き、採点に渡す）。ここでは部品を作らないので、今は parts はいつも空
  */
 export const generateSceneWithParts = async (
   env: SceneGenerationEnv,
@@ -76,13 +74,6 @@ export const generateSceneWithParts = async (
   const { remake = false, ...callOptions } = options;
   const started = Date.now();
   const convention = partLookupByConvention(env);
-  const bucket = env.BUCKET;
-  if (convention && !bucket && !deps.lookup) {
-    throw new SceneGenerationError(
-      "unavailable",
-      "部品の置き場（BUCKET）が無いので、ID の規約で引けない",
-    );
-  }
   const result =
     remake || convention
       ? await generateVerifiedScene(
@@ -90,12 +81,8 @@ export const generateSceneWithParts = async (
           PARTS,
           input,
           convention
-            ? {
-                ...deps,
-                lookup: deps.lookup ?? {
-                  workshop: workshopOf({ ...env, BUCKET: bucket as R2Bucket }),
-                },
-              }
+            ? // 部品をその場で作るのは苦手の場面（POST /weak-scenes）だけ。ここでは同梱の部品だけを引き、作らない
+              { ...deps, lookup: {} }
             : deps,
           { ...callOptions, maxRemakes: remake ? MAX_REMAKES : 0 },
         )

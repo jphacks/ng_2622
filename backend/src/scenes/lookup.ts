@@ -296,6 +296,8 @@ export const resolveParts = async (
   bundled: Part[],
   lookup: (id: string) => Promise<Part | null>,
   maxNew = MAX_NEW_PARTS,
+  /** false なら部品を作らない（注文があっても、同梱に無い物は問題にする） */
+  canMake = true,
 ): Promise<Resolution> => {
   const byId = new Map(bundled.map((p) => [p.id, p]));
   const orders = new Map(newParts.map((o) => [o.id, o]));
@@ -338,13 +340,24 @@ export const resolveParts = async (
   // 同梱に無い物: 前に作った部品を引き、無ければ注文で作る
   const found: Part[] = [];
   const toMake: PartOrder[] = [];
+  // 作れない道では、前に作った部品（R2）も引かない（同梱の部品だけで組む）
   const looked = await Promise.all(
-    [...outside].map(async (id) => ({ id, part: await lookup(id) })),
+    [...outside].map(async (id) => ({
+      id,
+      part: canMake ? await lookup(id) : null,
+    })),
   );
   for (const { id, part } of looked) {
     if (part) {
       found.push(part);
       chosen.set(id, part.id);
+      continue;
+    }
+    if (!canMake) {
+      add(
+        "unknown_part",
+        `部品 ${id} が無い。この場面では部品を作れないので、もう部品のある物（名詞の一覧）にするか、その物を使わない`,
+      );
       continue;
     }
     const order = orders.get(id);

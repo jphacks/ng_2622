@@ -165,3 +165,28 @@ test("規約で引く: 同梱・寄せる・前に作った部品（R2）・注�
     );
   }
 });
+
+test("作れない道（canMake が false）では、注文があっても同梱に無い物は問題にし、前に作った部品も引かない", async () => {
+  let looked = 0;
+  const result = await resolveParts(
+    [
+      { key: "g", part: "grass_patch", place: { relation: "ground" } },
+      { key: "l", part: "lamp_street", place: { relation: "ground" } },
+    ],
+    [LAMP],
+    PARTS,
+    async () => {
+      looked++;
+      return null;
+    },
+    4,
+    false,
+  );
+  assert.deepEqual(
+    result.problems.map((p) => p.code),
+    ["unknown_part"],
+  );
+  assert.ok(result.problems[0].message.includes("部品を作れない"));
+  assert.deepEqual(result.orders, []);
+  assert.equal(looked, 0, "前に作った部品も引かない");
+});
