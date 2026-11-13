@@ -24,19 +24,22 @@ struct HomeView: View {
   /// 余裕は、ホームに出す場面（かんたんの例、今は gen-v2-eiken3-park-01）で測ったもの。斜めのときの角から枠の下まで
   /// 27pt ほど（iPhone 17）。例の場面を、もっと広い・背の高い場面に替えたら、回して切れないかを確かめ直す
   private static let sceneHeight: CGFloat = 340
-  /// カメラから場面の中心までの距離。縦の画角が決まっているので、場面の大きさは「枠の高さ / 距離」で決まる。
-  /// 枠を高くしたぶん離して、場面を画面の幅の 8 割ほどに保つ（枠が縮むと、場面も同じ比で縮むので切れない）
-  private static let sceneDistance: Float = 5.3
+  /// 枠の下に取る、「PR」の札の行の高さ。札を出さない公園のときも空けておき、3D の描く所の高さ（枠 − この行）を
+  /// 公園と広告でそろえる（入れ替えの途中で 3D の大きさが跳ばない。札が 3D に重ならない。キーボードで枠が縮んだときも）
+  private static let labelRowHeight: CGFloat = 26
+  /// カメラから場面の中心までの距離。縦の画角が決まっているので、場面の大きさは「描く所の高さ / 距離」で決まる。
+  /// 札の行を除いた 314pt で、前（枠 340pt・距離 5.3）と同じ大きさになるようにする（5.3 × 314 / 340 ≈ 4.9）。
+  /// 場面は画面の幅の 8 割ほどで、枠が縮むと場面も同じ比で縮むので切れない
+  private static let sceneDistance: Float = 4.9
   /// 広告の 3D のときの距離。場面と同じく横幅 2.3 m にそろえるが、壁（会場は 3 m）があって背が高いので、
-  /// 公園より少し離す。左右に振る両端と中央で、角と壁の上が枠に収まるのを確かめた（iPhone 17）
+  /// 公園より少し離す。左右に振る両端と中央で、角と壁の上が描く所に収まるのを確かめた（iPhone SE・17・18 Pro Max）
   private static let advertDistance: Float = 5.5
 
   /// 出す 3D。端末に取っておいた 3D が替わったら（TitleStore の revision）、見ている途中でも入れ替える
   @State private var title = HomeTitle.current()
-  /// 今見えている 3D（札はこれに合わせる）。新しい 3D が描かれて、前の 3D を消し始めたときに title に追いつく
-  @State private var shown = HomeTitle.current()
-  /// 入れ替えのクロスフェードの長さ
-  private static let swapDuration = 0.4
+  /// 見えている 3D（札はこれに合わせる）。新しい 3D が描かれたときに、3D の入れ替えと同じアニメーションで替わる。
+  /// まだ何も描かれていなければ nil（札を 3D より先に出さない）
+  @State private var shown: HomeTitle?
 
   /// 打つための文字の欄
   @FocusState private var editing: Bool
@@ -71,20 +74,23 @@ struct HomeView: View {
       // 枠の上に場面の無い所があるので、空き（Spacer）は上 1 : 下 4 で分ける
       Spacer(minLength: 0)
       // 枠の高さとカメラの距離で、ジオラマが画面の幅の 8 割ほどになるようにする（回って斜めになると少し広がる）。
-      // 広告の 3D のときは、枠の下の所に「PR」の札を置く。札の分だけ 3D の描く所が縮むので、3D と札は重ならず、
-      // タイトルとボタンの位置は公園と広告で変わらない。札は 3D と一緒にクロスフェードで出たり消えたりする
+      // 枠の下に「PR」の札の行をいつも取る（公園のときは空ける）。3D の描く所は公園と広告で同じ高さで、3D と札は
+      // 重ならず、タイトルとボタンの位置も変わらない。札は 3D の入れ替えと同じアニメーションで出たり消えたりする
       VStack(spacing: 0) {
         SpinningScene(
           title: title, parkDistance: Self.sceneDistance, advertDistance: Self.advertDistance,
           onFallback: fallBackToPark,
-          onSettled: { settled in withAnimation(.easeInOut(duration: Self.swapDuration)) { shown = settled } }
+          onSettled: { shown = $0 }
         )
         .unmountedWhileCovered(isCovered)
-        if let advertiser = shown.caption {
-          AdvertLabel(advertiser: advertiser)
-            .padding(.top, 4)
-            .transition(.opacity)
+        ZStack {
+          if let advertiser = shown?.caption {
+            AdvertLabel(advertiser: advertiser)
+              .transition(.opacity)
+          }
         }
+        .frame(maxWidth: .infinity)
+        .frame(height: Self.labelRowHeight)
       }
       .frame(maxWidth: .infinity, minHeight: compact ? 28 : 120, maxHeight: Self.sceneHeight)
       .layoutPriority(1)
@@ -121,9 +127,12 @@ struct HomeView: View {
   private func follow() async {
     let next = HomeTitle.current()
     guard next != title else { return }
-    if case .advert(let url, _) = next {
-      // 読めなくても替える（DioramaView が公園に戻し、onFallback で消す）
-      await SceneLibrary.shared.preload(usdzAt: url)
+    if case .advert(let url, _) = next, !next.sameModel(as: title) {
+      // 読めない 3D には入れ替えない。消して公園に戻し（TitleStore が知らせ、もう一度ここに来る）、次の確かめで取り直す
+      guard await SceneLibrary.shared.preload(usdzAt: url) else {
+        TitleStore.shared.discard(url)
+        return
+      }
     }
     // 読み込みの間に、もっと新しいものに替わっていたら、そちらの入れ替えに任せる
     guard !Task.isCancelled, next == HomeTitle.current() else { return }
@@ -217,15 +226,20 @@ struct NameField: View {
 
 /// ゆっくり動き続ける場面（触れない）。ふだんは、同梱の作り置きの場面のうち、かんたんの例の場面を部品で組んで 1 周させる
 /// （配置の JSON はアプリに同梱なので、通信せずに Mock でも Live でも出る）。広告の 3D は左右に振り、読めなければ公園に戻す。
-/// 出すもの（title）が替わったら、新しい 3D を前の 3D の上に重ねて置き、新しい 3D が描かれたら前の 3D を薄くして消す
-/// （新しい 3D が描かれるまで前の 3D を残すので、入れ替えの途中で何も無い時が無い）
+/// 出すもの（title）が替わったら、新しい 3D を前の 3D の上に、ほとんど見えない濃さ（pendingOpacity）で置いて描かせておく。
+/// 描かれたら（DioramaView の onShown）、新しい 3D を濃くする・前の 3D を薄くして外す・札の出し入れ（onSettled）を、
+/// 同じ 0.4 秒のアニメーションで同時に行う（TitleLayers）。最初の 3D が広告なら、それも描かれるまで薄くしておく
+/// （札より先に広告の 3D を見せない）。字だけが替わったときは、札の字だけを替える
 private struct SpinningScene: View {
   /// 公園に出す場面。かんたんの例が無ければ、どれか 1 つの出題の候補
   static let sceneID = ScenePool.bundled.example(of: .eiken3) ?? ScenePool.bundled.randomCandidate() ?? ""
-  /// 前の 3D を薄くする長さ
+  /// 入れ替えのクロスフェードの長さ
   static let fadeDuration = 0.4
-  /// 新しい 3D を置き終えてから、前の 3D を消し始めるまでの余裕（新しい 3D が最初に描かれるのを待つ）
-  static let settleDelay: Duration = .milliseconds(600)
+  /// 描かれる前の広告の層の濃さ。シミュレータで、0.001 にした層と、不透明な層の下に隠した層は描かれず、濃くした（見せた）時に
+  /// 描き始めて 3D が 0.2〜0.4 秒空になった。見えるか見えないかの濃さにして、描かせておく（札と同時に出すため）。
+  /// 公園は札が無いので、この濃さにせず、上にすぐ出す（部品を組んだ公園は 0.02 では描かれず、空になったため）。
+  /// 前の 3D と札は、公園が描かれたと見なせてから薄くする
+  static let pendingOpacity = 0.02
 
   let title: HomeTitle
   /// カメラから場面の中心までの距離。小さいほど大きく映る
@@ -233,16 +247,10 @@ private struct SpinningScene: View {
   var advertDistance: Float
   /// 広告の 3D を読めず、公園を出した
   var onFallback: (URL) -> Void = { _ in }
-  /// 新しい 3D が描かれ、前の 3D を消し始めた（札をこれに合わせて替える）
+  /// 見えている 3D が替わった（札を合わせる）。3D の入れ替えと同じアニメーションの中で呼ぶ
   var onSettled: (HomeTitle) -> Void = { _ in }
 
-  /// 重ねて出している 3D（後ろほど新しい）。start はそれぞれの動きの 0 秒
-  struct Layer: Identifiable {
-    let title: HomeTitle
-    let start: Date
-    var id: HomeTitle { title }
-  }
-  @State private var layers: [Layer]
+  @State private var layers: TitleLayers
 
   init(
     title: HomeTitle, parkDistance: Float, advertDistance: Float, onFallback: @escaping (URL) -> Void = { _ in },
@@ -253,56 +261,48 @@ private struct SpinningScene: View {
     self.advertDistance = advertDistance
     self.onFallback = onFallback
     self.onSettled = onSettled
-    _layers = State(initialValue: [Layer(title: title, start: Date())])
+    _layers = State(initialValue: TitleLayers(title))
   }
 
   var body: some View {
     TimelineView(.animation) { context in
       ZStack {
-        ForEach(layers) { layer in
-          diorama(layer.title, yaw: layer.title.spin.yaw(at: context.date.timeIntervalSince(layer.start)))
+        // 新しい層ほど上。描かれる前の層は、ほとんど見えない濃さで描かせておく
+        ForEach(layers.layers) { layer in
+          diorama(layer, yaw: layer.title.spin.yaw(at: context.date.timeIntervalSince(layer.start)))
+            .opacity(layer.settled || layer.title == .park ? 1 : Self.pendingOpacity)
             .transition(.opacity)
         }
       }
     }
-    // 新しいものは、振りの中心から始め、いちばん上に重ねる（前のものは、新しいものが描かれるまで残す）
     .onChange(of: title) { _, next in
-      layers.removeAll { $0.title == next }
-      layers.append(Layer(title: next, start: Date()))
+      // 字だけが替わり、その 3D がもう見えているなら、札の字だけを替える
+      if layers.show(next) == .retitled, layers.top.settled { onSettled(next) }
     }
     .allowsHitTesting(false)
     .accessibilityHidden(true)
   }
 
   @ViewBuilder
-  private func diorama(_ title: HomeTitle, yaw: Double) -> some View {
-    switch title {
+  private func diorama(_ layer: TitleLayers.Layer, yaw: Double) -> some View {
+    switch layer.title {
     case .park:
       DioramaView(sceneID: Self.sceneID, yaw: yaw, tilt: SceneOrbit.defaultTilt, distance: parkDistance)
-        .onShown { shown(title) }
+        .onShown { settle(layer.id) }
     case .advert(let url, _):
       DioramaView(
         usdzAt: url, fallbackSceneID: Self.sceneID, yaw: yaw, tilt: SceneOrbit.defaultTilt, distance: advertDistance,
         onFallback: onFallback
       )
-      .onShown { shown(title) }
+      .onShown { settle(layer.id) }
     }
   }
 
-  /// title の 3D を世界に置き終えた。いちばん新しいものなら、前の 3D を薄くして消し、札を合わせる。
-  /// 置き終えてから最初に描かれるまで、大きい 3D（会場）では少しかかる（シミュレータで 0.5 秒ほど何も無いコマがあった）
-  /// ので、前の 3D を消し始めるのを settleDelay だけ待つ。その間は前の 3D と重なって見える
-  private func shown(_ title: HomeTitle) {
-    guard layers.last?.title == title else { return }
-    guard layers.count > 1 else {
-      onSettled(title)
-      return
-    }
-    Task {
-      try? await Task.sleep(for: Self.settleDelay)
-      guard layers.last?.title == title else { return }
-      withAnimation(.easeInOut(duration: Self.fadeDuration)) { layers.removeAll { $0.title != title } }
-      onSettled(title)
+  /// id の層の 3D が描かれた。いちばん新しい層なら、新しい 3D を濃く・前の 3D を薄くし、札を合わせる（同じアニメーションで）
+  private func settle(_ id: UUID) {
+    withAnimation(.easeInOut(duration: Self.fadeDuration)) {
+      guard layers.settle(id) else { return }
+      onSettled(layers.top.title)
     }
   }
 }

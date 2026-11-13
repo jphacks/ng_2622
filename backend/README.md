@@ -198,7 +198,7 @@ CLAUDE_API_KEY=... pnpm tsx scripts/make-pool-v2.ts ~/pool-v2 --grade eiken-2 --
 
 ### staging だけで出す（Award Day）
 
-本番の設定は変えず、staging の Worker にデプロイするときだけ変数を付ける。`--var` はそのデプロイだけに効くので、staging にデプロイし直すたびに付ける（付け忘れると `title` が null になり、アプリは公園に戻る）。
+本番の設定は変えず、staging の Worker にデプロイするときだけ変数を付ける。`caption` を替える staging のデプロイは、新しい版を配って TestFlight の build 4（1.0.1 (4)）を期限切れにした後にする（build 4 は `caption` を「PR」の札なしで、タイトルの下に字として出すため）。`--var` はそのデプロイだけに効くので、staging にデプロイし直すたびに付ける（付け忘れると `title` が null になり、アプリは公園に戻る）。
 
 ```sh
 pnpm exec wrangler deploy --minify --name <staging の Worker の名前> --var TITLE_CAMPAIGN:jphacks-2026
