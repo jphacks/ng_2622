@@ -139,9 +139,10 @@ export function lookupPart(
 
 type One =
   | { ok: true; part: MadePart; log: MadeLog }
-  | { ok: false; reason: string };
+  | { ok: false; reason: string; aborted?: boolean };
 
-// 同じ isolate で同じ ID を同時に作らない（後から来た注文は先の結果を待つ）。
+// 同じ isolate で同じ ID を同時に作らない（後から来た注文は先の結果を待つ）。待っている間も、後の注文は自分の signal で
+// 待つのをやめられる。先の注文が止めて作れなかったときは、後の注文が自分の signal と timeoutMs で作り直す。
 // 別の isolate（別の Durable Object）で同時に作ったときは、R2 に置くときに版を分ける（store.ts の savePart）
 const inflight = new Map<string, Promise<One>>();
 
@@ -169,7 +170,11 @@ const makeOne = async (
       `部品 ${order.id} を作れなかった（${outcome.kind}）`,
       outcome.reason,
     );
-    return { ok: false, reason: `${outcome.kind}: ${outcome.reason}` };
+    return {
+      ok: false,
+      reason: `${outcome.kind}: ${outcome.reason}`,
+      aborted: outcome.aborted,
+    };
   }
   const placed = await savePart(
     env.BUCKET,
@@ -248,21 +253,35 @@ export async function ensureParts(
         reason: `1 回に作る数の上限（${opts.maxNew}）を超えた`,
       });
   });
+  const join = (order: PartOrder): { job: Promise<One>; joined: boolean } => {
+    const running = inflight.get(order.id);
+    if (running) return { job: running, joined: true };
+    const job = makeOne(env, order, opts)
+      .catch(
+        (e): One => ({
+          ok: false,
+          reason: `unavailable: ${e instanceof Error ? e.message : String(e)}`,
+        }),
+      )
+      .finally(() => inflight.delete(order.id));
+    inflight.set(order.id, job);
+    return { job, joined: false };
+  };
   const results = await Promise.all(
     toMake.map(async (order) => {
-      let job = inflight.get(order.id);
-      if (!job) {
-        job = makeOne(env, order, opts)
-          .catch(
-            (e): One => ({
-              ok: false,
-              reason: `unavailable: ${e instanceof Error ? e.message : String(e)}`,
-            }),
-          )
-          .finally(() => inflight.delete(order.id));
-        inflight.set(order.id, job);
+      const first = join(order);
+      let result = await Promise.race([first.job, stop]);
+      // 先の注文が止めて作れなかった（こちらは止めていない）ときは、こちらの signal で作り直す
+      if (
+        first.joined &&
+        result !== "aborted" &&
+        !result.ok &&
+        result.aborted &&
+        !opts.signal?.aborted
+      ) {
+        result = await Promise.race([join(order).job, stop]);
       }
-      return { order, result: await Promise.race([job, stop]) };
+      return { order, result };
     }),
   );
   for (const { order, result } of results) {

@@ -48,6 +48,8 @@ export type MakeOutcome =
       reason: string;
       /** 呼んだ回の費用の合計（USD） */
       usd: number;
+      /** signal で止めたので作れなかった */
+      aborted?: boolean;
     };
 
 /** 部品のメタデータ（index.json の 1 件と同じ形） */
@@ -102,6 +104,14 @@ export async function makePart(
         e instanceof PartWriteError
           ? e
           : new PartWriteError("unavailable", String(e));
+      // 応答が返ってから落ちた回（断った・途中で止まった・JSON でない）も費用に数える
+      if (err.spent)
+        attempts.push({
+          ms: err.spent.ms,
+          usd: costOf(err.spent.usage),
+          usage: err.spent.usage,
+          problems: [{ code: "schema", message: err.message }],
+        });
       if (err.kind === "refused")
         return { ok: false, kind: "refused", reason: err.message, usd: usd() };
       last = { kind: err.kind, reason: err.message };
@@ -174,6 +184,12 @@ export async function makePart(
     );
   }
   if (options.signal?.aborted)
-    return { ok: false, kind: "unavailable", reason: "止めた", usd: usd() };
+    return {
+      ok: false,
+      kind: "unavailable",
+      reason: "止めた",
+      usd: usd(),
+      aborted: true,
+    };
   return { ok: false, kind: last.kind, reason: last.reason, usd: usd() };
 }

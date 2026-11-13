@@ -122,6 +122,8 @@ export class PartWriteError extends Error {
   constructor(
     readonly kind: "refused" | "invalid" | "unavailable",
     message: string,
+    /** 応答が返ってから落ちたとき（断った・途中で止まった・JSON でない）の、その回の使った量と時間（費用に数える） */
+    readonly spent?: { usage: Anthropic.Usage; ms: number },
   ) {
     super(message);
   }
@@ -146,7 +148,7 @@ const clientOf = (env: PartsClaudeEnv, deps: WriteDeps): CreateMessage => {
 };
 
 /**
- * Claude を 1 回呼び、部品表の答えを返す。history は前の回の [注文, 答え, 書き直しの頼み]（無ければ 1 回目）
+ * Claude を 1 回呼び、部品表の答えを返す。messages は 1 回目なら [注文]、書き直しなら [注文, 前の答え, 書き直しの頼み]
  */
 export async function callRecipe(
   env: PartsClaudeEnv,
@@ -192,29 +194,25 @@ export async function callRecipe(
       e instanceof Error ? e.message : String(e),
     );
   }
+  const spent = { usage: response.usage, ms: now() - t0 };
   if (response.stop_reason === "refusal")
-    throw new PartWriteError("refused", "Claude が断った");
+    throw new PartWriteError("refused", "Claude が断った", spent);
   if (response.stop_reason !== "end_turn")
     throw new PartWriteError(
       "invalid",
       `Claude が途中で止まった（${response.stop_reason}）`,
+      spent,
     );
   const block = response.content.find((b) => b.type === "text");
   if (block?.type !== "text")
-    throw new PartWriteError("invalid", "Claude の応答に本文が無い");
+    throw new PartWriteError("invalid", "Claude の応答に本文が無い", spent);
   let json: unknown;
   try {
     json = JSON.parse(block.text);
   } catch {
-    throw new PartWriteError("invalid", "Claude の応答が JSON でない");
+    throw new PartWriteError("invalid", "Claude の応答が JSON でない", spent);
   }
-  return {
-    json,
-    text: block.text,
-    usage: response.usage,
-    model,
-    ms: now() - t0,
-  };
+  return { json, text: block.text, model, ...spent };
 }
 
 /** 1 回の呼び出しの費用（USD）。Sonnet 5.5 の値段（入力 $2・出力 $10・キャッシュの読み $0.10・書き $2.50 / 100 万トークン） */

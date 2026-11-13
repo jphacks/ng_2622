@@ -316,6 +316,76 @@ test("savePart を同時に 2 回呼ぶと、別々の版に置く（後の方�
   }
 });
 
+test("先の注文が止めて作れなかったら、同じ ID を待っていた後の注文は自分で作り直す", async () => {
+  // signal が付いた呼び出しは止められるまで返さず、付いていない呼び出しはすぐ答える偽の Claude
+  let calls = 0;
+  const create: CreateMessage = async (_params, options) => {
+    calls++;
+    if (options.signal) {
+      const signal = options.signal;
+      await new Promise((_, reject) =>
+        signal.addEventListener("abort", () => reject(new Error("aborted"))),
+      );
+    }
+    return {
+      stop_reason: "end_turn",
+      content: [{ type: "text", text: JSON.stringify(STAND) }],
+      usage: { input_tokens: 1, output_tokens: 1 },
+    } as unknown as Anthropic.Message;
+  };
+  const env = { BUCKET: bucket, CLAUDE_API_KEY: "test" };
+  const controller = new AbortController();
+  const first = ensureParts(env, [order("drum")], {
+    maxNew: 4,
+    signal: controller.signal,
+    deps: { create },
+  });
+  const second = ensureParts(env, [order("drum")], {
+    maxNew: 4,
+    deps: { create },
+  });
+  setTimeout(() => controller.abort(), 20);
+  const [a, b] = await Promise.all([first, second]);
+  assert.deepEqual(a.failed, [{ id: "drum", reason: "止めた" }]);
+  assert.deepEqual(b.failed, []);
+  assert.equal(b.parts[0]?.id, "drum");
+  assert.equal(calls, 2);
+});
+
+test("JSON でない・途中で止まった答えの回も、費用と理由を記録に残す", async () => {
+  let calls = 0;
+  const create: CreateMessage = async () => {
+    calls++;
+    const usage = { input_tokens: 1000, output_tokens: 1000 };
+    if (calls === 1)
+      return {
+        stop_reason: "end_turn",
+        content: [{ type: "text", text: "not json" }],
+        usage,
+      } as unknown as Anthropic.Message;
+    return {
+      stop_reason: "end_turn",
+      content: [{ type: "text", text: JSON.stringify(STAND) }],
+      usage,
+    } as unknown as Anthropic.Message;
+  };
+  const env = { BUCKET: bucket, CLAUDE_API_KEY: "test" };
+  const result = await ensureParts(env, [order("lantern")], {
+    maxNew: 4,
+    deps: { create },
+  });
+  assert.deepEqual(result.failed, []);
+  assert.equal(result.logs[0].attempts, 2);
+  assert.equal(result.logs[0].usd, 0.024);
+  const recipe = (await (
+    await bucket.get("recipes/lantern/1.json")
+  )?.json()) as { attempts: { problems: { code: string }[] }[] };
+  assert.deepEqual(
+    recipe.attempts.map((a) => a.problems.map((p) => p.code)),
+    [["schema"], []],
+  );
+});
+
 test("止めたら、できていない部品を失敗として返す", async () => {
   const controller = new AbortController();
   const create: CreateMessage = () => new Promise(() => {});
