@@ -1,18 +1,6 @@
 // 部屋の Durable Object（src/durable-objects/room.ts）を Node で動かすための仕掛け。
-// cloudflare:workers を差し替え、保存領域と WebSocket をメモリでまねる
-import { registerHooks } from "node:module";
-
-registerHooks({
-  resolve(specifier, context, next) {
-    if (specifier === "cloudflare:workers") {
-      return {
-        url: new URL("./cloudflare-workers.mjs", import.meta.url).href,
-        shortCircuit: true,
-      };
-    }
-    return next(specifier, context);
-  },
-});
+// cloudflare:workers を差し替え（workers-hooks.ts）、保存領域と WebSocket をメモリでまねる
+import "./workers-hooks";
 
 // joinRoom の合言葉の比較は Workers だけにある crypto.subtle.timingSafeEqual を使う
 const subtle = crypto.subtle as SubtleCrypto & {
