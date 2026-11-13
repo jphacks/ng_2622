@@ -1,5 +1,6 @@
 import Anthropic from "@anthropic-ai/sdk";
 import { z } from "zod";
+import type { PartOrder } from "../parts/workshop";
 import {
   ATTEMPT_TIMEOUT_MS,
   type CreateMessage,
@@ -24,6 +25,16 @@ import {
   kindsOf,
   withinLevel,
 } from "./grades";
+import {
+  livingId,
+  livingTable,
+  MAX_NEW_PARTS,
+  OrderSchema,
+  orderJsonSchema,
+  provisionalPart,
+  resolveParts,
+  thingNouns,
+} from "./lookup";
 import {
   actionVocabulary,
   poseVerbsOf,
@@ -50,6 +61,7 @@ import {
   verifyScene,
   verifySentences,
 } from "./verify";
+import { defaultPitch, type WeakFocus, weakText } from "./weak";
 
 // 英文を先に書く 2 段の場面の生成（scenenglish.scene/2）。
 // 1 回目: 部品の一覧を見せず、級の規則で英文の部分（name・description・checklist）を書かせる。
@@ -67,6 +79,8 @@ export type GenerateV2Input = {
    * 作り置きを級ごとにまとめて作るとき、場面が似すぎないようにするためのもの
    */
   avoid?: string[];
+  /** 苦手の場面（POST /weak-scenes）の苦手。渡すと 1 回目に苦手の指示を足し、一言（pitch）も書かせる */
+  weak?: WeakFocus;
 };
 
 /**
@@ -77,6 +91,8 @@ export type GenerateV2Input = {
  */
 export type SceneAnswer = {
   name: string;
+  /** 苦手の場面の一言（日本語）。苦手の場面のときだけ書かせる */
+  pitch?: string;
   /** 見本の答えの文（級の数だけ）。つなげたものが description になる */
   sentences: string[];
   checklist: {
@@ -429,18 +445,8 @@ const PEOPLE_RULES = `# Relations with people (use these whenever a person or an
 - When it rains, add the part rain with relation "ground" (it covers the whole scene). Use rain only when the ground is an outdoor ground; never put rain in a scene whose ground is a floor_ part. A cafe uses wall_cafe as its background wall.
 - The words of a part say who it is (man, woman, boy, girl, old man). Keep the person of the text: never use a man for a woman.`;
 
-/** 2 回目の指示。場面・関係・向き・動きの決まりは今の生成（SCENE_RULES）と同じ文を使う */
-export const buildItemsSystem = (
-  parts: Part[],
-) => `You build small 3D scenes for an English speaking game for Japanese learners.
-Players look at the scene and describe it in English. Their answer is scored with the checklist of the scene.
-You get the English side of one scene (name, description and checklist), its grade, and the list of keys. Build the one scene that shows exactly this description, using only the parts listed below. You do not write coordinates: you choose parts and how they relate to each other, and the program computes the positions.
-
-${SCENE_RULES}
-
-${PEOPLE_RULES}
-
-# Writing the items
+/** 2 回目の「items の書き方」。部品の一覧を出す道と、ID の規約で引く道で同じ文を使う */
+const ITEM_RULES = `# Writing the items
 - "Keys" lists the names used in the refs of the checklist. Use every one of them, exactly once, as the key of the item that shows that person or thing. A program checks this.
 - Give the other items (the ground, the background wall, chairs to sit on, a few background things) other short lower-case keys.
 - For every person and animal, choose the part whose words say the same person and whose pose shows the action of the description.
@@ -453,7 +459,20 @@ ${PEOPLE_RULES}
 - When an accept says that someone is on the sidewalk, on the grass or on the road, place them on that ground part. road_patch lies on top of the sidewalk and is 5.5 m deep, so with the road in zone "back" it also covers the center zones: people on the sidewalk go in a front zone, people on the road in center or back. A program checks this with the computed positions.
 - Show exactly the people and animals that the description mentions: no one more, no one less, one item for each. Everything the description mentions must be in the scene.
 - The cause of a reason or link item must be visible as its own item (rain, spilled_juice, a person who has fallen down, a thrown ball).
-- At most 40 items.
+- At most 40 items.`;
+
+/** 2 回目の指示。場面・関係・向き・動きの決まりは今の生成（SCENE_RULES）と同じ文を使う */
+export const buildItemsSystem = (
+  parts: Part[],
+) => `You build small 3D scenes for an English speaking game for Japanese learners.
+Players look at the scene and describe it in English. Their answer is scored with the checklist of the scene.
+You get the English side of one scene (name, description and checklist), its grade, and the list of keys. Build the one scene that shows exactly this description, using only the parts listed below. You do not write coordinates: you choose parts and how they relate to each other, and the program computes the positions.
+
+${SCENE_RULES}
+
+${PEOPLE_RULES}
+
+${ITEM_RULES}
 
 # Parts (id | label | category | words | pose | says: verbs that can say the pose | holds | uses | size in meters | anchors)
 ${parts.map(describePartV2).join("\n")}
@@ -464,11 +483,57 @@ ${itemsMessage({ grade: EXAMPLE_GRADE }, EXAMPLE_SENTENCES)}
 Answer:
 ${JSON.stringify({ items: EXAMPLE_ITEMS })}`;
 
+/** 例の items を、ID の規約で書いた形にする（人は person_<動作>_<誰>_a） */
+const conventionExample = (parts: Part[]) => {
+  const byId = new Map(parts.map((p) => [p.id, p]));
+  return EXAMPLE_ITEMS.map((i) => {
+    const part = byId.get(i.part);
+    return part && (part.category === "person" || part.category === "animal")
+      ? { ...i, part: livingId(part) }
+      : i;
+  });
+};
+
+/**
+ * 2 回目の指示（ID の規約で引く道）。部品の一覧を出さず、ID の規約と、人と動物の動作の表、
+ * もう部品のある物の名詞だけを渡す。作った部品が増えても長くならない。parts は同梱の部品（表と名詞を作る）
+ */
+export const buildConventionItemsSystem = (
+  parts: Part[],
+) => `You build small 3D scenes for an English speaking game for Japanese learners.
+Players look at the scene and describe it in English. Their answer is scored with the checklist of the scene.
+You get the English side of one scene (name, description and checklist), its grade, and the list of keys. Build the one scene that shows exactly this description. There is no list of parts: you write the id of each part by the rules in "Part ids", and the program finds the part (or makes a new one from your order). You do not write coordinates: you choose parts and how they relate to each other, and the program computes the positions.
+
+${SCENE_RULES}
+
+${PEOPLE_RULES}
+
+${ITEM_RULES}
+
+# Part ids
+- Grounds and background walls: only the ids named in the rules above (grass_patch, sidewalk_stone, floor_wood, wall_window, wall_cafe and the others). They are never made new.
+- People: person_<action>_<who>_a. Animals: animal_<action>_<kind>_a. Take <action> and <who> from one line of the table below (the line shows which who can do the action). The program uses the part with that who and that action; if there is none, it uses the closest one, and the checking program may send the scene back.
+- Things, furniture, food, plants and vehicles: the English noun in lower case (bench, ball, cup, lamp), or noun_detail for a kind of it (table_small, apple_red, teapot_white). Lower-case letters and _ only, at most three words, at most 32 letters. Use the same id for the same kind of thing.
+- These nouns already have a part; write the noun (or the id named in the rules above) and no order: ${thingNouns(parts)}.
+- For any other thing, also write an order in newParts with the same id: category (thing, furniture, food, plant or vehicle), label (short Japanese), words (English nouns), size in meters (width, height, depth of the real thing), description (one English sentence: the shape and the colors), and top (true if other things can be put on it). The program makes a simple 3D part from the order. At most ${MAX_NEW_PARTS} new things in one scene; prefer things that already have a part.
+- Never order people, animals, body parts, grounds, walls, rooms or buildings, liquids that are not in a container, weapons, violent or sexual things, brand names or names of real people.
+- When a part has "holds" or "uses" in the table, follow the same rules as above (holds is part of the person; add the uses parts).
+
+# People and animals (id pattern | action | says: verbs that can say it | who can do it | holds | uses | sitting)
+${livingTable(parts)}
+
+# Example
+Request:
+${itemsMessage({ grade: EXAMPLE_GRADE }, EXAMPLE_SENTENCES)}
+Answer:
+${JSON.stringify({ items: conventionExample(parts), newParts: [] })}`;
+
 /** 1 回目に書かせる形。kind はその級に出てくる種類だけにする */
-export const sentenceSchema = (grade: GradeId) => ({
+export const sentenceSchema = (grade: GradeId, weak = false) => ({
   type: "object",
   properties: {
     name: { type: "string" },
+    ...(weak ? { pitch: { type: "string" } } : {}),
     // description は文の配列で先に書かせる（つなげるのはコード）
     sentences: { type: "array", minItems: 1, items: { type: "string" } },
     checklist: {
@@ -493,7 +558,9 @@ export const sentenceSchema = (grade: GradeId) => ({
       },
     },
   },
-  required: ["name", "sentences", "checklist"],
+  required: weak
+    ? ["name", "pitch", "sentences", "checklist"]
+    : ["name", "sentences", "checklist"],
   additionalProperties: false,
 });
 
@@ -505,8 +572,35 @@ export const itemsOnlySchema = (parts: Part[]) => ({
   additionalProperties: false,
 });
 
+/** 2 回目（ID の規約で引く道）に書かせる形。part は規約の形の文字列、newParts は作る物の注文 */
+export const conventionItemsSchema = () => {
+  const items = itemsSchema([]);
+  return {
+    type: "object",
+    properties: {
+      items: {
+        ...items,
+        items: {
+          ...items.items,
+          properties: {
+            ...items.items.properties,
+            part: {
+              type: "string",
+              description: "a part id written by the rules in Part ids",
+            },
+          },
+        },
+      },
+      newParts: { type: "array", items: orderJsonSchema },
+    },
+    required: ["items", "newParts"],
+    additionalProperties: false,
+  };
+};
+
 const Answer = z.object({
   name: z.string().trim().min(1),
+  pitch: z.string().trim().optional(),
   sentences: z.array(z.string()).min(1),
   // 空でも受け取り、裏取り（数が合わない）で落とす。理由を付けて作り直せるようにするため
   checklist: z.array(
@@ -521,6 +615,10 @@ const Answer = z.object({
   ),
 });
 const ItemsOnly = z.object({ items: PlanItems });
+const ConventionItems = z.object({
+  items: PlanItems,
+  newParts: z.array(OrderSchema).max(12).default([]),
+});
 
 /**
  * 作り直しのときに渡すもの。problems は裏取りで落ちた理由（どの項目かを id で名指しした文）、
@@ -550,7 +648,7 @@ const avoidText = (avoid: string[] | undefined) =>
 
 /** 1 回目の user の文 */
 export const sentenceMessage = (input: GenerateV2Input, feedback?: Retry) =>
-  `級: ${input.grade}\nテーマ: ${input.theme ?? "一覧から選ぶ"}\nchecklist: ${checklistCounts(input.grade)}（計 ${checklistSize(input.grade)} 個）${avoidText(input.avoid)}${feedbackText(feedback)}`;
+  `級: ${input.grade}\nテーマ: ${input.theme ?? "一覧から選ぶ"}\nchecklist: ${checklistCounts(input.grade)}（計 ${checklistSize(input.grade)} 個）${input.weak ? weakText(input.weak) : ""}${avoidText(input.avoid)}${feedbackText(feedback)}`;
 
 /** 2 回目の user の文。1 回目の出力の全部と、コードが refs から集めた呼び名の一覧 */
 export function itemsMessage(
@@ -578,19 +676,67 @@ export type GenerateV2Deps = {
   create?: CreateMessage;
   candidates?: CandidateSearch;
   now?: () => number;
+  /**
+   * 2 回目の部品の引き方。渡すと ID の規約で引く道（部品の一覧を出さず、無い物は workshop で作る）。
+   * 渡さなければ今の道（部品の一覧を出す）
+   */
+  lookup?: PartLookup;
 };
+
+/**
+ * ID の規約で引く道で、同梱に無い部品を引く・作るもの（backend/src/parts/workshop.ts の lookupPart・ensureParts。
+ * テストでは偽物）。maxNew は 1 場面で同梱に無い部品を使う数の上限
+ */
+export type Workshop = {
+  lookup: (id: string) => Promise<Part | null>;
+  ensure: (
+    orders: PartOrder[],
+    opts: { signal?: AbortSignal; maxNew: number; timeoutMs?: number },
+  ) => Promise<{
+    parts: Part[];
+    failed: { id: string; reason: string }[];
+    /** 部品ごとの時間と費用（作ったときだけ。測定とログ用） */
+    logs?: { id: string; made: boolean; ms: number; usd: number }[];
+  }>;
+};
+export type PartLookup = { workshop: Workshop; maxNew?: number };
+
+/** 部品を作れなかった（作り直しても）。場面の生成を失敗にする（作り直しの理由にはしない） */
+export class PartBuildError extends SceneGenerationError {
+  constructor(
+    readonly failed: { id: string; reason: string }[],
+    /** 作れた部品も含めた、部品ごとの時間と費用 */
+    readonly logs: {
+      id: string;
+      made: boolean;
+      ms: number;
+      usd: number;
+    }[] = [],
+  ) {
+    super(
+      "invalid",
+      `部品を作れなかった: ${failed.map((f) => `${f.id}（${f.reason}）`).join("、")}`,
+    );
+  }
+}
+
+/** 呼び方の上書きに、全体の締め切り（Date.now() の ms）を足したもの。締め切りが近ければ Claude を呼ばない */
+export type GenerateV2Options = GenerateOptions & { deadline?: number };
+
+/** 締め切りまでに、Claude をもう 1 回呼ぶのに要る残り時間（ms） */
+const MIN_CALL_MS = 12_000;
 
 type Call = {
   create: CreateMessage;
   model: string;
   effort: Effort;
-  options: GenerateOptions;
+  options: GenerateV2Options;
 };
 
 const prepare = (
   env: GenerateEnv,
   deps: GenerateV2Deps,
-  options: GenerateOptions,
+  options: GenerateV2Options,
 ): Call => {
   if (!env.CLAUDE_API_KEY) {
     throw new SceneGenerationError("unavailable", "CLAUDE_API_KEY が要る");
@@ -641,11 +787,23 @@ const callJson = async <T>(
   user: string,
   parse: (json: unknown) => T | undefined,
 ): Promise<{ value: T; usage: Anthropic.Usage }> => {
-  const timeout = call.options.timeoutMs ?? ATTEMPT_TIMEOUT_MS;
   const maxAttempts = call.options.maxAttempts ?? 2;
   const signal = call.options.signal;
+  const deadline = call.options.deadline;
   let last: SceneGenerationError | undefined;
   for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+    let timeout = call.options.timeoutMs ?? ATTEMPT_TIMEOUT_MS;
+    if (deadline !== undefined) {
+      const left = deadline - Date.now();
+      if (left < MIN_CALL_MS) {
+        last = new SceneGenerationError(
+          "unavailable",
+          "時間切れ（締め切りまでに Claude を呼べない）",
+        );
+        break;
+      }
+      timeout = Math.min(timeout, left);
+    }
     try {
       const response = await call.create(
         {
@@ -725,7 +883,7 @@ export async function generateSentences(
     prepare(env, deps, options),
     "1 回目・英文",
     buildSentenceSystem(parts),
-    sentenceSchema(input.grade),
+    sentenceSchema(input.grade, input.weak !== undefined),
     sentenceMessage(input, feedback),
     (json) => {
       const parsed = Answer.safeParse(json);
@@ -761,6 +919,38 @@ export async function generateItems(
     },
   );
   return { items: result.value, usage: result.usage };
+}
+
+/**
+ * 2 回目（ID の規約で引く道）: 英文の部分から、規約どおりの ID で部品と関係（items）と、作る物の注文（newParts）を書かせる。
+ * parts は同梱の部品（指示の人と動物の表・物の名詞を作る。一覧そのものは出さない）
+ */
+export async function generateItemsByConvention(
+  env: GenerateEnv,
+  parts: Part[],
+  input: Pick<GenerateV2Input, "grade">,
+  sentences: SceneSentences,
+  deps: GenerateV2Deps = {},
+  options: GenerateV2Options = {},
+  feedback?: Retry,
+): Promise<{ items: PlanItem[]; orders: PartOrder[]; usage: Anthropic.Usage }> {
+  const result = await callJson(
+    prepare(env, deps, options),
+    "2 回目・部品（規約）",
+    buildConventionItemsSystem(parts),
+    conventionItemsSchema(),
+    itemsMessage(input, sentences, feedback),
+    (json) => {
+      const parsed = ConventionItems.safeParse(json);
+      return parsed.success
+        ? {
+            items: parsed.data.items as PlanItem[],
+            orders: parsed.data.newParts,
+          }
+        : undefined;
+    },
+  );
+  return { ...result.value, usage: result.usage };
 }
 
 export type GenerateV2Result = {
@@ -855,23 +1045,180 @@ export type VerifiedSceneResult = {
   /** 回ごとに落ちた理由（通った回は入らない） */
   rejected: Problem[][];
   usage: Anthropic.Usage[];
+  /** 苦手の場面の一言（1 回目が書いたもの。苦手の場面でなければ undefined） */
+  pitch?: string;
+  /**
+   * ID の規約で引く道で使った、同梱に無い部品（前に作った・その場で作った）のメタデータ。
+   * 座標の計算に同梱の部品と合わせて渡し、配置では id@版 にする。部品の一覧を出す道では空
+   */
+  extraParts: Part[];
+  /** その場で作った部品の ID */
+  madeParts: string[];
+  /** 部品ごとの時間と費用（部品を作る口のログ。作ったときだけ費用が入る） */
+  partLogs: { id: string; made: boolean; ms: number; usd: number }[];
+};
+
+type ItemsOutcome = {
+  items?: PlanItem[];
+  problems: Problem[];
+  /** 作り直しのときに見せる、前の 2 回目の答え */
+  previous?: unknown;
+  extraParts: Part[];
+  madeParts: string[];
+  /** 部品ごとの時間と費用（部品を作る口のログ） */
+  partLogs?: { id: string; made: boolean; ms: number; usd: number }[];
+};
+
+/** 2 回目（部品の一覧を出す道）を 1 回呼び、裏取りする */
+const listItems = async (
+  env: GenerateEnv,
+  parts: Part[],
+  found: Part[],
+  input: GenerateV2Input,
+  sentences: SceneSentences,
+  deps: GenerateV2Deps,
+  options: GenerateV2Options,
+  feedback: Retry | undefined,
+  usage: Anthropic.Usage[],
+): Promise<ItemsOutcome> => {
+  const second = await generateItems(
+    env,
+    found,
+    input,
+    sentences,
+    deps,
+    options,
+    feedback,
+  );
+  usage.push(second.usage);
+  const items = second.items;
+  let problems = verifyItems(input.grade, sentences, items, parts);
+  if (problems.length === 0) {
+    problems = verifyPlaces(input.grade, { ...sentences, items }, parts);
+  }
+  return {
+    items,
+    problems,
+    previous: { items },
+    extraParts: [],
+    madeParts: [],
+  };
 };
 
 /**
- * 作り置きを作る道。裏取りで落ちたら、落ちた理由を指示に足して 2 回まで作り直す。
+ * 2 回目（ID の規約で引く道）を 1 回呼び、部品を引いて裏取りし、通ったら足りない部品を作る。
+ * 裏取りは作る前の仮のメタデータ（注文の大きさ）で行い、作ったあと本物の大きさで場所だけ確かめ直す
+ *（落ちた場面のために部品を作らない）。作れなかった部品は 1 回だけ作り直し、だめなら PartBuildError を投げる
+ */
+const conventionItems = async (
+  env: GenerateEnv,
+  parts: Part[],
+  lookup: PartLookup,
+  input: GenerateV2Input,
+  sentences: SceneSentences,
+  deps: GenerateV2Deps,
+  options: GenerateV2Options,
+  feedback: Retry | undefined,
+  usage: Anthropic.Usage[],
+): Promise<ItemsOutcome> => {
+  const maxNew = lookup.maxNew ?? MAX_NEW_PARTS;
+  const second = await generateItemsByConvention(
+    env,
+    parts,
+    input,
+    sentences,
+    deps,
+    options,
+    feedback,
+  );
+  usage.push(second.usage);
+  const previous = { items: second.items, newParts: second.orders };
+  const resolved = await resolveParts(
+    second.items,
+    second.orders,
+    parts,
+    lookup.workshop.lookup,
+    maxNew,
+  );
+  if (resolved.mapped.length > 0) {
+    console.log(
+      JSON.stringify({ event: "scene_parts_mapped", mapped: resolved.mapped }),
+    );
+  }
+  const none = { extraParts: [], madeParts: [] };
+  if (resolved.problems.length > 0) {
+    return { problems: resolved.problems, previous, ...none };
+  }
+  const items = resolved.items;
+  const provisional = [
+    ...parts,
+    ...resolved.found,
+    ...resolved.orders.map(provisionalPart),
+  ];
+  let problems = verifyItems(input.grade, sentences, items, provisional);
+  if (problems.length === 0) {
+    problems = verifyPlaces(input.grade, { ...sentences, items }, provisional);
+  }
+  if (problems.length > 0) return { items, problems, previous, ...none };
+
+  // 作り直し（検査に落ちたら 1 回だけ書き直す）は部品を作る口の中で行う。締め切りまでの残りを 1 回の上限にする
+  const made: Part[] = [];
+  let partLogs: ItemsOutcome["partLogs"] = [];
+  if (resolved.orders.length > 0) {
+    const left =
+      options.deadline === undefined
+        ? undefined
+        : Math.max(1_000, options.deadline - Date.now());
+    const result = await lookup.workshop.ensure(resolved.orders, {
+      signal: options.signal,
+      maxNew,
+      ...(left !== undefined ? { timeoutMs: left } : {}),
+    });
+    made.push(...result.parts);
+    partLogs = result.logs ?? [];
+    const got = new Set(made.map((p) => p.id));
+    const failed = resolved.orders
+      .filter((o) => !got.has(o.id))
+      .map((o) => ({
+        id: o.id,
+        reason:
+          result.failed.find((f) => f.id === o.id)?.reason ?? "作られなかった",
+      }));
+    if (failed.length > 0) throw new PartBuildError(failed, partLogs);
+  }
+
+  const extraParts = [...resolved.found, ...made];
+  problems = verifyPlaces(input.grade, { ...sentences, items }, [
+    ...parts,
+    ...extraParts,
+  ]);
+  return {
+    items,
+    problems,
+    previous,
+    extraParts,
+    madeParts: made.map((p) => p.id),
+    partLogs,
+  };
+};
+
+/**
+ * 作り置き・苦手の場面を作る道。裏取りで落ちたら、落ちた理由を指示に足して maxRemakes 回（既定 2）まで作り直す。
  * 英文の部分で落ちたら 1 回目から、部品だけで落ちたら同じ英文のまま 2 回目だけを作り直す
  *（同じ英文で部品が 2 回落ちたら、英文が部品で描けないとみて 1 回目から）。
  * 英文の部分で落ちたときは 2 回目を呼ばない（部品を選ぶ前に分かるので）。
  * 形が違う・途中で止まった応答（各段の中で 1 回やり直した後も）も、同じように作り直す。
- * 通らなければ SceneVerificationError を投げる。部屋での生成では使わない（作り直さず作り置きに切り替えるため）
+ * deps.lookup を渡すと、2 回目は ID の規約で引き、足りない部品を作る（作れなければ PartBuildError で、作り直さない）。
+ * 通らなければ SceneVerificationError を投げる
  */
 export async function generateVerifiedScene(
   env: GenerateEnv,
   parts: Part[],
   input: GenerateV2Input,
   deps: GenerateV2Deps = {},
-  options: GenerateOptions = {},
+  options: GenerateV2Options & { maxRemakes?: number } = {},
 ): Promise<VerifiedSceneResult> {
+  const { maxRemakes = MAX_REMAKES, ...callOptions } = options;
   const find = deps.candidates ?? candidates;
   const usage: Anthropic.Usage[] = [];
   const rejected: Problem[][] = [];
@@ -881,7 +1228,7 @@ export async function generateVerifiedScene(
   let itemsRejected = 0;
   /** 1 回目の前の答え（Claude が書いたままの形）。作り直しのときに見せる */
   let lastAnswer: SceneAnswer | undefined;
-  for (let round = 0; round <= MAX_REMAKES; round++) {
+  for (let round = 0; round <= maxRemakes; round++) {
     if (!sentences) {
       let written: SceneSentences | undefined;
       let problems: Problem[];
@@ -891,7 +1238,7 @@ export async function generateVerifiedScene(
           parts,
           input,
           deps,
-          options,
+          callOptions,
           feedback,
         );
         usage.push(first.usage);
@@ -914,30 +1261,43 @@ export async function generateVerifiedScene(
         continue;
       }
       sentences = written;
-      found = await find(sentences.description, parts);
+      if (!deps.lookup) found = await find(sentences.description, parts);
       feedback = undefined;
     }
-    let items: PlanItem[] | undefined;
-    let problems: Problem[];
+    let outcome: ItemsOutcome;
     try {
-      const second = await generateItems(
-        env,
-        found,
-        input,
-        sentences,
-        deps,
-        options,
-        feedback,
-      );
-      usage.push(second.usage);
-      items = second.items;
-      problems = verifyItems(input.grade, sentences, items, parts);
-      if (problems.length === 0) {
-        problems = verifyPlaces(input.grade, { ...sentences, items }, parts);
-      }
+      outcome = deps.lookup
+        ? await conventionItems(
+            env,
+            parts,
+            deps.lookup,
+            input,
+            sentences,
+            deps,
+            callOptions,
+            feedback,
+            usage,
+          )
+        : await listItems(
+            env,
+            parts,
+            found,
+            input,
+            sentences,
+            deps,
+            callOptions,
+            feedback,
+            usage,
+          );
     } catch (e) {
-      problems = [invalidResponse(e, "items")];
+      if (e instanceof PartBuildError) throw e;
+      outcome = {
+        problems: [invalidResponse(e, "items")],
+        extraParts: [],
+        madeParts: [],
+      };
     }
+    const { items, problems } = outcome;
     if (problems.length === 0 && items) {
       return {
         plan: { ...sentences, items },
@@ -945,6 +1305,14 @@ export async function generateVerifiedScene(
         remakes: round,
         rejected,
         usage,
+        ...(input.weak
+          ? {
+              pitch: lastAnswer?.pitch?.trim() || defaultPitch(input.weak.kind),
+            }
+          : {}),
+        extraParts: outcome.extraParts,
+        madeParts: outcome.madeParts,
+        partLogs: outcome.partLogs ?? [],
       };
     }
     rejected.push(problems);
@@ -955,7 +1323,7 @@ export async function generateVerifiedScene(
     feedback = {
       problems: problems.map((p) => p.message),
       // 1 回目からなら前の英文、2 回目だけなら前の部品を見せる
-      previous: rewrite ? lastAnswer : items ? { items } : undefined,
+      previous: rewrite ? lastAnswer : outcome.previous,
     };
     if (rewrite) {
       sentences = undefined;

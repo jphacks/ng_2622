@@ -58,6 +58,10 @@ export type Problem = {
     | "rain_indoors"
     | "duplicate_key"
     | "unknown_part"
+    /** ID の規約で引く道: 作る物の注文が規約の形でない・作れない物 */
+    | "bad_part_order"
+    /** ID の規約で引く道: 部品の無い物が 1 場面の上限を超えた */
+    | "too_many_new_parts"
     | "ref_not_in_items"
     | "people_count"
     | "center_without_actor"

@@ -9,13 +9,27 @@ import {
   type GenerateV2Input,
   generateSceneV2,
   generateVerifiedScene,
+  MAX_REMAKES,
   SceneVerificationError,
 } from "../scenes/generate-v2";
 import { newSceneId } from "../scenes/id";
+import { withVersions } from "../scenes/lookup";
 import { PARTS } from "../scenes/parts";
-import type { SceneLayoutV2 } from "../scenes/types";
+import type { Part, SceneLayoutV2 } from "../scenes/types";
+import { workshopOf } from "./workshop";
 
-export type SceneGenerationEnv = GenerateEnv & { SCENE_GENERATION?: string };
+export type SceneGenerationEnv = GenerateEnv & {
+  // 作った部品の置き場（R2）。ID の規約で引く道で、前に作った部品を引き、足りない部品を作って置く
+  BUCKET?: R2Bucket;
+  SCENE_GENERATION?: string;
+  // 2 回目の部品の引き方。"convention" なら ID の規約で引き（部品の一覧を出さず、無い物は作る）、
+  // それ以外（既定）は今の道（部品の一覧を出す）。苦手の場面（POST /weak-scenes）はいつも規約で引く
+  SCENE_PART_LOOKUP?: string;
+};
+
+/** 2 回目を ID の規約で引くか（SCENE_PART_LOOKUP が convention のときだけ） */
+export const partLookupByConvention = (env: { SCENE_PART_LOOKUP?: string }) =>
+  env.SCENE_PART_LOOKUP === "convention";
 
 /** 生成を止めるスイッチ。on のときだけ動かす（変数が無い・on 以外なら止める）。POST /scenes/generate と部屋で共通 */
 export const sceneGenerationEnabled = (env: { SCENE_GENERATION?: string }) =>
@@ -40,7 +54,19 @@ export const generateScene = async (
   input: GenerateV2Input,
   options: GenerateSceneOptions = {},
   deps: GenerateV2Deps = {},
-): Promise<SceneLayoutV2> => {
+): Promise<SceneLayoutV2> =>
+  (await generateSceneWithParts(env, input, options, deps)).layout;
+
+/**
+ * generateScene と同じ。配置と一緒に、配置が使う同梱に無い部品（ID の規約で引いた道で、前に作った・その場で作った部品）の
+ * メタデータも返す（部屋が配置と一緒に置き、採点に渡す）。部品の一覧を出す道では parts は空
+ */
+export const generateSceneWithParts = async (
+  env: SceneGenerationEnv,
+  input: GenerateV2Input,
+  options: GenerateSceneOptions = {},
+  deps: GenerateV2Deps = {},
+): Promise<{ layout: SceneLayoutV2; parts: Part[] }> => {
   if (!sceneGenerationEnabled(env)) {
     throw new SceneGenerationError(
       "unavailable",
@@ -49,17 +75,43 @@ export const generateScene = async (
   }
   const { remake = false, ...callOptions } = options;
   const started = Date.now();
-  const result = remake
-    ? await generateVerifiedScene(env, PARTS, input, deps, callOptions)
-    : await generateSceneV2(env, PARTS, input, deps, callOptions);
+  const convention = partLookupByConvention(env);
+  const bucket = env.BUCKET;
+  if (convention && !bucket && !deps.lookup) {
+    throw new SceneGenerationError(
+      "unavailable",
+      "部品の置き場（BUCKET）が無いので、ID の規約で引けない",
+    );
+  }
+  const result =
+    remake || convention
+      ? await generateVerifiedScene(
+          env,
+          PARTS,
+          input,
+          convention
+            ? {
+                ...deps,
+                lookup: deps.lookup ?? {
+                  workshop: workshopOf({ ...env, BUCKET: bucket as R2Bucket }),
+                },
+              }
+            : deps,
+          { ...callOptions, maxRemakes: remake ? MAX_REMAKES : 0 },
+        )
+      : await generateSceneV2(env, PARTS, input, deps, callOptions);
   if ("problems" in result && result.problems.length > 0) {
     throw new SceneVerificationError([result.problems]);
   }
   const sceneId = newSceneId();
-  const layout = composeLayoutV2(result.plan, PARTS, {
-    id: sceneId,
-    grade: input.grade,
-  });
+  const extra = "extraParts" in result ? result.extraParts : [];
+  const layout = withVersions(
+    composeLayoutV2(result.plan, [...PARTS, ...extra], {
+      id: sceneId,
+      grade: input.grade,
+    }),
+    extra,
+  );
   if (layout.items.length === 0) {
     throw new SceneGenerationError("invalid", "置ける部品が無かった");
   }
@@ -75,5 +127,5 @@ export const generateScene = async (
       usage: result.usage,
     }),
   );
-  return layout;
+  return { layout, parts: extra };
 };
