@@ -9,6 +9,9 @@ struct DifficultyChip: View {
     Text(difficulty.label)
       .font(Theme.font(size, .heavy))
       .foregroundStyle(Theme.accent)
+      // 狭い所でも「かんた／ん」と折れないようにする
+      .lineLimit(1)
+      .fixedSize()
       .padding(.horizontal, size * 0.85)
       .padding(.vertical, size * 0.25)
       .background(Theme.accentSoft, in: Capsule())

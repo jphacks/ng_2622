@@ -11,8 +11,9 @@ struct RoomSessionTests {
     Participant(id: id, name: id, color: 0x5B5BE6, isSelf: isSelf, isHost: isHost, status: status)
   }
 
+  /// 記録は一時のフォルダに向ける（既定は本物の領域なので、テストでは使わない）
   func session() -> RoomSession {
-    RoomSession(client: MockGameClient(options: .init()), me: me)
+    RoomSession(client: MockGameClient(options: .init()), me: me, records: .temporary())
   }
 
   /// 待合でホストが抜けた room が届くと、残った自分がホストになる

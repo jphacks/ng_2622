@@ -13,6 +13,8 @@ struct AppConfig {
   let backendURL: URL?
   /// Mock の振る舞い（Live では使わない）
   let mock: MockGameClient.Options
+  /// Mock で、きろくの画面に初めから出す例の記録の数（0 なら出さない）。端末には書かない
+  var mockSampleRecords = 0
 
   static let current: AppConfig = {
     let info = Bundle.main.infoDictionary ?? [:]
@@ -35,6 +37,7 @@ struct AppConfig {
     }
     // 値が読めないときは、通信しない Mock にしておく
     let mode = BackendMode(rawValue: raw) ?? .mock
-    return AppConfig(mode: mode, backendURL: url, mock: mock)
+    let samples = mode == .mock ? max(0, string("MockSampleRecords").flatMap(Int.init) ?? 0) : 0
+    return AppConfig(mode: mode, backendURL: url, mock: mock, mockSampleRecords: samples)
   }()
 }

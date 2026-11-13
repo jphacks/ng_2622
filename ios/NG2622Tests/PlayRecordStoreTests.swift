@@ -340,6 +340,36 @@ struct PlayRecordStoreTests {
     #expect(fileNames() == ["\(record.id).json"])
   }
 
+  /// 録音があるラウンドは、json と wav の両方ができる。場面を待つ間に元の録音が消されても（退出・次のラウンド）写る
+  @Test func sessionSavesAudio() async throws {
+    defer { cleanUp() }
+    let sceneID = try sceneID()
+    let audio = try audioFile([0x52, 0x49, 0x46, 0x46, 9, 8, 7])
+    let session = session()
+    session.handle(.roundStarted(RoundInfo(sceneID: sceneID, startsAt: Date())))
+    session.recorder.setRecordingForTesting(RecordedAudio(url: audio, duration: 1))
+    session.handle(.results(results(sceneID: sceneID)))
+    // 保存が終わる前に退出する（録音の元のファイルが消える）
+    session.leave()
+    #expect(!FileManager.default.fileExists(atPath: audio.path))
+    await session.recordSaving?.value
+
+    let record = try #require(store.all().first)
+    #expect(fileNames() == ["\(record.id).json", "\(record.id).wav"])
+    let saved = try #require(store.audioURL(of: record.id))
+    #expect(try Data(contentsOf: saved) == Data([0x52, 0x49, 0x46, 0x46, 9, 8, 7]))
+    // 取っておいた一時のファイルは残さない
+    let held = FileManager.default.temporaryDirectory.appending(path: "record-\(record.id).wav")
+    #expect(!FileManager.default.fileExists(atPath: held.path))
+  }
+
+  /// records/ は端末のバックアップに入れない
+  @Test func excludedFromBackup() throws {
+    defer { cleanUp() }
+    try store.save(try record(sceneID: try sceneID()))
+    #expect(try directory.resourceValues(forKeys: [.isExcludedFromBackupKey]).isExcludedFromBackup == true)
+  }
+
   /// 次のラウンドは別の記録になる
   @Test func sessionSavesEachRound() async throws {
     defer { cleanUp() }
@@ -388,6 +418,15 @@ struct PlayRecordStoreTests {
     session.handle(.results(results(sceneID: try sceneID()).renamed(sceneID: "gen-nothing")))
     await session.recordSaving?.value
     #expect(fileNames().isEmpty)
+  }
+}
+
+extension PlayRecordStore {
+  /// テスト用の、一時のフォルダの置き場所（本物の領域を触らない）
+  static func temporary() -> PlayRecordStore {
+    PlayRecordStore(
+      directory: FileManager.default.temporaryDirectory
+        .appending(path: "records-test-\(UUID().uuidString)", directoryHint: .isDirectory))
   }
 }
 

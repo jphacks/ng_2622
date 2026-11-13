@@ -99,8 +99,12 @@ struct ResultSubHeader: View {
 
   var body: some View {
     ZStack {
+      // 長い題名は、戻るボタンに重ねず、1 行に縮めて収める
       Text(title)
         .font(Theme.font(20, .black))
+        .lineLimit(1)
+        .minimumScaleFactor(0.6)
+        .padding(.horizontal, 52)
       HStack {
         CircleIconButton(systemName: "chevron.left", label: "戻る", action: onBack)
         Spacer()
