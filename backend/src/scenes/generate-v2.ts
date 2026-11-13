@@ -47,6 +47,7 @@ import {
   type GradeId,
   type Part,
   type PlanItem,
+  type SceneLayoutV2,
   type ScenePlanV2,
   type SceneSentences,
 } from "./types";
@@ -57,7 +58,7 @@ import {
   type Problem,
   refNames,
   verifyItems,
-  verifyPlaces,
+  verifyPlacesWithLayout,
   verifyScene,
   verifySentences,
 } from "./verify";
@@ -1064,6 +1065,11 @@ export type VerifiedSceneResult = {
   madeParts: string[];
   /** 部品ごとの時間と費用（部品を作る口のログ。作ったときだけ費用が入る） */
   partLogs: { id: string; made: boolean; ms: number; usd: number }[];
+  /**
+   * 裏取りで座標に直した配置（id は "check"。同梱に無い部品はまだ id@版 にしていない）。
+   * 座標の計算は CPU を多く使うので、呼ぶ側は id を替えてこれを使う（composeLayoutV2 をもう一度呼ばない）
+   */
+  layout?: SceneLayoutV2;
 };
 
 type ItemsOutcome = {
@@ -1075,6 +1081,8 @@ type ItemsOutcome = {
   madeParts: string[];
   /** 部品ごとの時間と費用（部品を作る口のログ） */
   partLogs?: { id: string; made: boolean; ms: number; usd: number }[];
+  /** 裏取りで座標に直した配置（id は "check"） */
+  layout?: SceneLayoutV2;
 };
 
 /** 2 回目（部品の一覧を出す道）を 1 回呼び、裏取りする */
@@ -1102,8 +1110,13 @@ const listItems = async (
   deps.onUsage?.(second.usage);
   const items = second.items;
   let problems = verifyItems(input.grade, sentences, items, parts);
+  let layout: SceneLayoutV2 | undefined;
   if (problems.length === 0) {
-    problems = verifyPlaces(input.grade, { ...sentences, items }, parts);
+    ({ problems, layout } = verifyPlacesWithLayout(
+      input.grade,
+      { ...sentences, items },
+      parts,
+    ));
   }
   return {
     items,
@@ -1111,6 +1124,7 @@ const listItems = async (
     previous: { items },
     extraParts: [],
     madeParts: [],
+    ...(layout ? { layout } : {}),
   };
 };
 
@@ -1167,8 +1181,13 @@ const conventionItems = async (
     ...resolved.orders.map(provisionalPart),
   ];
   let problems = verifyItems(input.grade, sentences, items, provisional);
+  let layout: SceneLayoutV2 | undefined;
   if (problems.length === 0) {
-    problems = verifyPlaces(input.grade, { ...sentences, items }, provisional);
+    ({ problems, layout } = verifyPlacesWithLayout(
+      input.grade,
+      { ...sentences, items },
+      provisional,
+    ));
   }
   if (problems.length > 0) return { items, problems, previous, ...none };
 
@@ -1203,10 +1222,14 @@ const conventionItems = async (
   }
 
   const extraParts = [...resolved.found, ...made];
-  problems = verifyPlaces(input.grade, { ...sentences, items }, [
-    ...parts,
-    ...extraParts,
-  ]);
+  // 作った部品は注文と大きさが少し違うことがあるので、本物の大きさで座標に直して場所を確かめ直す（作らなければ同じなので直さない）
+  if (made.length > 0) {
+    ({ problems, layout } = verifyPlacesWithLayout(
+      input.grade,
+      { ...sentences, items },
+      [...parts, ...extraParts],
+    ));
+  }
   return {
     items,
     problems,
@@ -1214,6 +1237,7 @@ const conventionItems = async (
     extraParts,
     madeParts: made.map((p) => p.id),
     partLogs,
+    ...(layout ? { layout } : {}),
   };
 };
 
@@ -1329,6 +1353,7 @@ export async function generateVerifiedScene(
         extraParts: outcome.extraParts,
         madeParts: outcome.madeParts,
         partLogs: outcome.partLogs ?? [],
+        ...(outcome.layout ? { layout: outcome.layout } : {}),
       };
     }
     rejected.push(problems);

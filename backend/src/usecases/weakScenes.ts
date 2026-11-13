@@ -141,13 +141,14 @@ export async function makeWeakScene(
       },
     );
     const sceneId = `weak-${(deps.newId ?? (() => crypto.randomUUID()))()}`;
-    const layout = withVersions(
-      composeLayoutV2(result.plan, [...PARTS, ...result.extraParts], {
-        id: sceneId,
-        grade: input.difficulty,
-      }),
-      result.extraParts,
-    );
+    // 裏取りで座標に直した配置を使う（座標の計算は CPU を多く使うので、もう一度しない）
+    const composed = result.layout
+      ? { ...result.layout, id: sceneId }
+      : composeLayoutV2(result.plan, [...PARTS, ...result.extraParts], {
+          id: sceneId,
+          grade: input.difficulty,
+        });
+    const layout = withVersions(composed, result.extraParts);
     if (layout.items.length === 0) {
       throw new SceneGenerationError("invalid", "置ける部品が無かった");
     }

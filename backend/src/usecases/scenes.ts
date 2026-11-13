@@ -92,11 +92,15 @@ export const generateSceneWithParts = async (
   }
   const sceneId = newSceneId();
   const extra = "extraParts" in result ? result.extraParts : [];
+  // 作り直しの道は、裏取りで座標に直した配置を使う（座標の計算は CPU を多く使うので、もう一度しない）
+  const checked = "layout" in result ? result.layout : undefined;
   const layout = withVersions(
-    composeLayoutV2(result.plan, [...PARTS, ...extra], {
-      id: sceneId,
-      grade: input.grade,
-    }),
+    checked
+      ? { ...checked, id: sceneId }
+      : composeLayoutV2(result.plan, [...PARTS, ...extra], {
+          id: sceneId,
+          grade: input.grade,
+        }),
     extra,
   );
   if (layout.items.length === 0) {
