@@ -65,6 +65,62 @@ curl -F audio=@test.wav -F sceneId=gen-v2-pre2-park-01 -F "transcript=A boy is t
 
 チェックリストの F1 の採点（`src/scoring/checklist.ts` の計算と `checklistGrade.ts` の `gradeWithChecklist`。[ADR](../docs/adr/20261110-score-content-with-checklist-f1.md)）のぶれは、`CLAUDE_API_KEY=... pnpm tsx scripts/measure-scoring-baseline.ts <結果の JSON> [1 答えあたりの回数（既定 5）] [費用の上限ドル（既定 2.5）]` で確かめる。試験用の 3 場面（`test/fixtures/checklist-eiken-*.json`、級ごとに 1 つ）に、用意した答え（見本どおり・正しい一文だけ・細部だけ・誤り・的外れなど 10 通り）を同じ回数ずつ採点させ、答えごとの内容と表現の点の並び・幅・かかった時間を表と JSON に出す。合格は、どの答えも内容の点の幅（最大 − 最小）が 5 点以内で、合格しなければ終了コード 1 で終わる。表現の点の幅と、表現が 0 点になった答え、呼び直した回数（3 語以上の発話に表現 0 点か空の根拠が返ると、`gradeWithChecklist` が同じ入力で 2 回まで呼び直す）も出すが、参考で合否には入れない。各回の表現の点の根拠（`expressionBasis`）は JSON に残る。Claude を実際に呼ぶ（既定で 150 回）ので費用がかかり、上限に達したらそこで止まる。Azure は呼ばず、話し方の 3 つの点は 75 に固定する。級の文法の一覧は、本番の採点と同じく生成の定数（`GRADES`）から作る（その級までの分と、一つ上の級で足される分）。内容の満点の重みは checklist の項目だけで、一覧に無い正しい描写（その他）は 2 件までのおまけなので、見本どおりの答えは 100 点になる（[ADR](../docs/adr/20261111-count-other-claims-as-bonus-and-require-actions-for-items.md)）。2026-11-11 の実測（今の指示、1 答え 3 回・計 90 回、1.52 USD）は合格で、30 通りすべてで内容の点の幅が 5 点以内だった（28 通りは幅 0、残りは 5 と 1）。見本どおりは 3 級とも 100 点、名前だけは 33・18・13 点、場面にないことは 0 点、前置詞の誤りは 64・56・43 点。表現の点の幅は最大 10（参考）で、表現が 0 点になった答えは無く、呼び直しは 2 回。時間は答えごとの値で 1 回 2.3〜6.7 秒。
 
+## 苦手の分析（`POST /weak-points`、`src/analysis/`）
+
+端末に残した直近の記録（内容の内訳のある 5〜10 件）の文字と、端末で数えた値を受け、Claude にくり返す癖・前より良くなった点・次の 1 回で試すことを書かせて返す。設計の正本は [`docs/design/weak-point-analysis.md`](../docs/design/weak-point-analysis.md)、決めた理由は [ADR](../docs/adr/20261113-analyze-weak-points-with-ai-from-on-device-counts.md)。
+
+- 中身: `src/analysis/weakPoints.ts`（Claude に渡す本文・system・構造化出力の schema・呼び直し）、`src/analysis/verify.ts`（返した文の確かめ。Claude は呼ばない）、`src/usecases/weakPoints.ts`（スイッチ・回数の上限・ログ）、`src/routes/weakPoints.ts`（口）、`src/durable-objects/usageCounter.ts`（回数を数える Durable Object。全体で 1 つ）。
+- 本文（`WeakPointRequest`）は文字だけ。録音・名前・端末や記録の ID・日時・場面の ID は受け取らない（知らない欄は捨てて、Claude に渡さない）。null を許す欄は、欄が無くても null と読む（iOS の生成器は nil の欄を書かずに送る）。本文も結果も保存せず、ログ（Observability）にも件数・落ちた理由・時間・トークンだけを出す。
+- Claude は既定で Sonnet 5.5 の `low`（`CLAUDE_ANALYSIS_MODEL`・`CLAUDE_ANALYSIS_EFFORT` で変えられる）。構造化出力で受け取り、`stop_reason` が `end_turn` でなければ 502 `analysis_failed`。SDK の自動の再送はしない（`maxRetries: 0`。呼んだ回数の数えと締め切りを崩さないため）。
+- 確かめ: 実例と良くなった点の引用は、その回の文字起こしに語の並びとして見つかるものだけを残し、文字起こしのとおりの文字列に直す（比べ方は採点と同じ `checklist.ts` の `tokenize`）。2 つ以上の違う回に実例が残らない癖・空の欄・割合や点の数字（`%`・`点`・`割`。見出しも）の入った癖は捨てる。実例は違う回のものを新しい回から 1 つずつ選んで 3 つまで（足りなければ残りを新しい回から）、並びも新しい回から。良くなった点は後半の回（新しいほうの ⌊回の数 / 2⌋ 回）の引用だけを通す。
+- 呼び直し: Claude が癖を 1 件以上返したのに、確かめで 0 件になったときだけ、同じ入力で 1 回呼び直し、2 回目の応答だけを使う。全体（呼び直しを含む）の締め切りは 25 秒で、呼び直すのは残りが 12 秒以上あり、全体の 1 日の回数に余りがあるときだけ。呼び直せないとき（時間か回数が足りない）は 1 回目の確かめに通ったもの（癖は空、`retries` は 0）を、呼び直しが API の失敗・時間切れ・読めない応答で終わったときも 1 回目の確かめに通ったもの（癖は空、`retries` は 1）を返し、502 にはしない。
+- 守り方（認証は無い）:
+
+| 守り | 値（`wrangler.jsonc` の `vars`。普段） | 超えたとき |
+| --- | --- | --- |
+| 止めるスイッチ `WEAK_POINT_ANALYSIS` | `on`（PR のプレビューは `off`） | 503 `analysis_unavailable`（本文を読む前に断る） |
+| 本文の大きさ `WEAK_POINT_MAX_BODY_BYTES` | 65536（64 KB。測定の記録の組は 11〜20 KB） | 413 `invalid_message` |
+| IP ごとの 1 時間の回数 `WEAK_POINT_IP_PER_HOUR` | 10 回 | 429 `rate_limited` |
+| 全体の 1 日（日本時間）の回数 `WEAK_POINT_DAILY_LIMIT` | 200 回（1 回約 0.05 USD で約 10 USD） | 429 `rate_limited`（呼び直しの前なら呼び直さない） |
+
+- 数え方（`UsageCounter`）: IP ごとの回数は、受け付けたリクエスト（スイッチ・大きさ・形の確かめを通ったもの）1 つで 1 回。全体の 1 日の回数は、Claude を呼んだ回数（呼び直しも 1 回）。どちらも上限の確かめを両方通ってから足し、400・413・429・503 で返したものは数えない。IP は、IPv4 はそのまま、IPv6 は先頭の /64 で数える（1 つの回線や端末がアドレスを変えて上限をすり抜けないように）。数える場所が失敗したら、初めの数えは 503 `analysis_unavailable`（Claude を呼ばない）、呼び直しの前の数えは「呼び直さない」として 1 回目の結果を返す。IP はそのまま覚えず、この DO が日ごとに作る乱数を鍵にした HMAC-SHA-256 で覚える（新しい secret は要らない）。IP ごとの回数は 1 時間の区切り（毎時 0 分）で alarm が消し、乱数は日が変われば捨てる。Cloudflare の Rate Limiting の binding は期間が 10 秒か 60 秒だけで、場所ごとの近似の数なので使わない（2026-11-13 に [文書](https://developers.cloudflare.com/workers/runtime-apis/bindings/rate-limit/) で確かめた）。
+
+### 手元で分析を試す
+
+`backend/.dev.vars` に `CLAUDE_API_KEY` を書いて `pnpm dev` を起こし、記録の組（下の測定で作ったもの）の本文を送る。手元でも上限は効く（`pnpm dev` の IP は 1 つなので、1 時間 10 回まで）。
+
+```sh
+jq .request test/fixtures/weak-points/person-1.json \
+  | curl -s -X POST http://localhost:8787/weak-points -H 'content-type: application/json' -d @- | jq .
+```
+
+### 苦手の分析の上限を当日の値にする（Award Day、11/15）
+
+`vars` を変えるのも PR と approve が要るので、当日の値の PR は 11/14 に approve をもらい、11/15 の朝に merge する（merge すると本番にデプロイされる）。
+
+1. 当日の分（分析 500 回 ≈ 25 USD と採点の分）が、Claude のクレジットの残りと月の支出上限に収まるかを Console で確かめる。
+2. `origin/main` からブランチを切り、`wrangler.jsonc` の `vars` の `WEAK_POINT_IP_PER_HOUR` を `"60"`、`WEAK_POINT_DAILY_LIMIT` を `"500"` にする（`previews` は `off` のまま）。
+3. `pnpm cf-typegen` で `worker-configuration.d.ts` を作り直す（`vars` の値が型に入るので、作り直さないと backend-checks の `pnpm cf-typegen:check` が落ちる）。変えるのは `wrangler.jsonc` と `worker-configuration.d.ts` の 2 つだけでよい（テストは値そのものでなく、正の整数の文字列かだけを見る）。
+4. PR を出して 11/14 に approve をもらい、11/15 の朝に merge する。デプロイの後、Observability で `weak_points_analyzed`・`weak_points_limited` の出方を見る。
+5. 当日が終わったら、同じ手順で普段の値（10・200）に戻す PR を出す。
+6. 急いで止めるときは `WEAK_POINT_ANALYSIS` を `"off"` にする（アプリは数える分析だけを出す）。
+
+### 分析を測る（`scripts/make-weak-point-fixtures.ts`・`scripts/measure-weak-points.ts`）
+
+癖を仕込んで手で書いた文字起こし（`test/fixtures/weak-points/transcripts.json`。3 人 × 10 回: 理由をいつも落とす・冠詞の抜け、三単現の s を忘れる・1 回だけの誤り、位置の取り違え・前の記録・認識の誤りらしい語・指示のような文）を、本物の採点に文字だけ通して記録の組（`person-*.json`）にし、分析を組ごとに何度も回す。どちらも Claude を実際に呼ぶので費用がかかり、上限に達したら止まる。
+
+```sh
+# 記録の組を作る（一度だけ。作った組は commit し、測るたびに採点し直さない）。POST /score の口をこのプロセスの中で呼ぶ（30 回で約 0.5 USD）
+CLAUDE_API_KEY=... pnpm tsx scripts/make-weak-point-fixtures.ts [費用の上限ドル（既定 1）]
+# 分析を組ごとに 5 回ずつ回す（本番と同じ確かめ・呼び直し・25 秒の締め切り。回数の上限は通さない。約 0.75 USD）
+CLAUDE_API_KEY=... pnpm tsx scripts/measure-weak-points.ts <結果の JSON> [1 組あたりの回数（既定 5）] [費用の上限ドル（既定 2）]
+```
+
+測るもの: 仕込んだ癖に当たった回（確かめの後と前。癖の文をキーワードの正規表現で見る）・実例の引用が見つかった割合・2 回以上の確かめで落ちた癖・癖の件数（前 → 後）・良くなった点（出た回と当たった回。仕込まない組は人が読む）・数字の確かめに当たった件数・呼び直し・1 回だけの誤りを癖にした回・指示の文に従った回・時間の第 3 四分位数・費用。合格の目安（案）は、仕込んだ癖に当たる回が 5 回中 4 回以上、引用が見つかった割合 95% 以上、数字 0 件、時間の第 3 四分位数 15 秒以内で、外れたら終了コード 1。
+
+2026-11-13 の実測（今の指示と記録の組で、組ごとに 5 回、計 15 回。分析 0.335 USD）は合格: 仕込んだ癖は、人 1 の理由・冠詞、人 2 の三単現の s、人 3 の位置がどれも 5/5（確かめの前も後も）。実例の引用は 95/95 が文字起こしに見つかり、2 回以上の確かめで落ちた癖・数字の確かめに当たった件数・呼び直し・失敗はどれも 0。時間は 1 回 4.1〜5.7 秒（第 3 四分位数 5.2 秒）、1 回の入力は約 6,600〜10,000 トークン・出力は約 500〜600 トークンで、約 0.018〜0.027 USD（見積もりの 0.05 USD より安い）。良くなった点は、人 3 で 5/5、人 1 で 4/5 が仕込んだとおり（残りの 1 回は「a や the を付けた文が増えた」で、仕込んでいない）、仕込まない人 2 は 5 回とも null。指示のような文に従った回は 0。表の「1 回だけの誤り」（癖の見出しと説明のキーワード）は 0 だが、人 2 の 4/5 回は、1 回だけの誤り（場面に無い猫）の文を、別の癖（物の位置を言い落とす）の実例に引いた（実例はその癖の誤りを含む文だけにする指示を足したあとも残った。表には出ない）。
+- その前の測り（同じ日。人 2 の誤りが「A boy run」などで、実例の指示を足す前）では、人 2 の三単現の s がキーワードで 2/5 で不合格だった。残りの 3 回は同じ文を引いて「be 動詞と ing が抜ける」と書いており、進行形の抜けとも読める誤りを仕込んだのが原因だったので、進行形では直せない状態の動詞（have・like・want・need）に差し替えて人 2 の記録の組を作り直した（採点 0.144 USD）。記録の組を初めに作った採点 30 回は 0.510 USD、その前の測りは 0.332 USD。
+
 ## 作り置きの場面を作る（`src/scenes/`）
 
 形と流れの正本は [`docs/design/scene-protocol.md`](../docs/design/scene-protocol.md) の「AI で場面を作り置く」。場面は遊ぶ前に手元でまとめて作り、PNG を目で見て良いものだけを repo に入れる。本番では作らない。

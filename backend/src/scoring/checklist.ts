@@ -73,10 +73,11 @@ const LEVEL_VALUE: Record<ItemLevel, number> = {
   none: 0,
 };
 
-// 語に分ける。大文字小文字・句読点・空白の違いは、語の並びで比べることで無視する
+// 語に分ける。大文字小文字・句読点・空白の違いは、語の並びで比べることで無視する。
+// 苦手の分析の引用の確かめ（src/analysis/verify.ts）も同じ分け方を使う
 const WORD = /[\p{L}\p{N}]+(?:['’][\p{L}\p{N}]+)*/gu;
-type Token = { text: string; start: number; end: number };
-const tokenize = (s: string): Token[] =>
+export type Token = { text: string; start: number; end: number };
+export const tokenize = (s: string): Token[] =>
   [...s.matchAll(WORD)].map((m) => ({
     text: m[0].toLowerCase().replace(/’/g, "'"),
     start: m.index,
