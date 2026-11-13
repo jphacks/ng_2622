@@ -21,8 +21,10 @@
   // それ以外は部品の一覧を出す今の道（既定）。どちらでも部品は作らない。部品をその場で作るのは苦手の場面（いつも規約で引く）だけ
   // WEAK_SCENE_* は苦手の場面（POST /weak-scenes、docs/design/part-generation.md）。WEAK_SCENE_GENERATION は "on" のときだけ作る
   // スイッチ（それ以外は 503。SCENE_GENERATION とは別。PR のプレビューは off）。IP_PER_HOUR は IP ごとの 1 時間の回数、
-  // DAILY_LIMIT は全体の 1 日（日本時間）の回数（受け付けた 1 回で 1 つ。手元の実測で 1 回 0.01〜0.08 USD、平均 約 0.035 USD。部品を 1 個作ると +0.026 USD）。普段は 5・40
-  // TITLE_CAMPAIGN はタイトル画面に出す広告（src/title/schedule.json の id。カンマ区切り）。本番は空で、既定の場面（公園）を出す。
+  // DAILY_LIMIT は全体の 1 日（日本時間）の回数（受け付けた 1 回で 1 つ。手元の実測で 1 回 0.01〜0.08 USD、平均 約 0.035 USD。部品を 1 個作ると +0.026 USD）。普段は 5・40。
+  // Award Day の当日は 60・200（多くても約 30 USD）にし、終わったら戻す（WEAK_POINT_* と同じ PR で）
+  // TITLE_CAMPAIGN はタイトル画面に出す広告（src/title/schedule.json の id。カンマ区切り）。普段の本番は空で、既定の場面（公園）を出す。
+  // Award Day の間は本番も jphacks-2026（出す期間は schedule.json で 11/15 の終わりまで。過ぎれば空と同じ）。当日の値を戻す PR で空に戻す。
   // staging だけ、デプロイのときに --var TITLE_CAMPAIGN:jphacks-2026 を付ける（backend/README.md）
   "vars": {
     "SCORING_MODE": "live",
@@ -32,14 +34,14 @@
     "CLAUDE_EFFORT": "low",
     "SCENE_GENERATION": "off",
     "WEAK_POINT_ANALYSIS": "on",
-    "WEAK_POINT_IP_PER_HOUR": "10",
-    "WEAK_POINT_DAILY_LIMIT": "200",
+    "WEAK_POINT_IP_PER_HOUR": "60",
+    "WEAK_POINT_DAILY_LIMIT": "500",
     "WEAK_POINT_MAX_BODY_BYTES": "65536",
     "SCENE_PART_LOOKUP": "list",
     "WEAK_SCENE_GENERATION": "on",
-    "WEAK_SCENE_IP_PER_HOUR": "5",
-    "WEAK_SCENE_DAILY_LIMIT": "40",
-    "TITLE_CAMPAIGN": ""
+    "WEAK_SCENE_IP_PER_HOUR": "60",
+    "WEAK_SCENE_DAILY_LIMIT": "200",
+    "TITLE_CAMPAIGN": "jphacks-2026"
   },
   // タイトル画面の 3D（repo の assets/title/*.usdz）を、Worker と一緒に静的アセットとして配る（/title/<file>）。
   // 配るファイルは assets/.assetsignore で絞る（README・画像・部品などは配らない）。プレビューも上のこの設定を使う
