@@ -45,7 +45,7 @@ struct DioramaView: View {
   }
 
   /// 手元の配置から組んで出す（遊んだ記録の場面）。ID では取りに行かない
-  /// 組み上がるまでは透明にする。下に名前の板を置いて使う（RecordSceneView）
+  /// 組み上がるまでは透明にする。下に印を置いて使う（RecordSceneView）
   init(layout: SceneLayout, key: String, yaw: Double, tilt: Double, distance: Float = 7.8) {
     source = .layout(layout, key: key)
     self.yaw = yaw
@@ -145,30 +145,18 @@ private struct UnmountWhileCovered: ViewModifier {
   }
 }
 
-/// 場面の名前と小さな印。遊んだ記録の 3D の後ろに置く（3D が描かれるまで・描かれないときも、何も無い所を作らない。
-/// 描かれると盤に隠れる）。きろくの横の並びの、3D を出さない場面にも使う
+/// 小さな印。遊んだ記録の 3D の後ろに置く（3D が描かれるまで・描かれないときも、何も無い所を作らない。
+/// 描かれると盤に隠れる）。きろくの横の並びの、3D を出さない場面にも使う（場面の名前は 3D の下に出す）
 struct ScenePlaceholder: View {
-  let name: String
-  /// 名前も出すか。薄くして並べる隣の場面では、3D の後ろから文字が透けないよう、印だけにする
-  var showsName = true
-
   var body: some View {
-    // 塗りは置かず、小さな印と名前を薄い灰色で、ジオラマの盤が描かれると隠れる真ん中に置く
-    VStack(spacing: 6) {
-      Image(systemName: "cube")
-        .font(.system(size: 18, weight: .bold))
-      if showsName {
-        Text(name)
-          .font(Theme.font(13, .heavy))
-          .multilineTextAlignment(.center)
-          .lineLimit(2)
-      }
-    }
-    .foregroundStyle(Theme.disabledBorder)
-    .frame(maxWidth: 150)
-    .frame(maxWidth: .infinity, maxHeight: .infinity)
-    // 盤の真ん中は、枠の真ん中より少し下に描かれる
-    .offset(y: 12)
+    // 塗りは置かず、小さな印を薄い灰色で、ジオラマの盤が描かれると隠れる真ん中に置く
+    Image(systemName: "cube")
+      .font(.system(size: 18, weight: .bold))
+      .foregroundStyle(Theme.disabledBorder)
+      .frame(maxWidth: .infinity, maxHeight: .infinity)
+      // 盤の真ん中は、枠の真ん中より少し下に描かれる
+      .offset(y: 12)
+      .accessibilityHidden(true)
   }
 }
 

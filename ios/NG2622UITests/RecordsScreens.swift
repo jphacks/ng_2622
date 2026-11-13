@@ -27,8 +27,8 @@ final class RecordsScreens: XCTestCase {
     app.buttons.matching(NSPredicate(format: "label BEGINSWITH 'きろく'")).firstMatch
   }
 
-  /// ホーム → きろく → 横に送る → 下にスクロール（最新の回の振り返り → 前の回との区切り → 一番下）→ 上へ戻る
-  /// → 設定 → 消す → きろく（0 件）
+  /// ホーム → きろく → 横に送る → 下にスクロール（3D が上に止まって縮む → 最新の回の振り返り → 前の回との区切り
+  /// → 一番下）→ 上へ戻る → 設定 → 消す → きろく（0 件）
   @MainActor
   func testRecordsAndSettings() throws {
     guard outDir != nil else { throw XCTSkip("RECORDS_SHOT_DIR が無いので撮らない") }
@@ -37,71 +37,127 @@ final class RecordsScreens: XCTestCase {
     shot("1-home")
 
     recordsCard(app).tap()
-    XCTAssert(app.staticTexts["りれき"].waitForExistence(timeout: 10))
+    let title = app.staticTexts["records-title"]
+    XCTAssert(title.waitForExistence(timeout: 10))
     let opened = Date()
-    // 真ん中の場面の 3D が描かれるまでの秒数を残す（描かれるまでは名前の板が見えている）
-    let scenes = app.descendants(matching: .any).matching(identifier: "record-scene")
-    XCTAssert(scenes.firstMatch.waitForExistence(timeout: 10))
+    // 真ん中の場面の 3D が描かれるまでの秒数を残す（描かれるまでは印だけが見えている）
+    let scene = app.descendants(matching: .any).matching(identifier: "record-scene").firstMatch
+    XCTAssert(scene.waitForExistence(timeout: 10))
     shot("2a-records-before-drawn")
-    print("TIMING records-scene-drawn \(Self.drawnTime(of: scenes.element(boundBy: 0), since: opened, timeout: 8))")
+    print("TIMING records-scene-drawn \(Self.drawnTime(of: scene, since: opened, timeout: 8))")
     sleep(1)
     shot("2-records-top")
+    let top = title.frame.minY
+    let restScene = scene.frame
+    print("FRAME scene-at-rest \(restScene)")
 
-    // 横に送って、隣の場面にする
+    // 3D の所で横に送って、隣の場面にする
     let window = app.windows.firstMatch
+    let sceneY = (restScene.minY + restScene.height * 0.4) / window.frame.height
     func swipe(_ from: Double, _ to: Double) {
-      window.coordinate(withNormalizedOffset: CGVector(dx: from, dy: 0.32))
-        .press(forDuration: 0.05, thenDragTo: window.coordinate(withNormalizedOffset: CGVector(dx: to, dy: 0.32)))
+      window.coordinate(withNormalizedOffset: CGVector(dx: from, dy: sceneY))
+        .press(forDuration: 0.05, thenDragTo: window.coordinate(withNormalizedOffset: CGVector(dx: to, dy: sceneY)))
       sleep(3)
     }
     swipe(0.7, 0.25)
     shot("3-records-next-scene")
     swipe(0.3, 0.75)
 
-    // 何回か遊んだ場面（回の区切りが 2 つ以上ある）まで送る
-    let dividers = app.descendants(matching: .any).matching(identifier: "round-divider")
-    let counted = app.staticTexts.matching(NSPredicate(format: "label ENDSWITH '回あそんだ'")).firstMatch
-    for _ in 0..<8 where counted.label.hasPrefix("1 ") {
+    // 何回か遊んだ場面（回の区切りが 2 つ以上ある）まで送る。回数は読み上げの値にだけある
+    func count() -> String { scene.value as? String ?? "" }
+    for _ in 0..<8 where count().hasPrefix("1 ") {
       swipe(0.7, 0.25)
     }
-    XCTAssertFalse(counted.label.hasPrefix("1 "))
-    let name = counted.label
+    XCTAssertFalse(count().hasPrefix("1 "))
+    let name = scene.label
 
-    // 下にスクロールすると、画面を移らずに、最新の回の振り返り（あなたの描写・場面のチェック）が続く
-    func scrollDown(_ amount: Double = 0.55) {
-      window.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.8))
-        .press(forDuration: 0.05, thenDragTo: window.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.8 - amount)))
+    // 下にゆっくりスクロールする（指を止めてから離すので、慣性で流れない）。amount は画面の高さに対する割合
+    func scrollDown(_ amount: Double, from: Double = 0.8) {
+      window.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: from))
+        .press(
+          forDuration: 0.05, thenDragTo: window.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: from - amount)),
+          withVelocity: 600, thenHoldForDuration: 0.3)
       sleep(1)
     }
-    scrollDown()
-    shot("4-records-scrolled")
-    scrollDown()
+    // 3D が止まって縮み始め、まだ縮み切っていない所まで、少しずつ上下に送る（指の動きの分だけ正確には送れないため、
+    // 3D と名前の高さを見て、行き過ぎたら戻す）
+    func shrinkPartly() {
+      for _ in 0..<30 {
+        let height = scene.frame.height
+        print("FRAME shrinking-step \(height)")
+        if height > restScene.height * 0.88 {
+          scrollDown(0.02)
+        } else if height < restScene.height * 0.7 {
+          scrollDown(-0.02)
+        } else {
+          break
+        }
+      }
+      XCTAssertLessThan(scene.frame.height, restScene.height * 0.88 + 1)
+      XCTAssertGreaterThan(scene.frame.height, restScene.height * 0.7 - 1)
+    }
+    // 3D が上端に着いて止まり、縮んでいく途中（縮み始めるまで少しずつ送る）
+    shrinkPartly()
+    shot("4a-records-shrinking")
+    print("FRAME scene-shrinking \(scene.frame)")
+    // 縮み切って、小さな 3D と名前だけが上に残り、その下で中身がぼかしに溶ける
+    scrollDown(0.15)
+    shot("4-records-stuck")
+    let stuckScene = scene.frame
+    print("FRAME scene-stuck \(stuckScene)")
+    XCTAssertLessThan(stuckScene.minY, restScene.minY)
+    XCTAssertLessThan(stuckScene.height, restScene.height * 0.65)
+    // 縮み切っている間も、戻るボタンは押せる（上端をふさぐ地の色より手前）
+    XCTAssert(app.buttons["戻る"].firstMatch.isHittable)
+    // さらに下（最新の回の振り返りの続き）
+    scrollDown(0.45)
     shot("4b-records-scrolled-more")
-    // 前の回との区切り（─── 11/11 ───）まで送る
+    // 前の回との区切り（─── 11/13 3:02 ───）が、画面の中ほどに来るまで送る
+    let dividers = app.descendants(matching: .any).matching(identifier: "round-divider")
     let second = dividers.element(boundBy: 1)
-    for _ in 0..<12 where !(second.exists && second.isHittable) {
-      scrollDown(0.4)
+    for _ in 0..<16 where !(second.exists && second.frame.minY < window.frame.height * 0.55) {
+      scrollDown(0.3)
     }
     XCTAssert(second.exists)
     shot("5-records-next-round")
     // 一番下まで送る
     for _ in 0..<40 {
       let before = XCUIScreen.main.screenshot().pngRepresentation
-      scrollDown(0.6)
+      scrollDown(0.6, from: 0.85)
       if XCUIScreen.main.screenshot().pngRepresentation == before { break }
     }
     shot("6-records-bottom")
 
     // 上へ戻っても、横の並びの 3D と、選んでいる場面はそのまま
-    for _ in 0..<40 where !app.staticTexts["りれき"].isHittable {
-      window.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.2))
-        .press(forDuration: 0.05, thenDragTo: window.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.9)))
+    for _ in 0..<40 where !(title.exists && title.frame.minY >= top - 1) {
+      window.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.3))
+        .press(forDuration: 0.05, thenDragTo: window.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.95)))
     }
-    sleep(1)
+    sleep(2)
     shot("6b-records-back-to-top")
-    XCTAssert(scenes.firstMatch.exists)
-    print("TIMING records-scene-after-scroll-back \(Self.drawnTime(of: scenes.element(boundBy: 0), since: Date(), timeout: 4))")
-    XCTAssertEqual(counted.label, name)
+    XCTAssert(scene.exists)
+    XCTAssertEqual(scene.frame.minY, restScene.minY, accuracy: 1)
+    print("TIMING records-scene-after-scroll-back \(Self.drawnTime(of: scene, since: Date(), timeout: 4))")
+    XCTAssertEqual(scene.label, name)
+
+    // 縮んでいく途中で横に送ると、送った場面の最新の回の頭（縮み切った所）に着く
+    shrinkPartly()
+    window.coordinate(withNormalizedOffset: CGVector(dx: 0.75, dy: scene.frame.midY / window.frame.height))
+      .press(
+        forDuration: 0.05,
+        thenDragTo: window.coordinate(withNormalizedOffset: CGVector(dx: 0.2, dy: scene.frame.midY / window.frame.height)))
+    sleep(3)
+    shot("6c-records-switched-while-shrinking")
+    print("FRAME scene-after-switch \(scene.frame)")
+    XCTAssertNotEqual(scene.label, name)
+    XCTAssertEqual(scene.frame.minY, stuckScene.minY, accuracy: 1)
+    XCTAssertEqual(scene.frame.height, stuckScene.height, accuracy: 2)
+    let head = dividers.element(boundBy: 0)
+    XCTAssert(head.exists)
+    print("FRAME first-divider-after-switch \(head.frame)")
+    XCTAssertGreaterThanOrEqual(head.frame.minY, stuckScene.maxY - 1)
+    XCTAssertLessThan(head.frame.minY, stuckScene.maxY + 40)
+    // 縮み切っている間に、戻るボタンで出る
     app.buttons["戻る"].firstMatch.tap()
 
     // 設定 → すべて消す
@@ -137,7 +193,7 @@ final class RecordsScreens: XCTestCase {
     let app = launch()
     for round in 1...3 {
       recordsCard(app).tap()
-      XCTAssert(app.staticTexts["りれき"].waitForExistence(timeout: 10))
+      XCTAssert(app.staticTexts["records-title"].waitForExistence(timeout: 10))
       sleep(3)
       shot("play\(round)-0-records")
       app.buttons["戻る"].firstMatch.tap()
@@ -168,10 +224,10 @@ final class RecordsScreens: XCTestCase {
     }
   }
 
-  /// 名前の板だけのときの色の数（20〜26）より多ければ、3D が描かれたとみなす。描かれると 34〜126
+  /// 印だけのときの色の数より多ければ、3D が描かれたとみなす
   static let drawnColors = 30
 
-  /// 場面（record-scene）の所に 3D が描かれたかを、画面を撮って見る。名前の板だけなら色の数が少なく、
+  /// 場面（record-scene）の 3D の所に 3D が描かれたかを、画面を撮って見る。印だけなら色の数が少なく、
   /// 3D が描かれると増える。描かれたら since からの秒数、timeout までに描かれなければ nil
   @MainActor
   static func drawnTime(of element: XCUIElement, since start: Date, timeout: TimeInterval) -> TimeInterval? {
@@ -182,12 +238,13 @@ final class RecordsScreens: XCTestCase {
     return nil
   }
 
-  /// 要素の所を 60 × 40 に縮め、色を各 4 bit にまるめたときの色の数
+  /// 要素の上 8 割（3D の所。下の名前は入れない）を 60 × 40 に縮め、色を各 4 bit にまるめたときの色の数
   @MainActor
   static func colorCount(of element: XCUIElement) -> Int {
     let image = XCUIScreen.main.screenshot().image
     guard let cg = image.cgImage else { return 0 }
-    let f = element.frame
+    var f = element.frame
+    f.size.height *= 0.8
     let s = image.scale
     let rect = CGRect(x: f.minX * s, y: f.minY * s, width: f.width * s, height: f.height * s).integral
     guard let crop = cg.cropping(to: rect) else { return 0 }
