@@ -79,11 +79,11 @@ curl -F audio=@test.wav -F sceneId=gen-v2-pre2-park-01 -F "transcript=A boy is t
 | 守り | 値（`wrangler.jsonc` の `vars`。普段） | 超えたとき |
 | --- | --- | --- |
 | 止めるスイッチ `WEAK_POINT_ANALYSIS` | `on`（PR のプレビューは `off`） | 503 `analysis_unavailable`（本文を読む前に断る） |
-| 本文の大きさ `WEAK_POINT_MAX_BODY_BYTES` | 204800（200 KB） | 413 `invalid_message` |
+| 本文の大きさ `WEAK_POINT_MAX_BODY_BYTES` | 65536（64 KB。測定の記録の組は 11〜20 KB） | 413 `invalid_message` |
 | IP ごとの 1 時間の回数 `WEAK_POINT_IP_PER_HOUR` | 10 回 | 429 `rate_limited` |
 | 全体の 1 日（日本時間）の回数 `WEAK_POINT_DAILY_LIMIT` | 200 回（1 回約 0.05 USD で約 10 USD） | 429 `rate_limited`（呼び直しの前なら呼び直さない） |
 
-- 数え方（`UsageCounter`）: IP ごとの回数は、受け付けたリクエスト（スイッチ・大きさ・形の確かめを通ったもの）1 つで 1 回。全体の 1 日の回数は、Claude を呼んだ回数（呼び直しも 1 回）。どちらも上限の確かめを両方通ってから足し、400・413・429・503 で返したものは数えない。IP はそのまま覚えず、この DO が日ごとに作る乱数を鍵にした HMAC-SHA-256 で覚える（新しい secret は要らない）。IP ごとの回数は 1 時間の区切り（毎時 0 分）で alarm が消し、乱数は日が変われば捨てる。Cloudflare の Rate Limiting の binding は期間が 10 秒か 60 秒だけで、場所ごとの近似の数なので使わない（2026-11-13 に [文書](https://developers.cloudflare.com/workers/runtime-apis/bindings/rate-limit/) で確かめた）。
+- 数え方（`UsageCounter`）: IP ごとの回数は、受け付けたリクエスト（スイッチ・大きさ・形の確かめを通ったもの）1 つで 1 回。全体の 1 日の回数は、Claude を呼んだ回数（呼び直しも 1 回）。どちらも上限の確かめを両方通ってから足し、400・413・429・503 で返したものは数えない。IP は、IPv4 はそのまま、IPv6 は先頭の /64 で数える（1 つの回線や端末がアドレスを変えて上限をすり抜けないように）。数える場所が失敗したら、初めの数えは 503 `analysis_unavailable`（Claude を呼ばない）、呼び直しの前の数えは「呼び直さない」として 1 回目の結果を返す。IP はそのまま覚えず、この DO が日ごとに作る乱数を鍵にした HMAC-SHA-256 で覚える（新しい secret は要らない）。IP ごとの回数は 1 時間の区切り（毎時 0 分）で alarm が消し、乱数は日が変われば捨てる。Cloudflare の Rate Limiting の binding は期間が 10 秒か 60 秒だけで、場所ごとの近似の数なので使わない（2026-11-13 に [文書](https://developers.cloudflare.com/workers/runtime-apis/bindings/rate-limit/) で確かめた）。
 
 ### 手元で分析を試す
 
@@ -100,7 +100,7 @@ jq .request test/fixtures/weak-points/person-1.json \
 
 1. 当日の分（分析 500 回 ≈ 25 USD と採点の分）が、Claude のクレジットの残りと月の支出上限に収まるかを Console で確かめる。
 2. `origin/main` からブランチを切り、`wrangler.jsonc` の `vars` の `WEAK_POINT_IP_PER_HOUR` を `"60"`、`WEAK_POINT_DAILY_LIMIT` を `"500"` にする（`previews` は `off` のまま）。
-3. `pnpm cf-typegen` で `worker-configuration.d.ts` を作り直す（`vars` の値が型に入るので、作り直さないと backend-checks の `pnpm cf-typegen:check` が落ちる）。`pnpm test` の wrangler.jsonc の値の確かめ（`test/weak-points.test.ts`）も当日の値に直す。
+3. `pnpm cf-typegen` で `worker-configuration.d.ts` を作り直す（`vars` の値が型に入るので、作り直さないと backend-checks の `pnpm cf-typegen:check` が落ちる）。変えるのは `wrangler.jsonc` と `worker-configuration.d.ts` の 2 つだけでよい（テストは値そのものでなく、正の整数の文字列かだけを見る）。
 4. PR を出して 11/14 に approve をもらい、11/15 の朝に merge する。デプロイの後、Observability で `weak_points_analyzed`・`weak_points_limited` の出方を見る。
 5. 当日が終わったら、同じ手順で普段の値（10・200）に戻す PR を出す。
 6. 急いで止めるときは `WEAK_POINT_ANALYSIS` を `"off"` にする（アプリは数える分析だけを出す）。

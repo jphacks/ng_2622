@@ -88,7 +88,7 @@ WebSocket のメッセージ（ThatsFight の `src/shared/protocol.ts` に倣う
 - シーンの定義（ID、名前、Claude に渡す場面の説明、描写してほしい要素の一覧、3D モデルのファイル名）は、リポジトリに JSON で置き、Worker とアプリの両方が読む（推測）。
 - 3D モデルはアプリに同梱する（推測）。会場の回線に左右されないため。
 - サーバーは、音声を保存しない（採点が終われば捨てる）。部屋の中の採点の結果は、部屋が閉じたら消す。長く保存しない。
-- 端末には、遊んだ本人の記録を残す（2026-11-12 に決定。[ADR](../adr/20261112-keep-play-records-on-device-one-file-per-round.md)）。自分の採点の結果が届いたら、場面の配置の JSON・自分の結果・自分の録音を、アプリ用の領域に 1 ラウンド 1 ファイルで置く。順位とほかの人の結果は入れない。サーバーには送らない。形と消し方は [`play-record.md`](./play-record.md)。
+- 端末には、遊んだ本人の記録を残す（2026-11-12 に決定。[ADR](../adr/20261112-keep-play-records-on-device-one-file-per-round.md)）。自分の採点の結果が届いたら、場面の配置の JSON・自分の結果・自分の録音を、アプリ用の領域に 1 ラウンド 1 ファイルで置く。順位とほかの人の結果は入れない。サーバーへは、苦手の分析（`POST /weak-points`）のときだけ、直近の記録の文字（録音は除く）を送り、サーバーには残さない（2026-11-13。[`weak-point-analysis.md`](./weak-point-analysis.md)）。形と消し方は [`play-record.md`](./play-record.md)。
 - シーンの評価（★とコメント）は、全体で 1 つの Durable Object `SceneReviews` の SQLite に残す（[ADR](../adr/20261024-store-scene-reviews-in-a-global-durable-object.md)）。今後のユーザーが作るシーンも同じ表に足す。
 
 ## コスト破産への備え（[`cost-safety.md`](./cost-safety.md) の具体化）
@@ -96,7 +96,7 @@ WebSocket のメッセージ（ThatsFight の `src/shared/protocol.ts` に倣う
 | 層 | 対策 |
 | --- | --- |
 | 端末 | キーを持たない。音声は最長 20 秒で切る |
-| Worker | 音声の大きさ（1 MB 程度まで）と形式を確かめてから受け取る。苦手の分析（`POST /weak-points`）は、本文の大きさ（200 KB）と、IP ごとの 1 時間の回数を `UsageCounter`（Durable Object）で数えて絞る。Cloudflare の Rate Limiting の binding は期間が 10 秒か 60 秒だけで、場所ごとの近似の数なので使わない（2026-11-13 に Cloudflare の文書で確かめた） |
+| Worker | 音声の大きさ（1 MB 程度まで）と形式を確かめてから受け取る。苦手の分析（`POST /weak-points`）は、本文の大きさ（64 KB）と、IP ごとの 1 時間の回数を `UsageCounter`（Durable Object）で数えて絞る。Cloudflare の Rate Limiting の binding は期間が 10 秒か 60 秒だけで、場所ごとの近似の数なので使わない（2026-11-13 に Cloudflare の文書で確かめた） |
 | 部屋 | 1 人 1 ラウンド 1 回だけ採点する。部屋の人数の上限と、1 時間あたりのラウンド数の上限を置く |
 | 全体 | 1 日あたりの採点回数の上限を置く。超えたら固定の点数を返すモードに切り替える（まだ無い）。苦手の分析は、Claude を呼んだ回数を 1 日ごとに `UsageCounter` で数え、上限で 429 にする |
 | スイッチ | 環境変数ひとつで外部 API の呼び出しを止める（採点は `SCORING_MODE`、場面の生成は `SCENE_GENERATION`、苦手の分析は `WEAK_POINT_ANALYSIS`） |
@@ -116,7 +116,7 @@ WebSocket のメッセージ（ThatsFight の `src/shared/protocol.ts` に倣う
 | 1 回の音声 | 20 秒・1 MB まで | 16 kHz・16 bit・モノラルの WAV で 20 秒 ≈ 0.64 MB |
 | 苦手の分析の IP ごとの 1 時間の回数 | 10 回（Award Day 当日は 60 回） | `wrangler.jsonc` の `WEAK_POINT_IP_PER_HOUR`。EXPO の会場は同じ Wi-Fi（同じ IP）から使うので当日は増やす |
 | 苦手の分析の全体の 1 日の回数 | 200 回（当日は 500 回） | `WEAK_POINT_DAILY_LIMIT`。Claude を呼んだ回数（呼び直しも 1 回）。1 回約 0.05 USD なので約 10 USD（当日は約 25 USD） |
-| 苦手の分析の本文 | 200 KB | `WEAK_POINT_MAX_BODY_BYTES`。10 件で 15〜25 KB の見込み |
+| 苦手の分析の本文 | 64 KB | `WEAK_POINT_MAX_BODY_BYTES`。測定の記録の組（10 件）は 11〜20 KB。大きいほど 1 回の費用が上がるので、余裕は少なめにした |
 
 ## Workers の無料プランで足りるか（2026-10-21 に確認）
 
