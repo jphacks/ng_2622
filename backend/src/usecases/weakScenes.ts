@@ -29,6 +29,8 @@ import { rateKeyOf } from "./weakPoints";
 // 本文（癖の題と直し方など）は保存せず、ログにも出さない。ログに残すのは級・狙った種類・作った部品の数・時間・トークンだけ
 
 export type WeakSceneEnv = GenerateEnv & {
+  // 作った場面と部品の置き場（R2）。無ければ作らない（503）
+  BUCKET?: R2Bucket;
   // "on" のときだけ作る。PR のプレビューは off（wrangler.jsonc の previews）
   WEAK_SCENE_GENERATION?: string;
   // IP ごとの 1 時間の回数・全体の 1 日（日本時間）の回数（受け付けた 1 回で 1 つ。作り直しや部品は数えない）
@@ -254,6 +256,9 @@ export async function makeWithLimits(
 ): Promise<WeakSceneOutcome> {
   if (!env.CLAUDE_API_KEY) {
     return unavailable("苦手の場面の生成は止めてある（CLAUDE_API_KEY が無い）");
+  }
+  if (!env.BUCKET) {
+    return unavailable("苦手の場面の置き場（BUCKET）が無い");
   }
   let taken: Awaited<ReturnType<UsageCounterRepository["take"]>>;
   try {

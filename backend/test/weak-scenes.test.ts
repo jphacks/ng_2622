@@ -35,6 +35,8 @@ const ENV = {
   WEAK_SCENE_IP_PER_HOUR: "5",
   WEAK_SCENE_DAILY_LIMIT: "40",
   CLAUDE_API_KEY: "test",
+  // 置き場があることだけを見る（作る関数は偽物にするので読み書きしない）
+  BUCKET: {} as R2Bucket,
 };
 
 const BODY = {
@@ -321,15 +323,27 @@ test("上限に達したら 429 rate_limited で作らない。数える場所�
   assert.ok(parsed.success);
 });
 
-test("Claude のキーが無ければ 503 で、数えない", async () => {
-  const { usage, calls } = fakeUsage();
-  const routes = makeWeakSceneRoutes({
-    usage: () => usage,
-    make: async () => OK_BODY(),
-  });
-  const res = await post(routes, BODY, { ...ENV, CLAUDE_API_KEY: undefined });
-  assert.equal(res.status, 503);
-  assert.equal(calls.length, 0);
+test("Claude のキーか置き場（BUCKET）が無ければ 503 で、数えない", async () => {
+  for (const env of [
+    { ...ENV, CLAUDE_API_KEY: undefined },
+    { ...ENV, BUCKET: undefined },
+  ]) {
+    const { usage, calls } = fakeUsage();
+    let made = 0;
+    const routes = makeWeakSceneRoutes({
+      usage: () => usage,
+      make: async () => {
+        made++;
+        return OK_BODY();
+      },
+    });
+    const res = await post(routes, BODY, env);
+    assert.equal(res.status, 503);
+    const body = (await res.json()) as { error: { code: string } };
+    assert.equal(body.error.code, "generation_unavailable");
+    assert.equal(calls.length, 0);
+    assert.equal(made, 0);
+  }
 });
 
 test("作れなかったら、作る関数の返したエラー（502）をそのまま返す", async () => {
