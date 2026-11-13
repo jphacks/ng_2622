@@ -1,16 +1,32 @@
 import Foundation
 
-/// AI で作った場面（sceneId が gen- で始まる）の配置の JSON を取る口（GET /scenes/{sceneId}/layout）。
+/// 場面の配置の JSON を取る口。作り置きの場面は同梱の pool/<sceneId>.json を読み、
+/// 部屋がその場で AI で作った場面だけ GET /scenes/{sceneId}/layout で取る（BundledFirstSceneLayoutClient）。
 /// docs/design/scene-protocol.md の「API」。場面は部屋が作る（作り置きか、スタートのときに AI で作る）ので、
 /// アプリは作る口（POST /scenes/generate）を呼ばない
 protocol SceneLayoutClient: AnyObject {
-  /// 配置の JSON。room は部屋のコードで、部屋がその場で作った場面（作り置きに無い）を取るときに要る
-  func layout(sceneID: String, room: String?) async throws -> SceneLayout
+  /// 配置の JSON（届いたままの中身と、読んだ配置）。room は部屋のコードで、部屋がその場で作った場面（作り置きに無い）を取るときに要る
+  func document(sceneID: String, room: String?) async throws -> SceneDocument
 }
 
 extension SceneLayoutClient {
-  func layout(sceneID: String) async throws -> SceneLayout {
-    try await layout(sceneID: sceneID, room: nil)
+  /// 配置の JSON を読んだもの
+  func layout(sceneID: String, room: String? = nil) async throws -> SceneLayout {
+    try await document(sceneID: sceneID, room: room).layout
+  }
+}
+
+/// 配置の JSON の、届いたままの中身と、アプリが読んだ配置。
+/// SceneLayout はアプリが使う項目しか読まない（place・facing などを落とす）ので、遊んだ記録に場面をまるごと残すときは data を使う
+nonisolated struct SceneDocument: Sendable, Equatable {
+  /// 届いたままの JSON（scenenglish.scene/2）
+  let data: Data
+  let layout: SceneLayout
+
+  /// 知らない版の形・読めない JSON なら throw する
+  init(data: Data) throws {
+    self.data = data
+    layout = try SceneLayout.decode(data)
   }
 }
 
@@ -39,7 +55,7 @@ enum SceneLayouts {
 /// 配置の JSON を覚えておく所。同じ場面は 1 度だけ取りに行く。名前は結果の画面で、説明は待機の画面で使う
 final class SceneLayoutStore {
   private let client: any SceneLayoutClient
-  private var loads: [String: Task<SceneLayout, any Error>] = [:]
+  private var loads: [String: Task<SceneDocument, any Error>] = [:]
   private var names: [String: String] = [:]
   private var descriptions: [String: String] = [:]
 
@@ -49,19 +65,24 @@ final class SceneLayoutStore {
 
   /// room は部屋のコード（部屋がその場で作った場面を取るときに要る）。ID は場面ごとに違うので、覚えるのは ID ごと
   func layout(of sceneID: String, room: String? = nil) async throws -> SceneLayout {
-    let task: Task<SceneLayout, any Error>
+    try await document(of: sceneID, room: room).layout
+  }
+
+  /// 届いたままの JSON も要るとき（遊んだ記録に場面をまるごと残す）
+  func document(of sceneID: String, room: String? = nil) async throws -> SceneDocument {
+    let task: Task<SceneDocument, any Error>
     if let existing = loads[sceneID] {
       task = existing
     } else {
       let client = client
-      task = Task { try await client.layout(sceneID: sceneID, room: room) }
+      task = Task { try await client.document(sceneID: sceneID, room: room) }
       loads[sceneID] = task
     }
     do {
-      let layout = try await task.value
-      names[sceneID] = layout.name
-      descriptions[sceneID] = layout.description
-      return layout
+      let document = try await task.value
+      names[sceneID] = document.layout.name
+      descriptions[sceneID] = document.layout.description
+      return document
     } catch {
       // 取れなかったものは覚えず、次にまた取りに行く
       if loads[sceneID] == task { loads[sceneID] = nil }
@@ -91,7 +112,7 @@ final class HTTPSceneLayoutClient: SceneLayoutClient {
   }
 
   /// 部屋がその場で作った場面は、部屋のコードを ?room= に付けて取る。作り置きの場面は付けなくても取れる
-  func layout(sceneID: String, room: String?) async throws -> SceneLayout {
+  func document(sceneID: String, room: String?) async throws -> SceneDocument {
     var url = baseURL.appending(path: "scenes/\(sceneID)/layout")
     if let room { url.append(queryItems: [URLQueryItem(name: "room", value: room)]) }
     let request = URLRequest(url: url)
@@ -100,7 +121,7 @@ final class HTTPSceneLayoutClient: SceneLayoutClient {
       throw status == 404 ? SceneLayoutError.notFound : SceneLayoutError.connectionFailed
     }
     do {
-      return try SceneLayout.decode(data)
+      return try SceneDocument(data: data)
     } catch {
       sceneLog.error("配置の JSON を読めませんでした（\(sceneID, privacy: .public)）: \(error, privacy: .public)")
       throw SceneLayoutError.connectionFailed
@@ -136,9 +157,9 @@ final class BundledFirstSceneLayoutClient: SceneLayoutClient {
     self.remote = remote
   }
 
-  func layout(sceneID: String, room: String?) async throws -> SceneLayout {
-    if let layout = try? await bundled.layout(sceneID: sceneID, room: room) { return layout }
-    return try await remote.layout(sceneID: sceneID, room: room)
+  func document(sceneID: String, room: String?) async throws -> SceneDocument {
+    if let document = try? await bundled.document(sceneID: sceneID, room: room) { return document }
+    return try await remote.document(sceneID: sceneID, room: room)
   }
 }
 
@@ -150,10 +171,19 @@ final class MockSceneLayoutClient: SceneLayoutClient {
     self.bundle = bundle
   }
 
-  func layout(sceneID: String, room: String?) async throws -> SceneLayout {
+  func document(sceneID: String, room: String?) async throws -> SceneDocument {
+    try Self.readDocument(sceneID, bundle: bundle)
+  }
+
+  /// 同梱の配置をその場で読む（Mock の結果を作るときに使う）
+  static func read(_ sceneID: String, bundle: Bundle = .main) throws -> SceneLayout {
+    try readDocument(sceneID, bundle: bundle).layout
+  }
+
+  static func readDocument(_ sceneID: String, bundle: Bundle = .main) throws -> SceneDocument {
     guard let url = bundle.url(forResource: sceneID, withExtension: "json", subdirectory: ScenePool.directory) else {
       throw SceneLayoutError.notFound
     }
-    return try SceneLayout.decode(Data(contentsOf: url))
+    return try SceneDocument(data: Data(contentsOf: url))
   }
 }

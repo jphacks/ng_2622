@@ -1,18 +1,6 @@
 // 部屋の Durable Object（src/durable-objects/room.ts）を Node で動かすための仕掛け。
-// cloudflare:workers を差し替え、保存領域と WebSocket をメモリでまねる
-import { registerHooks } from "node:module";
-
-registerHooks({
-  resolve(specifier, context, next) {
-    if (specifier === "cloudflare:workers") {
-      return {
-        url: new URL("./cloudflare-workers.mjs", import.meta.url).href,
-        shortCircuit: true,
-      };
-    }
-    return next(specifier, context);
-  },
-});
+// cloudflare:workers を差し替え（workers-hooks.ts）、保存領域と WebSocket をメモリでまねる
+import "./workers-hooks";
 
 // joinRoom の合言葉の比較は Workers だけにある crypto.subtle.timingSafeEqual を使う
 const subtle = crypto.subtle as SubtleCrypto & {
@@ -33,6 +21,8 @@ export type FakeSocket = WebSocket & { sent: Record<string, unknown>[] };
 /** DO の ctx のまね。保存領域は Map、WebSocket は配列 */
 export const fakeContext = (storage = new Map<string, unknown>()) => {
   const sockets: FakeSocket[] = [];
+  // 最後に予約した alarm の時刻（ms）
+  const alarm = { at: null as number | null };
   const ctx = {
     storage: {
       get: async (key: string) => structuredClone(storage.get(key)),
@@ -41,12 +31,14 @@ export const fakeContext = (storage = new Map<string, unknown>()) => {
       },
       delete: async (key: string) => storage.delete(key),
       deleteAll: async () => storage.clear(),
-      setAlarm: async () => {},
+      setAlarm: async (at: number) => {
+        alarm.at = at;
+      },
     },
     acceptWebSocket: () => {},
     getWebSockets: () => sockets as unknown as WebSocket[],
   };
-  return { ctx, storage, sockets };
+  return { ctx, storage, sockets, alarm };
 };
 
 const OPEN = 1;
@@ -80,7 +72,7 @@ export const openRoom = async (
   env: Record<string, unknown>,
   names: string[] = ["B"],
 ) => {
-  const { ctx, sockets, storage } = fakeContext();
+  const { ctx, sockets, storage, alarm } = fakeContext();
   // biome-ignore lint/suspicious/noExplicitAny: テストのまねなので型を合わせない
   const room = new Room(ctx as any, env as any);
   const created = await room.create("0427");
@@ -103,7 +95,7 @@ export const openRoom = async (
   const welcomes = [host, ...others].map(
     (ws) => received(ws, "welcome")[0] as Welcome,
   );
-  return { room, ctx, sockets, storage, host, others, welcomes };
+  return { room, ctx, sockets, storage, alarm, host, others, welcomes };
 };
 
 /** 同じ保存領域とソケットで DO を作り直す（休止や作り直しのまね。メモリの中身は消える） */

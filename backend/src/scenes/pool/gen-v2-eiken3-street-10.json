@@ -1,0 +1,87 @@
+{
+  "protocol": "scenenglish.scene/2",
+  "id": "gen-v2-eiken3-street-10",
+  "name": "道の男の人と女の子",
+  "difficulty": "eiken-3",
+  "description": "A man is walking on the sidewalk. A girl is carrying a box. There is a car on the road.",
+  "checklist": [
+    {
+      "id": "man_walk",
+      "kind": "center",
+      "label": "男の人が歩いている",
+      "accept": "a man is walking",
+      "refs": ["man"]
+    },
+    {
+      "id": "girl_carry",
+      "kind": "center",
+      "label": "女の子が箱を運んでいる",
+      "accept": "a girl is carrying a box",
+      "refs": ["girl"]
+    },
+    {
+      "id": "car_road",
+      "kind": "detail",
+      "label": "道路に車がある",
+      "accept": "there is a car on the road",
+      "refs": ["car", "road"]
+    }
+  ],
+  "items": [
+    {
+      "key": "ground",
+      "part": "sidewalk_stone",
+      "place": {
+        "relation": "ground"
+      },
+      "position": [0, 0, 0]
+    },
+    {
+      "key": "road",
+      "part": "road_patch",
+      "place": {
+        "relation": "ground",
+        "zone": "back"
+      },
+      "position": [0, 0.01, -1.25]
+    },
+    {
+      "key": "car",
+      "part": "car",
+      "place": {
+        "relation": "on",
+        "target": "road"
+      },
+      "facing": "right",
+      "position": [0, 0, -1.25],
+      "yaw": 90
+    },
+    {
+      "key": "man",
+      "part": "person_walk_adult_a",
+      "place": {
+        "relation": "ground",
+        "zone": "front_left"
+      },
+      "facing": "right",
+      "position": [-2.75, 0, 2.75],
+      "yaw": 90.9,
+      "motion": {
+        "type": "move",
+        "to": [2.667, 0, 2.667],
+        "duration": 6,
+        "toward": "front_right"
+      }
+    },
+    {
+      "key": "girl",
+      "part": "person_carry_girl_a",
+      "place": {
+        "relation": "ground",
+        "zone": "front_right"
+      },
+      "facing": "camera",
+      "position": [2.75, 0, 2.75]
+    }
+  ]
+}

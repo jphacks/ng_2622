@@ -18,9 +18,9 @@ const post = (body: unknown, init: { token?: string } = {}, env = {}) =>
   );
 
 test("POST /scenes/generate は合言葉が無い・違えば 401 で、本文より先に断る", async () => {
-  assert.equal((await post({ difficulty: "easy" })).status, 401);
+  assert.equal((await post({ difficulty: "eiken-3" })).status, 401);
   assert.equal(
-    (await post({ difficulty: "easy" }, { token: "wrong-token!" })).status,
+    (await post({ difficulty: "eiken-3" }, { token: "wrong-token!" })).status,
     401,
   );
   assert.equal((await post({}, { token: "wrong" })).status, 401);
@@ -42,8 +42,8 @@ test("POST /scenes/generate は本文の形を確かめ、止めてあれば 503
   for (const body of [
     {},
     { difficulty: "extreme" },
-    { difficulty: "easy", theme: "" },
-    { difficulty: "easy", theme: "あ".repeat(51) },
+    { difficulty: "eiken-3", theme: "" },
+    { difficulty: "eiken-3", theme: "あ".repeat(51) },
   ]) {
     assert.equal(
       (await post(body, { token })).status,
@@ -51,7 +51,7 @@ test("POST /scenes/generate は本文の形を確かめ、止めてあれば 503
       JSON.stringify(body),
     );
   }
-  const off = await post({ difficulty: "easy", theme: "公園" }, { token });
+  const off = await post({ difficulty: "eiken-3", theme: "公園" }, { token });
   assert.equal(off.status, 503);
   assert.equal(
     ((await off.json()) as { error: { code: string } }).error.code,

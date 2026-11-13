@@ -3,35 +3,20 @@ import assert from "node:assert/strict";
 import { describe, test } from "node:test";
 import {
   ABOVE_GAP,
-  composeLayout,
-  EXTRA_MAX,
+  composeItems,
   GAP,
   HALF,
   MIN_MOVE,
-  normalizePoints,
   zoneCenter,
 } from "../src/scenes/compose";
 import parts from "../src/scenes/parts.json" with { type: "json" };
-import type {
-  LayoutItem,
-  Part,
-  PlanItem,
-  SceneElementInput,
-} from "../src/scenes/types";
+import type { LayoutItem, Part, PlanItem } from "../src/scenes/types";
 
 const PARTS = parts as Part[];
 const part = (id: string) => PARTS.find((p) => p.id === id) as Part;
 
-const ELEMENTS: SceneElementInput[] = [
-  { id: "a", label: "あ", points: 1, accept: "a" },
-];
-
-const compose = (items: PlanItem[], elements = ELEMENTS) =>
-  composeLayout(
-    { name: " テスト ", description: " A test. ", items, elements },
-    PARTS,
-    { id: "gen-test000000", difficulty: "easy" },
-  );
+// 座標つきの部品の並びを、layout.items の形で読めるようにする
+const compose = (items: PlanItem[]) => ({ items: composeItems(items, PARTS) });
 
 const toOf = (item: LayoutItem) => item.motion?.to ?? [Number.NaN, 0, 0];
 
@@ -850,58 +835,14 @@ describe("動き", () => {
   });
 });
 
-describe("配点と上の階層", () => {
-  test("配点は合計 90 の整数に直し、extraMax は 10", () => {
-    const elements = normalizePoints([
-      { id: "a", label: "a", points: 1, accept: "a" },
-      { id: "b", label: "b", points: 1, accept: "b" },
-      { id: "c", label: "c", points: 1, accept: "c" },
-      { id: "d", label: "d", points: 4, accept: "d" },
-    ]);
-    assert.deepEqual(
-      elements.map((e) => e.points),
-      [14, 13, 13, 50],
-    );
-    const layout = compose(
-      [GRASS],
-      [
-        { id: "x", label: "x", points: 0, accept: "x" },
-        { id: "x", label: "y", points: 0, accept: "y" },
-      ],
-    );
-    assert.deepEqual(
-      layout.elements.map((e) => [e.id, e.points]),
-      [
-        ["x", 45],
-        ["x_2", 45],
-      ],
-    );
-    assert.equal(layout.extraMax, EXTRA_MAX);
-  });
-
-  test("0 点の要素も 1 点は持つ", () => {
-    const elements = normalizePoints([
-      { id: "a", label: "a", points: 100, accept: "a" },
-      { id: "b", label: "b", points: 0, accept: "b" },
-    ]);
-    assert.deepEqual(
-      elements.map((e) => e.points),
-      [88, 2],
-    );
-  });
-
-  test("上の階層と、一覧に無い部品・重なる key の扱い", () => {
+describe("部品の絞り込みと key", () => {
+  test("一覧に無い部品は飛ばし、重なる key には _2 を付ける", () => {
     const layout = compose([
       GRASS,
       { key: "x", part: "no_such_part", place: { relation: "ground" } },
       { key: "ball", part: "ball_red", place: { relation: "ground" } },
       { key: "ball", part: "ball_red", place: { relation: "ground" } },
     ]);
-    assert.equal(layout.protocol, "scenenglish.scene/1");
-    assert.equal(layout.id, "gen-test000000");
-    assert.equal(layout.name, "テスト");
-    assert.equal(layout.description, "A test.");
-    assert.equal(layout.difficulty, "easy");
     assert.deepEqual(
       layout.items.map((i) => i.key),
       ["grass", "ball", "ball_2"],

@@ -74,18 +74,6 @@ extension RoundResults {
   var me: PlayerResult? { players.first(where: \.isSelf) }
 }
 
-/// 「あなた」の印
-struct SelfBadge: View {
-  var body: some View {
-    Text("あなた")
-      .font(Theme.font(11, .heavy))
-      .foregroundStyle(Theme.accent)
-      .padding(.horizontal, 8)
-      .padding(.vertical, 2)
-      .background(Theme.accentSoft, in: Capsule())
-  }
-}
-
 /// 「84 点」の表示
 struct PointsText: View {
   let total: Int
@@ -111,8 +99,12 @@ struct ResultSubHeader: View {
 
   var body: some View {
     ZStack {
+      // 長い題名は、戻るボタンに重ねず、1 行に縮めて収める
       Text(title)
         .font(Theme.font(20, .black))
+        .lineLimit(1)
+        .minimumScaleFactor(0.6)
+        .padding(.horizontal, 52)
       HStack {
         CircleIconButton(systemName: "chevron.left", label: "戻る", action: onBack)
         Spacer()

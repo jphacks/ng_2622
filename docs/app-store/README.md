@@ -76,6 +76,38 @@ Mock の仮の結果（`MockResults.swift`）は公園の場面向けの文な�
 1. `ios/project.yml` の `MARKETING_VERSION` を上げる（例 `1.0.0` → `1.1.0`）。同じ版でビルドを上げ直すときは `CURRENT_PROJECT_VERSION` だけを上げる。
 2. 上の 2〜4 をもう一度。App Store Connect で新しいバージョン（＋ バージョン）を作ってからビルドを選ぶ。
 
+### Award Day の TestFlight 版の作り方
+
+Award Day（2026-11-15）の会場で使う版。App Store の版との違いは、つなぎ先が staging のバックエンドになることだけ。ホームの 3D を企業の 3D 広告の見本（ハッカソンの会場。[`assets/title/`](../../assets/title/README.md)、タイトルの下に「広告の見本：JPHACKS」）にするのは、アプリではなく staging のバックエンドが決める（`GET /title`。staging にだけ `TITLE_CAMPAIGN` を付けてデプロイする。手順は [`backend/README.md`](../../backend/README.md) の「staging だけで出す」、決め方は [ADR](../adr/20261113-decide-title-diorama-on-server-with-expiry.md)）。アプリは、起動時と前に戻ったときに確かめ、次にホームを開いたとき（下の 3 つのどれか）から会場を出し、期限（日本時間 11/15 23:59:59）を過ぎたら公園に戻す。scheme と構成は App Store の版と同じ `NG2622 Store` のまま、Archive のコマンドでつなぎ先と版の番号だけを上書きする（別の構成や scheme は作らない）。
+
+**この版は App Store の審査に出さない。** TestFlight で配るだけにする。使い捨ての staging のつなぎ先が入っているため。App Store Connect で審査に出すビルドを選ぶときに取り違えないよう、版の番号を App Store の版と分ける。
+
+```sh
+(cd ios && xcodegen)
+xcodebuild -project ios/NG2622.xcodeproj -scheme "NG2622 Store" -destination 'generic/platform=iOS' \
+  -archivePath build/NG2622-awardday.xcarchive -skipPackagePluginValidation -allowProvisioningUpdates \
+  BACKEND_URL='<staging の URL>' MARKETING_VERSION=<版> CURRENT_PROJECT_VERSION=<ビルド番号> archive
+xcodebuild -exportArchive -archivePath build/NG2622-awardday.xcarchive -exportPath build/export-awardday \
+  -exportOptionsPlist docs/app-store/ExportOptions.plist -allowProvisioningUpdates
+```
+
+- `BACKEND_URL`: staging の Worker の URL（`https://…workers.dev`）。コマンドの引数なので、xcconfig と違い `https:/$()/` と書かなくてよい。
+- `TITLE_DIORAMA` は付けない。Live（ストアの構成も）では使わず、サーバーが決める（`TITLE_DIORAMA` は Mock だけで効く）。
+- `MARKETING_VERSION`: 審査に出している版と別の番号にする（例 `1.0.1`）。App Store Connect は、承認済みの版より低い番号を受け付けない。App Store に出す次の版は、この番号より上にする。
+- `CURRENT_PROJECT_VERSION`: その `MARKETING_VERSION` で上げたことのある番号より大きい数（初めての版なら `1` でよい）。
+- 上げたビルドは TestFlight のグループに入れて配る。App Store Connect の「提出準備中」の版には選ばない。
+  - 当日の主は、デモの端末（内部テストのグループで入れたチームの端末）。
+  - 来場者の自分の端末に入れてもらうのは、外部テストのグループ（公開リンク）の Beta App Review が通った場合だけ。通るまでは公開リンクから入れられないので、来場者が入れられるとは約束しない。
+- 上書きが効いたかは、`build/NG2622-awardday.xcarchive/Products/Applications/NG2622.app/Info.plist` の `BackendURL`・`CFBundleShortVersionString`・`CFBundleVersion` で確かめられる（`plutil -p`）。
+- 会場が出るかは、配る前に `curl -s <staging の URL>/title` で `title` が返ることを確かめる。
+- アプリは、起動時と前に戻ったときに裏で 3D を取り、次にホームを開いたときから会場を出す。初めて入れた端末では 1 回目の起動は公園で、会場が出るのは次のどれかをしたとき。アプリを裏に回して前に戻すだけでは替わらないので、デモの端末は前もってこのどれかをしておく。
+  1. アプリを終了して起動し直す
+  2. きろくか設定を開いて閉じる
+  3. 部屋から戻る
+- ストアの版（審査に出す版）にも、会場の 3D（`assets/title/hackathon.usdz`、2.4 MB）がアプリの中に入る。Mock でビルド設定 `TITLE_DIORAMA` のときに出すのと、Live でサーバーの 3D と中身が同じなら通信で取らずに写す（会場の回線で取り直さない）ためで、構成ごとに写し分けていない。本番の `GET /title` は null なので、ストアの版の画面には出ない。
+  - 下の審査メモの「no protected third-party material」は、3D をチームが作ったことを言っている。この 3D には JPHACKS（本作品が出るハッカソンの主催）の名前の文字が入る（ロゴの画像は使わず、フォントの文字に色を付けたもの）。画面に出ないファイルでも審査で気になるなら、ストアの構成では写さない（`ios/project.yml` の Copy title dioramas を構成で分ける）か、審査メモに一言足す。
+- 本番で `TITLE_CAMPAIGN` を入れて広告の 3D を出すときは、先に「年齢制限の質問」の「広告」の答えと、App Review に関する情報の審査メモを直す。
+
 ## 入れる値
 
 ### App 情報
@@ -123,7 +155,7 @@ ScenEnglish（シーングリッシュ）は、友達と iPhone で同時に遊�
 ・難易度を選べる：かんたん・ふつう・むずかしい。
 
 ■ ご注意
-・採点のため、話した声をインターネット経由で採点のサービス（Microsoft Azure、Anthropic Claude）に送ります。録音は保存しません。
+・採点のため、話した声をインターネット経由で採点のサービス（Microsoft Azure、Anthropic Claude）に送ります。録音はサーバーには保存しません。自分の結果と録音は、見返せるよう端末の中にだけ残ります（アプリを消すと消えます）。
 ・マイクを使います。QR コードで部屋に入るときはカメラを使います。
 ```
 
@@ -167,7 +199,7 @@ ScenEnglish is an English speaking game for Japanese learners of English (studen
 - Microsoft Azure AI Speech: pronunciation and fluency assessment of the recorded voice.
 - Anthropic Claude API: scoring content and expression, writing feedback, and generating 3D scene layouts.
 - Apple Speech framework: on-device English transcription.
-The voice recording is sent to our server only for scoring and is not stored.
+The voice recording is sent to our server only for scoring and is not stored on the server. The player's own result and recording are kept only on the device (in the app's own storage, excluded from backups) so that the player can look back at past rounds; they are never uploaded and are removed when the app is deleted.
 
 5. Regional differences
 The app is distributed in Japan only. The features and content are the same everywhere; the UI is in Japanese and the speaking practice is in English.
@@ -185,6 +217,8 @@ The app is not in a regulated industry. It contains no protected third-party mat
   - **ユーザコンテンツ → オーディオデータ**: 用途 App の機能。ユーザに関連付けない。トラッキングに使わない。
   - **ユーザコンテンツ → その他のユーザコンテンツ**（表示名、場面の評価とコメント、文字にした英文）: 用途 App の機能。ユーザに関連付けない。トラッキングに使わない。
 - それ以外（連絡先、位置情報、識別子、使用状況、診断など）は収集しない。
+- 遊んだ記録（自分の結果と録音。[`docs/design/play-record.md`](../design/play-record.md)）を端末の中に保存することは、ここの答えを変えない（2026-11-12 に確かめた）。App Store の「収集」は、データを端末の外へ送り、その場の処理より長く持つこと。記録そのもの（録音を含む）は端末の外へ送らない。苦手の分析のときに送る文字は下のとおり。録音を採点のために送ることは、上の「オーディオデータ」でもう答えている。
+- 苦手の分析（2026-11-13。[`docs/design/weak-point-analysis.md`](../design/weak-point-analysis.md)）では、直近の記録の文字（文字にした英文・採点の判定と講評・場面の見本の答え。録音は除く）を、分析のときだけサーバーを通して Claude へ送り、サーバーには残さない。ここの答えは変えない。送るのは文字にした英文とその採点の結果で、上の「その他のユーザコンテンツ」（文字にした英文）として申告済みのため。ユーザに関連付けず、トラッキングにも使わない。
 
 ### 年齢制限の質問
 

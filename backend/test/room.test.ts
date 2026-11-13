@@ -13,10 +13,20 @@ import {
   replaceAwayHost,
   startRound,
 } from "../src/domain/room";
-import { roundResults } from "../src/domain/round";
+import {
+  beginGrading,
+  recordGrade,
+  roundResults,
+  skipAudio,
+} from "../src/domain/round";
 import { poolCandidates } from "../src/scenes/pool";
+import { ResultsMessage } from "../src/schemas/ws";
+
+// 作り置きの場面を 1 つ（sceneId を指定するスタート用）
+const POOL_SCENE = poolCandidates("eiken-3")[0];
 
 // joinRoom は Workers の crypto.subtle.timingSafeEqual を使うので、参加者を直接入れる
+
 const lobbyOfThree = () => {
   const { state, host } = createRoomState("0427");
   const b = { ...createPlayer(false), name: "B" };
@@ -30,7 +40,7 @@ test("start のときに切断中の人はラウンドに入れない", () => {
   const { state, hostId, bId, cId } = lobbyOfThree();
   const r = startRound(state, {
     playerId: hostId,
-    sceneId: "park",
+    sceneId: POOL_SCENE,
     now: 0,
     connectedIds: new Set([hostId, bId]),
   });
@@ -77,29 +87,29 @@ test("生成を始めると generating になり、試した回数を 1 つ増�
   const { state, hostId, bId } = lobbyOfThree();
   const r = beginGeneration(
     { ...state, generationCount: 3 },
-    { playerId: hostId, difficulty: "hard", generationId: "g1" },
+    { playerId: hostId, difficulty: "eiken-2", generationId: "g1" },
   );
   assert.ok(r.ok);
   assert.equal(r.value.phase, "generating");
-  assert.deepEqual(r.value.generating, { id: "g1", difficulty: "hard" });
+  assert.deepEqual(r.value.generating, { id: "g1", difficulty: "eiken-2" });
   assert.equal(r.value.generationCount, 4);
 
   const notHost = beginGeneration(state, {
     playerId: bId,
-    difficulty: "easy",
+    difficulty: "eiken-3",
     generationId: "g2",
   });
   assert.ok(!notHost.ok && notHost.error.code === "not_host");
   const twice = beginGeneration(r.value, {
     playerId: hostId,
-    difficulty: "easy",
+    difficulty: "eiken-3",
     generationId: "g2",
   });
   assert.ok(!twice.ok && twice.error.code === "not_in_lobby");
   // 作っている間は普通のスタートも断る
   const start = startRound(r.value, {
     playerId: hostId,
-    sceneId: "park",
+    sceneId: POOL_SCENE,
     now: 0,
     connectedIds: new Set([hostId]),
   });
@@ -110,7 +120,7 @@ const generating = () => {
   const room = lobbyOfThree();
   const r = beginGeneration(room.state, {
     playerId: room.hostId,
-    difficulty: "normal",
+    difficulty: "eiken-pre2",
     generationId: "g1",
   });
   assert.ok(r.ok);
@@ -149,7 +159,7 @@ test("作れなかったら、同じ難易度の作り置きの場面で始め�
     connectedIds: new Set([hostId]),
   });
   assert.ok(done?.round);
-  assert.ok(poolCandidates("normal").includes(done.round.sceneId));
+  assert.ok(poolCandidates("eiken-pre2").includes(done.round.sceneId));
   assert.deepEqual(done.state.playedSceneIds, [done.round.sceneId]);
   assert.equal(done.round.sceneName, undefined);
 });
@@ -195,4 +205,117 @@ test("作っている間にホストが抜けても generating のまま、次�
     connectedIds: new Set([bId, cId]),
   });
   assert.deepEqual(done?.round?.playerIds, [bId, cId]);
+});
+
+test("結果発表は、全員分の内容の内訳と講評を同じ形で送る（comment と strength は無い）", () => {
+  const { state, hostId, bId, cId } = lobbyOfThree();
+  const started = startRound(state, {
+    playerId: hostId,
+    sceneId: POOL_SCENE,
+    now: 0,
+    connectedIds: new Set([hostId, bId, cId]),
+  });
+  assert.ok(started.ok);
+  let current = started.value.state;
+  const grade = (playerId: string, total: number) => {
+    const begun = beginGrading(current, { playerId, round: 1 });
+    assert.ok(begun.ok);
+    const recorded = recordGrade(begun.value.state, {
+      playerId,
+      round: 1,
+      grade: {
+        status: "done",
+        score: { content: total, expression: total, speech: total, total },
+        transcript: "A girl is sitting.",
+        content: {
+          claims: [
+            {
+              quote: "A girl is sitting",
+              verdict: "correct",
+              item: "girl_sit",
+              level: "full",
+              note: null,
+            },
+          ],
+          items: [
+            {
+              id: "girl_sit",
+              kind: "center",
+              label: "女の子が座っている",
+              level: "full",
+            },
+            {
+              id: "dog_run",
+              kind: "center",
+              label: "犬が走っている",
+              level: "none",
+            },
+          ],
+          others: 0,
+          recall: { earned: 2, max: 4 },
+          precision: { correct: 1, said: 1 },
+        },
+        feedback: {
+          nextStep: {
+            kind: "content",
+            text: "犬も足そう",
+            item: "dog_run",
+            gain: 12,
+          },
+          rewrite: null,
+          speechTip: { aspect: "fluency", text: "ひと続きで言ってみよう。" },
+          expressionBasis: "Uses the present continuous correctly.",
+        },
+      },
+    });
+    assert.ok(recorded);
+    current = recorded;
+  };
+  grade(hostId, 60);
+  grade(bId, 80);
+  const skipped = skipAudio(current, { playerId: cId, round: 1 });
+  assert.ok(skipped.ok);
+  assert.equal(skipped.value.phase, "results");
+
+  const results = roundResults(skipped.value);
+  assert.ok(results);
+  // 送る形（schemas/ws.ts）に合っている
+  const message = ResultsMessage.parse({ type: "results", ...results });
+  assert.deepEqual(
+    message.players.map((p) => [p.id, p.rank]),
+    [
+      [bId, 1],
+      [hostId, 2],
+      [cId, null],
+    ],
+  );
+  const [first, , ungraded] = results.players;
+  assert.deepEqual(Object.keys(first).sort(), [
+    "color",
+    "content",
+    "feedback",
+    "id",
+    "name",
+    "rank",
+    "score",
+    "transcript",
+  ]);
+  assert.equal(first.content?.items[1].level, "none");
+  assert.deepEqual(first.content?.recall, { earned: 2, max: 4 });
+  assert.deepEqual(Object.keys(first.feedback ?? {}), [
+    "nextStep",
+    "rewrite",
+    "speechTip",
+    "expressionBasis",
+  ]);
+  assert.equal(first.feedback?.nextStep.gain, 12);
+  assert.equal(
+    first.feedback?.expressionBasis,
+    "Uses the present continuous correctly.",
+  );
+  // 採点できなかった人は、内訳も講評も null
+  assert.equal(ungraded.score, null);
+  assert.equal(ungraded.content, null);
+  assert.equal(ungraded.feedback, null);
+  assert.equal(ungraded.transcript, "");
 });

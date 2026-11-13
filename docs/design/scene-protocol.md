@@ -62,6 +62,8 @@ RealityKit に合わせる。
 
 ## 配置の JSON
 
+> 2026-11-11 に、バックエンドは下の「配置の JSON v2」（`scenenglish.scene/2`）だけを読むようにした（[ADR](../adr/20261111-score-only-with-checklist-and-drop-handmade-scenes.md)）。この節の `scenenglish.scene/1`（`difficulty` の `easy`・`normal`・`hard`、`elements`、`extraMax`）は、経緯として残している古い形で、今は作らないし読まない。`items` と `motion` の欄の意味は `/2` でも同じ。
+
 ```json
 {
   "protocol": "scenenglish.scene/1",
@@ -164,9 +166,9 @@ v1 の基本は止まった場面で、動作は人物のポーズで表す。�
 
 時刻はラウンドの `startAt`（round のメッセージ）から数える。全員の端末で、同じ動きが同じ時に起きるようにするため。
 
-## 配置の JSON v2（`scenenglish.scene/2`、2026-11-10 に決定。生成は実装済みで、本番にはまだつないでいない）
+## 配置の JSON v2（`scenenglish.scene/2`、2026-11-10 に決定。2026-11-11 にバックエンドをこの形だけに切り替えた）
 
-チェックリストで採点するため、形を `/2` に上げる（[ADR](../adr/20261110-adopt-scene-protocol-v2-with-checklist.md)）。生成の関数（`backend/src/scenes/generate-v2.ts`・`verify.ts`・`compose-v2.ts`・`grades.ts`・`pose-verbs.ts`）は 2026-11-11 に実装した。今の生成（`/1`）と並べて置いてあり、部屋・`POST /scenes/generate`・作り置きの場面にはまだつないでいない。入れるのは、30 場面を作り直して採点の関数を切り替えるとき。それまではアプリもバックエンドも `/1` と `/2` の両方を読む。級の規則と生成の書かせ方は [ADR](../adr/20261110-write-grade-sentences-before-scene-parts.md)。
+チェックリストで採点するため、形を `/2` に上げる（[ADR](../adr/20261110-adopt-scene-protocol-v2-with-checklist.md)）。生成の関数（`backend/src/scenes/generate-v2.ts`・`verify.ts`・`compose-v2.ts`・`grades.ts`・`pose-verbs.ts`）は 2026-11-11 に実装した。同じ日に、部屋での生成・`POST /scenes/generate`・作り置きの場面・採点をこの形につなぎ、`/1` と古い 1 回の生成を消した（まとめ用の branch。main に入るのは、アプリと通しで動いたとき）。`/1` と `/2` の両方を読む期間は作らない（[ADR](../adr/20261111-score-only-with-checklist-and-drop-handmade-scenes.md)）。作り置きの場面は、2 段の生成で作って人が絵で選んだ 30 場面（`gen-v2-…`、級ごとに例 1 つ・出題 9 つ）を置いている（`backend/src/scenes/pool/README.md`）。級の規則と生成の書かせ方は [ADR](../adr/20261110-write-grade-sentences-before-scene-parts.md)。
 
 例（`eiken-pre2`、雨のバス停。部品の ID の一部は省略）:
 
@@ -245,6 +247,8 @@ v1 の基本は止まった場面で、動作は人物のポーズで表す。�
 - 物を壁に掛ける関係は無いので、背景の壁（category が building）以外の部品を "on the wall" と言う項目は落とす（時計など）。
 - `reason`・`link` の行動の動詞が、その人のポーズで言える。`reason` は because より前、`link` は文の全部を見る。その人は、文の先頭の呼び方（woman など）が合う `refs` の人、無ければ `refs` の先頭の人。
 - 人が主語の `detail`（"the woman is drinking from a cup"）の動詞が、その人のポーズで言える（2 つ目の動作を `detail` にさせない）。段階は見ない。
+- 項目の主語の人の呼び方（girl・boy・man・woman・old man・waiter など）と、`refs` の人の部品の見た目（部品の `words` の先頭）が合う（2026-11-12）。子どもと大人・男と女の取り違えを落とし、同じ枠の言い換え（tall boy と背の高い男の子、man とおじいさん、mother と woman）は通す。仕事の呼び方（waiter・clerk・doctor）は大人ならどれでもよい。
+- 見本の答えの各節（because・so・so that・while・when・but で分けた所）の主語の人の動作が、その人のポーズで言える（2026-11-12）。動作は be の後の -ing、has の後の過去分詞、and でつないだ -ing（"is sitting on a sofa and reading" の reading）で、to の後（目的）は数えない。主語の呼び方が合う人のうち誰か 1 人が言えればよい。項目の言い方で確かめ済みの節は見ない。その呼び方のほかの部品で言えるなら 2 回目だけ、言える部品が無ければ 1 回目から作り直す。
 - `center` の項目:
   - `refs` に人や動物がいる。
   - 同じ人が 2 つの `center` の主役（`refs` の先頭の人や動物）になっていない（1 人につき動作は 1 つ）。
@@ -255,14 +259,20 @@ v1 の基本は止まった場面で、動作は人物のポーズで表す。�
 
 - `refs` に地面の部品があり、`accept` が on・across・along で場所を言う項目（next to・near などは除く）について、その人や物の座標の真下にある地面（重なっていれば小さいほう。歩道に重ねた道路など）が、`refs` の地面と同じ。違えば 2 回目だけ作り直す。
 
-落ちたら、作り置きは理由を指示に足して 2 回まで作り直す（`generateVerifiedScene`）。英文を書き直さないと直らない理由は 1 回目から、部品だけの理由は同じ英文のまま 2 回目だけ、同じ英文で部品が 2 回落ちたら 1 回目から。形が違う・途中で止まった応答も同じように作り直す。断られた・API の失敗は作り直さない。部屋での生成は作り置きに切り替える（まだつないでいない）。
+- 見本の答えの各節で人が持っていると言う物（with・holding・carrying・has の後の、部品の物の名前）が、その人の部品の持ち物（`holds`）にあるか、その物の部品がその人から 1.5 m 以内にある（2026-11-12）。
+- 絵（`render_layout.py`）と同じカメラから見て:
+  - 窓・扉・時計が、背景の壁の手前の面から 1.2 m 以内（奥の区画の列）にある。屋外の窓・時計は付ける壁が無いので落とす。英文で言っていれば 1 回目から、部品だけなら 2 回目だけ作り直す。
+  - 項目が指す物や人の真ん中が、絵の中にある（奥の木の上の風船は上にはみ出す）。
+- 人が人や家具に隠れているかは確かめない。画面での四角で覆われる割合を見積もったが、人が絵で決めた「通す」（テーブルの奥に座る人、注文を取る店員の奥の客）と「落とす」（テーブルと人の陰の女の子）を、しきい値で分けられなかったため。2 回目の指示で止める。
+
+落ちたら、作り置きは理由を指示に足して 2 回まで作り直す（`generateVerifiedScene`）。英文を書き直さないと直らない理由は 1 回目から、部品だけの理由は同じ英文のまま 2 回目だけ、同じ英文で部品が 2 回落ちたら 1 回目から。形が違う・途中で止まった応答も同じように作り直す。断られた・API の失敗は作り直さない。部屋での生成は作り直さず、裏取りで落ちたら同じ級の作り置きの場面に切り替える。
 
 ### 実装で決めたこと（2026-11-11）
 
-- **動き**: `items[].motion` は 1 つの欄に、計算した座標の動き（`/1` と同じ `type`・`to`・`duration` など）と、Claude が書いた動きの関係（`toward`・`path`）を並べる。1 つの部品に動きは 1 つなので、欄を分けると `type` と `duration` が二重になり食い違いうるため。`/1` の動きを読む側は、知らない欄を読み飛ばせばそのまま動く。
+- **動き**: `items[].motion` は 1 つの欄に、計算した座標の動き（`type`・`to`・`duration` など）と、Claude が書いた動きの関係（`toward`・`path`）を並べる。1 つの部品に動きは 1 つなので、欄を分けると `type` と `duration` が二重になり食い違いうるため。アプリは座標の欄だけを読めば動く。
 - **`accept` の ` / `**: 別の言い方を並べる区切り。裏取りは、どれか 1 つが `description` にあれば通す。採点の側も ` / ` を別の言い方として読む。
 - **動詞の段階**: CEFR-J Wordlist v1.5 の動詞の値をそのまま使う（`pose-verbs.ts` の `VERB_LEVELS`。手で直さない。stand は A2、wipe・sweep・clap は B2）。段階には B2 も持ち、「B2 か語彙表に無い（peck・poke）＝どの級の中心の動作にも使えない」として扱う。3級では、立っている人は waiting・looking、机を拭く人は cleaning のように、同じポーズを A1 の動詞で言わせる。
-- **ポーズで言える動詞**: ポーズごとの表（`POSE_VERBS`）に、姿勢の動詞を足す。腰の基準点（`anchors.hip`）を持つ人は sit、それ以外の人のうち走る・歩く・座り込む・ひざをつくポーズでない人は stand を言える（立っている人は何をしていても「立っている」と言えるため）。表に無いポーズは部品の `words` の動詞を使う。
+- **ポーズで言える動詞**: ポーズごとの表（`POSE_VERBS`）に、姿勢の動詞を足す。腰の基準点（`anchors.hip`）を持つ人は sit、それ以外の人のうち走る・歩く・倒れる・ひざをつくポーズでない人は stand を言える（立っている人は何をしていても「立っている」と言えるため）。表に無いポーズは部品の `words` の動詞を使う。
 - **助動詞**: `accept` の動詞を拾うとき、have・do は、ほかの動詞があれば数えない（"has fallen" の has を、物を持つポーズの have と取り違えないため）。
 - **場面が似すぎないようにする**（`variety.ts`）: 1 回目の指示に「理由にできる見える出来事」（投げたボールと犬、眠る子と起こす人、注文を取る店員など。今の部品で描けるものだけ）を材料として並べ、指示の例は形だけを示すものとして写させない。作り置きを級ごとにまとめて作るときは、先に作った場面の要約（`summarizeScene`）を入力の `avoid` に渡して違う場面を書かせ、`overusedCauses` で同じ理由の原因が 3 場面を超えていないかを数える（裏取りではなく、場面を選ぶ段取りで使う）。
 - **雨**: 屋外の場面だけ。指示では駅のホームも雨なしとし、裏取りは屋内の床のときだけ落とす。
@@ -273,6 +283,8 @@ v1 の基本は止まった場面で、動作は人物のポーズで表す。�
 
 ```
 1 回目（部品の一覧は渡さない）
+  { name, sentences: [文, …], checklist: [{ id, kind, label, sentence, accept, refs }] }
+     ↓ コードが保存する形に直す: description = 文をつなげたもの、accept = 番号（sentence）の文から取る
   { name, description, checklist: [{ id, kind, label, accept, refs }] }   ← refs は英小文字の短い呼び名（man・bench）
      ↓ description を 1〜3 文ずつ
 部品の候補 candidates(description)   ← 今は全部の部品を返す。後でベクトル検索（種類ごとに上位 k 個の要素 → 部品）に差し替える
@@ -281,9 +293,16 @@ v1 の基本は止まった場面で、動作は人物のポーズで表す。�
   { items: [{ key, part, place, facing?, motion? }] }                    ← 呼び名を全部 key に使う。/1 と同じ形
 ```
 
+- 1 回目は、見本の答えを文の配列（`sentences`）で先に書かせ、項目ごとに「どの文の事実か」を番号（`sentence`、1 から）で書かせる（2026-11-12）。2級は項目が 8 つ・見本が 6 文で、`accept` を `description` と違う文で書く、同じ文を 2 つの項目に使う、が多かったため。保存する形（`description`・`accept`）にはコードが直す（`toSceneSentences`）。
+  - `center` と `detail` は 1 文に 1 つ（文の数 = `center` の数 + `detail` の数。3・5・6 文）。`reason`・`link` は自分の文を持たず、`center` の文に because・so で書き足して、その文の番号を持つ。
+  - `reason`・`link` の `accept` は、番号の文の全部（文末の句読点を取り、先頭を小文字にする）。Claude が別の言い方を書いていれば ` / ` で後ろに足す。
+  - `center`・`detail` の `accept` は、Claude が書いた言い方が番号の文にあればそれ。無ければ文から取り直す（`center` は because・so より前の節、`detail` は文の全部）。これで `accept` は必ず `description` にある。
+  - 形の決まりの違反（文の数が級と違う、番号の文が無い、`center`・`detail` が同じ文を使っている）は、裏取りの理由と同じ扱いで 1 回目から作り直す。
+- 作り直しのときは、落ちた理由（どの項目かを id で名指しした文）と一緒に、落ちた前の答え（1 回目からなら前の英文、2 回目だけなら前の部品）を見せ、「名指しされた所を直し、ほかは残す」と指示する。
 - 1 回目に渡すのは、級の規則の表、今の部品で描ける動作の一覧（動作 | 言える動詞と段階 | できる人）、物の一覧、テーマの一覧、例 1 つ。部品の ID は見せない。user の文には級・テーマと、その級の `checklist` の数を書く。
 - 1 回目の schema は `checklist` と `refs` に `minItems: 1` を付ける（structured outputs が受け付ける `minItems` は 0 と 1 だけなので、級の数までは指定できない。数は裏取りで数える）。`kind` はその級に出る種類だけの enum。
 - 2 回目に渡す部品の一覧には、人と動物のポーズで言える動詞（`says`）を出し、`center` の `accept` の動詞が言える部品を選ばせる。場面・関係・向き・動きの決まりは `/1` の生成と同じ文を使い、`relate`・`seat_at`・`thrown_by`・`facing: "auto"`・`holds`・`uses` の説明を足す。
+- 作り置きをまとめて作るスクリプトは `backend/scripts/make-pool-v2.ts`。場面の ID は `gen-v2-<級>-<テーマ>-<連番 2 桁>`（例: `gen-v2-pre2-bus-stop-11`。級は `eiken3`・`pre2`・`eiken2`、連番は級の中の番号）。アプリが `gen-` で始まる ID を AI で作った場面とみるので先頭は `/1` の作り置き（`gen-` ＋ 10 文字）と同じにし、続く `v2-` で `/2` と分かるようにする。
 - 呼び名の一覧（`cast`）は作らない。検索の問い合わせは、検索のモデルの学習と同じ形（場面の英文 1〜3 文）にする（[ADR](../adr/20261110-write-grade-sentences-before-scene-parts.md)）。
 - Award Day（2026-11-15）の当日は、部屋での生成を止める（`SCENE_GENERATION` を `off`）。
 
@@ -295,7 +314,7 @@ v1 の基本は止まった場面で、動作は人物のポーズで表す。�
 
 ## API
 
-今の `/scenes`（シーンの一覧と評価、[ADR](../adr/20261024-store-scene-reviews-in-a-global-durable-object.md)）を広げる。部品と、`POST /scenes` で保存したシーンの JSON は R2 に置く。作り置きの場面は R2 ではなく、Worker に同梱する（下の「AI で場面を作り置く」）。
+今の `/scenes`（シーンの評価、[ADR](../adr/20261024-store-scene-reviews-in-a-global-durable-object.md)。シーンの一覧 `GET /scenes` は 2026-11-11 に消した）を広げる。部品と、`POST /scenes` で保存したシーンの JSON は R2 に置く。作り置きの場面は R2 ではなく、Worker に同梱する（下の「AI で場面を作り置く」）。
 
 | メソッドとパス | だれが使う | 中身 |
 | --- | --- | --- |
@@ -303,7 +322,7 @@ v1 の基本は止まった場面で、動作は人物のポーズで表す。�
 | `GET /parts/{id}/{version}.usdz` | アプリ | 部品の USDZ（R2 から返す。版ごとに中身が変わらないので、長くキャッシュしてよい） |
 | `PUT /parts/{id}/{version}` | 亀井さんのエージェント | 部品を保存する。本文は multipart（`meta` にメタデータの JSON、`file` に USDZ）。合言葉が要る |
 | `POST /scenes` | 亀井さんのエージェント・人 | 配置の JSON を保存し、`{ "sceneId": "gen-…" }` を返す。合言葉が要る。R2 と合わせて、亀井さんのエージェントが使うときに入れる |
-| `POST /scenes/generate` | 作り置きのスクリプト（手元） | 本文は `{ "difficulty": "easy", "theme": "公園" }`（`theme` は任意）。Claude が部品の一覧を見て配置の JSON を書き、保存せずにそのまま返す。合言葉が要る。アプリは呼ばない |
+| `POST /scenes/generate` | 作り置きのスクリプト（手元） | 本文は `{ "difficulty": "eiken-pre2", "theme": "公園" }`（`theme` は任意）。Claude が 2 段で見本の答え・チェックリスト・部品と関係を書き、裏取りを通った配置の JSON（`scenenglish.scene/2`）を、保存せずにそのまま返す。合言葉が要る。アプリは呼ばない |
 | `GET /scenes/{sceneId}/layout` | アプリ | 配置の JSON（作り置きの場面は同梱の JSON から、`POST /scenes` で保存したものは R2 から返す）。部屋が作った場面は `?room=<部屋の番号>` を付けると、その部屋に置いたものを返す（2026-10-26） |
 
 - 合言葉: Worker の secret `SCENE_WRITE_TOKEN` に置き（手元の `wrangler dev` では `.dev.vars`）、`Authorization: Bearer <合言葉>` で送る。合言葉は亀井さんに直接渡し、ファイルには書かない。
@@ -315,7 +334,9 @@ v1 の基本は止まった場面で、動作は人物のポーズで表す。�
 
 > 2026-10-24 には「待合でホストが一言（お題）を書き、その場で作る」と決めていたが、2026-10-25 に作り置きに改めた（[ADR](../adr/20261025-pre-generate-ai-scenes-and-pick-by-difficulty.md)）。一言を書いた人だけが場面の中身を知っていて、有利になるため。
 
-今ある部品だけで配置の JSON を作る。亀井さんのスクラッチのエージェントとは別の、軽い生成。Claude の Messages API を、出力の形（JSON Schema）を決めて 1 回呼ぶ。ツールを使うループ（エージェント）にはしない。
+今ある部品だけで配置の JSON を作る。亀井さんのスクラッチのエージェントとは別の、軽い生成。Claude の Messages API を、出力の形（JSON Schema）を決めて呼ぶ。ツールを使うループ（エージェント）にはしない。
+
+> 2026-11-11 に、生成を 2 段（上の「Claude に書かせる形（`/2`、2 段）」）に切り替え、1 回の呼び出しで書かせる古い生成を消した。下の「難易度の中身（推測）」「実測（2026-10-25）」「書かせ方」「Claude に書かせる形と呼び方」のうち、難易度 A・B・C、`elements`、1 回の呼び出しの話は古い生成のもので、経緯として残している。部品の関係から座標を計算すること、モデルと effort、止めるスイッチは今も同じ。
 
 ### 作り置きの流れ
 
@@ -329,7 +350,7 @@ render_layout.py で PNG に描く ──▶ 人が目で確かめる ──▶ 
 - 場面は遊ぶ前にスクリプトでまとめて作る。待合でその場では作らない。
 - 数: まず難易度ごとに 10 場面（計 30）。
 - 確かめ方: `scripts/scene/render_layout.py` で PNG に描き、人が目で見る。崩れていないか、`description` の文がその絵と合っているかを見る（`description` は採点で補足として Claude に渡すため）。だめなものは捨てて作り直す。
-- 置き場所: `backend/src/scenes/pool/` に 1 場面 1 ファイルの JSON（`<sceneId>.json`）で置き、Worker に同梱する（採点の `backend/src/scoring/scenes.json` と同じ扱い）。R2 には置かない。iOS の Mock も、ビルドのときにここから写して使う（置き場所は 1 か所）。
+- 置き場所: `backend/src/scenes/pool/` に 1 場面 1 ファイルの JSON（`<sceneId>.json`）で置き、Worker に同梱する。R2 には置かない。iOS の Mock も、ビルドのときにここから写して使う（置き場所は 1 か所）。
 - 一覧: Worker は glob できないので、同じ所の `index.json` に難易度ごとの例（`example`、待合で見せて出題しない）と出題の候補（`scenes`、例は含めない）を書く。形は `backend/src/scenes/pool/README.md`。
 - ID（案）: 今までどおり `gen-` ＋ 英小文字と数字 10 文字。生成の口が付けて返す。
 - 作り置きのスクリプトも `POST /scenes/generate` を呼ぶ。Claude への指示と座標の計算を 1 箇所にまとめるため。
@@ -342,13 +363,13 @@ render_layout.py で PNG に描く ──▶ 人が目で確かめる ──▶ 
 | --- | --- |
 | 呼ぶ人 | 作り置きのスクリプト。アプリは呼ばない |
 | 合言葉 | 要る。`Authorization: Bearer <SCENE_WRITE_TOKEN>`（下の API の節と同じ合言葉） |
-| 入力 | `{ "difficulty": "easy", "theme": "公園" }`。`theme` は任意。省けば、指示の中のテーマの一覧（公園・カフェ・店・駅・部屋など）から Claude が選ぶ |
-| 出力 | 配置の JSON（上の形）をそのまま返す。保存はしない |
+| 入力 | `{ "difficulty": "eiken-pre2", "theme": "公園" }`（`difficulty` は級の値）。`theme` は任意。省けば、指示の中のテーマの一覧（公園・カフェ・店・駅・部屋など）から Claude が選ぶ |
+| 出力 | 配置の JSON（`scenenglish.scene/2`）をそのまま返す。保存はしない。裏取りで落ちたら 2 回まで作り直し、それでも通らなければ 422 `generation_failed` |
 | クラウドに残すとき | 返った JSON を `POST /scenes` に送る。生成の口に保存のフラグは付けない。`POST /scenes` と R2 は、亀井さんのエージェントが使うときに入れる |
 
 ### 難易度の中身（推測）
 
-2026-11-10 に、難易度の値を `eiken-3`・`eiken-pre2`・`eiken-2` に変えると決めた（[ADR](../adr/20261110-align-scoring-with-eiken-speaking-viewpoints.md)）。画面の名前は変えず、古い値は受け付けない。切り替えるのは、30 場面を作り直すとき。級ごとのチェックリストの数は [`usecase.md`](./usecase.md) の採点。
+2026-11-10 に、難易度の値を `eiken-3`・`eiken-pre2`・`eiken-2` に変えると決めた（[ADR](../adr/20261110-align-scoring-with-eiken-speaking-viewpoints.md)）。画面の名前は変えず、古い値は受け付けない。2026-11-11 にバックエンドを切り替えた（[ADR](../adr/20261111-score-only-with-checklist-and-drop-handmade-scenes.md)）。下の表の A・B・C は古い 1 回の生成のもので、経緯として残している。今の級の中身は `backend/src/scenes/grades.ts` の `GRADES`。級ごとのチェックリストの数は [`usecase.md`](./usecase.md) の採点。
 
 [`research/scene-levels-emotions.md`](./research/scene-levels-emotions.md) の A・B・C の段階に合わせる案。
 
@@ -365,10 +386,10 @@ render_layout.py で PNG に描く ──▶ 人が目で確かめる ──▶ 
 
 - ホストは難易度（かんたん・ふつう・むずかしい）だけを選ぶ。どの場面かは、名前もサムネイルもスタートまで見せない。ホストも知らない。
 - 部屋は、その難易度の作り置きの場面のうち、その部屋でまだ出ていないものからランダムに選ぶ。全部出たら最初に戻る。
-- `start` で難易度（`difficulty`: `easy`・`normal`・`hard`）を送り、部屋が選んだ `sceneId` を round で全員に配る。round の形は変えない。
+- `start` で難易度（`difficulty`: `eiken-3`・`eiken-pre2`・`eiken-2`。2026-11-11 に切り替えた。古い値は `invalid_message`）を送り、部屋が選んだ `sceneId` を round で全員に配る。round の形は変えない。
 - 部屋は出した場面を覚え（難易度ごと）、その難易度を全部出したら、その難易度の分だけ忘れて最初に戻る。
-- `sceneId` と `difficulty` の両方を送ると `invalid_message`。どちらも無ければ手作りの場面のおまかせ（今までどおり）。
-- 作り置きの場面のラウンドは、話し方は Azure のまま、内容・表現と講評を `backend/src/scoring/bands.ts` の 1 回の Claude 呼び出しで付ける。結果（results）の形は変えず、要素の判定が無いので `nextStep.gain` は null になる。手作りの場面は今の要素の加点式のまま。
+- `sceneId` と `difficulty` の両方を送ると `invalid_message`。どちらも無ければ、全部の級の作り置きの場面からおまかせで選ぶ（2026-11-11。手作りの場面を外したため。それまでは手作りの場面のおまかせだった）。`sceneId` には作り置きの場面の ID だけを送れる。
+- 作り置きの場面のラウンドは、話し方は Azure のまま、内容・表現と講評をチェックリストの採点（`backend/src/scoring/checklistGrade.ts`）の 1 回の Claude 呼び出しで付ける（2026-11-11。それまでは `bands.ts` の段階の基準で、`nextStep.gain` は null だった）。結果（results）には内容の内訳が入り、`nextStep.gain` は合計の点の伸び。手作りの場面は外した。形は [`usecase.md`](./usecase.md) の「アプリへ送るもの」。
 - 手作りの 6 場面の扱いは、下の API の節の最後。
 
 ### 失敗したとき
@@ -447,7 +468,7 @@ Claude の API（Messages API）に渡すもの:
 > 2026-10-25 には「待合でその場では作らない」と決めていたが、2026-10-26 に、作り置きを控えにして部屋がその場で作る形を足した（[ADR](../adr/20261026-generate-scenes-in-room-on-start.md)）。遊べる場面の幅を広げるため。
 
 ```
-ホスト ──start { difficulty }──▶ 部屋（Room DO）──▶ Claude（10 秒まで、やり直さない）
+ホスト ──start { difficulty }──▶ 部屋（Room DO）──▶ Claude（2 段で合計 10 秒まで、やり直さない）
                                    │ room { phase: "generating" } を全員へ
                                    │ 作れた: 配置の JSON を ctx.storage に置く
                                    │ だめ: 同じ難易度の作り置きから選ぶ
@@ -457,7 +478,7 @@ Claude の API（Messages API）に渡すもの:
 
 - 作るのは、`SCENE_GENERATION` が `on` で、その部屋の生成が 20 回に満たないとき。それ以外は今までどおり作り置きから選ぶ。
 - 部屋の状態は `lobby` → `generating` → `playing`。`generating` のあいだ、ホストはもう一度 `start` を送れない。
-- 10 秒で間に合わない・通信の失敗・断られた・形が違うときは、黙って作り置きに切り替える。
+- 10 秒で間に合わない・通信の失敗・断られた・形が違う・裏取りで落ちたときは、黙って作り置きに切り替える（2026-11-11 に 2 段の生成につないだ。Claude を 2 回呼ぶ合計で 10 秒まで。作り直さない）。
 - 生成中にホストが `leave` したら、生成を止めて作り置きでラウンドを始める。切断しただけなら止めない。
 - 作った場面の ID は今までどおり `gen-` ＋ 10 文字。配置の JSON は部屋の `ctx.storage` に置き、部屋が消えるときに一緒に消える。R2 には置かない。採点も部屋に置いたものを使う。
 - `GET /scenes/{sceneId}/layout` は、作り置きにない ID のとき、`room` で渡された部屋に置いた配置の JSON を返す。

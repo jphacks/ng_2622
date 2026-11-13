@@ -11,29 +11,48 @@
   // CLAUDE_MODEL・CLAUDE_EFFORT は採点に使う Claude。Haiku 5.5 の high は 1 回 7〜8 秒かかったので、Sonnet 5.5 の low（3〜4 秒）にしている
   // SCENE_GENERATION は "on" のときだけ場面を AI で作る。POST /scenes/generate（それ以外は 503）と、
   // 部屋が難易度のスタートで作る生成（それ以外は作り置きの場面から選ぶ）の両方のスイッチ。
-  // 作り置きは手元の wrangler dev で行う。本番は部屋での生成のために on、PR のプレビューは費用を抑えるため off
+  // 作り置きは手元の wrangler dev（.dev.vars* で on）で行う。本番は作り置きの場面（級ごとに 9）から選ぶため off（Award Day の当日は部屋での生成を止める。
+  // docs/design/scene-protocol.md）。PR のプレビューも費用を抑えるため off
+  // WEAK_POINT_* は苦手の分析（POST /weak-points、docs/design/weak-point-analysis.md）。WEAK_POINT_ANALYSIS は "on" のときだけ Claude を呼ぶ
+  // スイッチ（それ以外は 503。PR のプレビューは off）。IP_PER_HOUR は IP ごとの 1 時間の回数、DAILY_LIMIT は全体の 1 日（日本時間）の回数
+  // （呼び直しも数える。1 回約 0.05 USD）、MAX_BODY_BYTES は本文の大きさ。普段は 10・200・65536（64 KB。記録の組 10 件は 11〜20 KB。大きいほど 1 回の費用が上がる）。
+  // Award Day の当日は 60・500 に書き換えてデプロイし、終わったら戻す（docs/design/cost-safety.md）
+  // TITLE_CAMPAIGN はタイトル画面に出す広告（src/title/schedule.json の id。カンマ区切り）。本番は空で、既定の場面（公園）を出す。
+  // staging だけ、デプロイのときに --var TITLE_CAMPAIGN:jphacks-2026 を付ける（backend/README.md）
   "vars": {
     "SCORING_MODE": "live",
     "SCORE_WEIGHTS": "50,25,25",
     "AZURE_LOCATION": "japaneast",
     "CLAUDE_MODEL": "claude-sonnet-5-5",
     "CLAUDE_EFFORT": "low",
-    "SCENE_GENERATION": "on"
+    "SCENE_GENERATION": "off",
+    "WEAK_POINT_ANALYSIS": "on",
+    "WEAK_POINT_IP_PER_HOUR": "10",
+    "WEAK_POINT_DAILY_LIMIT": "200",
+    "WEAK_POINT_MAX_BODY_BYTES": "65536",
+    "TITLE_CAMPAIGN": ""
   },
-  // SCENE_REVIEWS はシーンの評価（全シーンで 1 つ）
+  // タイトル画面の 3D（repo の assets/title/*.usdz）を、Worker と一緒に静的アセットとして配る（/title/<file>）。
+  // 配るファイルは assets/.assetsignore で絞る（README・画像・部品などは配らない）。プレビューも上のこの設定を使う
+  // （wrangler preview は assets を previews に書かず、上の階層のものを使う）
+  "assets": { "directory": "../assets" },
+  // SCENE_REVIEWS はシーンの評価（全シーンで 1 つ）。USAGE_COUNTER は苦手の分析の回数（全体で 1 つ）
   "durable_objects": {
     "bindings": [
       { "name": "ROOM", "class_name": "Room" },
-      { "name": "SCENE_REVIEWS", "class_name": "SceneReviews" }
+      { "name": "SCENE_REVIEWS", "class_name": "SceneReviews" },
+      { "name": "USAGE_COUNTER", "class_name": "UsageCounter" }
     ]
   },
   // 無料プランは SQLite 版のみ。出した tag は書き換えず、新しい tag で足す
   // v4: 配置から作った採点の基準を場面ごとに覚えるのをやめた（採点基準の段階で付けるため）。中身は 1 日で消える基準だけ
+  // v5: 苦手の分析の回数を数える UsageCounter を足した
   "migrations": [
     { "tag": "v1", "new_sqlite_classes": ["Room"] },
     { "tag": "v2", "new_sqlite_classes": ["SceneReviews"] },
     { "tag": "v3", "new_sqlite_classes": ["SceneRubrics"] },
-    { "tag": "v4", "deleted_classes": ["SceneRubrics"] }
+    { "tag": "v4", "deleted_classes": ["SceneRubrics"] },
+    { "tag": "v5", "new_sqlite_classes": ["UsageCounter"] }
   ],
   // PR ごとのプレビュー（wrangler preview）の設定。vars や DO の binding は上の階層から引き継がれないので、
   // プレビューでも使うものはここにも書く
@@ -41,12 +60,15 @@
     "vars": {
       "SCORING_MODE": "fixed",
       "SCORE_WEIGHTS": "50,25,25",
-      "SCENE_GENERATION": "off"
+      "SCENE_GENERATION": "off",
+      "WEAK_POINT_ANALYSIS": "off",
+      "TITLE_CAMPAIGN": ""
     },
     "durable_objects": {
       "bindings": [
         { "name": "ROOM", "class_name": "Room" },
-        { "name": "SCENE_REVIEWS", "class_name": "SceneReviews" }
+        { "name": "SCENE_REVIEWS", "class_name": "SceneReviews" },
+        { "name": "USAGE_COUNTER", "class_name": "UsageCounter" }
       ]
     }
   }

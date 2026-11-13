@@ -3,6 +3,7 @@ import SwiftUI
 /// 画面の入り口。どちらもホームから始まる。Mock は仮のデータで、Live は BACKEND_URL のバックエンドにつないで動く
 struct RootView: View {
   let config: AppConfig
+  @Environment(\.scenePhase) private var scenePhase
 
   var body: some View {
     ZStack {
@@ -10,37 +11,47 @@ struct RootView: View {
       switch config.mode {
       case .live:
         if let url = config.backendURL {
-          AppFlow { LiveGameClient(baseURL: url) }
+          AppFlow(library: .app) { LiveGameClient(baseURL: url) }
         } else {
           MissingBackendURLView()
         }
       case .mock:
-        AppFlow {
-          MockGameClient(options: config.mock, pool: config.scenePick == .difficulty ? .bundled : nil)
+        AppFlow(library: .app) {
+          MockGameClient(options: config.mock, pool: .bundled)
         }
       }
     }
     .foregroundStyle(Theme.ink)
-    // 3D シーンは読み込みに時間がかかるので、起動したらすぐ読み始める（最初に出す公園から）。
-    // 難易度で選ぶときは、作り置きの場面も組み立てておく（Live も同梱の配置を使う。SceneLayouts.client）
+    // 3D の場面は組み立てに時間がかかるので、起動したらすぐ作り置きの場面を組み立てておく
+    // （Live も同梱の配置を使う。SceneLayouts.client）
     .task {
-      SceneLibrary.shared.preload(SceneCatalog.all.map(\.id))
-      if config.scenePick == .difficulty {
-        SceneLibrary.shared.preload(SceneDifficulty.allCases.flatMap { ScenePool.bundled.scenes[$0] ?? [] })
-      }
+      SceneLibrary.shared.preload(SceneDifficulty.allCases.flatMap { ScenePool.bundled.scenes[$0] ?? [] })
+    }
+    // Live は、起動時と前に戻ったときに、タイトル画面の 3D をサーバーに毎回確かめる（期限の内でも）。裏で待ち、描画は待たせない。
+    // 取り直した 3D は、次にホームを開いたときから出す（TitleStore・HomeTitle）
+    .onChange(of: scenePhase, initial: true) { _, phase in
+      guard config.mode == .live, phase == .active else { return }
+      Task { await TitleStore.shared.refresh() }
     }
   }
 }
 
-/// ホーム → 部屋に入る → 部屋（待合・プレイ・結果）の切り替え
+/// ホーム → 部屋（待合・プレイ・結果）の切り替え。ホームからは、きろく（その先の苦手）と設定にも入る。
+/// 初めて開いた（名前が無い）ときは、ホームの代わりに名前を決める最初の画面を出す（HomeView の中で替える）。
+/// ほかの人の部屋へは、ホームの「あそぶ」で自分の部屋を作ってから、待合の「他のルーム」で移る
 private struct AppFlow: View {
+  /// 端末に残した遊んだ記録（アプリ全体で 1 つ。body が走るたびに作り直さない）
+  let library: RecordLibrary
   /// 部屋ごとに新しい GameClient を作る
   let makeClient: () -> any GameClient
 
   private enum Screen: Equatable {
     case home
-    case join
     case room
+    case records
+    /// 苦手（きろくの上に重ねる）
+    case weak
+    case settings
   }
 
   @State private var screen = Screen.home
@@ -51,21 +62,48 @@ private struct AppFlow: View {
   var body: some View {
     ZStack {
       switch screen {
-      case .home:
-        HomeView(profile: $profile, onCreate: create, onJoin: { go(.join) })
-          .disabled(creating)
-          .transition(.opacity)
-      case .join:
-        JoinView(profile: profile, join: join, onBack: { go(.home) })
-          .transition(.opacity)
+      case .home, .records, .weak, .settings:
+        // きろくと設定は、ホームを出したまま上に重ねる。ホームの 3D を消して出し直さないため
+        // （3D の入った view を画面の切り替えと同時に出し入れすると、後から出た 3D が描き直されないことがある）
+        HomeView(
+          profile: profile, onName: { profile = .first(name: $0) }, onPlay: create, onRecords: { go(.records) },
+          onSettings: { go(.settings) }, isCovered: screen != .home
+        )
+        .disabled(creating || screen != .home)
+        .accessibilityHidden(screen != .home)
+        .transition(.opacity)
+        .overlay {
+          if screen == .records || screen == .weak {
+            // 苦手は、きろくを出したまま上に重ねる（戻ったときに、選んでいた場面とスクロールの位置が残る）。
+            // 重なっている間は、きろくの 3D を外す
+            RecordsView(
+              library: library, isCovered: screen == .weak, onBack: { go(.home) }, onWeakPoints: { go(.weak) }
+            )
+            .disabled(screen != .records)
+            .accessibilityHidden(screen != .records)
+            .cover()
+            .overlay {
+              if screen == .weak {
+                WeakPointsView(library: library, analyzer: .app, onBack: { go(.records) })
+                  .cover()
+              }
+            }
+          } else if screen == .settings {
+            SettingsView(library: library, profile: $profile, onBack: { go(.home) })
+              .cover()
+          }
+        }
       case .room:
         if let session {
-          RoomView(session: session, onLeave: leave)
+          RoomView(session: session, onLeave: leave, onMove: move)
+            // 別の部屋に移ったら、待合を新しく作る（前の部屋の画面の状態を持ち越さない）
+            .id(ObjectIdentifier(session))
             .transition(.opacity)
         }
       }
     }
     .animation(.easeInOut(duration: 0.3), value: screen)
+    .onChange(of: profile) { _, profile in profile.save() }
   }
 
   private func go(_ next: Screen) {
@@ -73,16 +111,16 @@ private struct AppFlow: View {
   }
 
   private func newSession() -> RoomSession {
-    profile.name = profile.name.trimmingCharacters(in: .whitespaces)
-    profile.save()
-    return RoomSession(client: makeClient(), me: profile)
+    RoomSession(client: makeClient(), me: profile)
   }
 
+  /// 「あそぶ」。自分の部屋を作り、ホストとして待合に入る
   private func create() {
     let session = newSession()
     creating = true
     Task {
       defer { creating = false }
+      // ラウンドの途中で確認が出ないよう、部屋に入る前に聞く
       await MicPermission.request()
       guard (try? await session.create()) != nil else { return }
       self.session = session
@@ -90,24 +128,29 @@ private struct AppFlow: View {
     }
   }
 
-  private func join(_ code: String) async throws {
-    // ラウンドの途中で確認が出ないよう、部屋に入る前に聞く
-    await MicPermission.request()
-    let session = newSession()
-    do {
-      try await session.join(code: code)
-    } catch {
-      session.leave()
-      throw error
-    }
-    self.session = session
-    go(.room)
+  /// 待合の「他のルーム」。code の部屋に入れてから、今の部屋を抜ける（RoomSession.move）。入れたら移った先の待合に替える。
+  /// 入れなければ投げ、今の部屋のまま（シートが理由を出す）。もう移り始めていたら何もせず投げる（2 つの部屋に入らない）
+  private func move(to code: String) async throws {
+    guard let current = session else { return }
+    guard !current.isMoving else { throw RoomSession.MoveError.alreadyMoving }
+    let next = newSession()
+    try await current.move(to: code, with: next)
+    session = next
   }
 
   private func leave() {
     session?.leave()
     session = nil
     go(.home)
+  }
+}
+
+extension View {
+  /// 下の画面を隠して上に重ねる（下の画面は出したままにする）
+  fileprivate func cover() -> some View {
+    frame(maxWidth: .infinity, maxHeight: .infinity)
+      .background(Theme.background.ignoresSafeArea())
+      .transition(.opacity)
   }
 }
 

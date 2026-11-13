@@ -1,0 +1,135 @@
+{
+  "protocol": "scenenglish.scene/2",
+  "id": "gen-v2-pre2-park-01",
+  "name": "公園でボール遊び",
+  "difficulty": "eiken-pre2",
+  "description": "A boy is throwing a ball. A dog is running across the grass because the boy threw the ball. A woman is sitting on the bench. There is a tree behind the bench. There is a trash can next to the bench.",
+  "checklist": [
+    {
+      "id": "boy_throw",
+      "kind": "center",
+      "label": "男の子がボールを投げている",
+      "accept": "a boy is throwing a ball",
+      "refs": ["boy", "ball"]
+    },
+    {
+      "id": "dog_run",
+      "kind": "center",
+      "label": "犬が走っている",
+      "accept": "a dog is running",
+      "refs": ["dog"]
+    },
+    {
+      "id": "woman_sit",
+      "kind": "center",
+      "label": "女の人が座っている",
+      "accept": "a woman is sitting on the bench",
+      "refs": ["woman", "bench"]
+    },
+    {
+      "id": "why_run",
+      "kind": "reason",
+      "label": "犬が走っている理由",
+      "accept": "a dog is running across the grass because the boy threw the ball",
+      "refs": ["dog", "boy", "ball"]
+    },
+    {
+      "id": "tree_behind",
+      "kind": "detail",
+      "label": "ベンチの後ろに木がある",
+      "accept": "there is a tree behind the bench",
+      "refs": ["tree", "bench"]
+    },
+    {
+      "id": "trash_next",
+      "kind": "detail",
+      "label": "ベンチの隣にごみ箱がある",
+      "accept": "there is a trash can next to the bench",
+      "refs": ["trash_can", "bench"]
+    }
+  ],
+  "items": [
+    {
+      "key": "ground",
+      "part": "grass_patch",
+      "place": {
+        "relation": "ground"
+      },
+      "position": [0, 0, 0]
+    },
+    {
+      "key": "bench",
+      "part": "bench",
+      "place": {
+        "relation": "ground",
+        "zone": "back"
+      },
+      "position": [0, 0, -2.75]
+    },
+    {
+      "key": "woman",
+      "part": "person_sit_woman_a",
+      "place": {
+        "relation": "sit_on",
+        "target": "bench"
+      },
+      "position": [0, 0.002, -2.495]
+    },
+    {
+      "key": "tree",
+      "part": "tree",
+      "place": {
+        "relation": "behind",
+        "target": "bench"
+      },
+      "position": [2.632, 0, -2.806]
+    },
+    {
+      "key": "trash_can",
+      "part": "trash_bin",
+      "place": {
+        "relation": "next_to",
+        "target": "bench",
+        "side": "right"
+      },
+      "position": [-1.11, 0, -2.75]
+    },
+    {
+      "key": "boy",
+      "part": "person_throw_boy_a",
+      "place": {
+        "relation": "ground",
+        "zone": "front_left"
+      },
+      "facing": "right",
+      "position": [-2.75, 0, 2.75],
+      "yaw": 90
+    },
+    {
+      "key": "ball",
+      "part": "ball_red",
+      "place": {
+        "relation": "thrown_by",
+        "target": "boy"
+      },
+      "position": [-1.51, 1.15, 2.741]
+    },
+    {
+      "key": "dog",
+      "part": "animal_run_dog_a",
+      "place": {
+        "relation": "ground",
+        "zone": "front_right"
+      },
+      "facing": "right",
+      "position": [2.75, 0, 2.75],
+      "yaw": -90.1,
+      "motion": {
+        "type": "move",
+        "to": [-0.69, 0, 2.743],
+        "duration": 5,
+        "toward": "ball"
+      }
+    }
+  ]
+}

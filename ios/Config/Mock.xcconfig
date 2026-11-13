@@ -3,9 +3,6 @@
 
 BACKEND_MODE = mock
 
-// 待合でのシーンの選び方。difficulty は難易度だけを選び、作り置きの場面（backend/src/scenes/pool）から出す。list は手作りのシーンの一覧
-SCENE_PICK = difficulty
-
 // 仮のデータの振る舞い。変えるときは Local.xcconfig に書く（書き方は Local.xcconfig.example）
 // 自分のほかの参加者の数（0〜7）。部屋に入るときは、うち 1 人がホストになる（0 でも 1 人はいる）
 MOCK_OTHER_PLAYERS = 3
@@ -13,6 +10,12 @@ MOCK_OTHER_PLAYERS = 3
 MOCK_INCLUDES_OFFLINE = NO
 // 部屋に入ったあと、ホストがスタートするまでの秒数
 MOCK_HOST_START_DELAY = 6
+// スタートしてから、場面を作り終えてラウンドが始まるまでの秒数（場面を作っているふり）
+MOCK_GENERATING_DURATION = 3
+// きろくの画面に初めから出す例の記録の数（0 で出さない）。端末には書かず、「すべて消す」で一緒に消える（開き直すと戻る）
+MOCK_SAMPLE_RECORDS = 12
+// 苦手の分析（3 秒待ってから返す）。ok: 癖 2 件など / empty: 癖が 0 件 / fail: 作れない / limit: 回数の上限
+MOCK_WEAK_POINTS = ok
 
 // 各自の設定で上書きする（無くてもよい）
 #include? "Local.xcconfig"

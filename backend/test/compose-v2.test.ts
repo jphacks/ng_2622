@@ -1,7 +1,7 @@
 // /2 の配置の JSON を作る関数（src/scenes/compose-v2.ts）のテスト
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { composeLayout } from "../src/scenes/compose";
+import { composeItems, rotate } from "../src/scenes/compose";
 import { composeLayoutV2 } from "../src/scenes/compose-v2";
 import { EXAMPLE_ITEMS, EXAMPLE_SENTENCES } from "../src/scenes/generate-v2";
 import { PARTS } from "../src/scenes/parts";
@@ -47,21 +47,12 @@ test("items は、Claude が書いた関係と計算した座標の両方を持�
   assert.deepEqual(man?.place, { relation: "sit_on", target: "bench" });
 });
 
-test("座標は今の composeLayout（/1）と同じ", () => {
+test("座標は composeItems（compose.ts）が計算したもの", () => {
   const v2 = composeLayoutV2(PLAN, PARTS, META);
-  const v1 = composeLayout(
-    {
-      name: PLAN.name,
-      description: PLAN.description,
-      items: PLAN.items,
-      elements: [],
-    },
-    PARTS,
-    { id: META.id, difficulty: "normal" },
-  );
+  const placed = composeItems(PLAN.items, PARTS);
   assert.deepEqual(
     v2.items.map((i) => [i.key, i.part, i.position, i.yaw]),
-    v1.items.map((i) => [i.key, i.part, i.position, i.yaw]),
+    placed.map((i) => [i.key, i.part, i.position, i.yaw]),
   );
 });
 
@@ -108,4 +99,97 @@ test("一覧に無い部品は飛ばし、残りの関係と座標がずれな�
 test("JSON にして読み戻しても同じ（undefined の欄を残さない）", () => {
   const layout = composeLayoutV2(PLAN, PARTS, META);
   assert.deepEqual(JSON.parse(JSON.stringify(layout)), layout);
+});
+
+// 相手が人のときも、相手の体の実際の大きさで間を空ける（倒れた人は長さ 1.8 m）。
+// 置いた人の足元が、倒れた人の体の箱（倒れた人の向きに沿った箱）を体の半分の幅だけ広げた範囲の外にあるか
+const outsideBody = (
+  body: { part: string; position: number[]; yaw?: number },
+  feet: number[],
+) => {
+  const part = PARTS.find((p) => p.id === body.part.split("@")[0]);
+  assert.ok(part, body.part);
+  const [lx, , lz] = rotate(
+    [feet[0] - body.position[0], 0, feet[2] - body.position[2]],
+    -(body.yaw ?? 0),
+  );
+  return Math.max(
+    Math.abs(lx) - part.size[0] / 2,
+    Math.abs(lz) - part.size[2] / 2,
+  );
+};
+
+test("倒れた人の左右・前後に relate（body）で置いた人は、倒れた人の体の箱と重ならない", () => {
+  for (const side of ["left", "right", "front", "back"] as const) {
+    for (const distance of ["beside", "talk"] as const) {
+      const placed = composeItems(
+        [
+          { key: "ground", part: "grass_patch", place: { relation: "ground" } },
+          {
+            key: "woman",
+            part: "person_fallen_woman_a",
+            place: { relation: "ground", zone: "center" },
+          },
+          {
+            key: "boy",
+            part: "person_stand_boy_a",
+            place: {
+              relation: "relate",
+              target: "woman",
+              link: "body",
+              side,
+              distance,
+              turn: "toward",
+            },
+          },
+        ],
+        PARTS,
+      );
+      const get = (k: string) => placed.find((i) => i.key === k);
+      const woman = get("woman");
+      const boy = get("boy");
+      assert.ok(woman && boy);
+      // 立つ人の足元は、倒れた人の箱から体の半分の幅（0.2 m）より外
+      const gap = outsideBody(woman, boy.position);
+      assert.ok(
+        gap >= 0.2,
+        `${side} ${distance}: 箱からの距離 ${gap.toFixed(2)} m`,
+      );
+    }
+  }
+});
+
+test("立つ人どうしの relate（body）の間合いは、体の半分の幅で測っていたころと大きく変わらない", () => {
+  const placed = composeItems(
+    [
+      { key: "ground", part: "grass_patch", place: { relation: "ground" } },
+      {
+        key: "man",
+        part: "person_stand_boy_a",
+        place: { relation: "ground", zone: "center" },
+        facing: "camera",
+      },
+      {
+        key: "boy",
+        part: "person_stand_boy_a",
+        place: {
+          relation: "relate",
+          target: "man",
+          link: "body",
+          side: "left",
+          distance: "talk",
+          turn: "toward",
+        },
+      },
+    ],
+    PARTS,
+  );
+  const [a, b] = ["man", "boy"].map((k) => placed.find((i) => i.key === k));
+  assert.ok(a && b);
+  // 前は 0.2 + 0.2 + 0.45 = 0.85 m
+  const d = Math.hypot(
+    a.position[0] - b.position[0],
+    a.position[2] - b.position[2],
+  );
+  assert.ok(d > 0.8 && d < 0.95, `${d}`);
 });

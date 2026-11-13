@@ -86,15 +86,6 @@
         "additionalProperties": false,
         "description": "接続したら最初に送る。ホストは POST /rooms で受け取った playerId と token を、切断から戻る人は welcome で受け取ったものを付ける。初めて入る人は name だけ"
       },
-      "Difficulty": {
-        "description": "この難易度の場面を部屋に用意させる。部屋が AI で作れるとき（生成が on で、その部屋で作らせた回数が 20 回未満）は、まず phase が generating の room が全員に届き、部屋が AI で場面を作る（10 秒まで）。作れなかったとき・作れないときは、作り置きの場面のうちその部屋でまだ出ていないものからランダムに 1 つ選ぶ（全部出たら最初に戻る）。どちらの場合も sceneId は round で届く。AI で作った場面の配置は GET /scenes/{sceneId}/layout?room=<部屋のコード> で取る。sceneId と一緒に送ると invalid_message",
-        "type": "string",
-        "enum": [
-          "easy",
-          "normal",
-          "hard"
-        ]
-      },
       "StartMessage": {
         "type": "object",
         "properties": {
@@ -114,20 +105,6 @@
         ],
         "additionalProperties": false,
         "description": "ホストだけが送れる。待合のときだけ有効（generating の間に送ると not_in_lobby）。ラウンドが始まったときにつながっている人がラウンドの参加者になる（切断中の人は入らない）。generating の間にホストが leave すると、生成をやめて作り置きの場面でラウンドを始める"
-      },
-      "CloseMessage": {
-        "type": "object",
-        "properties": {
-          "type": {
-            "type": "string",
-            "const": "close"
-          }
-        },
-        "required": [
-          "type"
-        ],
-        "additionalProperties": false,
-        "description": "ホストだけが送れる。ラウンドを締め切って結果発表に進む。採点がまだの人は「採点できませんでした」になる"
       },
       "AgainMessage": {
         "type": "object",
@@ -162,7 +139,7 @@
           "round"
         ],
         "additionalProperties": false,
-        "description": "音声を送らずにこのラウンドを終える（マイクが使えない・録れなかったとき）。その人は done になり、結果では「採点できませんでした」（rank・score が null）になる。音声を送った後は already_submitted"
+        "description": "音声を送らずにこのラウンドを終える（マイクが使えない・録れなかったとき）。その人は done になり、結果では「採点できませんでした」（rank・score が null）になる。音声を送った後は already_submitted、音声の締め切りを過ぎた後は deadline_passed"
       },
       "LeaveMessage": {
         "type": "object",
@@ -187,9 +164,6 @@
             "$ref": "#/components/schemas/StartMessage"
           },
           {
-            "$ref": "#/components/schemas/CloseMessage"
-          },
-          {
             "$ref": "#/components/schemas/AgainMessage"
           },
           {
@@ -204,7 +178,6 @@
           "mapping": {
             "join": "#/components/schemas/JoinMessage",
             "start": "#/components/schemas/StartMessage",
-            "close": "#/components/schemas/CloseMessage",
             "again": "#/components/schemas/AgainMessage",
             "skip": "#/components/schemas/SkipMessage",
             "leave": "#/components/schemas/LeaveMessage"
@@ -436,23 +409,168 @@
         "additionalProperties": false,
         "description": "点数（各 0〜100 の整数）"
       },
-      "FeedbackStrength": {
+      "ContentClaim": {
         "type": "object",
         "properties": {
           "quote": {
             "type": "string",
-            "description": "根拠にした本人の発話（文字起こしから引用）。無ければ空"
+            "description": "発話からの引用。文字起こし（transcript）に書かれているとおりの文字列。前の描写が終わった位置から先を、そのままの文字列で探すと下線を引ける（1 つの文が 2 つの項目に当たるときは、引用が重なることがある）"
           },
-          "text": {
-            "type": "string"
+          "verdict": {
+            "type": "string",
+            "enum": [
+              "correct",
+              "contradiction",
+              "absent",
+              "offtopic"
+            ],
+            "description": "correct: 場面と合う・contradiction: 場面と矛盾する・absent: 場面に無い物や人・offtopic: 場面と関係が無い。数えない描写（推測やつなぎの言葉）は送らない"
+          },
+          "item": {
+            "description": "当たったチェックリストの項目の id（items の id）。correct で null なら、一覧に無い正しい描写（その他）。correct 以外は null",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "level": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "enum": [
+              "full",
+              "partial"
+            ],
+            "description": "項目に当たったときの達成（full: 言えた・partial: 一部）。item が null なら null"
+          },
+          "note": {
+            "description": "間違いの理由（日本語）。correct のときは null",
+            "type": [
+              "string",
+              "null"
+            ]
           }
         },
         "required": [
           "quote",
-          "text"
+          "verdict",
+          "item",
+          "level",
+          "note"
         ],
         "additionalProperties": false,
-        "description": "できたこと"
+        "description": "発話を事実 1 つずつに分けた描写と、その判定"
+      },
+      "ContentItem": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "kind": {
+            "$ref": "#/components/schemas/ChecklistKind"
+          },
+          "label": {
+            "type": "string",
+            "description": "振り返りに出す日本語"
+          },
+          "level": {
+            "type": "string",
+            "enum": [
+              "full",
+              "partial",
+              "none"
+            ],
+            "description": "full: 言えた・partial: 一部・none: 言えていない"
+          }
+        },
+        "required": [
+          "id",
+          "kind",
+          "label",
+          "level"
+        ],
+        "additionalProperties": false,
+        "description": "チェックリストの項目ごとの達成"
+      },
+      "PlayerContent": {
+        "type": "object",
+        "properties": {
+          "claims": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ContentClaim"
+            },
+            "description": "話した順。数えない描写は入らない"
+          },
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ContentItem"
+            },
+            "description": "場面のチェックリストの順"
+          },
+          "others": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991,
+            "description": "その他（一覧に無い正しい描写）として数えた件数。2 件まで"
+          },
+          "recall": {
+            "type": "object",
+            "properties": {
+              "earned": {
+                "type": "number",
+                "minimum": 0,
+                "description": "言えた重み（中心・理由・つながり 2、細部 1、一部は半分、その他 1 件 0.5。max で頭打ち）"
+              },
+              "max": {
+                "type": "number",
+                "minimum": 0,
+                "description": "満点の重み（項目だけの合計）"
+              }
+            },
+            "required": [
+              "earned",
+              "max"
+            ],
+            "additionalProperties": false,
+            "description": "言えた（再現率）の分子と分母"
+          },
+          "precision": {
+            "type": "object",
+            "properties": {
+              "correct": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 9007199254740991,
+                "description": "正しい描写の数"
+              },
+              "said": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 9007199254740991,
+                "description": "言った描写の数（claims の数と同じ）"
+              }
+            },
+            "required": [
+              "correct",
+              "said"
+            ],
+            "additionalProperties": false,
+            "description": "正しさ（適合率）の分子と分母"
+          }
+        },
+        "required": [
+          "claims",
+          "items",
+          "others",
+          "recall",
+          "precision"
+        ],
+        "additionalProperties": false,
+        "description": "内容の点の内訳。内容 = 100 × 2PR / (P + R)、R = recall.earned ÷ recall.max、P = precision.correct ÷ precision.said（どちらも分母が 0 なら 0）"
       },
       "FeedbackNextStep": {
         "type": "object",
@@ -465,6 +583,16 @@
               "speech"
             ]
           },
+          "text": {
+            "type": "string"
+          },
+          "item": {
+            "description": "kind が content のとき、勧めるチェックリストの項目の id（content.items の id）。項目を全部言えているとき・短すぎる発話のとき・content 以外は null",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
           "gain": {
             "type": [
               "integer",
@@ -472,19 +600,17 @@
             ],
             "minimum": -9007199254740991,
             "maximum": 9007199254740991,
-            "description": "足すと合計点が何点伸びるか。内容の要素のときだけ"
-          },
-          "text": {
-            "type": "string"
+            "description": "その項目を言えたら、合計の点（score.total）が何点伸びるか。item が null のときは null"
           }
         },
         "required": [
           "kind",
-          "gain",
-          "text"
+          "text",
+          "item",
+          "gain"
         ],
         "additionalProperties": false,
-        "description": "次に伸ばす一つ。言えなかった要素のうち配点が最も高いもの"
+        "description": "次に伸ばす一つ。内容・表現・話し方のどれを勧めるかは採点の Claude が選ぶ"
       },
       "Rewrite": {
         "type": "object",
@@ -535,9 +661,6 @@
       "Feedback": {
         "type": "object",
         "properties": {
-          "strength": {
-            "$ref": "#/components/schemas/FeedbackStrength"
-          },
           "nextStep": {
             "$ref": "#/components/schemas/FeedbackNextStep"
           },
@@ -555,13 +678,21 @@
           },
           "speechTip": {
             "$ref": "#/components/schemas/FeedbackSpeechTip"
+          },
+          "expressionBasis": {
+            "description": "表現の点の根拠（英語 1 文。どの形を正しく使えたか・どこが誤りか）。採点の Claude が点の前に書く。振り返りの画面には出さず、端末の記録と苦手の分析に使う。根拠が無いとき（3 語未満で Claude を呼ばなかった回、呼び直しても根拠が空だった回、固定の点数のモード SCORING_MODE=fixed）は null。空の文字列は送らない",
+            "example": "Uses the present continuous correctly, but misses articles.",
+            "type": [
+              "string",
+              "null"
+            ]
           }
         },
         "required": [
-          "strength",
           "nextStep",
           "rewrite",
-          "speechTip"
+          "speechTip",
+          "expressionBasis"
         ],
         "additionalProperties": false,
         "description": "振り返りの講評"
@@ -603,9 +734,17 @@
             "type": "string",
             "description": "文字起こし。採点できなかった人は空"
           },
-          "comment": {
-            "type": "string",
-            "description": "講評の一言（できたこと。feedback.strength.text と同じ）。採点できなかった人は空"
+          "content": {
+            "type": [
+              "object",
+              "null"
+            ],
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/PlayerContent"
+              }
+            ],
+            "description": "内容の点の内訳（描写の一覧・項目ごとの達成・言えたと正しさ）。全員分が届く。採点できなかった人は null"
           },
           "feedback": {
             "type": [
@@ -627,7 +766,7 @@
           "rank",
           "score",
           "transcript",
-          "comment",
+          "content",
           "feedback"
         ],
         "additionalProperties": false
@@ -649,7 +788,7 @@
           },
           "sceneName": {
             "type": "string",
-            "example": "公園"
+            "example": "雨のバス停"
           },
           "players": {
             "type": "array",
@@ -667,7 +806,7 @@
           "players"
         ],
         "additionalProperties": false,
-        "description": "全員の採点がそろうか、ホストが締め切ったら全員へ送る。結果発表のときに戻ってきた人にも送り直す"
+        "description": "全員の採点がそろうか、締め切りの時刻が来たら全員へ送る。締め切りは、録音が終わるはずの時刻（round の startAt + 回転 3 秒 + 録音 20 秒）から、音声が 15 秒・採点が 30 秒。音声を送っていない人と、採点が間に合わなかった人は「採点できませんでした」（rank・score が null）。結果発表のときに戻ってきた人にも送り直す"
       },
       "ErrorCode": {
         "type": "string",
@@ -682,14 +821,18 @@
           "server_busy",
           "not_playing",
           "already_submitted",
+          "deadline_passed",
           "invalid_audio",
           "not_in_results",
           "scoring_failed",
           "generation_refused",
           "generation_failed",
-          "generation_unavailable"
+          "generation_unavailable",
+          "rate_limited",
+          "analysis_failed",
+          "analysis_unavailable"
         ],
-        "description": "room_not_found: 部屋が無い\nroom_full: 満員\ninvalid_message: メッセージの形が違う\nunauthorized: 参加者の ID と合言葉が合わない（POST /scenes/generate では SCENE_WRITE_TOKEN が違う）\nnot_host: ホストだけができる操作\nnot_in_lobby: 待合でしかできない操作\nunknown_scene: シーンの ID が無い\nserver_busy: 空いている部屋のコードが無い\nnot_playing: ラウンド中でない、ラウンドの番号が違う、またはそのラウンドに参加していない\nalready_submitted: このラウンドの音声はもう受け取った\ninvalid_audio: 音声が 1 MB までの WAV でない\nnot_in_results: 結果発表のときにしかできない操作\nscoring_failed: 採点の途中で失敗した（Claude の呼び出しなど）\ngeneration_refused: Claude が断った\ngeneration_failed: Claude の応答が途中で止まった、または形が違った（やり直しても失敗した）\ngeneration_unavailable: Claude を呼べない（タイムアウト・API の失敗・止めてある）"
+        "description": "room_not_found: 部屋が無い\nroom_full: 満員\ninvalid_message: メッセージの形が違う\nunauthorized: 参加者の ID と合言葉が合わない（POST /scenes/generate では SCENE_WRITE_TOKEN が違う）\nnot_host: ホストだけができる操作\nnot_in_lobby: 待合でしかできない操作\nunknown_scene: シーンの ID が無い\nserver_busy: 空いている部屋のコードが無い\nnot_playing: ラウンド中でない、ラウンドの番号が違う、またはそのラウンドに参加していない\nalready_submitted: このラウンドの音声はもう受け取った\ndeadline_passed: このラウンドの音声の締め切り（録音が終わるはずの時刻から 15 秒）を過ぎた。その人は採点できなかった扱いになっている\ninvalid_audio: 音声が 1 MB までの WAV でない\nnot_in_results: 結果発表のときにしかできない操作\nscoring_failed: 採点の途中で失敗した（Claude の呼び出しなど）\ngeneration_refused: Claude が断った\ngeneration_failed: Claude の応答が途中で止まった・形が違った・作り直しても裏取りを通らなかった\ngeneration_unavailable: Claude を呼べない（タイムアウト・API の失敗・止めてある）\nrate_limited: 苦手の分析の回数の上限（IP ごとの 1 時間か、全体の 1 日）に達した\nanalysis_failed: 苦手の分析で Claude が失敗した（API の失敗・途中で止まった・JSON が読めない・時間切れ）\nanalysis_unavailable: 苦手の分析ができない（WEAK_POINT_ANALYSIS が on でない・PR のプレビュー・Claude のキーが無い・回数を数える場所が失敗した）"
       },
       "ErrorMessage": {
         "type": "object",
@@ -848,35 +991,131 @@
         "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$",
         "description": "部屋の中での参加者の ID"
       },
-      "SceneLayoutElement": {
+      "SceneChecklistItem": {
         "type": "object",
         "properties": {
           "id": {
-            "type": "string"
+            "type": "string",
+            "description": "場面の中で重ならない ID"
+          },
+          "kind": {
+            "$ref": "#/components/schemas/ChecklistKind"
           },
           "label": {
-            "type": "string"
-          },
-          "points": {
-            "type": "integer",
-            "minimum": -9007199254740991,
-            "maximum": 9007199254740991
+            "type": "string",
+            "description": "振り返りに出す日本語"
           },
           "accept": {
-            "type": "string"
+            "type": "string",
+            "description": "「言えた」とする英語の言い方。採点の Claude が基準にする。\" / \" で別の言い方を並べることがある"
           },
-          "partial": {
-            "type": "string"
+          "refs": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "項目が指す items の key"
           }
         },
         "required": [
           "id",
+          "kind",
           "label",
-          "points",
-          "accept"
+          "accept",
+          "refs"
         ],
         "additionalProperties": false,
-        "description": "描写してほしい要素"
+        "description": "採点のチェックリストの項目"
+      },
+      "ScenePlace": {
+        "type": "object",
+        "properties": {
+          "relation": {
+            "type": "string",
+            "enum": [
+              "ground",
+              "on",
+              "in",
+              "under",
+              "above",
+              "next_to",
+              "in_front_of",
+              "behind",
+              "near",
+              "between",
+              "sit_on",
+              "seat_at",
+              "relate",
+              "thrown_by"
+            ]
+          },
+          "target": {
+            "description": "相手の key",
+            "type": "string"
+          },
+          "target2": {
+            "description": "between の 2 つ目",
+            "type": "string"
+          },
+          "zone": {
+            "type": "string",
+            "enum": [
+              "back_left",
+              "back",
+              "back_right",
+              "left",
+              "center",
+              "right",
+              "front_left",
+              "front",
+              "front_right"
+            ]
+          },
+          "spot": {
+            "type": "string"
+          },
+          "link": {
+            "type": "string",
+            "enum": [
+              "hand",
+              "body",
+              "under"
+            ]
+          },
+          "side": {
+            "type": "string",
+            "enum": [
+              "any",
+              "front",
+              "back",
+              "left",
+              "right"
+            ]
+          },
+          "distance": {
+            "type": "string",
+            "enum": [
+              "touch",
+              "beside",
+              "talk",
+              "approach",
+              "far"
+            ]
+          },
+          "turn": {
+            "type": "string",
+            "enum": [
+              "toward",
+              "away",
+              "same"
+            ]
+          }
+        },
+        "required": [
+          "relation"
+        ],
+        "additionalProperties": false,
+        "description": "生成で Claude が書いた置き方の関係。アプリは position を使えば足りる（採点と裏取りが読む）"
       },
       "SceneMotion": {
         "type": "object",
@@ -914,6 +1153,17 @@
           "loop": {
             "description": "既定 true",
             "type": "boolean"
+          },
+          "toward": {
+            "description": "生成で Claude が書いた行き先（相手の key か区画）。アプリは to を使えば足りる",
+            "type": "string"
+          },
+          "path": {
+            "type": "string",
+            "enum": [
+              "across",
+              "along"
+            ]
           }
         },
         "required": [
@@ -933,6 +1183,13 @@
             "type": "string",
             "description": "部品の ID。版を固定するときは apple_red@1",
             "example": "apple_red"
+          },
+          "place": {
+            "$ref": "#/components/schemas/ScenePlace"
+          },
+          "facing": {
+            "description": "生成で Claude が書いた向き（camera・left・right・away か、向く相手の key）",
+            "type": "string"
           },
           "position": {
             "minItems": 3,
@@ -958,6 +1215,7 @@
         "required": [
           "key",
           "part",
+          "place",
           "position"
         ],
         "additionalProperties": false,
@@ -968,7 +1226,7 @@
         "properties": {
           "protocol": {
             "type": "string",
-            "const": "scenenglish.scene/1"
+            "const": "scenenglish.scene/2"
           },
           "id": {
             "type": "string",
@@ -976,29 +1234,20 @@
           },
           "name": {
             "type": "string",
-            "example": "リンゴが落ちる公園"
+            "example": "雨のバス停"
           },
           "difficulty": {
-            "type": "string",
-            "enum": [
-              "easy",
-              "normal",
-              "hard"
-            ]
+            "$ref": "#/components/schemas/Difficulty"
           },
           "description": {
-            "type": "string"
+            "type": "string",
+            "description": "級の見本の答え（英語）。録音を待つ画面の正答例、振り返りの見本、採点の補足に使う"
           },
-          "elements": {
+          "checklist": {
             "type": "array",
             "items": {
-              "$ref": "#/components/schemas/SceneLayoutElement"
+              "$ref": "#/components/schemas/SceneChecklistItem"
             }
-          },
-          "extraMax": {
-            "type": "integer",
-            "minimum": -9007199254740991,
-            "maximum": 9007199254740991
           },
           "items": {
             "type": "array",
@@ -1013,24 +1262,26 @@
           "name",
           "difficulty",
           "description",
-          "elements",
-          "extraMax",
+          "checklist",
           "items"
         ],
         "additionalProperties": false,
-        "description": "配置の JSON（scenenglish.scene/1）"
+        "description": "配置の JSON（scenenglish.scene/2）"
+      },
+      "Difficulty": {
+        "type": "string",
+        "enum": [
+          "eiken-3",
+          "eiken-pre2",
+          "eiken-2"
+        ],
+        "description": "場面の難易度（級）。eiken-3: かんたん・eiken-pre2: ふつう・eiken-2: むずかしい。古い値（easy・normal・hard）は受け付けない"
       },
       "GenerateSceneRequest": {
         "type": "object",
         "properties": {
           "difficulty": {
-            "type": "string",
-            "enum": [
-              "easy",
-              "normal",
-              "hard"
-            ],
-            "description": "難しさ"
+            "$ref": "#/components/schemas/Difficulty"
           },
           "theme": {
             "description": "場面のテーマ（1〜50 文字、任意）。省けば、指示の中のテーマの一覧（公園・カフェ・店・駅・部屋など）から Claude が選ぶ",
@@ -1043,74 +1294,6 @@
         "required": [
           "difficulty"
         ]
-      },
-      "RatingSummary": {
-        "type": "object",
-        "properties": {
-          "average": {
-            "description": "★の平均（小数第 1 位まで）。評価が無ければ null",
-            "example": 4.2,
-            "type": [
-              "number",
-              "null"
-            ]
-          },
-          "count": {
-            "type": "integer",
-            "minimum": 0,
-            "maximum": 9007199254740991,
-            "description": "評価した人数"
-          }
-        },
-        "required": [
-          "average",
-          "count"
-        ],
-        "additionalProperties": false
-      },
-      "SceneSummary": {
-        "type": "object",
-        "properties": {
-          "id": {
-            "$ref": "#/components/schemas/SceneId"
-          },
-          "name": {
-            "type": "string",
-            "example": "公園"
-          },
-          "kind": {
-            "type": "string",
-            "enum": [
-              "vanilla"
-            ],
-            "description": "vanilla: 最初から入っているシーン（今後、ユーザーが作るシーンを足す）"
-          },
-          "rating": {
-            "$ref": "#/components/schemas/RatingSummary"
-          }
-        },
-        "required": [
-          "id",
-          "name",
-          "kind",
-          "rating"
-        ],
-        "additionalProperties": false
-      },
-      "ListScenesResponse": {
-        "type": "object",
-        "properties": {
-          "scenes": {
-            "type": "array",
-            "items": {
-              "$ref": "#/components/schemas/SceneSummary"
-            }
-          }
-        },
-        "required": [
-          "scenes"
-        ],
-        "additionalProperties": false
       },
       "SceneReview": {
         "type": "object",
@@ -1161,7 +1344,7 @@
         "type": "string",
         "minLength": 1,
         "description": "シーンの ID（シーンの JSON の id）",
-        "example": "park"
+        "example": "gen-7k2m9q4x3a"
       },
       "SubmitReviewResponse": {
         "type": "object",
@@ -1230,44 +1413,8 @@
       "ContentFeedback": {
         "type": "object",
         "properties": {
-          "strength": {
-            "type": "object",
-            "properties": {
-              "quote": {
-                "type": "string",
-                "description": "根拠にした本人の発話（文字起こしから引用）。無ければ空"
-              },
-              "text": {
-                "type": "string"
-              }
-            },
-            "required": [
-              "quote",
-              "text"
-            ],
-            "additionalProperties": false
-          },
           "nextStep": {
-            "type": "object",
-            "properties": {
-              "kind": {
-                "type": "string",
-                "enum": [
-                  "content",
-                  "expression",
-                  "speech"
-                ],
-                "description": "speech は話し方の点を送ったときだけ"
-              },
-              "text": {
-                "type": "string"
-              }
-            },
-            "required": [
-              "kind",
-              "text"
-            ],
-            "additionalProperties": false
+            "$ref": "#/components/schemas/FeedbackNextStep"
           },
           "rewrite": {
             "type": [
@@ -1280,15 +1427,22 @@
               }
             ],
             "description": "直す所が無ければ null"
+          },
+          "expressionBasis": {
+            "description": "表現の点の根拠（英語 1 文）。部屋の結果の Feedback.expressionBasis と同じ。根拠が無いとき（3 語未満、呼び直しても空、固定の点数のモード）は null",
+            "type": [
+              "string",
+              "null"
+            ]
           }
         },
         "required": [
-          "strength",
           "nextStep",
-          "rewrite"
+          "rewrite",
+          "expressionBasis"
         ],
         "additionalProperties": false,
-        "description": "講評。次に伸ばす一つは Claude が選ぶ"
+        "description": "講評（話し方のコツは無い）"
       },
       "ScoreResponse": {
         "type": "object",
@@ -1297,16 +1451,19 @@
             "type": "integer",
             "minimum": 0,
             "maximum": 100,
-            "description": "内容（0〜100）。採点基準の段階で付ける"
+            "description": "内容（0〜100）。チェックリストの達成（言えた）と、言ったことの正しさの F1"
           },
           "expression": {
             "type": "integer",
             "minimum": 0,
             "maximum": 100,
-            "description": "表現（0〜100）。採点基準の段階で付ける"
+            "description": "表現（0〜100）。級の文法の一覧に照らした段階で付ける"
           },
           "transcript": {
             "type": "string"
+          },
+          "breakdown": {
+            "$ref": "#/components/schemas/PlayerContent"
           },
           "feedback": {
             "$ref": "#/components/schemas/ContentFeedback"
@@ -1329,20 +1486,73 @@
           "content",
           "expression",
           "transcript",
+          "breakdown",
           "feedback",
           "mode",
           "elapsedMs"
         ],
         "additionalProperties": false,
-        "description": "配置と文字起こしから採点した、内容と表現の点と講評"
+        "description": "配置と文字起こしから採点した、内容と表現の点・内容の内訳・講評。nextStep.gain は、話し方の点を変えないとしたときの合計の伸び"
+      },
+      "ChecklistKind": {
+        "type": "string",
+        "enum": [
+          "center",
+          "reason",
+          "link",
+          "detail"
+        ],
+        "description": "チェックリストの項目の種類。center: 中心（誰が何をしているか）・reason: 理由・link: つながり（原因 → 行動 → 結果や目的）・detail: 細部（位置など）"
       },
       "ScoringLayout": {
         "type": "object",
         "properties": {
+          "difficulty": {
+            "$ref": "#/components/schemas/Difficulty"
+          },
           "description": {
-            "description": "場面の説明文（英語）。作り置きのときに書いて人が確かめたもの。採点の補足として Claude に渡す",
+            "description": "級の見本の答え（英語）。採点の補足として Claude に渡す",
             "type": "string",
             "maxLength": 2000
+          },
+          "checklist": {
+            "minItems": 1,
+            "maxItems": 20,
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string",
+                  "description": "場面の中で重ならない ID"
+                },
+                "kind": {
+                  "$ref": "#/components/schemas/ChecklistKind"
+                },
+                "label": {
+                  "type": "string",
+                  "description": "振り返りに出す日本語"
+                },
+                "accept": {
+                  "type": "string",
+                  "description": "「言えた」とする英語の言い方。採点の Claude が基準にする。\" / \" で別の言い方を並べることがある"
+                },
+                "refs": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  },
+                  "description": "項目が指す items の key"
+                }
+              },
+              "required": [
+                "id",
+                "kind",
+                "label",
+                "accept",
+                "refs"
+              ]
+            }
           },
           "items": {
             "minItems": 1,
@@ -1359,6 +1569,97 @@
                   "type": "string",
                   "minLength": 1,
                   "description": "部品の ID（assets/parts/index.json）。版を書くときは apple@1"
+                },
+                "place": {
+                  "type": "object",
+                  "properties": {
+                    "relation": {
+                      "type": "string",
+                      "enum": [
+                        "ground",
+                        "on",
+                        "in",
+                        "under",
+                        "above",
+                        "next_to",
+                        "in_front_of",
+                        "behind",
+                        "near",
+                        "between",
+                        "sit_on",
+                        "seat_at",
+                        "relate",
+                        "thrown_by"
+                      ]
+                    },
+                    "target": {
+                      "description": "相手の key",
+                      "type": "string"
+                    },
+                    "target2": {
+                      "description": "between の 2 つ目",
+                      "type": "string"
+                    },
+                    "zone": {
+                      "type": "string",
+                      "enum": [
+                        "back_left",
+                        "back",
+                        "back_right",
+                        "left",
+                        "center",
+                        "right",
+                        "front_left",
+                        "front",
+                        "front_right"
+                      ]
+                    },
+                    "spot": {
+                      "type": "string"
+                    },
+                    "link": {
+                      "type": "string",
+                      "enum": [
+                        "hand",
+                        "body",
+                        "under"
+                      ]
+                    },
+                    "side": {
+                      "type": "string",
+                      "enum": [
+                        "any",
+                        "front",
+                        "back",
+                        "left",
+                        "right"
+                      ]
+                    },
+                    "distance": {
+                      "type": "string",
+                      "enum": [
+                        "touch",
+                        "beside",
+                        "talk",
+                        "approach",
+                        "far"
+                      ]
+                    },
+                    "turn": {
+                      "type": "string",
+                      "enum": [
+                        "toward",
+                        "away",
+                        "same"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "relation"
+                  ]
+                },
+                "facing": {
+                  "type": "string"
                 },
                 "position": {
                   "minItems": 3,
@@ -1393,6 +1694,16 @@
                       "items": {
                         "type": "number"
                       }
+                    },
+                    "toward": {
+                      "type": "string"
+                    },
+                    "path": {
+                      "type": "string",
+                      "enum": [
+                        "across",
+                        "along"
+                      ]
                     }
                   },
                   "required": [
@@ -1409,9 +1720,11 @@
           }
         },
         "required": [
+          "difficulty",
+          "checklist",
           "items"
         ],
-        "description": "配置の JSON（scenenglish.scene/1）のうち、採点に使う項目。ほかの項目（name・elements など）は送っても無視する。座標や動きの細かい項目（duration など）も読まない"
+        "description": "配置の JSON（scenenglish.scene/2）のうち、採点に使う項目。ほかの項目（id・name など）は送っても無視する。動きの細かい項目（duration など）も読まない"
       },
       "ScoreRequest": {
         "type": "object",
@@ -1573,6 +1886,582 @@
         },
         "required": [
           "parts"
+        ],
+        "additionalProperties": false
+      },
+      "WeakPointViewpoint": {
+        "type": "string",
+        "enum": [
+          "content",
+          "expression"
+        ],
+        "description": "英検の二次試験の評価の観点。content: 内容（応答内容・情報量）・expression: 表現（語い・文法・語法）"
+      },
+      "WeakPointQuote": {
+        "type": "object",
+        "properties": {
+          "n": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 10,
+            "description": "回の番号（送った rounds の n）"
+          },
+          "quote": {
+            "type": "string",
+            "description": "その回の文字起こし（transcript）に書かれているとおりの文字列。サーバーが確かめ、見つからない引用は返さない"
+          }
+        },
+        "required": [
+          "n",
+          "quote"
+        ],
+        "additionalProperties": false,
+        "description": "自分の文の引用"
+      },
+      "WeakPointHabit": {
+        "type": "object",
+        "properties": {
+          "viewpoint": {
+            "$ref": "#/components/schemas/WeakPointViewpoint"
+          },
+          "title": {
+            "type": "string",
+            "description": "短い見出し（日本語。例「理由をつけずに終わる」）"
+          },
+          "what": {
+            "type": "string",
+            "description": "何が起きているか（日本語 1〜2 文）"
+          },
+          "examples": {
+            "minItems": 2,
+            "maxItems": 3,
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/WeakPointQuote"
+            },
+            "description": "自分の文の実例。2 つ以上の違う回にまたがる（2〜3 個。新しい回から、同じ回の中は話した順）"
+          },
+          "fix": {
+            "type": "string",
+            "description": "直し方（日本語 1 文と、短い英語の例）"
+          }
+        },
+        "required": [
+          "viewpoint",
+          "title",
+          "what",
+          "examples",
+          "fix"
+        ],
+        "additionalProperties": false,
+        "description": "くり返す癖"
+      },
+      "WeakPointImprovement": {
+        "type": "object",
+        "properties": {
+          "viewpoint": {
+            "$ref": "#/components/schemas/WeakPointViewpoint"
+          },
+          "text": {
+            "type": "string",
+            "description": "良くなった点（日本語 1 文）"
+          },
+          "example": {
+            "$ref": "#/components/schemas/WeakPointQuote"
+          }
+        },
+        "required": [
+          "viewpoint",
+          "text",
+          "example"
+        ],
+        "additionalProperties": false,
+        "description": "前より良くなった点。example は根拠の引用で、後半の回（新しいほうの ⌊回の数 / 2⌋ 回）から引く"
+      },
+      "WeakPointNextTry": {
+        "type": "object",
+        "properties": {
+          "viewpoint": {
+            "$ref": "#/components/schemas/WeakPointViewpoint"
+          },
+          "text": {
+            "type": "string",
+            "description": "次の 1 回で試すこと（日本語 1 文と、短い英語の例）"
+          }
+        },
+        "required": [
+          "viewpoint",
+          "text"
+        ],
+        "additionalProperties": false,
+        "description": "次の 1 回で試すこと。苦手の画面の「次はここ」に出す"
+      },
+      "WeakPointResponse": {
+        "type": "object",
+        "properties": {
+          "habits": {
+            "maxItems": 3,
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/WeakPointHabit"
+            },
+            "description": "くり返す癖（内容と表現を合わせて 2〜3 件を頼む）。確かめを通ったものだけなので 0〜1 件のこともある。空なら「くり返す癖は見つかりませんでした」"
+          },
+          "improvement": {
+            "type": [
+              "object",
+              "null"
+            ],
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/WeakPointImprovement"
+              }
+            ],
+            "description": "前より良くなった点。良くなっていない・根拠の引用が後半の回に見つからないときは null（欄を出さない）"
+          },
+          "nextTry": {
+            "type": [
+              "object",
+              "null"
+            ],
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/WeakPointNextTry"
+              }
+            ],
+            "description": "次の 1 回で試すこと。確かめで落ちたら null（アプリが数える分析から「次はここ」の代わりを出す）"
+          },
+          "retries": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 1,
+            "description": "確かめで癖が全部落ちて Claude を呼び直した回数（0〜1）"
+          }
+        },
+        "required": [
+          "habits",
+          "improvement",
+          "nextTry",
+          "retries"
+        ],
+        "additionalProperties": false,
+        "description": "確かめを通った苦手の分析。サーバーは保存しない。文に割合や点の数字は入らない（数字はアプリが数えた値を出す）"
+      },
+      "WeakPointRequest": {
+        "type": "object",
+        "properties": {
+          "rounds": {
+            "minItems": 5,
+            "maxItems": 10,
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "n": {
+                  "type": "integer",
+                  "minimum": 1,
+                  "maximum": 10,
+                  "description": "回の番号。古い順に 1 から振る（rounds の並びと同じ）。記録の ID は送らず、アプリが番号と記録の ID を対応させる"
+                },
+                "grade": {
+                  "type": [
+                    "string",
+                    "null"
+                  ],
+                  "enum": [
+                    "eiken-3",
+                    "eiken-pre2",
+                    "eiken-2"
+                  ],
+                  "description": "級（記録の difficulty。eiken-3・eiken-pre2・eiken-2）。級は混ざってよい。分からなければ null（Claude には級は不明と渡す）"
+                },
+                "transcript": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 2000,
+                  "description": "文字起こし（1〜2000 文字）"
+                },
+                "claims": {
+                  "maxItems": 30,
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "quote": {
+                        "type": "string",
+                        "maxLength": 2000
+                      },
+                      "verdict": {
+                        "type": "string",
+                        "enum": [
+                          "correct",
+                          "contradiction",
+                          "absent",
+                          "offtopic"
+                        ]
+                      },
+                      "item": {
+                        "type": [
+                          "string",
+                          "null"
+                        ],
+                        "maxLength": 100
+                      },
+                      "note": {
+                        "type": [
+                          "string",
+                          "null"
+                        ],
+                        "maxLength": 500
+                      }
+                    },
+                    "required": [
+                      "quote",
+                      "verdict"
+                    ]
+                  },
+                  "description": "描写ごとの判定（記録の content.claims の quote・verdict・item・note）。0〜30 個"
+                },
+                "rewrite": {
+                  "type": [
+                    "object",
+                    "null"
+                  ],
+                  "properties": {
+                    "before": {
+                      "type": "string",
+                      "maxLength": 2000
+                    },
+                    "after": {
+                      "type": "string",
+                      "maxLength": 2000
+                    },
+                    "reason": {
+                      "type": "string",
+                      "maxLength": 500
+                    }
+                  },
+                  "required": [
+                    "before",
+                    "after",
+                    "reason"
+                  ],
+                  "description": "言い直しの例（記録の feedback.rewrite）"
+                },
+                "nextStep": {
+                  "type": [
+                    "object",
+                    "null"
+                  ],
+                  "properties": {
+                    "kind": {
+                      "type": "string",
+                      "enum": [
+                        "content",
+                        "expression",
+                        "speech"
+                      ]
+                    },
+                    "text": {
+                      "type": "string",
+                      "maxLength": 500
+                    },
+                    "item": {
+                      "type": [
+                        "string",
+                        "null"
+                      ],
+                      "maxLength": 100
+                    }
+                  },
+                  "required": [
+                    "kind",
+                    "text"
+                  ],
+                  "description": "次の一つ（記録の feedback.nextStep の kind・text・item）。gain は送らない"
+                },
+                "expressionBasis": {
+                  "type": [
+                    "string",
+                    "null"
+                  ],
+                  "maxLength": 1000,
+                  "description": "表現の根拠（記録の feedback.expressionBasis）。欄の無い前の記録・3 語未満の回・固定の点数のモードは null"
+                },
+                "scene": {
+                  "type": "object",
+                  "properties": {
+                    "description": {
+                      "type": "string",
+                      "maxLength": 1000,
+                      "description": "場面の見本の答えの全文（1000 文字まで）"
+                    },
+                    "missedItems": {
+                      "maxItems": 12,
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "id": {
+                            "type": "string",
+                            "maxLength": 100
+                          },
+                          "kind": {
+                            "$ref": "#/components/schemas/ChecklistKind"
+                          },
+                          "label": {
+                            "type": "string",
+                            "maxLength": 200
+                          },
+                          "accept": {
+                            "type": "string",
+                            "maxLength": 500
+                          },
+                          "level": {
+                            "type": "string",
+                            "enum": [
+                              "none",
+                              "partial"
+                            ]
+                          }
+                        },
+                        "required": [
+                          "id",
+                          "kind",
+                          "label",
+                          "accept",
+                          "level"
+                        ]
+                      },
+                      "description": "言えなかった（none）・一部だけ言えた（partial）チェックリストの項目。0〜12 個"
+                    }
+                  },
+                  "required": [
+                    "description",
+                    "missedItems"
+                  ]
+                }
+              },
+              "required": [
+                "n",
+                "transcript",
+                "claims",
+                "scene"
+              ]
+            },
+            "description": "直近の回（5〜10 件）。古い順"
+          },
+          "counts": {
+            "type": "object",
+            "properties": {
+              "rounds": {
+                "type": "integer",
+                "minimum": 5,
+                "maximum": 10,
+                "description": "数えた回の数"
+              },
+              "kinds": {
+                "maxItems": 4,
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "kind": {
+                      "$ref": "#/components/schemas/ChecklistKind"
+                    },
+                    "earned": {
+                      "type": "number",
+                      "minimum": 0,
+                      "description": "言えた項目の値の合計（full 1・partial 0.5・none 0。重みは掛けない）"
+                    },
+                    "total": {
+                      "type": "integer",
+                      "minimum": 1,
+                      "maximum": 9007199254740991,
+                      "description": "その種類の項目の数"
+                    }
+                  },
+                  "required": [
+                    "kind",
+                    "earned",
+                    "total"
+                  ]
+                },
+                "description": "項目の種類ごとの言えた割合の分子と分母。total が 0 の種類は入れない"
+              },
+              "verdicts": {
+                "type": "object",
+                "properties": {
+                  "correct": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 9007199254740991
+                  },
+                  "contradiction": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 9007199254740991
+                  },
+                  "absent": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 9007199254740991
+                  },
+                  "offtopic": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 9007199254740991
+                  }
+                },
+                "required": [
+                  "correct",
+                  "contradiction",
+                  "absent",
+                  "offtopic"
+                ],
+                "description": "判定の種類ごとの描写の数"
+              },
+              "halves": {
+                "type": "object",
+                "properties": {
+                  "first": {
+                    "type": "object",
+                    "properties": {
+                      "rounds": {
+                        "type": "integer",
+                        "minimum": 1,
+                        "maximum": 5,
+                        "description": "その半分の回の数（⌊回の数 / 2⌋）"
+                      },
+                      "content": {
+                        "type": "number",
+                        "minimum": 0,
+                        "maximum": 100,
+                        "description": "内容の点の平均"
+                      },
+                      "expression": {
+                        "type": "number",
+                        "minimum": 0,
+                        "maximum": 100,
+                        "description": "表現の点の平均"
+                      }
+                    },
+                    "required": [
+                      "rounds",
+                      "content",
+                      "expression"
+                    ]
+                  },
+                  "second": {
+                    "type": "object",
+                    "properties": {
+                      "rounds": {
+                        "type": "integer",
+                        "minimum": 1,
+                        "maximum": 5,
+                        "description": "その半分の回の数（⌊回の数 / 2⌋）"
+                      },
+                      "content": {
+                        "type": "number",
+                        "minimum": 0,
+                        "maximum": 100,
+                        "description": "内容の点の平均"
+                      },
+                      "expression": {
+                        "type": "number",
+                        "minimum": 0,
+                        "maximum": 100,
+                        "description": "表現の点の平均"
+                      }
+                    },
+                    "required": [
+                      "rounds",
+                      "content",
+                      "expression"
+                    ]
+                  }
+                },
+                "required": [
+                  "first",
+                  "second"
+                ],
+                "description": "点の前半と後半（古いほうと新しいほうの ⌊回の数 / 2⌋ 回。奇数なら真ん中の 1 回は使わない）"
+              }
+            },
+            "required": [
+              "rounds",
+              "kinds",
+              "verdicts",
+              "halves"
+            ],
+            "description": "端末で数えた値（docs/design/weak-point-analysis.md の 4）。Claude には参考として渡し、文に数字を書かせない"
+          }
+        },
+        "required": [
+          "rounds",
+          "counts"
+        ],
+        "description": "苦手の分析に送る、直近の記録の文字と端末で数えた値。録音・名前・端末や記録の ID・遊んだ日時・場面の ID は送らない。サーバーは保存しない"
+      },
+      "Title": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "広告の名前と 3D のファイルの sha256 の先頭 8 文字。アプリは覚えている id と違えば取り直す",
+            "example": "jphacks-2026-ecc5df64"
+          },
+          "caption": {
+            "type": "string",
+            "description": "タイトルの下に小さく出す字",
+            "example": "広告の見本：JPHACKS"
+          },
+          "model": {
+            "type": "string",
+            "description": "3D（USDZ）の絶対 URL。Worker の静的アセットとして同じホストで配る",
+            "example": "https://example.workers.dev/title/hackathon.usdz?v=ecc5df64"
+          },
+          "sha256": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{64}$",
+            "description": "3D のファイルの中身の sha256（16 進数の小文字）。合わなければアプリは捨てる"
+          },
+          "expiresAt": {
+            "type": "string",
+            "format": "date-time",
+            "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$",
+            "description": "出す期間の終わり（秒までの UTC）。過ぎたら、サーバーにつながらなくてもアプリは消して既定の場面に戻す",
+            "example": "2026-11-15T14:59:59Z"
+          }
+        },
+        "required": [
+          "id",
+          "caption",
+          "model",
+          "sha256",
+          "expiresAt"
+        ],
+        "additionalProperties": false,
+        "description": "タイトル画面（ホーム）に、既定の場面の代わりに出す 3D"
+      },
+      "TitleResponse": {
+        "type": "object",
+        "properties": {
+          "title": {
+            "type": [
+              "object",
+              "null"
+            ],
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/Title"
+              }
+            ],
+            "description": "今出すタイトル。出すものが無ければ null（アプリは覚えているものを消し、既定の場面を出す）"
+          }
+        },
+        "required": [
+          "title"
         ],
         "additionalProperties": false
       }
@@ -1802,7 +2691,7 @@
             }
           },
           "409": {
-            "description": "ラウンド中でない・番号が違う・参加していない（not_playing）、またはもう送った（already_submitted）",
+            "description": "ラウンド中でない・番号が違う・参加していない（not_playing）、もう送った（already_submitted）、または音声の締め切りを過ぎた（deadline_passed）",
             "content": {
               "application/json": {
                 "schema": {
@@ -1881,7 +2770,7 @@
           "scenes"
         ],
         "summary": "AI で場面を作る（作り置き用）",
-        "description": "難易度（とテーマ）から、今ある部品だけで配置の JSON（scenenglish.scene/1、id は gen- ＋ 10 文字）を作って返す。保存はしない。作り置きのスクリプトが手元の wrangler dev に向けて呼び、アプリは呼ばない。形が違う・途中で止まった・5xx・接続の失敗のときだけ 1 回やり直す（各回 60 秒まで）。合言葉（Authorization: Bearer <SCENE_WRITE_TOKEN>）が要る。",
+        "description": "級（とテーマ）から、今ある部品だけで配置の JSON（scenenglish.scene/2、id は gen- ＋ 10 文字）を作って返す。保存はしない。Claude を 2 回呼ぶ（1 回目に見本の答えとチェックリスト、2 回目に部品と関係）。裏取り（チェックリストと場面の照らし合わせ）で落ちたら、理由を指示に足して 2 回まで作り直す。作り置きのスクリプトが手元の wrangler dev に向けて呼び、アプリは呼ばない。合言葉（Authorization: Bearer <SCENE_WRITE_TOKEN>）が要る。",
         "security": [
           {
             "sceneWriteToken": []
@@ -1919,7 +2808,7 @@
             }
           },
           "422": {
-            "description": "作れなかった。Claude が断った（generation_refused）か、応答の形が違った（generation_failed）",
+            "description": "作れなかった。Claude が断った（generation_refused）か、応答の形が違った・作り直しても裏取りを通らなかった（generation_failed）",
             "content": {
               "application/json": {
                 "schema": {
@@ -1951,28 +2840,6 @@
         }
       }
     },
-    "/scenes": {
-      "get": {
-        "operationId": "listScenes",
-        "tags": [
-          "scenes"
-        ],
-        "summary": "シーンの一覧と★の平均",
-        "description": "選べるシーンと、それぞれの★の平均と評価した人数を返す。",
-        "responses": {
-          "200": {
-            "description": "一覧",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ListScenesResponse"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
     "/scenes/{sceneId}/layout": {
       "get": {
         "operationId": "getSceneLayout",
@@ -1980,7 +2847,7 @@
           "scenes"
         ],
         "summary": "場面の配置の JSON",
-        "description": "作り置きの場面（gen-…）か、部屋が AI で作った場面の配置の JSON をそのまま返す。round で届いた sceneId の場面を組み立てるのに使う。作り置きに無い場面は room（部屋のコード）を付けると、その部屋が作って置いた配置を返す（部屋が消えると無くなる）。手作りの場面には無い（404）",
+        "description": "作り置きの場面か、部屋が AI で作った場面の配置の JSON をそのまま返す。round で届いた sceneId の場面を組み立てるのに使う。作り置きに無い場面は room（部屋のコード）を付けると、その部屋が作って置いた配置を返す（部屋が消えると無くなる）",
         "responses": {
           "200": {
             "description": "配置の JSON",
@@ -2167,7 +3034,7 @@
           "scoring"
         ],
         "summary": "配置と文字起こしから採点する",
-        "description": "場面の配置の JSON（items と description）と発話の文字起こしを送る。部品のメタデータ（名前・words・大きさ）と配置（座標・向き・動き）、説明文を Claude に渡し、内容と表現を採点基準の段階（0・20・40・60・80・100）で付けて講評を返す。画像は使わず、話し方（発音）の点も付けない。",
+        "description": "場面の配置の JSON（scenenglish.scene/2 のうち difficulty・description・checklist・items）と発話の文字起こしを送る。部屋の採点と同じチェックリストの採点で、内容（チェックリストの達成と正しさの F1）と表現（級の文法の一覧に照らした段階）を付け、内容の内訳と講評を返す。音声は受けず、話し方（発音）の点は付けない。",
         "responses": {
           "200": {
             "description": "採点した",
@@ -2227,6 +3094,110 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/ListPartsResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/weak-points": {
+      "post": {
+        "operationId": "analyzeWeakPoints",
+        "tags": [
+          "analysis"
+        ],
+        "summary": "直近の記録から苦手を分析する",
+        "description": "端末に残した直近の記録（内容の内訳のある 5〜10 件）の文字と、端末で数えた値を送ると、Claude がくり返す癖（内容と表現を合わせて 2〜3 件、自分の文の実例つき）・前より良くなった点・次の 1 回で試すことを書く。実例の引用は送った文字起こしにあるかをサーバーが確かめ、無いものは返さない（癖が全部落ちたら 1 回だけ呼び直す）。録音・名前・端末の ID は送らない。サーバーは本文も結果も保存しない。認証は無く、本文の大きさ・IP ごとの 1 時間の回数・全体の 1 日の回数の上限と、止めるスイッチ（WEAK_POINT_ANALYSIS）で守る。",
+        "responses": {
+          "200": {
+            "description": "確かめを通った分析",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WeakPointResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "本文の形が違う（invalid_message）。回が 4 件以下・番号が古い順に 1 からでない・長さや値の範囲の外",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "本文が大きすぎる（invalid_message）",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "回数の上限に達した（rate_limited）。IP ごとの 1 時間の回数か、全体の 1 日の回数",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "502": {
+            "description": "Claude が失敗した（analysis_failed）。API の失敗・途中で止まった・JSON が読めない・時間切れ",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "分析できない（analysis_unavailable）。WEAK_POINT_ANALYSIS が on でない（PR のプレビュー）、Claude のキーが無い、または回数を数える場所（UsageCounter）が失敗した",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/WeakPointRequest"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/title": {
+      "get": {
+        "operationId": "getTitle",
+        "tags": [
+          "title"
+        ],
+        "summary": "タイトル画面に今出す 3D",
+        "description": "予定（src/title/schedule.json）のうち、環境の変数 TITLE_CAMPAIGN に入っていて、今が期間の中にあるもの。無ければ title が null。期間の判定はサーバーの時刻で行う。アプリは起動時と前に戻ったときに毎回呼び、id が変われば model を取り直す。3D のファイル（model）は Worker の静的アセットで、この API とは別に GET で取る。",
+        "responses": {
+          "200": {
+            "description": "今出すタイトル",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TitleResponse"
                 }
               }
             }

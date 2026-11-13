@@ -1,13 +1,14 @@
 import SwiftUI
 
-/// 待機の画面。いま答えた場面と正答例、参加者の一覧と、ホストだけの「締め切って発表する」
+/// 待機の画面。いま答えた場面と正答例、参加者の一覧。結果は、全員の採点がそろうか、部屋が時間で締め切ると届く
 struct WaitingView: View {
   let session: RoomSession
   /// いま答えたラウンド。nil なら場面と正答例を出さない
   let round: RoundInfo?
   let enteredAt: Date
 
-  @State private var confirming = false
+  /// 場面の見本の答え（配置の JSON の description）。取れるまで出さない
+  @State private var answer: String?
 
   var body: some View {
     VStack(spacing: 0) {
@@ -15,7 +16,7 @@ struct WaitingView: View {
         VStack(spacing: 16) {
           if let round {
             WaitingScene(round: round, enteredAt: enteredAt)
-            if let answer = SceneCatalog.description(of: round.sceneID) {
+            if let answer {
               ModelAnswer(text: answer, startsAt: enteredAt)
             }
           }
@@ -27,30 +28,12 @@ struct WaitingView: View {
         .frame(maxWidth: .infinity)
       }
       .scrollIndicators(.hidden)
-      if session.isHost {
-        CloseButton(enteredAt: enteredAt) {
-          if session.remainingCount > 0 {
-            confirming = true
-          } else {
-            session.close()
-          }
-        }
-        .frame(width: 346)
-        .padding(.top, 10)
-        .padding(.bottom, 30)
-      }
     }
     .frame(maxWidth: .infinity)
-    .sheet(isPresented: $confirming) {
-      CloseConfirmSheet(remaining: session.remainingCount) {
-        confirming = false
-        session.close()
-      } onCancel: {
-        confirming = false
-      }
-    }
-    .onChange(of: session.isRoundOver) { _, over in
-      if over { confirming = false }
+    .task(id: round?.sceneID) {
+      guard let round else { return }
+      // 3D を出すときに取ってあるので、ふつうは通信しない
+      answer = try? await SceneLayouts.store.layout(of: round.sceneID, room: round.room).description
     }
   }
 }
@@ -248,60 +231,5 @@ private struct Spinner: View {
     .onAppear {
       withAnimation(.linear(duration: 0.9).repeatForever(autoreverses: false)) { turning = true }
     }
-  }
-}
-
-/// 「締め切って発表する」。待機に入ってから 2 秒は押せず、その間は左から塗りつぶしていく
-private struct CloseButton: View {
-  let enteredAt: Date
-  let action: () -> Void
-
-  var body: some View {
-    TimelineView(.animation) { context in
-      let progress = min(1, context.date.timeIntervalSince(enteredAt) / RoundTiming.closeLock)
-      let locked = progress < 1
-      Button(action: action) {
-        Text("締め切って発表する")
-          .frame(maxWidth: .infinity, maxHeight: .infinity)
-          .background(alignment: .leading) {
-            // 押せない間の進み具合
-            GeometryReader { geo in
-              Theme.accentSoft
-                .frame(width: locked ? geo.size.width * progress : 0)
-            }
-          }
-      }
-      .buttonStyle(BigButtonStyle(kind: .outlined))
-      .disabled(locked)
-    }
-  }
-}
-
-/// 締め切りの確認
-private struct CloseConfirmSheet: View {
-  let remaining: Int
-  let onConfirm: () -> Void
-  let onCancel: () -> Void
-
-  var body: some View {
-    VStack(spacing: 10) {
-      Text("締め切って発表しますか？")
-        .font(Theme.font(22, .black))
-      Text("まだ \(remaining) 人が完了していません。")
-        .font(Theme.font(16, .bold))
-        .foregroundStyle(Theme.muted)
-        .padding(.bottom, 8)
-      Button("締め切って発表する", action: onConfirm)
-        .buttonStyle(BigButtonStyle(kind: .primary))
-      Button("待つ", action: onCancel)
-        .buttonStyle(BigButtonStyle(kind: .plain))
-        .padding(.top, 6)
-    }
-    .foregroundStyle(Theme.ink)
-    .padding(.horizontal, 22)
-    .padding(.top, 26)
-    .presentationDetents([.height(300)])
-    .presentationCornerRadius(28)
-    .presentationBackground(.white)
   }
 }

@@ -1,35 +1,32 @@
-import { type Difficulty, findPoolScene, poolCandidates } from "../scenes/pool";
-import scenes from "../scoring/scenes.json";
+import { findPoolScene, poolCandidates } from "../scenes/pool";
+import { GRADE_IDS, type GradeId, toGradeId } from "../scenes/types";
 
-// 手作りのシーンの一覧は採点と同じ scoring/scenes.json を使う。作り置きの場面は scenes/pool.ts
-const SCENE_IDS = scenes.map((s) => s.id);
+// 遊べる場面は、作り置きの場面（scenes/pool.ts）と、部屋が AI で作った場面（部屋の保存領域）。
+// 手作りの場面は外した（docs/adr/20261111-score-only-with-checklist-and-drop-handmade-scenes.md）
 
-/** 結果発表に出すシーンの名前（例: 公園）。作り置きの場面は JSON の name */
-export const sceneName = (id: string) =>
-  findPoolScene(id)?.name ?? scenes.find((s) => s.id === id)?.name ?? id;
+/** 結果発表に出すシーンの名前。作り置きの場面は JSON の name（部屋が作った場面の名前は Round が持つ） */
+export const sceneName = (id: string) => findPoolScene(id)?.name ?? id;
 
-/** 選べるシーンか（手作りの場面と、index.json に載っている作り置きの場面） */
-export const isSceneId = (id: string) =>
-  SCENE_IDS.includes(id) || findPoolScene(id) !== undefined;
+/** 選べるシーンか（index.json に載っている作り置きの場面） */
+export const isSceneId = (id: string) => findPoolScene(id) !== undefined;
 
-/** 選べるシーンの一覧。kind は今はバニラ（最初から入っているシーン）だけ。作り置きの場面は名前を見せないので出さない */
-export const listScenes = () =>
-  scenes.map((s) => ({ id: s.id, name: s.name, kind: "vanilla" as const }));
-
-/** おまかせのときのシーン（手作りの場面から） */
-export const pickRandomSceneId = () =>
-  SCENE_IDS[Math.floor(Math.random() * SCENE_IDS.length)];
+/** おまかせ（sceneId も difficulty も無いスタート）のときのシーン。全部の級の出題の候補から選ぶ */
+export const pickRandomSceneId = (random: () => number = Math.random) => {
+  const all = GRADE_IDS.flatMap((g) => poolCandidates(g));
+  return all[Math.floor(random() * all.length)];
+};
 
 /**
  * 難易度から作り置きの場面を選ぶ。その部屋でまだ出ていないものからランダムに 1 つ。
- * その難易度を全部出したら、その難易度の分の履歴を消して最初に戻る。選んだ場面を足した履歴も返す
+ * その難易度を全部出したら、その難易度の分の履歴を消して最初に戻る。選んだ場面を足した履歴も返す。
+ * 級の値でない難易度（デプロイの前に easy などで保存された部屋）は、既定の級（eiken-3）に寄せる
  */
 export const pickPoolSceneId = (
-  difficulty: Difficulty,
+  difficulty: GradeId,
   played: readonly string[],
   random: () => number = Math.random,
 ): { sceneId: string; played: string[] } => {
-  const candidates = poolCandidates(difficulty);
+  const candidates = poolCandidates(toGradeId(difficulty));
   const fresh = candidates.filter((id) => !played.includes(id));
   const history =
     fresh.length > 0

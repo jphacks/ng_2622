@@ -4,14 +4,16 @@ import {
   type ChecklistItem,
   type Claim,
   checkNextStep,
+  contentIfSaid,
   countOthers,
+  emptyContent,
   f1Content,
-  gainOf,
   itemResults,
   OTHER_MAX,
   precisionOf,
   recallOf,
   scoreContent,
+  toSentContent,
   verifyClaims,
   WEIGHTS,
 } from "../src/scoring/checklist";
@@ -520,28 +522,34 @@ const partly = () =>
     claim("three", "correct", "d1"),
   ]);
 
-test("gain は、その項目を full で言えたときの内容の伸び", () => {
+test("contentIfSaid は、その項目を full で言えたときの内容の点", () => {
   const r = partly();
   // 今: R = (2 + 1 + 1) / 10、P = 3/3
   assert.equal(r.content, f1Content(1, 4 / 10));
   // c2 を足す: R = 6/10、正しい描写が 1 つ増えて P = 4/4
-  assert.equal(gainOf(r, "c2"), f1Content(1, 6 / 10) - r.content);
+  assert.equal(
+    contentIfSaid(r, "c2") - r.content,
+    f1Content(1, 6 / 10) - r.content,
+  );
   // 一部の r1 が full になる: R = 5/10、P はそのまま
-  assert.equal(gainOf(r, "r1"), f1Content(1, 5 / 10) - r.content);
+  assert.equal(
+    contentIfSaid(r, "r1") - r.content,
+    f1Content(1, 5 / 10) - r.content,
+  );
   // もう言えている項目・無い項目は 0
-  assert.equal(gainOf(r, "c1"), 0);
-  assert.equal(gainOf(r, "nope"), 0);
+  assert.equal(contentIfSaid(r, "c1") - r.content, 0);
+  assert.equal(contentIfSaid(r, "nope") - r.content, 0);
 });
 
-test("gain は、間違いだけの答えでも 0 にならない（正しい描写が増える分 P も上がる）", () => {
+test("間違いだけの答えでも、項目を言えたときの内容は 0 より上がる（正しい描写が増える分 P も上がる）", () => {
   const r = scoreContent(CHECKLIST, "a cat", [claim("a cat", "absent")]);
   assert.equal(r.content, 0);
   // R = 2/10、P = 1/2
-  assert.equal(gainOf(r, "c1"), f1Content(1 / 2, 2 / 10));
-  assert.ok(gainOf(r, "c1") > 0);
+  assert.equal(contentIfSaid(r, "c1") - r.content, f1Content(1 / 2, 2 / 10));
+  assert.ok(contentIfSaid(r, "c1") - r.content > 0);
 });
 
-test("次の一つ: Claude が選んだ項目が言えていなければ、そのまま使い gain を付ける", () => {
+test("次の一つ: Claude が選んだ項目が言えていなければ、そのまま使い、言えたときの内容の点を付ける", () => {
   const r = partly();
   const next = checkNextStep(r, {
     kind: "content",
@@ -552,7 +560,7 @@ test("次の一つ: Claude が選んだ項目が言えていなければ、そ�
     kind: "content",
     text: "店員も足そう",
     item: "d2",
-    gain: gainOf(r, "d2"),
+    contentIfSaid: contentIfSaid(r, "d2"),
   });
   // 一部の項目も、伸ばせるのでそのまま使う
   assert.equal(
@@ -568,7 +576,7 @@ test("次の一つ: もう言えている項目・無い id・null は、重み�
     // 言えていないのは c2・c3（重み 2）と d2（重み 1）。r1 は一部なので後回し
     assert.equal(next.item, "c2");
     assert.equal(next.text, "次は「中心2」を足してみよう。");
-    assert.equal(next.gain, gainOf(r, "c2"));
+    assert.equal(next.contentIfSaid, contentIfSaid(r, "c2"));
   }
 });
 
@@ -600,12 +608,12 @@ test("次の一つ: 言えていない項目が無ければ一部の項目へ。
       kind: "content",
       text: "もう一言",
       item: null,
-      gain: null,
+      contentIfSaid: null,
     },
   );
 });
 
-test("次の一つ: 表現・話し方のときは項目も gain も付けない", () => {
+test("次の一つ: 表現・話し方のときは項目も、言えたときの内容の点も付けない", () => {
   const r = partly();
   assert.deepEqual(
     checkNextStep(r, {
@@ -617,11 +625,56 @@ test("次の一つ: 表現・話し方のときは項目も gain も付けない
       kind: "expression",
       text: "because を使おう",
       item: null,
-      gain: null,
+      contentIfSaid: null,
     },
   );
   assert.equal(
-    checkNextStep(r, { kind: "speech", text: "t", item: null }).gain,
+    checkNextStep(r, { kind: "speech", text: "t", item: null }).contentIfSaid,
     null,
   );
+});
+
+// ---- アプリへ送る形 ----
+
+test("送る内訳は、数えない描写（ignored）と割り算の結果を落とす", () => {
+  const r = scoreContent(CHECKLIST, "one maybe two three", [
+    claim("one", "correct", "c1"),
+    claim("maybe", "ignored"),
+    claim("two", "absent"),
+    claim("three"),
+  ]);
+  const sent = toSentContent(r);
+  assert.deepEqual(
+    sent.claims.map((c) => [c.quote, c.verdict]),
+    [
+      ["one", "correct"],
+      ["two", "absent"],
+      ["three", "correct"],
+    ],
+  );
+  assert.deepEqual(sent.recall, { earned: 2.5, max: 10 });
+  assert.deepEqual(sent.precision, { correct: 2, said: 3 });
+  // 言った描写の数は、送る描写の数と同じ
+  assert.equal(sent.precision.said, sent.claims.length);
+  assert.equal(sent.others, 1);
+  assert.deepEqual(sent.items, r.items);
+  assert.deepEqual(Object.keys(sent), [
+    "claims",
+    "items",
+    "others",
+    "recall",
+    "precision",
+  ]);
+});
+
+test("何も言えていないときの内訳は、項目が全部 none で分子が 0", () => {
+  const empty = emptyContent(CHECKLIST);
+  assert.deepEqual(
+    empty.items.map((i) => i.level),
+    CHECKLIST.map(() => "none"),
+  );
+  assert.deepEqual(empty.claims, []);
+  assert.deepEqual(empty.recall, { value: 0, earned: 0, max: 10 });
+  assert.deepEqual(empty.precision, { value: 0, correct: 0, said: 0 });
+  assert.ok(!("content" in empty));
 });

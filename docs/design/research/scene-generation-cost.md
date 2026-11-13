@@ -1,7 +1,7 @@
 # 場面の生成 1 回の時間と費用
 
 > 実測（2026-10-26、@TEIKOTA の依頼で実行）。README の「今後の展望」の費用の数字の元。
-> 生のデータは [`scene-generation-cost-runs.json`](./scene-generation-cost-runs.json)、測ったスクリプトは [`backend/scripts/measure-scene-generation.ts`](../../../backend/scripts/measure-scene-generation.ts)。
+> 生のデータは [`scene-generation-cost-runs.json`](./scene-generation-cost-runs.json)、測ったスクリプトは `backend/scripts/measure-scene-generation.ts`（古い 1 回の生成を測るもので、2026-11-11 に生成を 2 段に切り替えたときに消した。2 段の生成は `backend/scripts/measure-scene-generation-v2.ts` で測る）。
 
 ## 測り方
 

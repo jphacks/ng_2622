@@ -1,19 +1,34 @@
-import { gradeWithBands } from "./bands";
+import type { ChecklistItem, GradeId } from "../scenes/types";
+import {
+  type CheckedNextStep,
+  type ContentBreakdown,
+  emptyContent,
+  type SentContent,
+  toSentContent,
+} from "./checklist";
+import { gradeWithChecklist } from "./checklistGrade";
 import { ClaudeError } from "./claude";
-import { checkedNotes } from "./feedback";
-import { describeLayout, type LayoutItem } from "./layout";
-import type { ContentFeedback, ScoringEnv, SpeechAspects } from "./types";
+import { checkedRewrite } from "./feedback";
+import {
+  grammarFor,
+  MIN_WORDS,
+  parseWeights,
+  SHORT_TEXT,
+  sentBasis,
+  withGain,
+} from "./index";
+import { describeLayoutWithRelations, type RelationItem } from "./layout";
+import type { NextStep, Rewrite, ScoringEnv, SpeechAspects } from "./types";
 
-// 配置の JSON と文字起こしから、内容と表現を採点基準の段階で採点する。画像は使わず、話し方（発音）の点も付けない。
-// 場面の情報（部品・座標・動き）と説明文をそのまま Claude に渡すので、場面ごとの基準を作ったり覚えたりしない
-
-// これより短い発話は Claude を呼ばずに内容・表現を 0 点にする
-const MIN_WORDS = 3;
+// 配置の JSON（scenenglish.scene/2 のうち採点に使う項目）と文字起こしから、部屋を通さずに内容と表現を採点する（POST /score）。
+// 採り方は部屋の採点（index.ts の score）と同じチェックリストの採点。音声は受けず、話し方（発音）の点は付けない
 
 export type Layout = {
-  // 作り置きのときに書いて人が確かめた場面の説明文（英語）。採点の補足として渡す
+  difficulty: GradeId;
+  // 級の見本の答え（英語）。採点の補足として渡す
   description?: string;
-  items: LayoutItem[];
+  checklist: ChecklistItem[];
+  items: RelationItem[];
 };
 
 type Failure = {
@@ -28,7 +43,12 @@ export type LayoutScoreResult =
       content: number;
       expression: number;
       transcript: string;
-      feedback: ContentFeedback;
+      breakdown: SentContent;
+      feedback: {
+        nextStep: NextStep;
+        rewrite: Rewrite | null;
+        expressionBasis: string | null;
+      };
       mode: "live" | "fixed";
       elapsedMs: number;
     }
@@ -41,27 +61,60 @@ export async function scoreLayout(
 ): Promise<LayoutScoreResult> {
   const started = Date.now();
   const transcript = input.transcript.trim();
+  const { layout } = input;
+  const weights = parseWeights(env.SCORE_WEIGHTS);
+
+  const result = (
+    graded: {
+      content: number;
+      expression: number;
+      breakdown: ContentBreakdown;
+      nextStep: CheckedNextStep;
+      rewrite: Rewrite | null;
+      // 表現の点の根拠。Claude を呼ばなかったときは空（送るときに null にする）
+      expressionBasis: string;
+    },
+    mode: "live" | "fixed",
+  ): LayoutScoreResult => ({
+    ok: true,
+    content: graded.content,
+    expression: graded.expression,
+    transcript,
+    breakdown: toSentContent(graded.breakdown),
+    feedback: {
+      // 話し方の点は付けないので、gain は話し方を変えないとしたときの合計の伸び（話し方の項は差で消える）
+      nextStep: withGain(graded.nextStep, weights, {
+        content: graded.content,
+        expression: graded.expression,
+        speech: 0,
+      }),
+      rewrite: checkedRewrite(transcript, graded.rewrite),
+      expressionBasis: sentBasis(graded.expressionBasis),
+    },
+    mode,
+    elapsedMs: Date.now() - started,
+  });
 
   if (env.SCORING_MODE === "fixed") {
-    return {
-      ok: true,
-      content: 60,
-      expression: 60,
-      transcript,
-      feedback: {
-        strength: { quote: "", text: "固定の点数を返しています。" },
+    return result(
+      {
+        content: 60,
+        expression: 60,
+        breakdown: emptyContent(layout.checklist),
         nextStep: {
           kind: "expression",
           text: "文をつなげて、もう少し詳しく言ってみよう。",
+          item: null,
+          contentIfSaid: null,
         },
         rewrite: null,
+        expressionBasis: "",
       },
-      mode: "fixed",
-      elapsedMs: Date.now() - started,
-    };
+      "fixed",
+    );
   }
 
-  const sceneData = describeLayout(input.layout.items);
+  const sceneData = describeLayoutWithRelations(layout.items);
   if (!sceneData) {
     return {
       ok: false,
@@ -72,28 +125,31 @@ export async function scoreLayout(
 
   const words = transcript.split(/\s+/).filter(Boolean).length;
   if (words < MIN_WORDS) {
-    return {
-      ok: true,
-      content: 0,
-      expression: 0,
-      transcript,
-      feedback: {
-        strength: { quote: "", text: "英語で話し始められました。" },
+    return result(
+      {
+        content: 0,
+        expression: 0,
+        breakdown: emptyContent(layout.checklist),
         nextStep: {
           kind: "content",
-          text: "もう少し長く、文にして話してみよう。",
+          text: SHORT_TEXT,
+          item: null,
+          contentIfSaid: null,
         },
         rewrite: null,
+        expressionBasis: "",
       },
-      mode: "live",
-      elapsedMs: Date.now() - started,
-    };
+      "live",
+    );
   }
 
   try {
-    const graded = await gradeWithBands(env, {
+    const graded = await gradeWithChecklist(env, {
+      grade: layout.difficulty,
+      checklist: layout.checklist,
       sceneData,
-      description: input.layout.description?.trim() || undefined,
+      description: layout.description?.trim() || undefined,
+      ...grammarFor(layout.difficulty),
       transcript,
       speech: input.speech,
     });
@@ -101,19 +157,9 @@ export async function scoreLayout(
       event: "layout_scoring_timing",
       words,
       claudeMs: Date.now() - started,
+      claudeRetries: graded.expressionRetries,
     });
-    return {
-      ok: true,
-      content: graded.content,
-      expression: graded.expression,
-      transcript,
-      feedback: {
-        ...checkedNotes(transcript, graded),
-        nextStep: graded.nextStep,
-      },
-      mode: "live",
-      elapsedMs: Date.now() - started,
-    };
+    return result(graded, "live");
   } catch (e) {
     console.error("配置からの採点に失敗", e);
     return {

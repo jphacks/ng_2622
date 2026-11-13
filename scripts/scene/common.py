@@ -253,7 +253,14 @@ def hand_points(pose: str, point_side: int = 1) -> list[Vector]:
     return [Vector(h) for h in hands]
 
 
-def person(root, name, loc, rot_z, outfit: dict, pose="stand", scale=1.0, point_side=1, hands=None, lift=0.0, head=None):
+def lean_point(v, hip_z: float, lean: float) -> Vector:
+    """上体を腰（高さ hip_z）から前へ lean（ラジアン）倒したときの、上体の点 v の行き先。person() の lean と同じ回し方。"""
+    hip = Vector((0, 0, hip_z))
+    return hip + Matrix.Rotation(lean, 3, "X") @ (Vector(v) - hip)
+
+
+def person(root, name, loc, rot_z, outfit: dict, pose="stand", scale=1.0, point_side=1, hands=None, lift=0.0, head=None,
+           legs=None, lean=0.0):
     """デフォルメした人物。正面は -Y。
 
     outfit は skin・hair・top・bottom・shoe・eye のマテリアルと、sleeve（長袖の色。無ければ半袖）、skirt（True でスカート）、
@@ -262,8 +269,12 @@ def person(root, name, loc, rot_z, outfit: dict, pose="stand", scale=1.0, point_
     ポーズの手の位置を置き換える（dz は肩の高さからの差。物を持たせるときに使う）。lift は体を浮かせる高さ（跳ぶ）。
     head は頭の向き {"pitch": 下を向く角度, "yaw": +X 側を向く角度, "at": 頭の中心 (x, y, z)}（ラジアン。省けば正面）。
     頭だけ別のメッシュに作って回す（loc と rot_z が 0 の、部品の人物だけで使う）。
+    legs は左右のひざと足の位置 [(ひざ, 足), (ひざ, 足)]（-X 側の脚から）で、ポーズの脚を置き換える（転ぶ・かがむ）。
+    lean は上体（胴・頭・腕）を腰から前へ倒す角度（ラジアン、かがむ）。hands と head の at は倒したあとの位置で渡す。
+    legs と lean も部品の人物だけで使う。
     """
     assert pose in POSES, pose
+    assert not (legs or lean) or (tuple(loc) == (0, 0) and rot_z == 0.0 and lift == 0.0), "legs・lean は部品の人物だけで使う"
     p = Part(name)
     o = outfit
     sitting = pose in ("sit", "raise_hand")
@@ -275,8 +286,10 @@ def person(root, name, loc, rot_z, outfit: dict, pose="stand", scale=1.0, point_
     for sx in (-1, 1):
         hip = Vector((sx * 0.09, 0, hip_z))
         shoe_y = -0.05
-        if sitting or pose in ("kneel", "run"):
-            if sitting:
+        if legs or sitting or pose in ("kneel", "run"):
+            if legs:
+                knee, foot = (Vector(v) for v in legs[(sx + 1) // 2])
+            elif sitting:
                 knee, foot = Vector((sx * 0.1, -0.4, hip_z)), Vector((sx * 0.1, -0.44, 0.07))
             elif pose == "kneel":
                 # ひざを砂（床）につけ、すねは後ろへ寝かせる
@@ -286,8 +299,8 @@ def person(root, name, loc, rot_z, outfit: dict, pose="stand", scale=1.0, point_
                 knee, foot = Vector((sx * 0.09, -0.3, 0.42)), Vector((sx * 0.09, -0.2, 0.07))
             else:
                 knee, foot = Vector((sx * 0.09, 0.14, 0.4)), Vector((sx * 0.09, 0.42, 0.24))
-            p.limb(hip, knee, 0.075, 0.068, leg_mat if pose == "run" else o["bottom"])
-            if not sitting:
+            p.limb(hip, knee, 0.075, 0.068, leg_mat if pose == "run" or legs else o["bottom"])
+            if legs or not sitting:
                 p.sphere(0.066, tuple(knee), o["bottom"] if pose == "kneel" else leg_mat, segs=10)
             p.limb(knee, foot, 0.062, 0.055, leg_mat)
         else:
@@ -300,9 +313,16 @@ def person(root, name, loc, rot_z, outfit: dict, pose="stand", scale=1.0, point_
     else:
         p.sphere(0.17, (0, 0, hip_z), o["bottom"], scale=(1.05, 0.85, 0.55))
 
-    # 胴・首・頭
+    # 胴・首・頭。上体を倒すときは別のメッシュに作り、腰を中心に回す
+    lower = p
+    if lean:
+        p = Part(name + "_upper")
     p.cyl(0.17, 0.19, sh_z - hip_z + 0.04, (0, 0, (hip_z + sh_z) / 2), o["top"], segs=16)
     p.sphere(0.19, (0, 0, sh_z), o["top"], scale=(1.1, 0.85, 0.42))
+    unlean = Matrix.Rotation(-lean, 3, "X")
+    def upright(v) -> Vector:   # 倒したあとの位置を、倒す前の上体の中の位置に戻す
+        hip = Vector((0, 0, hip_z))
+        return hip + unlean @ (Vector(v) - hip) if lean else Vector(v)
     def draw_head(q, hz):
         q.sphere(0.15, (0, 0, hz), o["skin"])
         style = o.get("hair_style", "short")
@@ -326,17 +346,21 @@ def person(root, name, loc, rot_z, outfit: dict, pose="stand", scale=1.0, point_
             q.sphere(0.02, (0, -0.145, hz - 0.065), o["mouth"], scale=(1.3, 0.5, 0.6), segs=10)
 
     if head:
-        at = Vector(head.get("at", (0, 0, head_z)))
-        p.limb((0, 0, sh_z + 0.02), at.lerp(Vector((0, 0, sh_z + 0.02)), 0.3), 0.055, 0.055, o["skin"], segs=10)
+        at = Vector(head.get("at", lean_point((0, 0, head_z), hip_z, lean)))
+        p.limb((0, 0, sh_z + 0.02), upright(at).lerp(Vector((0, 0, sh_z + 0.02)), 0.3), 0.055, 0.055, o["skin"], segs=10)
         hp = Part(name + "_head")
         draw_head(hp, 0.0)
-        hp.finish(root, loc=tuple(at * scale), scale=scale, rot=(head.get("pitch", 0.0), 0, head.get("yaw", 0.0)))
+        rot = (head.get("pitch", 0.0), 0, head.get("yaw", 0.0))
+        if lean:   # 上体を倒した分、頭も同じ向きに回す
+            rot = (Matrix.Rotation(lean, 3, "X") @ Euler(rot).to_matrix()).to_euler()
+        hp.finish(root, loc=tuple(at * scale), scale=scale, rot=rot)
     else:
         p.cyl(0.055, 0.055, 0.1, (0, 0, sh_z + 0.07), o["skin"], segs=10)
         draw_head(p, head_z)
 
     # 腕（肩から手まで）
     points = [Vector((x, y, sh_z + dz)) for x, y, dz in hands] if hands else hand_points(pose, point_side)
+    points = [upright(h) for h in points]
     for sx, hand in zip((-1, 1), points):
         shoulder = Vector((sx * 0.22, 0, sh_z - 0.02))
         elbow = shoulder + (hand - shoulder) * 0.32
@@ -345,7 +369,10 @@ def person(root, name, loc, rot_z, outfit: dict, pose="stand", scale=1.0, point_
         p.sphere(0.048, tuple(hand), o["skin"], segs=10)
     if pose == "phone":
         p.box((0.09, 0.02, 0.16), (0, -0.28, sh_z - 0.17), o["eye"], rot=(0.5, 0, 0), bevel=0.01)
-    return p.finish(root, loc=(*loc, lift), rot_z=rot_z, scale=scale)
+    if lean:
+        hip = Vector((0, 0, hip_z))
+        p.finish(root, loc=tuple((hip - Matrix.Rotation(lean, 3, "X") @ hip) * scale), scale=scale, rot=(lean, 0, 0))
+    return lower.finish(root, loc=(*loc, lift), rot_z=rot_z, scale=scale)
 
 
 # ---------- 書き出し ----------
@@ -478,15 +505,16 @@ def setup_render(samples: int, lens: float = 46, env: dict | None = None) -> Non
     scene.camera = cam
 
 
-def run(scene_id: str, build, lens: float = 46, env: dict | None = None) -> None:
+def run(scene_id: str, build, lens: float = 46, env: dict | None = None, out: Path | None = None) -> None:
     """build() で組み立てたシーンを、USDZ と画像に書き出す。build() はルートの空オブジェクトを返す。
 
     lens は画像のカメラの焦点距離（mm）。背の高いシーンは小さくして画面に収める。
     env は画像の光と背景のうち、ENV から変えるもの（雨の日の暗い空など）。
+    out は書き出す先の既定（無ければ assets/scenes）。--out で替えられる。
     """
     argv = sys.argv[sys.argv.index("--") + 1:] if "--" in sys.argv else []
     ap = argparse.ArgumentParser(prog=f"{scene_id}.py")
-    ap.add_argument("--out", type=Path, default=REPO / "assets" / "scenes")
+    ap.add_argument("--out", type=Path, default=out or REPO / "assets" / "scenes")
     ap.add_argument("--no-render", action="store_true", help="発表用の画像を作らない")
     ap.add_argument("--samples", type=int, default=128)
     args = ap.parse_args(argv)

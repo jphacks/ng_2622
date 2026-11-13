@@ -2,6 +2,7 @@ import type { z } from "zod";
 import type { PlayerStatus } from "../schemas/common";
 import type { PlayerResult, ResultsMessage } from "../schemas/ws";
 import type { Feedback } from "../scoring";
+import type { SentContent } from "../scoring/checklist";
 import { AVATAR_COLORS } from "./player";
 import { fail, ok, type Result } from "./result";
 import type { RoomState } from "./room";
@@ -23,14 +24,20 @@ export type Grade =
       status: "done";
       score: Score;
       transcript: string;
+      /** 内容の内訳（描写の一覧・項目ごとの達成・言えたと正しさ） */
+      content: SentContent;
       feedback: Feedback;
     }
-  | { status: "failed" };
+  | {
+      status: "failed";
+      /** deadline: 音声の締め切りまでに送らなかった（締め切りの後の音声と skip を deadline_passed で断るため） */
+      reason?: "deadline";
+    };
 
 export type Round = {
   round: number;
   sceneId: string;
-  /** AI で作った場面の名前（結果発表に出す）。作り置き・手作りの場面は sceneId から引くので無い */
+  /** AI で作った場面の名前（結果発表に出す）。作り置きの場面は sceneId から引くので無い */
   sceneName?: string;
   /** 回転を始める時刻（UNIX 時刻のミリ秒） */
   startAt: number;
@@ -92,18 +99,61 @@ export const recordGrade = (
   return settleRound(withGrade(state, current, input.playerId, input.grade));
 };
 
-/** ホストが締め切って結果発表に進む。採点がまだの人は「採点できませんでした」になる */
-export const closeRound = (
-  state: RoomState,
-  input: { playerId: string },
-): Result<RoomState> => {
-  if (input.playerId !== state.hostId) {
-    return fail("not_host", "締め切れるのはホストだけ");
+// ラウンドの締め切り（2026-11-11 に決定。ホストが締め切るのをやめ、サーバーが時間で締め切る）。
+// 回転と録音の長さは、アプリの RoundTiming（ios/NG2622/Game/GameClient.swift の intro・recording）と同じにする
+/** 回転（1 周）の長さ。録音はこの後に始まる */
+export const INTRO_MS = 3 * 1000;
+/** 録音の最長 */
+export const RECORDING_MS = 20 * 1000;
+/** 録音が終わるはずの時刻から、音声を待つ長さ。過ぎても送っていない人（切断中を含む）は採点できなかった扱い */
+export const AUDIO_GRACE_MS = 15 * 1000;
+/** 録音が終わるはずの時刻から、採点を待つ長さ。過ぎたら、そろっていなくても結果を出す */
+export const GRADING_GRACE_MS = 30 * 1000;
+
+/** ラウンドの締め切りの時刻。recordingEnd は録音が終わるはずの時刻 */
+export const roundDeadlines = (round: Pick<Round, "startAt">) => {
+  const recordingEnd = round.startAt + INTRO_MS + RECORDING_MS;
+  return {
+    recordingEnd,
+    audio: recordingEnd + AUDIO_GRACE_MS,
+    grading: recordingEnd + GRADING_GRACE_MS,
+  };
+};
+
+/**
+ * 次に締め切りを確かめる時刻。音声がまだの人がいれば音声の締め切り、いなければ採点の締め切り。
+ * ラウンド中でなければ null
+ */
+export const nextRoundDeadline = (state: RoomState): number | null => {
+  const current = state.current;
+  if (!current || (state.phase !== "playing" && state.phase !== "waiting")) {
+    return null;
   }
-  if (state.phase !== "playing" && state.phase !== "waiting") {
-    return fail("not_playing", "ラウンド中でない");
+  const deadlines = roundDeadlines(current);
+  const waitingAudio = roundPlayers(state).some((p) => !current.grades[p.id]);
+  return waitingAudio ? deadlines.audio : deadlines.grading;
+};
+
+/**
+ * 時間で締め切る。音声の締め切りを過ぎても送っていない人は「採点できませんでした」にし（全員そろえば結果発表）、
+ * 採点の締め切りを過ぎたら、採点中の人がいても結果発表に進む（採点中の人は「採点できませんでした」になる）。
+ * 結果発表の後に届いた採点は recordGrade が捨てる。変わらなければ同じ state を返す
+ */
+export const expireRound = (state: RoomState, now: number): RoomState => {
+  const current = state.current;
+  if (!current || (state.phase !== "playing" && state.phase !== "waiting")) {
+    return state;
   }
-  return ok({ ...state, phase: "results" });
+  const deadlines = roundDeadlines(current);
+  if (now < deadlines.audio) return state;
+  const missing = roundPlayers(state).filter((p) => !current.grades[p.id]);
+  const grades = { ...current.grades };
+  for (const p of missing)
+    grades[p.id] = { status: "failed", reason: "deadline" };
+  const next: RoomState = { ...state, current: { ...current, grades } };
+  if (now >= deadlines.grading) return { ...next, phase: "results" };
+  if (missing.length === 0) return state;
+  return settleRound(next);
 };
 
 /**
@@ -159,7 +209,7 @@ export const roundResults = (
       color: p.color ?? AVATAR_COLORS[0],
       score: done ? roundScore(done.score) : null,
       transcript: done?.transcript ?? "",
-      comment: done?.feedback.strength.text ?? "",
+      content: done?.content ?? null,
       feedback: done?.feedback ?? null,
     };
   });
@@ -192,17 +242,21 @@ const submittableRound = (
   input: { playerId: string; round: number },
 ): Result<Round> => {
   const current = state.current;
-  if (
-    !current ||
-    (state.phase !== "playing" && state.phase !== "waiting") ||
-    current.round !== input.round
-  ) {
+  if (!current || current.round !== input.round) {
     return fail("not_playing", `ラウンド ${input.round} は進行中でない`);
   }
   if (!current.playerIds.includes(input.playerId)) {
     return fail("not_playing", "このラウンドに参加していない");
   }
-  if (current.grades[input.playerId]) {
+  const grade = current.grades[input.playerId];
+  // 音声の締め切りまでに送らず、採点できなかった扱いになった（もう送っても採点しない）
+  if (grade?.status === "failed" && grade.reason === "deadline") {
+    return fail("deadline_passed", "このラウンドの音声の締め切りを過ぎた");
+  }
+  if (state.phase !== "playing" && state.phase !== "waiting") {
+    return fail("not_playing", `ラウンド ${input.round} は進行中でない`);
+  }
+  if (grade) {
     return fail("already_submitted", "このラウンドの音声はもう受け取った");
   }
   return ok(current);

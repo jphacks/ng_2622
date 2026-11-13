@@ -6,6 +6,7 @@
 //   CLAUDE_API_KEY=... pnpm tsx scripts/measure-scoring-baseline.ts <結果の JSON> [1 答えあたりの回数（既定 5）] [費用の上限ドル（既定 2.5）]
 import { writeFile } from "node:fs/promises";
 import Anthropic from "@anthropic-ai/sdk";
+import { grammarFor } from "../src/scoring";
 import type { ChecklistItem, Grade } from "../src/scoring/checklist";
 import {
   type CreateMessage,
@@ -27,39 +28,6 @@ const env = {
   CLAUDE_MODEL: "claude-sonnet-5-5", // wrangler.jsonc の本番と同じ
   CLAUDE_EFFORT: "low",
 };
-
-// 級ごとに足される文法（仮）。生成の定数 GRADES（backend/src/scenes/grades.ts）が main に入ったら、そこから作る形に替える。
-// かっこの中の例は、試験用の場面の語に寄せない（その語だけが範囲だと読まれないように）
-const ADDED: Record<Grade, string[]> = {
-  "eiken-3": [
-    "be-verb and simple present (is, are, has, likes)",
-    "present continuous (is running, are sitting)",
-    "there is / there are",
-    "prepositions of place (in, on, under, next to, near, in front of)",
-    "and",
-  ],
-  "eiken-pre2": [
-    "because",
-    "but / so",
-    "past simple (walked, dropped, went)",
-    "be going to / will",
-    "when",
-  ],
-  "eiken-2": [
-    "so that",
-    "to-infinitive of purpose (to buy a ticket)",
-    "relative pronouns (who, which, that)",
-    "present perfect (has finished)",
-    "passive (was broken)",
-  ],
-};
-const ORDER: Grade[] = ["eiken-3", "eiken-pre2", "eiken-2"];
-// 採点に渡す一覧は、その級までの分を全部（下の級の文法も含める）
-const grammarOf = (grade: Grade) =>
-  ORDER.slice(0, ORDER.indexOf(grade) + 1).flatMap((g) => ADDED[g]);
-// 一つ上の級で足される分。2級には無い
-const grammarAboveOf = (grade: Grade): string[] | undefined =>
-  ADDED[ORDER[ORDER.indexOf(grade) + 1]];
 
 type Fixture = {
   id: string;
@@ -230,7 +198,6 @@ type Row = {
       items: Record<string, string>;
       claims: unknown[];
       nextStep: unknown;
-      strength: unknown;
       rewrite: unknown;
     }
   | { error: string }
@@ -322,8 +289,8 @@ await Promise.all(
             checklist: scene.checklist,
             sceneData: describeLayoutWithRelations(scene.items) as string,
             description: scene.description,
-            grammar: grammarOf(scene.difficulty),
-            grammarAbove: grammarAboveOf(scene.difficulty),
+            // 級の文法の一覧は、本番の採点と同じく生成の定数 GRADES から作る（下の級の分も含む）
+            ...grammarFor(scene.difficulty),
             transcript: c.text,
             speech: { accuracy: 75, fluency: 75, prosody: 75 },
           },
@@ -342,7 +309,6 @@ await Promise.all(
           items: Object.fromEntries(items.map((i) => [i.id, i.level])),
           claims,
           nextStep: g.nextStep,
-          strength: g.strength,
           rewrite: g.rewrite,
         });
       } catch (e) {

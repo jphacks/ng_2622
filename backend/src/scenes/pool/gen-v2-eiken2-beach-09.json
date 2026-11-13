@@ -1,0 +1,153 @@
+{
+  "protocol": "scenenglish.scene/2",
+  "id": "gen-v2-eiken2-beach-09",
+  "name": "砂浜の砂の城",
+  "difficulty": "eiken-2",
+  "description": "A boy is building a sand castle on the beach. A girl is carrying a bucket of water because the boy is building a sand castle. An old man is feeding a bird so that it can eat. A bird is eating on the ground. There is a ball next to the sand castle. There is a bicycle on the beach.",
+  "checklist": [
+    {
+      "id": "boy_castle",
+      "kind": "center",
+      "label": "男の子が砂の城を作っている",
+      "accept": "a boy is building a sand castle",
+      "refs": ["boy", "sand_castle"]
+    },
+    {
+      "id": "girl_bucket",
+      "kind": "center",
+      "label": "女の子がバケツの水を運んでいる",
+      "accept": "a girl is carrying a bucket of water",
+      "refs": ["girl", "boy"]
+    },
+    {
+      "id": "man_feed",
+      "kind": "center",
+      "label": "おじいさんが鳥にえさをあげている",
+      "accept": "an old man is feeding a bird",
+      "refs": ["old_man", "bird"]
+    },
+    {
+      "id": "bird_eat",
+      "kind": "center",
+      "label": "鳥が地面で食べている",
+      "accept": "a bird is eating on the ground",
+      "refs": ["bird"]
+    },
+    {
+      "id": "why_bucket",
+      "kind": "reason",
+      "label": "女の子が水を運んでいる理由",
+      "accept": "a girl is carrying a bucket of water because the boy is building a sand castle",
+      "refs": ["girl", "boy", "sand_castle"]
+    },
+    {
+      "id": "link_bird",
+      "kind": "link",
+      "label": "おじいさんが鳥にえさをあげて鳥が食べる",
+      "accept": "an old man is feeding a bird so that it can eat",
+      "refs": ["old_man", "bird"]
+    },
+    {
+      "id": "ball_castle",
+      "kind": "detail",
+      "label": "ボールが砂の城の隣にある",
+      "accept": "there is a ball next to the sand castle",
+      "refs": ["ball", "sand_castle"]
+    },
+    {
+      "id": "bicycle_beach",
+      "kind": "detail",
+      "label": "浜に自転車がある",
+      "accept": "there is a bicycle on the beach",
+      "refs": ["bicycle"]
+    }
+  ],
+  "items": [
+    {
+      "key": "ground",
+      "part": "sand_beach",
+      "place": {
+        "relation": "ground"
+      },
+      "position": [0, 0, 0]
+    },
+    {
+      "key": "sand_castle",
+      "part": "sand_castle",
+      "place": {
+        "relation": "ground",
+        "zone": "center"
+      },
+      "position": [0, 0, 0]
+    },
+    {
+      "key": "boy",
+      "part": "person_kneel_build_boy_a",
+      "place": {
+        "relation": "relate",
+        "target": "sand_castle",
+        "link": "hand",
+        "side": "front",
+        "distance": "touch",
+        "turn": "toward"
+      },
+      "position": [0.625, 0, -0.15],
+      "yaw": -90
+    },
+    {
+      "key": "ball",
+      "part": "ball_red",
+      "place": {
+        "relation": "next_to",
+        "target": "sand_castle"
+      },
+      "position": [-0.64, 0, 0]
+    },
+    {
+      "key": "girl",
+      "part": "person_bucket_girl_a",
+      "place": {
+        "relation": "relate",
+        "target": "boy",
+        "side": "right",
+        "distance": "talk",
+        "turn": "toward"
+      },
+      "position": [1.131, 0, 0.665],
+      "yaw": 180
+    },
+    {
+      "key": "old_man",
+      "part": "person_feed_old_a",
+      "place": {
+        "relation": "ground",
+        "zone": "right"
+      },
+      "facing": "bird",
+      "position": [2.75, 0, 0],
+      "yaw": 1.4
+    },
+    {
+      "key": "bird",
+      "part": "animal_bird_a",
+      "place": {
+        "relation": "relate",
+        "target": "old_man",
+        "side": "front",
+        "distance": "talk",
+        "turn": "toward"
+      },
+      "position": [2.767, 0, 0.68],
+      "yaw": 180
+    },
+    {
+      "key": "bicycle",
+      "part": "bicycle",
+      "place": {
+        "relation": "ground",
+        "zone": "back_left"
+      },
+      "position": [-2.75, 0, -2.75]
+    }
+  ]
+}

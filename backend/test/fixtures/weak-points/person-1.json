@@ -1,0 +1,739 @@
+{
+  "id": "person-1",
+  "label": "準2級 10 回。理由をいつも落とす（7 回）・冠詞の抜け（4 回）。後半で細部を言えるようになる",
+  "planted": [
+    {
+      "key": "reason",
+      "label": "理由を落とす",
+      "viewpoint": "content",
+      "pattern": "理由|because|なぜ",
+      "rounds": [1, 3, 4, 5, 7, 8, 10]
+    },
+    {
+      "key": "article",
+      "label": "冠詞の抜け",
+      "viewpoint": "expression",
+      "pattern": "冠詞|\\ba\\b.*\\bthe\\b|\\bthe\\b.*\\ba\\b|a や the|a と the|aやthe|aとthe",
+      "rounds": [1, 4, 7, 9]
+    }
+  ],
+  "improvement": {
+    "label": "後半で細部（位置）を言えるようになる",
+    "pattern": "細部|位置|場所|どこに|next to|behind|on the"
+  },
+  "scores": [
+    {
+      "n": 1,
+      "scene": "gen-v2-pre2-park-01",
+      "content": 82,
+      "expression": 62
+    },
+    {
+      "n": 2,
+      "scene": "gen-v2-pre2-beach-09",
+      "content": 92,
+      "expression": 85
+    },
+    {
+      "n": 3,
+      "scene": "gen-v2-pre2-beach-21",
+      "content": 75,
+      "expression": 82
+    },
+    {
+      "n": 4,
+      "scene": "gen-v2-pre2-bus-stop-11",
+      "content": 75,
+      "expression": 55
+    },
+    {
+      "n": 5,
+      "scene": "gen-v2-pre2-cafe-02",
+      "content": 79,
+      "expression": 82
+    },
+    {
+      "n": 6,
+      "scene": "gen-v2-pre2-kitchen-17",
+      "content": 100,
+      "expression": 85
+    },
+    {
+      "n": 7,
+      "scene": "gen-v2-pre2-library-20",
+      "content": 89,
+      "expression": 62
+    },
+    {
+      "n": 8,
+      "scene": "gen-v2-pre2-living-room-07",
+      "content": 92,
+      "expression": 82
+    },
+    {
+      "n": 9,
+      "scene": "gen-v2-pre2-playground-24",
+      "content": 100,
+      "expression": 78
+    },
+    {
+      "n": 10,
+      "scene": "gen-v2-pre2-train-station-16",
+      "content": 89,
+      "expression": 82
+    }
+  ],
+  "request": {
+    "rounds": [
+      {
+        "n": 1,
+        "grade": "eiken-pre2",
+        "transcript": "Boy is throwing ball in park. Dog is running on grass. Woman is sitting on bench. She is watching.",
+        "claims": [
+          {
+            "quote": "Boy is throwing ball",
+            "verdict": "correct",
+            "item": "boy_throw",
+            "note": null
+          },
+          {
+            "quote": "in park",
+            "verdict": "correct",
+            "item": null,
+            "note": null
+          },
+          {
+            "quote": "Dog is running",
+            "verdict": "correct",
+            "item": "dog_run",
+            "note": null
+          },
+          {
+            "quote": "on grass",
+            "verdict": "correct",
+            "item": null,
+            "note": null
+          },
+          {
+            "quote": "Woman is sitting on bench",
+            "verdict": "correct",
+            "item": "woman_sit",
+            "note": null
+          }
+        ],
+        "rewrite": {
+          "before": "Boy is throwing ball in park.",
+          "after": "A boy is throwing a ball in the park.",
+          "reason": "名詞の前に a や the が必要です。"
+        },
+        "nextStep": {
+          "kind": "content",
+          "text": "次は犬が走っている理由を足してみよう。\"A dog is running across the grass because the boy threw the ball.\"",
+          "item": "why_run"
+        },
+        "expressionBasis": "The player used present continuous correctly in several short sentences and prepositions of place, but dropped articles (a boy, a dog, a woman, a ball) each time.",
+        "scene": {
+          "description": "A boy is throwing a ball. A dog is running across the grass because the boy threw the ball. A woman is sitting on the bench. There is a tree behind the bench. There is a trash can next to the bench.",
+          "missedItems": [
+            {
+              "id": "why_run",
+              "kind": "reason",
+              "label": "犬が走っている理由",
+              "accept": "a dog is running across the grass because the boy threw the ball",
+              "level": "none"
+            },
+            {
+              "id": "tree_behind",
+              "kind": "detail",
+              "label": "ベンチの後ろに木がある",
+              "accept": "there is a tree behind the bench",
+              "level": "none"
+            },
+            {
+              "id": "trash_next",
+              "kind": "detail",
+              "label": "ベンチの隣にごみ箱がある",
+              "accept": "there is a trash can next to the bench",
+              "level": "none"
+            }
+          ]
+        }
+      },
+      {
+        "n": 2,
+        "grade": "eiken-pre2",
+        "transcript": "A boy is building a sand castle. A girl is carrying a bucket of water because the boy is building a sand castle. A woman is sitting on the beach.",
+        "claims": [
+          {
+            "quote": "A boy is building a sand castle",
+            "verdict": "correct",
+            "item": "boy_build",
+            "note": null
+          },
+          {
+            "quote": "A girl is carrying a bucket of water",
+            "verdict": "correct",
+            "item": "girl_carry",
+            "note": null
+          },
+          {
+            "quote": "A girl is carrying a bucket of water because the boy is building a sand castle",
+            "verdict": "correct",
+            "item": "why_carry",
+            "note": null
+          },
+          {
+            "quote": "A woman is sitting",
+            "verdict": "correct",
+            "item": "woman_sit",
+            "note": null
+          },
+          {
+            "quote": "on the beach",
+            "verdict": "correct",
+            "item": null,
+            "note": null
+          }
+        ],
+        "rewrite": null,
+        "nextStep": {
+          "kind": "content",
+          "text": "次は砂の城の隣にボールがあることを足してみよう。\"There is a ball next to the sand castle.\"",
+          "item": "ball_castle"
+        },
+        "expressionBasis": "The player used present continuous and a because-clause correctly in complete sentences with no errors, but did not use any next-grade forms.",
+        "scene": {
+          "description": "A boy is building a sand castle. A girl is carrying a bucket of water because the boy is building a sand castle. A woman is sitting on the beach. There is a ball next to the sand castle. There is a balloon next to the woman.",
+          "missedItems": [
+            {
+              "id": "ball_castle",
+              "kind": "detail",
+              "label": "砂の城の隣にボールがある",
+              "accept": "there is a ball next to the sand castle",
+              "level": "none"
+            },
+            {
+              "id": "balloon_woman",
+              "kind": "detail",
+              "label": "女の人の隣に風船がある",
+              "accept": "there is a balloon next to the woman",
+              "level": "none"
+            }
+          ]
+        }
+      },
+      {
+        "n": 3,
+        "grade": "eiken-pre2",
+        "transcript": "A man is reaching for the balloon with a stick. A girl is looking far away. A woman is walking on the beach. It is a sunny day.",
+        "claims": [
+          {
+            "quote": "A man is reaching for the balloon with a stick",
+            "verdict": "correct",
+            "item": "man_reach",
+            "note": null
+          },
+          {
+            "quote": "A girl is looking far away",
+            "verdict": "correct",
+            "item": "girl_look",
+            "note": null
+          },
+          {
+            "quote": "A woman is walking on the beach",
+            "verdict": "correct",
+            "item": "woman_walk",
+            "note": null
+          }
+        ],
+        "rewrite": null,
+        "nextStep": {
+          "kind": "content",
+          "text": "次は男の人が棒を使う理由を足してみよう。\"A man is reaching for the balloon with a stick because it is high in the tree.\"",
+          "item": "why_reach"
+        },
+        "expressionBasis": "The player used present continuous, prepositions and be + adjective correctly in complete sentences with no errors, but did not use any next-grade form.",
+        "scene": {
+          "description": "A balloon is in the tree on the beach. A man is reaching for the balloon with a stick because it is high in the tree. A girl is looking far away. A woman is walking on the beach. There is a bench next to the tree.",
+          "missedItems": [
+            {
+              "id": "why_reach",
+              "kind": "reason",
+              "label": "男の人が棒を使う理由",
+              "accept": "a man is reaching for the balloon with a stick because it is high in the tree",
+              "level": "none"
+            },
+            {
+              "id": "balloon_tree",
+              "kind": "detail",
+              "label": "風船が木の中にある",
+              "accept": "a balloon is in the tree on the beach",
+              "level": "none"
+            },
+            {
+              "id": "bench_tree",
+              "kind": "detail",
+              "label": "木の隣にベンチがある",
+              "accept": "there is a bench next to the tree",
+              "level": "none"
+            }
+          ]
+        }
+      },
+      {
+        "n": 4,
+        "grade": "eiken-pre2",
+        "transcript": "Man is running with bag. Woman is waiting with shopping basket. Boy is sitting on bench.",
+        "claims": [
+          {
+            "quote": "Man is running with bag",
+            "verdict": "correct",
+            "item": "man_run",
+            "note": null
+          },
+          {
+            "quote": "Woman is waiting with shopping basket",
+            "verdict": "correct",
+            "item": "woman_wait",
+            "note": null
+          },
+          {
+            "quote": "Boy is sitting on bench",
+            "verdict": "correct",
+            "item": "boy_sit",
+            "note": null
+          }
+        ],
+        "rewrite": {
+          "before": "Man is running with bag.",
+          "after": "A man is running with a bag.",
+          "reason": "man や bag の前に冠詞 a が必要です。"
+        },
+        "nextStep": {
+          "kind": "content",
+          "text": "次は雨が降っているので男の人が走っていることを足してみよう。\"A man is running because it is raining.\"",
+          "item": "why_run"
+        },
+        "expressionBasis": "The player used present continuous correctly and a preposition (with), but articles are missing before man, bag, woman, basket, boy and bench.",
+        "scene": {
+          "description": "It is raining at the bus stop. A man is running with a bag because it is raining. A woman is waiting with a shopping basket. A boy is sitting on the bench in the bus stop. The bus stop has a roof.",
+          "missedItems": [
+            {
+              "id": "why_run",
+              "kind": "reason",
+              "label": "男の人が走っている理由",
+              "accept": "a man is running with a bag because it is raining",
+              "level": "none"
+            },
+            {
+              "id": "rain",
+              "kind": "detail",
+              "label": "雨が降っている",
+              "accept": "it is raining",
+              "level": "none"
+            },
+            {
+              "id": "bus_stop_behind",
+              "kind": "detail",
+              "label": "バス停に屋根がある",
+              "accept": "the bus stop has a roof",
+              "level": "none"
+            }
+          ]
+        }
+      },
+      {
+        "n": 5,
+        "grade": "eiken-pre2",
+        "transcript": "A woman is cleaning the table. A waiter is bringing drinks. A man is sitting on a chair. They are in a cafe.",
+        "claims": [
+          {
+            "quote": "A woman is cleaning the table",
+            "verdict": "correct",
+            "item": "woman_clean",
+            "note": null
+          },
+          {
+            "quote": "A waiter is bringing drinks",
+            "verdict": "correct",
+            "item": "waiter_bring",
+            "note": null
+          },
+          {
+            "quote": "A man is sitting on a chair",
+            "verdict": "correct",
+            "item": "man_sit",
+            "note": null
+          },
+          {
+            "quote": "They are in a cafe",
+            "verdict": "correct",
+            "item": null,
+            "note": null
+          }
+        ],
+        "rewrite": null,
+        "nextStep": {
+          "kind": "content",
+          "text": "次は女の人がテーブルを拭いている理由を足してみよう。\"A woman is cleaning the table because the juice was spilled.\"",
+          "item": "why_clean"
+        },
+        "expressionBasis": "The player used present continuous and a preposition of place correctly in complete sentences with no errors, but did not use any forms from the next grade up.",
+        "scene": {
+          "description": "A woman is cleaning the table because the juice was spilled. A waiter is bringing drinks. A man is sitting on a chair. There is a cup on the table. There are two chairs next to the table.",
+          "missedItems": [
+            {
+              "id": "why_clean",
+              "kind": "reason",
+              "label": "女の人がテーブルを拭く理由",
+              "accept": "a woman is cleaning the table because the juice was spilled",
+              "level": "none"
+            },
+            {
+              "id": "cup_table",
+              "kind": "detail",
+              "label": "テーブルの上にカップがある",
+              "accept": "there is a cup on the table",
+              "level": "none"
+            },
+            {
+              "id": "two_chairs",
+              "kind": "detail",
+              "label": "テーブルの横に椅子が2つある",
+              "accept": "there are two chairs next to the table",
+              "level": "none"
+            }
+          ]
+        }
+      },
+      {
+        "n": 6,
+        "grade": "eiken-pre2",
+        "transcript": "A man is cleaning the floor because there is glass on it. A woman is cooking at the stove. A boy is carrying a box. There is a pan on the stove. There is a bottle on the table.",
+        "claims": [
+          {
+            "quote": "A man is cleaning the floor",
+            "verdict": "correct",
+            "item": "man_clean",
+            "note": null
+          },
+          {
+            "quote": "A man is cleaning the floor because there is glass on it",
+            "verdict": "correct",
+            "item": "why_clean",
+            "note": null
+          },
+          {
+            "quote": "A woman is cooking at the stove",
+            "verdict": "correct",
+            "item": "woman_cook",
+            "note": null
+          },
+          {
+            "quote": "A boy is carrying a box",
+            "verdict": "correct",
+            "item": "boy_carry",
+            "note": null
+          },
+          {
+            "quote": "There is a pan on the stove",
+            "verdict": "correct",
+            "item": "pan",
+            "note": null
+          },
+          {
+            "quote": "There is a bottle on the table",
+            "verdict": "correct",
+            "item": "table",
+            "note": null
+          }
+        ],
+        "rewrite": null,
+        "nextStep": {
+          "kind": "expression",
+          "text": "次は上のレベルの文法に挑戦してみよう。\"A man is sweeping the floor with a broom to clean up the glass.\"",
+          "item": null
+        },
+        "expressionBasis": "The player used present continuous, there is, because + sentence and prepositions of place correctly in complete sentences with no errors.",
+        "scene": {
+          "description": "A man is cleaning the floor because there is glass on it. A woman is cooking at the stove. A boy is carrying a box. There is a pan on the stove. There is a bottle on the table.",
+          "missedItems": []
+        }
+      },
+      {
+        "n": 7,
+        "grade": "eiken-pre2",
+        "transcript": "Boy and girl are carrying desk. Man is sitting on chair and reading book. There is bookshelf behind girl. There is table next to man.",
+        "claims": [
+          {
+            "quote": "Boy and girl are carrying desk",
+            "verdict": "correct",
+            "item": "boy_carry",
+            "note": null
+          },
+          {
+            "quote": "Boy and girl are carrying desk",
+            "verdict": "correct",
+            "item": "girl_carry",
+            "note": null
+          },
+          {
+            "quote": "Man is sitting on chair and reading book",
+            "verdict": "correct",
+            "item": "man_read",
+            "note": null
+          },
+          {
+            "quote": "There is bookshelf behind girl",
+            "verdict": "correct",
+            "item": "bookshelf",
+            "note": null
+          },
+          {
+            "quote": "There is table next to man",
+            "verdict": "correct",
+            "item": "table",
+            "note": null
+          }
+        ],
+        "rewrite": {
+          "before": "Boy and girl are carrying desk",
+          "after": "A boy and a girl are carrying a desk.",
+          "reason": "名詞の前に a を付けると自然な英語になります。"
+        },
+        "nextStep": {
+          "kind": "content",
+          "text": "次は、男の子が机を運んでいる理由をbecauseで足してみよう。\"A boy is carrying a desk because it is too big for one person.\"",
+          "item": "why_carry"
+        },
+        "expressionBasis": "The player correctly used present continuous, there is, and prepositions of place, but omitted articles (a/the) throughout.",
+        "scene": {
+          "description": "A boy is carrying a desk because it is too big for one person. A girl is carrying the desk too. A man is sitting on a chair and reading a book. There is a bookshelf behind the girl. There is a table next to the man.",
+          "missedItems": [
+            {
+              "id": "why_carry",
+              "kind": "reason",
+              "label": "男の子が机を運んでいる理由",
+              "accept": "a boy is carrying a desk because it is too big for one person",
+              "level": "none"
+            }
+          ]
+        }
+      },
+      {
+        "n": 8,
+        "grade": "eiken-pre2",
+        "transcript": "A girl is blowing out the candles on the cake. A boy is celebrating. A man is sitting on the sofa. There is a table in the room. There are two chairs next to the table.",
+        "claims": [
+          {
+            "quote": "A girl is blowing out the candles",
+            "verdict": "correct",
+            "item": "girl_blow",
+            "note": null
+          },
+          {
+            "quote": "on the cake",
+            "verdict": "correct",
+            "item": null,
+            "note": null
+          },
+          {
+            "quote": "A boy is celebrating",
+            "verdict": "correct",
+            "item": "boy_clap",
+            "note": null
+          },
+          {
+            "quote": "A man is sitting on the sofa",
+            "verdict": "correct",
+            "item": "man_sit",
+            "note": null
+          },
+          {
+            "quote": "There is a table in the room",
+            "verdict": "correct",
+            "item": "table",
+            "note": null
+          },
+          {
+            "quote": "There are two chairs next to the table",
+            "verdict": "correct",
+            "item": "chairs",
+            "note": null
+          }
+        ],
+        "rewrite": null,
+        "nextStep": {
+          "kind": "content",
+          "text": "男の子がお祝いしている理由も足してみよう。\"A boy is celebrating because the candles are on the cake.\"",
+          "item": "why_clap"
+        },
+        "expressionBasis": "The player used present continuous, there is/there are, and prepositions of place correctly in complete sentences with no errors, but used no next-grade forms.",
+        "scene": {
+          "description": "A girl is blowing out the candles on the cake. A boy is celebrating because the candles are on the cake. A man is sitting on the sofa. There is a table in the room. There are two chairs next to the table.",
+          "missedItems": [
+            {
+              "id": "why_clap",
+              "kind": "reason",
+              "label": "男の子がお祝いしている理由",
+              "accept": "a boy is celebrating because the candles are on the cake",
+              "level": "none"
+            }
+          ]
+        }
+      },
+      {
+        "n": 9,
+        "grade": "eiken-pre2",
+        "transcript": "Woman has fallen down because bicycle is lying next to her. Man is helping woman get up. Boy is sitting on bench. Bicycle is lying on ground next to bench. There is tree behind bench.",
+        "claims": [
+          {
+            "quote": "Woman has fallen down",
+            "verdict": "correct",
+            "item": "woman_fall",
+            "note": null
+          },
+          {
+            "quote": "Woman has fallen down because bicycle is lying next to her",
+            "verdict": "correct",
+            "item": "why_fall",
+            "note": null
+          },
+          {
+            "quote": "Man is helping woman get up",
+            "verdict": "correct",
+            "item": "man_help",
+            "note": null
+          },
+          {
+            "quote": "Boy is sitting on bench",
+            "verdict": "correct",
+            "item": "boy_sit",
+            "note": null
+          },
+          {
+            "quote": "Bicycle is lying on ground next to bench",
+            "verdict": "correct",
+            "item": "bike_ground",
+            "note": null
+          },
+          {
+            "quote": "There is tree behind bench",
+            "verdict": "correct",
+            "item": "tree_bench",
+            "note": null
+          }
+        ],
+        "rewrite": {
+          "before": "Boy is sitting on bench.",
+          "after": "A boy is sitting on the bench.",
+          "reason": "boy や bench の前に a / the をつけると自然になります。"
+        },
+        "nextStep": {
+          "kind": "expression",
+          "text": "名詞の前に a や the をつけると、もっと自然な英語になるよ。\"A woman has fallen down because the bicycle is lying next to her.\"",
+          "item": null
+        },
+        "expressionBasis": "The player correctly used present perfect, because, present continuous, there is and prepositions of place, but dropped articles (a/the) throughout.",
+        "scene": {
+          "description": "A bicycle is lying on the ground next to a bench. A woman has fallen down on the ground because the bicycle is lying next to her. A man is helping the woman get up. A boy is sitting on the bench. There is a tree behind the bench.",
+          "missedItems": []
+        }
+      },
+      {
+        "n": 10,
+        "grade": "eiken-pre2",
+        "transcript": "A woman is using the ticket machine. A boy is sitting on a bench. A man is drinking from a cup. There is a ticket machine on the platform. There is a sign on the platform.",
+        "claims": [
+          {
+            "quote": "A woman is using the ticket machine",
+            "verdict": "correct",
+            "item": "woman_press",
+            "note": null
+          },
+          {
+            "quote": "A boy is sitting on a bench",
+            "verdict": "correct",
+            "item": "boy_sit",
+            "note": null
+          },
+          {
+            "quote": "A man is drinking from a cup",
+            "verdict": "correct",
+            "item": "man_drink",
+            "note": null
+          },
+          {
+            "quote": "There is a ticket machine on the platform",
+            "verdict": "correct",
+            "item": "machine",
+            "note": null
+          },
+          {
+            "quote": "There is a sign on the platform",
+            "verdict": "correct",
+            "item": "sign",
+            "note": null
+          }
+        ],
+        "rewrite": null,
+        "nextStep": {
+          "kind": "content",
+          "text": "女の人が券売機を使っている理由を足してみよう。\"A woman is using the ticket machine because a train is at the platform.\"",
+          "item": "why_press"
+        },
+        "expressionBasis": "The player used present continuous, there is, and prepositions of place correctly in complete sentences with no errors, but did not use any next-grade forms.",
+        "scene": {
+          "description": "There is a ticket machine on the platform. A woman is using the ticket machine because a train is at the platform. A boy is sitting on a bench. A man is drinking from a cup. There is a sign on the platform.",
+          "missedItems": [
+            {
+              "id": "why_press",
+              "kind": "reason",
+              "label": "女の人が券売機を使っている理由",
+              "accept": "a woman is using the ticket machine because a train is at the platform",
+              "level": "none"
+            }
+          ]
+        }
+      }
+    ],
+    "counts": {
+      "rounds": 10,
+      "kinds": [
+        {
+          "kind": "center",
+          "earned": 30,
+          "total": 30
+        },
+        {
+          "kind": "reason",
+          "earned": 3,
+          "total": 10
+        },
+        {
+          "kind": "detail",
+          "earned": 10,
+          "total": 20
+        }
+      ],
+      "verdicts": {
+        "correct": 48,
+        "contradiction": 0,
+        "absent": 0,
+        "offtopic": 0
+      },
+      "halves": {
+        "first": {
+          "rounds": 5,
+          "content": 80.6,
+          "expression": 73.2
+        },
+        "second": {
+          "rounds": 5,
+          "content": 94,
+          "expression": 77.8
+        }
+      }
+    }
+  }
+}

@@ -1,34 +1,60 @@
 import Foundation
 
-/// 配置の JSON（scenenglish.scene/1）。docs/design/scene-protocol.md の「配置の JSON」。
-/// アプリが並べるのに使う項目と、待機の画面に正答例として出す description を読む（採点の elements はバックエンドが使う）
+/// 配置の JSON（scenenglish.scene/2）。docs/design/scene-protocol.md の「配置の JSON」。
+/// アプリが並べるのに使う項目（position・yaw・motion.to など）と、見本の答えの description、
+/// 振り返りで見本の答えと項目を結ぶ checklist を読む（place・facing・motion.toward は採点と裏取りが使うので読まない）
 nonisolated struct SceneLayout: Decodable, Sendable, Equatable {
-  static let protocolName = "scenenglish.scene/1"
+  static let protocolName = "scenenglish.scene/2"
 
-  /// 形の版。`scenenglish.scene/1` 以外は読まない
+  /// 形の版。`scenenglish.scene/2` 以外は読まない
   let `protocol`: String
   let id: String?
   /// 日本語の名前（待合と結果に出す）
   let name: String
-  let difficulty: String?
-  /// 場面の英語の説明。待機の画面に正答例として出す
+  /// 級（eiken-3 など）。知らない値は nil
+  let difficulty: SceneDifficulty?
+  /// 級の見本の答え（英語、3〜6 文）。待機の画面の正答例と、振り返りの見本の答えに出す
   let description: String?
+  /// 採点のチェックリスト。振り返りで、見本の答えの文と項目を accept で結ぶ。読めない項目は飛ばす
+  let checklist: [ChecklistItem]
   /// 置く部品。上から順に置く。読めない item は飛ばす（1 件が壊れていても、ほかは置く）
   let items: [Item]
 
   enum CodingKeys: String, CodingKey {
-    case `protocol`, id, name, difficulty, description, items
+    case `protocol`, id, name, difficulty, description, checklist, items
   }
 
   init(
-    protocol: String, id: String?, name: String, difficulty: String?, description: String? = nil, items: [Item]
+    protocol: String, id: String?, name: String, difficulty: SceneDifficulty?, description: String? = nil,
+    checklist: [ChecklistItem] = [], items: [Item]
   ) {
     self.protocol = `protocol`
     self.id = id
     self.name = name
     self.difficulty = difficulty
     self.description = description
+    self.checklist = checklist
     self.items = items
+  }
+
+  /// チェックリストの 1 項目
+  nonisolated struct ChecklistItem: Decodable, Sendable, Equatable {
+    let id: String
+    let kind: ChecklistKind
+    /// 振り返りに出す日本語
+    let label: String
+    /// 「言えた」とする英語の言い方。" / " で別の言い方が続くことがある
+    let accept: String
+
+    /// accept を " / " で分けた言い方（空のものは除く）
+    var accepts: [String] {
+      accept.components(separatedBy: " / ").map { $0.trimmingCharacters(in: .whitespaces) }.filter { !$0.isEmpty }
+    }
+
+    /// accept の 1 つ目の言い方（" / " より前）
+    var firstAccept: String {
+      accepts.first ?? accept
+    }
   }
 
   init(from decoder: any Decoder) throws {
@@ -49,10 +75,26 @@ nonisolated struct SceneLayout: Decodable, Sendable, Equatable {
       protocol: try c.decode(String.self, forKey: .protocol),
       id: try c.decodeIfPresent(String.self, forKey: .id),
       name: try c.decode(String.self, forKey: .name),
-      difficulty: try c.decodeIfPresent(String.self, forKey: .difficulty),
-      // 説明が読めなくても場面は出す
+      difficulty: (try? c.decodeIfPresent(String.self, forKey: .difficulty)).flatMap { $0.flatMap(SceneDifficulty.init) },
+      // 説明とチェックリストが読めなくても場面は出す
       description: try? c.decodeIfPresent(String.self, forKey: .description),
+      checklist: Self.checklist(in: c),
       items: items)
+  }
+
+  /// チェックリストを 1 項目ずつ読み、読めない項目は飛ばす（1 件が壊れていても、ほかの項目で見本の答えと結ぶ）。
+  /// 無い・配列でないときは空
+  private static func checklist(in c: KeyedDecodingContainer<CodingKeys>) -> [ChecklistItem] {
+    guard var list = try? c.nestedUnkeyedContainer(forKey: .checklist) else { return [] }
+    var result: [ChecklistItem] = []
+    while !list.isAtEnd {
+      if let item = try? list.decode(ChecklistItem.self) {
+        result.append(item)
+      } else if (try? list.decode(Skipped.self)) == nil {
+        break
+      }
+    }
+    return result
   }
 
   /// 読めなかった item を読み飛ばすための、どんな値も受け取る型
@@ -174,6 +216,27 @@ nonisolated struct SceneLayout: Decodable, Sendable, Equatable {
   }
 }
 
+/// チェックリストの項目の種類（バックエンドの ChecklistKind）
+nonisolated enum ChecklistKind: String, Decodable, Sendable, Equatable {
+  /// 中心（誰が何をしているか）
+  case center
+  /// 理由
+  case reason
+  /// つながり（原因 → 行動 → 結果や目的）
+  case link
+  /// 細部（位置など）
+  case detail
+
+  var label: String {
+    switch self {
+    case .center: "中心"
+    case .reason: "理由"
+    case .link: "つながり"
+    case .detail: "細部"
+    }
+  }
+}
+
 /// 部品の ID と版（`apple@1` → apple と 1、`apple` → apple と nil）
 nonisolated struct PartRef: Hashable, Sendable {
   let id: String
@@ -188,14 +251,5 @@ nonisolated struct PartRef: Hashable, Sendable {
     let pieces = text.split(separator: "@", maxSplits: 1).map(String.init)
     id = pieces.first ?? text
     version = pieces.count == 2 ? Int(pieces[1]) : nil
-  }
-}
-
-/// AI で作った場面か（同梱の 6 シーンは焼き込んだ USDZ を出す）
-enum GeneratedScene {
-  static let prefix = "gen-"
-
-  static func isGenerated(_ sceneID: String) -> Bool {
-    sceneID.hasPrefix(prefix)
   }
 }

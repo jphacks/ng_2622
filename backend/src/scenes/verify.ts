@@ -19,6 +19,7 @@ import {
   type Part,
   type PlanItem,
   type SceneSentences,
+  type Vec3,
 } from "./types";
 
 // 生成した場面の裏取り（純粋な関数）。Claude が書いた英文・チェックリスト・部品を、コードで照らして確かめる。
@@ -32,6 +33,9 @@ import {
 export type Problem = {
   code:
     | "kind_count"
+    | "sentence_count"
+    | "sentence_number"
+    | "sentence_shared"
     | "duplicate_id"
     | "no_refs"
     | "ref_name"
@@ -43,6 +47,11 @@ export type Problem = {
     | "duplicate_accept"
     | "who_cannot"
     | "on_the_wall"
+    | "who_mismatch"
+    | "clause_action"
+    | "held_missing"
+    | "wall_thing"
+    | "out_of_view"
     | "action_mismatch"
     | "place_mismatch"
     | "held_thing"
@@ -274,6 +283,124 @@ export const verifySentences = (
   return problems;
 };
 
+/**
+ * 英文の人の呼び方と、それに合う部品の見た目（部品の words の先頭）。
+ * 同じ枠の言い換え（tall boy と boy、man と old man、mother と woman）は通し、子どもと大人・男と女の取り違えを落とす。
+ * 仕事の呼び方（waiter・clerk・doctor）は男女が決まらないので、大人ならどれでもよい
+ */
+const ADULT_ROLES = ["waiter", "clerk", "doctor"];
+export const PERSON_NOUNS: Record<string, readonly string[]> = {
+  boy: ["boy"],
+  "tall boy": ["boy"],
+  "little boy": ["boy"],
+  student: ["boy", "girl"],
+  child: ["boy", "girl"],
+  kid: ["boy", "girl"],
+  girl: ["girl"],
+  "little girl": ["girl"],
+  man: ["man", "old man", ...ADULT_ROLES],
+  father: ["man", "old man"],
+  "old man": ["old man"],
+  grandfather: ["old man"],
+  woman: ["woman", "old woman", ...ADULT_ROLES],
+  mother: ["woman"],
+  lady: ["woman", "old woman"],
+  "old woman": ["old woman"],
+  grandmother: ["old woman"],
+  waiter: ["waiter", "man", "woman"],
+  waitress: ["waiter", "woman"],
+  clerk: ["clerk", "man", "woman"],
+  doctor: ["doctor", "man", "woman"],
+  teacher: ["man", "woman", "old man", "old woman"],
+  dog: ["dog"],
+  bird: ["bird"],
+};
+
+/** 呼び方が合う部品か（部品の見た目が、その呼び方の枠に入るか） */
+export const nounFits = (noun: string, part: Pick<Part, "id" | "words">) =>
+  (PERSON_NOUNS[noun] ?? []).includes(whoOf(part));
+
+// 節に分ける所（理由・目的・別の主語の文）。because・so の後ろも、その主語の人の動作として照らす
+const CLAUSE_SPLIT = /,|;|\b(?:because|so that|so|while|when|but|and then)\b/i;
+const DETERMINERS = new Set([
+  "a",
+  "an",
+  "the",
+  "another",
+  "one",
+  "two",
+  "three",
+  "other",
+  "this",
+  "that",
+  "his",
+  "her",
+  "their",
+  "some",
+]);
+const BE = new Set(["is", "are", "was", "were", "am", "s"]);
+const STILL = new Set(["also", "still", "now", "just", "not", "always"]);
+
+/**
+ * 節（主語で始まる文の一部）の主語の呼び方と、その人の動作の動詞。
+ * 主語は節の先頭（a・the などの後）の人の呼び方。動作は be の後の -ing、has の後の過去分詞、
+ * それに and でつないだ -ing（"is sitting on a sofa and reading" の reading）。to の後（目的）は数えない
+ */
+export const clauseAction = (
+  clause: string,
+): { noun: string; verbs: string[] } | undefined => {
+  const words = wordsOf(clause);
+  let i = 0;
+  while (i < words.length && DETERMINERS.has(words[i])) i++;
+  const nouns = Object.keys(PERSON_NOUNS).sort(
+    (a, b) => b.split(" ").length - a.split(" ").length,
+  );
+  const noun = nouns.find((n) =>
+    n
+      .split(" ")
+      .every((t, k) => words[i + k] === t || words[i + k] === `${t}s`),
+  );
+  if (!noun) return undefined;
+  const formOf = new Map<string, string>();
+  for (const v of Object.keys(VERB_LEVELS)) {
+    for (const f of verbForms(v)) if (!formOf.has(f)) formOf.set(f, v);
+  }
+  const verbs: string[] = [];
+  let acting = false;
+  for (let k = i + noun.split(" ").length; k < words.length; k++) {
+    const w = words[k];
+    if (BE.has(w) || w === "has" || w === "have") {
+      let n = k + 1;
+      while (STILL.has(words[n])) n++;
+      const next = words[n] ?? "";
+      const verb = formOf.get(next);
+      const progressive = BE.has(w) && next.endsWith("ing");
+      const perfect = !BE.has(w) && verb !== undefined && next !== verb;
+      if (verb && (progressive || perfect) && words[n - 1] !== "to") {
+        verbs.push(verb);
+        acting = true;
+      }
+      k = n;
+    } else if (acting && (w === "and" || w === "or")) {
+      const next = words[k + 1] ?? "";
+      const verb = formOf.get(next);
+      if (verb && next.endsWith("ing")) {
+        verbs.push(verb);
+        k++;
+      }
+    }
+  }
+  return { noun, verbs: [...new Set(verbs)] };
+};
+
+/** description を文と節に分ける */
+export const clausesOf = (description: string): string[] =>
+  description
+    .split(/(?<=[.!?])\s+/)
+    .flatMap((t) => t.split(CLAUSE_SPLIT))
+    .map((t) => t.trim())
+    .filter((t) => t.length > 0);
+
 const isLiving = (part: Part) =>
   part.category === "person" || part.category === "animal";
 
@@ -380,6 +507,71 @@ export const verifyItems = (
         );
       }
     }
+  }
+
+  // 呼び方と人の部品の見た目。項目の主語の呼び方と、項目が指す人や動物の部品を照らす。
+  // どれか 1 人でも呼び方が合えばよい（理由やつながりは 2 人を指すので）
+  for (const c of sentences.checklist) {
+    const found = clauseAction(c.accept.split("/")[0]);
+    if (!found) continue;
+    const living = c.refs
+      .map((r) => ({ key: r, part: parts.get(byKey.get(r)?.part ?? "") }))
+      .filter(
+        (a): a is { key: string; part: Part } => !!a.part && isLiving(a.part),
+      );
+    if (living.length === 0 || living.some((a) => nounFits(found.noun, a.part)))
+      continue;
+    add(
+      "who_mismatch",
+      "items",
+      `項目 ${c.id} は ${found.noun} のことだが、refs の ${living
+        .map((a) => `${a.key} の部品 ${a.part.id}（${whoOf(a.part)}）`)
+        .join(
+          "、",
+        )} は ${found.noun} の見た目ではない。${found.noun} に合う人の部品を選ぶ（${(PERSON_NOUNS[found.noun] ?? []).join("・")} の部品）`,
+    );
+  }
+
+  // 見本の答えの各節の動作が、その主語の人のポーズで言えるか（"sitting on a sofa and reading" の reading、
+  // because の後ろの原因の人の動作も）。主語は呼び方の合う人。合う人が何人かいれば、誰か 1 人が言えればよい
+  // 項目の言い方で確かめ済みの節（center・detail の言い方、reason の because より前、link の全部）は見ない（同じ理由を重ねて出さない）
+  const covered = sentences.checklist.map((c) => {
+    const wording = c.accept.split("/")[0];
+    return ` ${normalizeText(c.kind === "reason" ? wording.split(/\bbecause\b/i)[0] : wording)} `;
+  });
+  for (const clause of clausesOf(sentences.description)) {
+    const found = clauseAction(clause);
+    if (!found || found.verbs.length === 0) continue;
+    if (covered.some((c) => c.includes(` ${normalizeText(clause)} `))) continue;
+    const who = people
+      .map((i) => ({ key: i.key, part: parts.get(i.part) as Part }))
+      .filter((a) => nounFits(found.noun, a.part));
+    if (who.length === 0) continue;
+    const can = (part: Part) => {
+      const said = poseVerbsOf(part).map((v) => v.verb);
+      return found.verbs.every((v) => said.includes(v));
+    };
+    if (who.some((a) => can(a.part))) continue;
+    // その呼び方の部品のどれかで言えるなら部品の選び直し、言える部品が無ければ英文を書き直す
+    const other = partList.some(
+      (p) => isLiving(p) && nounFits(found.noun, p) && can(p),
+    );
+    add(
+      "clause_action",
+      other ? "items" : "sentences",
+      `見本の答えの「${clause}」の動作（${found.verbs.join("・")}）が、${who
+        .map(
+          (a) =>
+            `${a.key} の部品 ${a.part.id}（${poseVerbsOf(a.part)
+              .map((v) => v.verb)
+              .join(", ")}）`,
+        )
+        .join("、")} のポーズで言えない。${
+        other
+          ? `${found.noun} の部品を、その動作を全部言えるものにする`
+          : "1 人につき動作は 1 つ。その人の部品で言える動作だけを書く"
+      }`,
+    );
   }
 
   const whoOfItem = (i: PlanItem) => whoOf(parts.get(i.part) as Part);
@@ -582,6 +774,204 @@ export const verifyPlaces = (
         code: "place_mismatch",
         stage: "items",
         message: `項目 ${c.id} の accept「${c.accept}」は ${subject.key} が ${said.join(", ")} の上にいると言うが、置いた位置は ${under.key}（${under.part}）の上。${subject.key} を ${said.join(", ")} の上に置く`,
+      });
+    }
+  }
+  problems.push(...verifyView(plan, layout.items, partList));
+  problems.push(...verifyHeld(plan, layout.items, partList));
+  return problems;
+};
+
+// ---------- 絵で見えるか（座標に直した場面を、絵と同じカメラから見る） ----------
+
+/**
+ * 絵（scripts/scene/render_layout.py）と同じカメラ。注視点 (0, 0.6, 0)、見下ろす角度 28 度、距離 17.5 m、
+ * 3D の欄は 1280 x 672 px で、縦 960 px が 30 度の見え方。画面は、カメラから 1 m の所の大きさ（tan）で表す
+ */
+const CAMERA = (() => {
+  const tilt = (28 * Math.PI) / 180;
+  const target: Vec3 = [0, 0.6, 0];
+  const distance = 17.5;
+  const px = (2 * Math.tan((15 * Math.PI) / 180)) / 960;
+  return {
+    eye: [
+      target[0],
+      target[1] + distance * Math.sin(tilt),
+      target[2] + distance * Math.cos(tilt),
+    ] as Vec3,
+    forward: [0, -Math.sin(tilt), -Math.cos(tilt)] as Vec3,
+    up: [0, Math.cos(tilt), -Math.sin(tilt)] as Vec3,
+    halfWidth: (px * 1280) / 2,
+    halfHeight: (px * 672) / 2,
+  };
+})();
+
+const dot = (a: Vec3, b: Vec3) => a[0] * b[0] + a[1] * b[1] + a[2] * b[2];
+
+/** 場面の点を画面に写す（右・上が正。depth はカメラからの奥行き） */
+export const project = (p: Vec3) => {
+  const v: Vec3 = [
+    p[0] - CAMERA.eye[0],
+    p[1] - CAMERA.eye[1],
+    p[2] - CAMERA.eye[2],
+  ];
+  const depth = dot(v, CAMERA.forward);
+  return { x: v[0] / depth, y: dot(v, CAMERA.up) / depth, depth };
+};
+
+/** 壁に付けるものとして作った部品（床に立てると、部屋の真ん中に窓や時計が立つ） */
+const WALL_THINGS = new Set(["window", "door", "clock"]);
+/** 壁ぎわとみる、背景の壁の手前の面からの距離（m）。奥の区画の列に置いたものは通す */
+const NEAR_WALL = 1.2;
+
+/**
+ * 座標に直した場面を、絵と同じカメラから見て確かめる。
+ * - wall_thing: 窓・扉・時計が、背景の壁から離れて床に立っている（屋外の窓・時計は、付ける壁が無い）
+ * - out_of_view: 項目が指す物や人の真ん中が、絵の外にある（木の上の風船など）
+ * 人が人や家具に隠れているかは、四角で見積もると、人が判断した「通す」「落とす」と分けられなかったので確かめない（指示で止める）
+ */
+export const verifyView = (
+  plan: SceneSentences,
+  placedItems: {
+    key: string;
+    part: string;
+    position: Vec3;
+    yaw?: number;
+    scale?: number;
+  }[],
+  partList: Part[],
+): Problem[] => {
+  const parts = new Map(partList.map((p) => [p.id, p]));
+  const problems: Problem[] = [];
+  const named = new Set(plan.checklist.flatMap((c) => c.refs));
+  const items = placedItems
+    .map((i) => ({ ...i, info: parts.get(i.part.split("@")[0]) }))
+    .filter((i): i is typeof i & { info: Part } => !!i.info);
+  const backdrop = items.find(
+    (i) =>
+      i.info.category === "building" &&
+      Math.max(i.info.size[0], i.info.size[2]) >= 8 - 1e-6,
+  );
+
+  for (const i of items) {
+    if (!WALL_THINGS.has(i.info.id)) continue;
+    if (backdrop) {
+      const wallFront = backdrop.position[2] + backdrop.info.size[2] / 2;
+      const { hz } = footprint(i.info.size, i.yaw ?? 0);
+      if (i.position[2] - hz - wallFront < NEAR_WALL) continue;
+    } else if (i.info.id === "door") continue;
+    problems.push({
+      code: "wall_thing",
+      stage: named.has(i.key) ? "sentences" : "items",
+      message: `${i.key}（${i.info.id}）が、${backdrop ? "背景の壁から離れて部屋の中の" : "付ける壁の無い所の"}床に立っている。窓・扉・時計は壁ぎわ（奥の区画で、背景の壁の前）にだけ置く。屋内の窓は背景の壁の窓で足りる${named.has(i.key) ? "（英文で言うなら、壁ぎわに置く）" : ""}`,
+    });
+  }
+
+  for (const i of items) {
+    if (!named.has(i.key) || i.info.category === "ground") continue;
+    if (i.info.category === "building" && i.info.size[0] >= 8 - 1e-6) continue;
+    const h = i.info.size[1] * (i.scale ?? 1);
+    const c = project([i.position[0], i.position[1] + h / 2, i.position[2]]);
+    if (Math.abs(c.x) > CAMERA.halfWidth || Math.abs(c.y) > CAMERA.halfHeight) {
+      problems.push({
+        code: "out_of_view",
+        stage: "items",
+        message: `${i.key}（${i.info.id}）が絵の外にある（${c.y > CAMERA.halfHeight ? "上" : c.y < -CAMERA.halfHeight ? "下" : "横"}にはみ出す）。見える高さ・位置に置く`,
+      });
+    }
+  }
+
+  return problems;
+};
+
+// 持ち物を言う言い方。with a basket・holding an umbrella・carrying a box・has a bag
+const HELD =
+  /\b(?:with|holding|carrying|has|have)\s+(?:(?:a|an|the|his|her|their|two|some)\s+)?([a-z]+)/g;
+/** 持ち物の物が、その人の近くにあるとみる距離（m。投げたボールは 1.35 m 先にある） */
+const NEAR_HOLDER = 1.5;
+
+/**
+ * 見本の答えの各節で、人が持っていると言う物（with a basket など）が、絵に描かれているか。
+ * その人の部品の持ち物（holds）にあるか、その物の部品がその人の近く（1.5 m 以内）にあればよい。
+ * 見るのは部品の物の名前（words）か持ち物にある語だけ（with her friend・with both hands は見ない）。
+ * 主語の呼び方が合う人が何人かいれば、誰か 1 人が持っていればよい
+ */
+export const verifyHeld = (
+  plan: SceneSentences,
+  placedItems: { key: string; part: string; position: Vec3 }[],
+  partList: Part[],
+): Problem[] => {
+  const parts = new Map(partList.map((p) => [p.id, p]));
+  const plural = (w: string) => [w, w.replace(/e?s$/, "")];
+  const thingWords = new Set(
+    partList
+      .filter((p) => !isLiving(p))
+      .flatMap((p) =>
+        p.words.filter((w) => w.pos === "noun").map((w) => w.word),
+      ),
+  );
+  for (const p of partList)
+    for (const w of wordsOf(p.holds ?? "")) thingWords.add(w);
+  // 同じ部品の言い換え（smartphone と phone）を同じ物とみる
+  const sameThing = (word: string) =>
+    new Set([
+      word,
+      ...partList
+        .filter((p) => !isLiving(p) && p.words.some((w) => w.word === word))
+        .flatMap((p) => p.words.map((w) => w.word)),
+    ]);
+  const items = placedItems
+    .map((i) => ({ ...i, info: parts.get(i.part.split("@")[0]) }))
+    .filter((i): i is typeof i & { info: Part } => !!i.info);
+  const problems: Problem[] = [];
+  const seen = new Set<string>();
+  for (const clause of clausesOf(plan.description)) {
+    const found = clauseAction(clause);
+    if (!found) continue;
+    const people = items.filter(
+      (i) => isLiving(i.info) && nounFits(found.noun, i.info),
+    );
+    if (people.length === 0) continue;
+    for (const m of clause.toLowerCase().matchAll(HELD)) {
+      const word = plural(m[1]).find((w) => thingWords.has(w));
+      if (!word) continue;
+      const same = sameThing(word);
+      const holds = (i: (typeof items)[number]) =>
+        wordsOf(i.info.holds ?? "").some((w) =>
+          plural(w).some((v) => same.has(v)),
+        ) ||
+        items.some(
+          (t) =>
+            !isLiving(t.info) &&
+            t.info.words.some((w) => w.word === word) &&
+            Math.hypot(
+              t.position[0] - i.position[0],
+              t.position[2] - i.position[2],
+            ) <= NEAR_HOLDER,
+        );
+      if (people.some(holds)) continue;
+      const key = `${found.noun}:${word}`;
+      if (seen.has(key)) continue;
+      seen.add(key);
+      // その呼び方の部品に、それを持つものがあれば部品の選び直し、無ければ英文を書き直す
+      const other = partList.some(
+        (p) =>
+          isLiving(p) &&
+          nounFits(found.noun, p) &&
+          wordsOf(p.holds ?? "").some((w) =>
+            plural(w).some((v) => same.has(v)),
+          ),
+      );
+      problems.push({
+        code: "held_missing",
+        stage: other ? "items" : "sentences",
+        message: `見本の答えの「${clause}」で ${found.noun} が ${word} を持っていると言うが、${people
+          .map((i) => `${i.key} の部品 ${i.info.id}`)
+          .join("、")} は ${word} を持っておらず、近くにも無い。${
+          other
+            ? `${word} を持つ ${found.noun} の部品にする`
+            : `${found.noun} の部品で持てる物だけを書く（${word} を持つ ${found.noun} の部品は無い）`
+        }`,
       });
     }
   }
