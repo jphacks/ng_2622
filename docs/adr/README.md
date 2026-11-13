@@ -55,3 +55,4 @@
 | 2026-11-11 | [その他の描写は満点に含めないおまけにし、名前だけでは中心・理由・つながりの項目に当てない](./20261111-count-other-claims-as-bonus-and-require-actions-for-items.md) | accepted |
 | 2026-11-11 | [手作りの場面と古い採点を外し、採点をチェックリストの 1 通りにする](./20261111-score-only-with-checklist-and-drop-handmade-scenes.md) | accepted |
 | 2026-11-12 | [遊んだ記録は端末の中だけに、1 ラウンド 1 ファイルで残す](./20261112-keep-play-records-on-device-one-file-per-round.md) | accepted |
+| 2026-11-13 | [苦手の分析は AI で行い、端末で数えた結果を渡し、送るのは文字だけで残さない](./20261113-analyze-weak-points-with-ai-from-on-device-counts.md) | accepted |
