@@ -49,6 +49,8 @@ private struct AppFlow: View {
   @State private var profile = PlayerProfile.load()
   @State private var session: RoomSession?
   @State private var creating = false
+  /// ホームに出す短い知らせ（別の部屋に入れなかったとき）
+  @State private var notice: String?
 
   var body: some View {
     ZStack {
@@ -57,8 +59,8 @@ private struct AppFlow: View {
         // きろくと設定は、ホームを出したまま上に重ねる。ホームの 3D を消して出し直さないため
         // （3D の入った view を画面の切り替えと同時に出し入れすると、後から出た 3D が描き直されないことがある）
         HomeView(
-          profile: profile, recordCount: library.count, onName: { profile = .first(name: $0) }, onPlay: create,
-          onRecords: { go(.records) }, onSettings: { go(.settings) }, isCovered: screen != .home
+          profile: profile, recordCount: library.count, notice: notice, onName: { profile = .first(name: $0) },
+          onPlay: create, onRecords: { go(.records) }, onSettings: { go(.settings) }, isCovered: screen != .home
         )
         .disabled(creating || screen != .home)
         .accessibilityHidden(screen != .home)
@@ -88,6 +90,8 @@ private struct AppFlow: View {
   }
 
   private func go(_ next: Screen) {
+    // 知らせは、ホームから次へ進んだら消す
+    if next != .home { notice = nil }
     screen = next
   }
 
@@ -109,16 +113,20 @@ private struct AppFlow: View {
     }
   }
 
-  /// 待合の「他のルーム」。今の部屋を抜けてから code の部屋に入る。
-  /// 確かめたあとで入れなくなっていたら（満員になった・始まった・つながらない）、今の部屋には戻らずホームに戻る
+  /// 待合の「他のルーム」。今の部屋を抜けてから code の部屋に入る。もう移り始めていたら何もしない（2 つの部屋に入らない）。
+  /// 確かめたあとで入れなくなっていたら（満員になった・始まった・つながらない）、今の部屋には戻らず、
+  /// ホームに理由を一言出す
   private func move(to code: String) async {
-    guard let current = session else { return }
+    guard let current = session, !current.isMoving else { return }
     let next = newSession()
     do {
       try await current.move(to: code, with: next)
       session = next
+    } catch RoomSession.MoveError.alreadyMoving {
+      return
     } catch {
       session = nil
+      notice = JoinRoomSheet.notice(for: error)
       go(.home)
     }
   }

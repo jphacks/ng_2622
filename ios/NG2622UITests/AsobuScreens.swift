@@ -53,6 +53,16 @@ final class AsobuScreens: XCTestCase {
     app.buttons["戻る"].firstMatch.tap()
     sleep(1)
     shot("6-settings-changed")
+    // すべて消すの確かめ（文の改行を見る）。消さずにやめる
+    let delete = app.buttons["きろくと録音をすべて消す"]
+    if delete.isEnabled {
+      delete.tap()
+      XCTAssert(app.buttons["消す"].waitForExistence(timeout: 5))
+      sleep(1)
+      shot("6b-settings-confirm")
+      app.buttons["やめる"].tap()
+      sleep(1)
+    }
     app.buttons["戻る"].firstMatch.tap()
     XCTAssert(play.waitForExistence(timeout: 10))
 
@@ -104,6 +114,20 @@ final class AsobuScreens: XCTestCase {
     }
     finishRound(app)
     XCTAssert(play.waitForExistence(timeout: 10))
+
+    // 確かめは通ったのに、入ると満員だった（Mock の 9999）。ホームに戻り、理由を一言出す
+    sleep(2)
+    play.tap()
+    XCTAssert(start.waitForExistence(timeout: 20))
+    sleep(2)
+    app.buttons["他のルーム"].tap()
+    XCTAssert(app.staticTexts["他のルームに入る"].waitForExistence(timeout: 5))
+    for key in ["9", "9", "9", "9"] { app.buttons[key].tap() }
+    if enter.waitForExistence(timeout: 5) { enter.tap() }
+    XCTAssert(app.staticTexts["入れませんでした（満員）"].waitForExistence(timeout: 10))
+    XCTAssert(play.exists)
+    sleep(2)
+    shot("13-home-join-failed")
   }
 
   /// 「あそぶ」→ スタート、と「あそぶ」→ 他のルームで移る、を 3 回ずつくり返し、回転中と録音中の場面を続けて撮る

@@ -71,15 +71,28 @@ struct JoinRoomSheet: View {
     .sensoryFeedback(.success, trigger: scans)
   }
 
-  /// 入れなかった理由の一言
+  /// 入れなかった理由の一言（シートの中に出す）。部屋が無いと分かったときだけ「部屋が見つかりません」にし、
+  /// 通信の失敗やそのほかは「つながりませんでした」にする
   static func message(for error: any Error) -> String {
     switch error {
+    case GameError.roomNotFound: "部屋が見つかりません"
     case RoomSession.MoveError.sameRoom: "いまいる部屋です"
     case GameError.roomFull: "満員で入れません"
     case GameError.alreadyStarted: "ゲーム中で入れません"
-    case GameError.connectionFailed: "つながりませんでした"
-    default: "部屋が見つかりません"
+    default: "つながりませんでした"
     }
+  }
+
+  /// 確かめたあとで入れなくなり、ホームに戻ったときの知らせ（例「入れませんでした（満員）」）
+  static func notice(for error: any Error) -> String {
+    let reason =
+      switch error {
+      case GameError.roomNotFound: "部屋が見つかりません"
+      case GameError.roomFull: "満員"
+      case GameError.alreadyStarted: "ゲーム中"
+      default: "つながりませんでした"
+      }
+    return "入れませんでした（\(reason)）"
   }
 
   /// 「QR を読み取る」。読めない端末では、押したときに理由を出す

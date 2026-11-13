@@ -69,6 +69,8 @@ struct SettingsView: View {
       .padding(.top, 16)
       Spacer()
     }
+    // 名前と色の画面を重ねている間は、下の設定を VoiceOver で触れないようにする
+    .accessibilityHidden(editingProfile)
     .overlay {
       if confirming {
         ConfirmDialog(
@@ -107,7 +109,8 @@ struct SettingsView: View {
       case (true, false): "きろく \(count) 回"
       case (false, _): "読めなかったきろくのファイル"
       }
-    return "\(what)が、この iPhone から消えます。元にもどせません。"
+    // 「ん。」などだけが次の行に落ちないよう、句の切れ目で改行する
+    return "\(what)が、\nこの iPhone から消えます。\n元にもどせません。"
   }
 
   /// 「あなた」。押すと名前と色を変える画面を開く

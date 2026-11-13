@@ -72,7 +72,15 @@ final class LiveGameClient: GameClient {
 
   func findRoom(code: String) async throws {
     let room: Components.Schemas.RoomSummary
-    switch try await api.getRoom(path: .init(roomId: code)) {
+    let response: Operations.GetRoom.Output
+    do {
+      response = try await api.getRoom(path: .init(roomId: code))
+    } catch {
+      // つながらない・返事が読めない（オフラインなど）。部屋が無いのとは分ける
+      liveLog.error("GET /rooms/\(code, privacy: .public) に失敗しました: \(error, privacy: .public)")
+      throw GameError.connectionFailed
+    }
+    switch response {
     case .ok(let ok):
       room = try ok.body.json
     case .notFound, .badRequest:

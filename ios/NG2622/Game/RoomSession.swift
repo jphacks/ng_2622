@@ -46,6 +46,8 @@ final class RoomSession {
   enum MoveError: Error, Equatable {
     /// いまいる部屋のコードを打った
     case sameRoom
+    /// もう別の部屋に移り始めている
+    case alreadyMoving
   }
 
   private struct RoundRecord {
@@ -100,9 +102,15 @@ final class RoomSession {
     try await client.findRoom(code: code)
   }
 
+  /// 別の部屋に移り始めた（move を呼んだ）。以後の move は受け付けない
+  private(set) var isMoving = false
+
   /// 今の部屋を抜けてから、next で code の部屋に入る。入れなければ next も抜けて throw する
-  /// （今の部屋には戻らない。ホストは部屋に残った人に替わっている）
+  /// （今の部屋には戻らない。ホストは部屋に残った人に替わっている）。
+  /// 2 度目からは何もせず MoveError.alreadyMoving を投げる（2 つの部屋に入らないように）
   func move(to code: String, with next: RoomSession) async throws {
+    guard !isMoving else { throw MoveError.alreadyMoving }
+    isMoving = true
     leave()
     do {
       try await next.join(code: code)

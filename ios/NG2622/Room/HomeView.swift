@@ -7,6 +7,8 @@ struct HomeView: View {
   let profile: PlayerProfile
   /// 端末に残した遊んだ記録の数
   var recordCount = 0
+  /// 「あそぶ」の上に出す短い知らせ（別の部屋に入れなかったとき）
+  var notice: String?
   /// 最初の画面で名前を決めた
   var onName: (String) -> Void = { _ in }
   /// 「あそぶ」
@@ -59,7 +61,19 @@ struct HomeView: View {
         .buttonStyle(BigButtonStyle(kind: .primary))
         .padding(.top, 8)
       recordsCard
+      // きろくの板の下に出す（下は空いているので、ボタンの位置は動かない）
+      if let notice {
+        Label(notice, systemImage: "exclamationmark.circle.fill")
+          .font(Theme.font(15, .heavy))
+          .foregroundStyle(Theme.ink)
+          .padding(.horizontal, 14)
+          .frame(height: 34)
+          .background(Theme.card, in: Capsule())
+          .shadow(color: Theme.ink.opacity(0.08), radius: 6, y: 3)
+          .transition(.opacity)
+      }
     }
+    .animation(.easeOut(duration: 0.2), value: notice)
   }
 
   /// きろくへの入口。「あそぶ」より目立たせない（白い板）
@@ -139,7 +153,8 @@ struct NameField: View {
   var editing: FocusState<Bool>.Binding
 
   var body: some View {
-    TextField("名前", text: $name)
+    // 空のときの「名前」は、既定の色だと薄すぎるので、読める灰色にする
+    TextField("名前", text: $name, prompt: Text("名前").foregroundStyle(Theme.gray))
       .font(Theme.font(22, .heavy))
       .focused(editing)
       .submitLabel(.done)

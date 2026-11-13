@@ -14,12 +14,8 @@ struct LobbyView: View {
 
   /// ホストが選んだ難易度
   @State private var difficulty = SceneDifficulty.eiken3
-  /// 「他のルームに入る」のシートを開いている
-  @State private var joining = false
-  /// シートで確かめたコード。シートを閉じてから移る
-  @State private var found: String?
-  /// ほかの人がいるので、移るかを確かめている部屋のコード
-  @State private var confirming: String?
+  /// 「他のルーム」のシート・確かめの状態
+  @State private var flow = OtherRoomFlow()
   /// 移っている途中
   @State private var moving = false
 
@@ -71,13 +67,13 @@ struct LobbyView: View {
     .frame(width: 346)
     .frame(maxWidth: .infinity)
     .disabled(moving)
-    .sheet(isPresented: $joining, onDismiss: afterSheet) {
+    .sheet(
+      isPresented: Binding(get: { flow.sheetOpen }, set: { if !$0 { flow.close() } }),
+      onDismiss: afterSheet
+    ) {
       JoinRoomSheet(
         check: { try await session.checkMove(to: $0) },
-        onFound: { code in
-          found = code
-          joining = false
-        }
+        onFound: { flow.found($0) }
       )
       .presentationDetents([.height(640)])
       .presentationDragIndicator(.visible)
@@ -85,33 +81,29 @@ struct LobbyView: View {
       .presentationBackground(Theme.background)
     }
     .overlay {
-      if let code = confirming {
+      if flow.confirming != nil {
         ConfirmDialog(
           title: "この部屋を抜けて、\n別のルームに入りますか？",
           message: "残った人は、このまま遊べます。",
           action: "入る",
-          onCancel: { confirming = nil },
+          onCancel: { flow.cancel() },
           onAction: {
-            confirming = nil
-            move(to: code)
+            if let code = flow.confirm() { move(to: code) }
           })
       }
     }
-    .animation(.easeOut(duration: 0.15), value: confirming)
+    .animation(.easeOut(duration: 0.15), value: flow.confirming)
   }
 
   /// シートを閉じたあと。確かめたコードがあれば、ほかの人がいるときだけ確かめてから移る
   private func afterSheet() {
-    guard let code = found else { return }
-    found = nil
-    if session.hasOthers {
-      confirming = code
-    } else {
+    if let code = flow.sheetDismissed(hasOthers: session.hasOthers) {
       move(to: code)
     }
   }
 
   private func move(to code: String) {
+    guard !moving else { return }
     moving = true
     Task {
       await onMove(code)
@@ -137,7 +129,7 @@ struct LobbyView: View {
   /// 「他のルーム」。押すと、QR を読むかコードを打つシートを開く。場面を作っている間と移っている間は押せない
   private var otherRoom: some View {
     Button {
-      joining = true
+      flow.open()
     } label: {
       HStack(spacing: 14) {
         Image(systemName: "qrcode.viewfinder")
