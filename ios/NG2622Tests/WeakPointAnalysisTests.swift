@@ -55,6 +55,11 @@ struct WeakPointAnalysisTests {
     (0..<n).map { record("r\($0)", minutesAgo: Double($0) * 10) }
   }
 
+  /// 「new」（10 分後）より古く、r0 より新しい n 件（記録を 5 件ずつ増やすのに使う）
+  static func fillers(_ n: Int) -> [PlayRecord] {
+    (0..<n).map { record("fill\($0)", minutesAgo: -Double($0 + 1)) }
+  }
+
   // MARK: - 本文
 
   /// 回は古い順に 1 から番号を振り、記録の ID とは別に対応を持つ。級・判定・言い直し・次の一つ・根拠・見本・言えなかった項目を送る
@@ -236,27 +241,48 @@ struct WeakPointAnalysisTests {
 
   // MARK: - 作り直す条件・前回の分析
 
-  /// 作り直すのは、直近の回に元に無い記録がある（記録が増えた）か、元の記録が 1 つでも消えたとき。
-  /// 直近の回より古い記録が消えただけでは作り直さない
+  /// 区切りの数（records）の無い前の分析: 作り直すのは、直近の回に元に無い記録がある（記録が増えた）か、
+  /// 元の記録が 1 つでも消えたとき。直近の回より古い記録が消えただけでは作り直さない
   @Test func rebuildConditions() {
     let all = Self.records(12)
     let recent = WeakPointCounts.recent(all)
     let made = WeakPointAnalysis(Self.response(), basedOn: recent.reversed().map(\.id), createdAt: Date())
     let ids = Set(all.map(\.id))
-    #expect(!made.needsRebuild(recent: recent, existing: ids))
+    #expect(!made.needsRebuild(recent: recent, existing: ids, total: all.count))
 
     // 新しい記録が増えた
     let more = [Self.record("new", minutesAgo: -10)] + all
-    #expect(made.needsRebuild(recent: WeakPointCounts.recent(more), existing: Set(more.map(\.id))))
+    #expect(made.needsRebuild(recent: WeakPointCounts.recent(more), existing: Set(more.map(\.id)), total: more.count))
 
     // 元の記録（r4）が消えた
     let removed = all.filter { $0.id != "r4" }
-    #expect(made.needsRebuild(recent: WeakPointCounts.recent(removed), existing: Set(removed.map(\.id))))
+    #expect(made.needsRebuild(recent: WeakPointCounts.recent(removed), existing: Set(removed.map(\.id)), total: removed.count))
     #expect(!made.isUsable(existing: Set(removed.map(\.id))))
 
     // 直近の 10 件より古い記録（r11）が消えただけ
     let older = all.filter { $0.id != "r11" }
-    #expect(!made.needsRebuild(recent: WeakPointCounts.recent(older), existing: Set(older.map(\.id))))
+    #expect(!made.needsRebuild(recent: WeakPointCounts.recent(older), existing: Set(older.map(\.id)), total: older.count))
+  }
+
+  /// 作り直すのは、内容の内訳のある記録が 5 件の区切り（5・10・15 件目…）を越えたときだけ（2026-11-14 リーダーが決めた）。
+  /// 元の記録が消えたときは、区切りによらず作り直す（前と同じ）
+  @Test func rebuildsEveryFiveRecords() {
+    let all = Self.records(12)
+    let recent = WeakPointCounts.recent(all)
+    let ids = Set(all.map(\.id))
+    let made = WeakPointAnalysis(Self.response(), basedOn: recent.reversed().map(\.id), createdAt: Date(), records: 12)
+    for total in 12...14 {
+      #expect(!made.needsRebuild(recent: recent, existing: ids, total: total))
+    }
+    #expect(made.needsRebuild(recent: recent, existing: ids, total: 15))
+    let at10 = WeakPointAnalysis(Self.response(), basedOn: recent.reversed().map(\.id), createdAt: Date(), records: 10)
+    #expect(!at10.needsRebuild(recent: recent, existing: ids, total: 14))
+    #expect(at10.needsRebuild(recent: recent, existing: ids, total: 15))
+    // 元の記録（r4）が消えた
+    let removed = all.filter { $0.id != "r4" }
+    #expect(made.needsRebuild(recent: WeakPointCounts.recent(removed), existing: Set(removed.map(\.id)), total: 11))
+    // 区切りの数は覚えて読み戻せる（欄の無い前のファイルは nil で読む）
+    #expect(WeakPointAnalysis(Self.response(), basedOn: ["r0"], createdAt: Date()).records == nil)
   }
 
   /// 本文が大きくて新しい 5 回だけで作った分析は、送った 5 回と比べる（直近の 10 回と比べて、開くたびに作り直さない）
@@ -264,10 +290,10 @@ struct WeakPointAnalysisTests {
     let all = Self.records(10)
     let recent = WeakPointCounts.recent(all)
     let made = WeakPointAnalysis(Self.response(), basedOn: recent.prefix(5).reversed().map(\.id), createdAt: Date())
-    #expect(!made.needsRebuild(recent: recent, existing: Set(all.map(\.id))))
+    #expect(!made.needsRebuild(recent: recent, existing: Set(all.map(\.id)), total: all.count))
     // 新しい記録が増えたら作り直す
     let more = [Self.record("new", minutesAgo: -10)] + all
-    #expect(made.needsRebuild(recent: WeakPointCounts.recent(more), existing: Set(more.map(\.id))))
+    #expect(made.needsRebuild(recent: WeakPointCounts.recent(more), existing: Set(more.map(\.id)), total: more.count))
   }
 
   /// 開いたとき: 覚えた分析が使えればそれを出して頼まない。記録が増えたら、前回の分析を出したまま作り直す。
@@ -296,7 +322,8 @@ struct WeakPointAnalysisTests {
 
     // 記録が増えた: 前回の分析を出したまま作り直す。失敗したら、前回の分析を出したまま失敗を知らせる
     let previous = analyzer.analysis
-    records.insert(Self.record("new", minutesAgo: -10), at: 0)
+    // 記録が 5 件増えた（10 → 15 件目で、作り直す区切り）
+    records.insert(contentsOf: [Self.record("new", minutesAgo: -10)] + Self.fillers(4), at: 0)
     await client.fail(with: .rateLimited)
     analyzer.open(records: records, existing: { [records] in Set(records.map(\.id)) })
     #expect(analyzer.phase == .loading)
@@ -383,7 +410,8 @@ struct WeakPointAnalysisTests {
     #expect(store.exists())
 
     // 記録が増えて作り直している途中（前回の分析を出している）に忘れる
-    records.insert(Self.record("new", minutesAgo: -10), at: 0)
+    // 記録が 5 件増えた（10 → 15 件目で、作り直す区切り）
+    records.insert(contentsOf: [Self.record("new", minutesAgo: -10)] + Self.fillers(4), at: 0)
     await client.hold()
     analyzer.open(records: records, existing: { [records] in Set(records.map(\.id)) })
     await client.waitUntilCalled(2)

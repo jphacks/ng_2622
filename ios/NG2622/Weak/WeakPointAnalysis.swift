@@ -14,6 +14,12 @@ nonisolated struct WeakPointAnalysis: Codable, Sendable, Equatable {
   /// 分析の元にした記録の ID（古い順）
   let basedOn: [String]
   let result: Result
+  /// 分析を作ったときの、内容の内訳のある記録の数（作り直す区切りに使う）。2026-11-14 に足した欄で、版は上げていない。
+  /// 欄が無い前の分析は nil で、前の決まり（記録が増えるたびに作り直す）で 1 度作り直す
+  let records: Int?
+
+  /// 作り直す区切り。記録が 5 件ずつ増えたとき（5・10・15 件目…）だけ作り直す
+  static let rebuildStep = 5
 
   nonisolated struct Result: Codable, Sendable, Equatable {
     /// くり返す癖（0〜3 件）
@@ -50,17 +56,18 @@ nonisolated struct WeakPointAnalysis: Codable, Sendable, Equatable {
     let quote: String
   }
 
-  init(createdAt: Date, basedOn: [String], result: Result) {
+  init(createdAt: Date, basedOn: [String], result: Result, records: Int? = nil) {
     self.protocol = Self.protocolName
     // ファイルには秒までしか書かないので、読み戻したものと同じになるよう秒にそろえる
     self.createdAt = Date(timeIntervalSince1970: createdAt.timeIntervalSince1970.rounded(.down))
     self.basedOn = basedOn
     self.result = result
+    self.records = records
   }
 
-  /// 返った分析から作る。basedOn は送った回の記録の ID（古い順。回の番号 n は 1 から）。
-  /// 番号が範囲の外の実例は捨て、実例が無くなった癖と良くなった点は出さない
-  init(_ response: Components.Schemas.WeakPointResponse, basedOn: [String], createdAt: Date) {
+  /// 返った分析から作る。basedOn は送った回の記録の ID（古い順。回の番号 n は 1 から）、records はそのときの
+  /// 内容の内訳のある記録の数。番号が範囲の外の実例は捨て、実例が無くなった癖と良くなった点は出さない
+  init(_ response: Components.Schemas.WeakPointResponse, basedOn: [String], createdAt: Date, records: Int? = nil) {
     func quote(_ q: Components.Schemas.WeakPointQuote) -> Quote? {
       basedOn.indices.contains(q.n - 1) ? Quote(record: basedOn[q.n - 1], quote: q.quote) : nil
     }
@@ -75,7 +82,7 @@ nonisolated struct WeakPointAnalysis: Codable, Sendable, Equatable {
     let nextTry = response.nextTry.map { NextTry(viewpoint: $0.value1.viewpoint.rawValue, text: $0.value1.text) }
     self.init(
       createdAt: createdAt, basedOn: basedOn,
-      result: Result(habits: habits, improvement: improvement, nextTry: nextTry))
+      result: Result(habits: habits, improvement: improvement, nextTry: nextTry), records: records)
   }
 
   /// 元にした記録が全部残っているか（引用の元が無い分析は出さない）
@@ -83,12 +90,17 @@ nonisolated struct WeakPointAnalysis: Codable, Sendable, Equatable {
     `protocol` == Self.protocolName && !basedOn.isEmpty && basedOn.allSatisfy(existing.contains)
   }
 
-  /// 作り直すか。直近の回（R）の新しいほうから basedOn と同じ数の中に、basedOn に無い記録がある（記録が増えた）、
-  /// または basedOn の記録が 1 つでも消えた。本文が大きくて新しい 5 回だけで作った分析を、開くたびに作り直さないよう、
-  /// R の全部ではなく送った数だけと比べる
-  func needsRebuild(recent: [PlayRecord], existing: Set<String>) -> Bool {
+  /// 作り直すか。basedOn の記録が 1 つでも消えた、または内容の内訳のある記録の数（total）が、分析を作ったときから
+  /// 5 件の区切りを越えた（5・10・15 件目…。2026-11-14 リーダーが決めた）。
+  /// 区切りの数が無い前の分析は、前の決まり: 直近の回（R）の新しいほうから basedOn と同じ数の中に、basedOn に無い記録がある
+  /// （本文が大きくて新しい 5 回だけで作った分析を、開くたびに作り直さないよう、R の全部ではなく送った数だけと比べる）
+  func needsRebuild(recent: [PlayRecord], existing: Set<String>, total: Int) -> Bool {
+    guard isUsable(existing: existing) else { return true }
+    if let records {
+      return total / Self.rebuildStep > records / Self.rebuildStep
+    }
     let based = Set(basedOn)
-    return recent.prefix(basedOn.count).contains { !based.contains($0.id) } || !isUsable(existing: existing)
+    return recent.prefix(basedOn.count).contains { !based.contains($0.id) }
   }
 
   // MARK: - ファイルの中身

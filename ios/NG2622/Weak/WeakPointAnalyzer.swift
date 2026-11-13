@@ -3,7 +3,8 @@ import Foundation
 import Observation
 
 /// 苦手の画面の AI の分析を、作る・覚える・出す。アプリ全体で 1 つ（画面を閉じても、作っている途中の分析は捨てない）。
-/// docs/design/weak-point-analysis.md の 7 章（覚える形・作り直す条件）と 9 章（失敗）
+/// docs/design/weak-point-analysis.md の 7 章（覚える形・作り直す条件）と 9 章（失敗）。
+/// 作り直すのは記録が 5 件ずつ増えたときだけ（2026-11-14 リーダーが決めた。WeakPointAnalysis.needsRebuild）
 @Observable
 final class WeakPointAnalyzer {
   /// いまの様子
@@ -49,6 +50,7 @@ final class WeakPointAnalyzer {
   /// （作っている間に記録が消されたら、その分析は覚えない）
   func open(records: [PlayRecord], existing: @escaping @MainActor () -> Set<String>) {
     let recent = WeakPointCounts.recent(records)
+    let total = WeakPointCounts.countable(records)
     let ids = Set(records.map(\.id))
     // 4 件以下は呼ばない。前回の分析も消す（数える分析の代わりだけにする）
     guard recent.count >= WeakPointCounts.minimumRecords else {
@@ -63,7 +65,7 @@ final class WeakPointAnalyzer {
     // 覚えるのに失敗した（ファイルが無い）ときは、メモリに残した分析を使う（開くたびに頼み直さない）
     let saved = store.load() ?? (store.exists() ? nil : analysis)
     let stored = saved.flatMap { $0.isUsable(existing: ids) ? $0 : nil }
-    if let stored, !stored.needsRebuild(recent: recent, existing: ids) {
+    if let stored, !stored.needsRebuild(recent: recent, existing: ids, total: total) {
       task?.cancel()
       task = nil
       analysis = stored
@@ -98,13 +100,14 @@ final class WeakPointAnalyzer {
         outcome = .failure(.failed)
       }
       guard let self, !Task.isCancelled else { return }
-      self.finish(outcome, basedOn: built.recordIDs, existing: existing())
+      self.finish(outcome, basedOn: built.recordIDs, total: total, existing: existing())
     }
     latest = task
   }
 
   private func finish(
-    _ outcome: Result<Components.Schemas.WeakPointResponse, WeakPointFailure>, basedOn: [String], existing: Set<String>
+    _ outcome: Result<Components.Schemas.WeakPointResponse, WeakPointFailure>, basedOn: [String], total: Int,
+    existing: Set<String>
   ) {
     task = nil
     pendingIDs = []
@@ -115,7 +118,7 @@ final class WeakPointAnalyzer {
         phase = .failed(.failed)
         return
       }
-      let made = WeakPointAnalysis(response, basedOn: basedOn, createdAt: Date())
+      let made = WeakPointAnalysis(response, basedOn: basedOn, createdAt: Date(), records: total)
       do {
         try store.save(made)
       } catch {
