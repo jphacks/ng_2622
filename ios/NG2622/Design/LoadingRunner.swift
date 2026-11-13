@@ -7,10 +7,22 @@ struct LoadingRunner: View {
   var size: CGFloat = 220
   /// 1 秒あたりのコマ数。元のモーションキャプチャは 24 コマ（2 歩）で 0.75 秒なので、32 で同じ速さ
   var fps: Double = 32
+  /// VoiceOver に「読み込み中」と読ませるか。そばに待っている理由の一言があるときは false にする。
+  /// 「読み込み中」の label を付けたままだと、外から accessibilityHidden を付けても読み上げに残る（UI テストで確かめた）ので、
+  /// 読ませないときは label を付けずに隠す
+  var announces = true
 
   private static let frames: [UIImage] = (0..<24).compactMap { UIImage(named: String(format: "runner_%02d", $0)) }
 
   var body: some View {
+    if announces {
+      running.accessibilityLabel("読み込み中")
+    } else {
+      running.accessibilityHidden(true)
+    }
+  }
+
+  private var running: some View {
     TimelineView(.animation) { ctx in
       let i = Int(ctx.date.timeIntervalSinceReferenceDate * fps) % max(Self.frames.count, 1)
       ZStack {
@@ -27,6 +39,5 @@ struct LoadingRunner: View {
       }
       .frame(width: size, height: size)
     }
-    .accessibilityLabel("読み込み中")
   }
 }

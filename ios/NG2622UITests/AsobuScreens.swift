@@ -1,6 +1,6 @@
 import XCTest
 
-/// 最初の画面 → ホーム →「あそぶ」→ 待合 →「他のルーム」→ 別の部屋、を Mock で通しで開き、各画面を PNG に書き出す
+/// 最初の画面 → ホーム →「あそぶ」→ 待合 →「他のルーム」→ 別の部屋（参加者の待合）、を Mock で通しで開き、各画面を PNG に書き出す
 /// （見た目の確かめ用）。続けて撮ったコマで、移った先や作った部屋で始めたラウンドの 3D が回っているかも見る。
 /// 書き出し先は環境変数 ASOBU_SHOT_DIR（xcodebuild には TEST_RUNNER_ASOBU_SHOT_DIR で渡す）。無ければ何もしない
 final class AsobuScreens: XCTestCase {
@@ -163,6 +163,48 @@ final class AsobuScreens: XCTestCase {
     for _ in 0..<70 {
       shot(String(format: "fast-f-%05d", Int(Date().timeIntervalSince(moved) * 1000)))
     }
+    finishRound(app)
+    XCTAssert(play.waitForExistence(timeout: 10))
+  }
+
+  /// ホストの待合と、「他のルーム」で移った先の参加者の待合を撮る。参加者の待合では、走る人の下に
+  /// 「ホストのスタートを待っています」が画面の中に出て、VoiceOver は一言だけを読む（走る人の「読み込み中」は読まない）。
+  /// 場面を作っている間は、真ん中の大きな走る人だけになる（下の走る人は消える）。機種ごとに -destination を替えて動かす
+  @MainActor
+  func testParticipantLobby() throws {
+    guard outDir != nil else { throw XCTSkip("ASOBU_SHOT_DIR が無いので撮らない") }
+    let app = XCUIApplication()
+    app.launchArguments += ["-player.name", "Mika", "-player.color", "0"]
+    app.launch()
+    let play = app.buttons["あそぶ"]
+    XCTAssert(play.waitForExistence(timeout: 20))
+    sleep(2)
+    play.tap()
+    XCTAssert(app.buttons["スタート"].waitForExistence(timeout: 20))
+    sleep(6)  // 仮の参加者が入ってくるのを待つ
+    shot("lobby-host")
+
+    app.buttons["他のルーム"].tap()
+    XCTAssert(app.staticTexts["他のルームに入る"].waitForExistence(timeout: 5))
+    for key in ["4", "8", "2", "1"] { app.buttons[key].tap() }
+    let enter = app.buttons["入る"]
+    XCTAssert(enter.waitForExistence(timeout: 10))
+    enter.tap()
+
+    let waiting = app.staticTexts["ホストのスタートを待っています"]
+    XCTAssert(waiting.waitForExistence(timeout: 10))
+    XCTAssert(app.staticTexts["他のルームに入る"].waitForNonExistence(timeout: 5))
+    let loading = app.descendants(matching: .any)["読み込み中"]
+    XCTAssertFalse(loading.exists, loading.exists ? loading.debugDescription : "")
+    XCTAssert(app.windows.firstMatch.frame.contains(waiting.frame))
+    // ほかの参加者が入ってくるのを待つ（Mock のホストは MOCK_HOST_START_DELAY 秒、既定は 6 秒でスタートする）
+    sleep(3)
+    shot("lobby-participant")
+
+    XCTAssert(app.descendants(matching: .any)["AI が場面を生成中…"].waitForExistence(timeout: 30))
+    XCTAssert(waiting.exists)
+    sleep(1)
+    shot("lobby-participant-generating")
     finishRound(app)
     XCTAssert(play.waitForExistence(timeout: 10))
   }
