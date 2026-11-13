@@ -14,6 +14,7 @@ import {
   MIN_WORDS,
   parseWeights,
   SHORT_TEXT,
+  sentBasis,
   withGain,
 } from "./index";
 import { describeLayoutWithRelations, type RelationItem } from "./layout";
@@ -43,7 +44,11 @@ export type LayoutScoreResult =
       expression: number;
       transcript: string;
       breakdown: SentContent;
-      feedback: { nextStep: NextStep; rewrite: Rewrite | null };
+      feedback: {
+        nextStep: NextStep;
+        rewrite: Rewrite | null;
+        expressionBasis: string | null;
+      };
       mode: "live" | "fixed";
       elapsedMs: number;
     }
@@ -66,6 +71,8 @@ export async function scoreLayout(
       breakdown: ContentBreakdown;
       nextStep: CheckedNextStep;
       rewrite: Rewrite | null;
+      // 表現の点の根拠。Claude を呼ばなかったときは空（送るときに null にする）
+      expressionBasis: string;
     },
     mode: "live" | "fixed",
   ): LayoutScoreResult => ({
@@ -82,6 +89,7 @@ export async function scoreLayout(
         speech: 0,
       }),
       rewrite: checkedRewrite(transcript, graded.rewrite),
+      expressionBasis: sentBasis(graded.expressionBasis),
     },
     mode,
     elapsedMs: Date.now() - started,
@@ -100,6 +108,7 @@ export async function scoreLayout(
           contentIfSaid: null,
         },
         rewrite: null,
+        expressionBasis: "",
       },
       "fixed",
     );
@@ -128,6 +137,7 @@ export async function scoreLayout(
           contentIfSaid: null,
         },
         rewrite: null,
+        expressionBasis: "",
       },
       "live",
     );

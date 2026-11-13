@@ -13,7 +13,8 @@
 	<!-- 外に送るもの。どれも遊ぶため（採点・場面の評価）だけに使い、本人とは結び付けない -->
 	<key>NSPrivacyCollectedDataTypes</key>
 	<array>
-		<!-- 話した声の録音（採点のためにバックエンドへ送り、Azure と Claude で採点する。保存しない） -->
+		<!-- 話した声の録音（採点のためにバックエンドへ送り、Azure と Claude で採点する。サーバーには保存しない。
+		     端末の中の遊んだ記録に残す分は、外に送らないので、ここには数えない） -->
 		<dict>
 			<key>NSPrivacyCollectedDataType</key>
 			<string>NSPrivacyCollectedDataTypeAudioData</string>

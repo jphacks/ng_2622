@@ -34,9 +34,29 @@ final class RoomSession {
   private let client: any GameClient
   private var listener: Task<Void, Never>?
 
-  init(client: any GameClient, me: PlayerProfile) {
+  /// 遊んだ記録を置く所（端末の中）
+  private let records: PlayRecordStore
+  /// 記録に入れる場面の配置の JSON を取る所
+  private let scenes: SceneLayoutStore
+  /// いまのラウンドの記録の ID と始まった時刻。結果が届いたら、この ID で 1 度だけ保存する
+  private var roundRecord: RoundRecord?
+  /// 記録の保存（テストが終わりを待つ）
+  private(set) var recordSaving: Task<Void, Never>?
+
+  private struct RoundRecord {
+    let id = PlayRecordStore.newID()
+    let info: RoundInfo
+    var saved = false
+  }
+
+  init(
+    client: any GameClient, me: PlayerProfile, records: PlayRecordStore = .shared,
+    scenes: SceneLayoutStore = SceneLayouts.store
+  ) {
     self.client = client
     self.me = me
+    self.records = records
+    self.scenes = scenes
   }
 
   /// 部屋を作り、ホストとして入る
@@ -109,12 +129,14 @@ final class RoomSession {
       // 前のラウンドの録音は消す
       recorder.prepare()
       isGenerating = false
+      roundRecord = RoundRecord(info: info)
       phase = .playing(info)
     case .participantsChanged(let list):
       participants = list
       updateHost(from: list)
     case .results(let results):
       phase = .results(results)
+      saveRecord(of: results)
     case .returnedToLobby(let room):
       code = room.code
       participants = room.members
@@ -123,6 +145,30 @@ final class RoomSession {
       phase = .lobby
     case .hostChanged(let isSelf):
       isHost = isSelf
+    }
+  }
+
+  /// 自分の採点の結果が届いたら、遊んだ記録を端末に残す（場面の配置の JSON・自分の結果・自分の録音）。
+  /// 自分が採点できなかったラウンドは残さない。同じラウンドは 1 度だけ保存する
+  private func saveRecord(of results: RoundResults) {
+    guard let round = roundRecord, !round.saved, round.info.sceneID == results.sceneID,
+      results.me?.score != nil
+    else { return }
+    roundRecord?.saved = true
+    // 録音は次のラウンドか退出で消えるので、いまのファイルを指しておく
+    let audio = recorder.recording?.url
+    let records = records
+    let scenes = scenes
+    recordSaving = Task {
+      do {
+        // 3D を出すときに取ってあるので、ふつうは通信しない
+        let scene = try await scenes.document(of: results.sceneID, room: results.room)
+        guard let record = try PlayRecord(id: round.id, playedAt: round.info.startsAt, scene: scene, results: results)
+        else { return }
+        try records.save(record, audio: audio)
+      } catch {
+        recordLog.error("遊んだ記録を保存できませんでした: \(error, privacy: .public)")
+      }
     }
   }
 

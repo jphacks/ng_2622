@@ -123,7 +123,7 @@ ScenEnglish（シーングリッシュ）は、友達と iPhone で同時に遊�
 ・難易度を選べる：かんたん・ふつう・むずかしい。
 
 ■ ご注意
-・採点のため、話した声をインターネット経由で採点のサービス（Microsoft Azure、Anthropic Claude）に送ります。録音は保存しません。
+・採点のため、話した声をインターネット経由で採点のサービス（Microsoft Azure、Anthropic Claude）に送ります。録音はサーバーには保存しません。自分の結果と録音は、見返せるよう端末の中にだけ残ります（アプリを消すと消えます）。
 ・マイクを使います。QR コードで部屋に入るときはカメラを使います。
 ```
 
@@ -167,7 +167,7 @@ ScenEnglish is an English speaking game for Japanese learners of English (studen
 - Microsoft Azure AI Speech: pronunciation and fluency assessment of the recorded voice.
 - Anthropic Claude API: scoring content and expression, writing feedback, and generating 3D scene layouts.
 - Apple Speech framework: on-device English transcription.
-The voice recording is sent to our server only for scoring and is not stored.
+The voice recording is sent to our server only for scoring and is not stored on the server. The player's own result and recording are kept only on the device (in the app's own storage, excluded from backups) so that the player can look back at past rounds; they are never uploaded and are removed when the app is deleted.
 
 5. Regional differences
 The app is distributed in Japan only. The features and content are the same everywhere; the UI is in Japanese and the speaking practice is in English.
@@ -185,6 +185,7 @@ The app is not in a regulated industry. It contains no protected third-party mat
   - **ユーザコンテンツ → オーディオデータ**: 用途 App の機能。ユーザに関連付けない。トラッキングに使わない。
   - **ユーザコンテンツ → その他のユーザコンテンツ**（表示名、場面の評価とコメント、文字にした英文）: 用途 App の機能。ユーザに関連付けない。トラッキングに使わない。
 - それ以外（連絡先、位置情報、識別子、使用状況、診断など）は収集しない。
+- 遊んだ記録（自分の結果と録音。[`docs/design/play-record.md`](../design/play-record.md)）を端末の中に保存することは、ここの答えを変えない（2026-11-12 に確かめた）。App Store の「収集」は、データを端末の外へ送り、その場の処理より長く持つこと。記録は端末の外へ送らない。録音を採点のために送ることは、上の「オーディオデータ」でもう答えている。
 
 ### 年齢制限の質問
 

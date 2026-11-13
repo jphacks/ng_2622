@@ -34,6 +34,7 @@ const done = (total: number): Grade => ({
     nextStep: { kind: "expression", text: "t", item: null, gain: null },
     rewrite: null,
     speechTip: { aspect: "fluency", text: "t" },
+    expressionBasis: "t",
   },
 });
 
