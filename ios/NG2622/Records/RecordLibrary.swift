@@ -87,7 +87,8 @@ final class RecordLibrary {
       ? PlayRecordStore(directory: URL.temporaryDirectory.appending(path: "records-ignored", directoryHint: .isDirectory))
       : .shared,
     analysis: .app,
-    samples: PlayRecord.samples(count: AppConfig.current.mockSampleRecords))
+    samples: PlayRecord.samples(
+      count: AppConfig.current.mockSampleRecords, scenes: AppConfig.current.mockSampleScenes))
 
   private let store: PlayRecordStore
   /// 苦手の分析を覚える所。「すべて消す」で一緒に消す

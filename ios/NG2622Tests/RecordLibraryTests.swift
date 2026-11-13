@@ -183,4 +183,12 @@ struct RecordLibraryTests {
     #expect(library.count == 12)
     #expect(store.all().isEmpty)
   }
+
+  /// 例の記録の場面の数は替えられる（きろくの場面の並びの点を、場面の数を変えて確かめるためのもの）
+  @Test(arguments: [1, 3, 5, 10])
+  func samplesWithSceneCount(_ scenes: Int) {
+    let samples = PlayRecord.samples(count: 12, scenes: scenes, now: Date(timeIntervalSince1970: 1_794_000_000))
+    #expect(samples.count == 12)
+    #expect(RecordScenes.group(samples).count == scenes)
+  }
 }

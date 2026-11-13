@@ -2,7 +2,8 @@ import SwiftUI
 
 /// きろく。遊んだ場面（画面の幅いっぱいの 3D と名前）が横に並び（最後に遊んだのが新しい順）、その下に、
 /// 選んだ場面を遊んだ回の振り返りが新しい順に縦に続く（1 枚の縦の流れ。押して別の画面に移る所は無い）。
-/// 下へスクロールすると、3D は上端に着いた所で止まり、小さくなって、名前と一緒に上に残る。
+/// 場面が 2 つ以上なら、名前のすぐ下の点（ShelfDots）で、横にも場面があることと今の位置を示す。
+/// 下へスクロールすると、3D は上端に着いた所で止まり、小さくなって、名前と一緒に上に残る（点は薄く消える）。
 /// その下では、上がってくる中身が地の色のぼかしに溶けて消える
 struct RecordsView: View {
   let library: RecordLibrary
@@ -193,8 +194,8 @@ struct RecordsView: View {
 // MARK: - 場面の横の並び
 
 /// 場面の並びの寸法と、縦のスクロールで上に止まって縮む動き。
-/// 止まってから縮み切るまでのスクロールの量を、3D と名前が縮む量と同じにする。
-/// そうすると、下の中身の上端が、縮んでいく名前の下端にちょうど付いてくる（縮む間は中身が名前の下に潜らない）
+/// 止まってから縮み切るまでのスクロールの量を、並びが縮む量（3D が小さくなる分と、点の行と名前の下の空きを詰める分）と
+/// 同じにする。そうすると、下の中身の上端が、縮んでいく名前の下端にちょうど付いてくる（縮む間は中身が名前の下に潜らない）
 nonisolated private enum Shelf {
   /// 位置を測る座標（画面の、上の安全な領域の下端が 0）
   static let space = "records"
@@ -204,9 +205,11 @@ nonisolated private enum Shelf {
   static let sceneHeight: CGFloat = 250
   /// 名前の行の高さ
   static let nameHeight: CGFloat = 30
-  /// 名前の下の空き（止まる前だけ）
+  /// 名前の下の、場面の位置を示す点の行の高さ（止まる前だけ。点は行の真ん中に置く）
+  static let dotsHeight: CGFloat = 18
+  /// 点の行の下の空き（止まる前だけ）
   static let bottomPadding: CGFloat = 8
-  static let height = sceneHeight + nameHeight + bottomPadding
+  static let height = sceneHeight + nameHeight + dotsHeight + bottomPadding
   /// 3D を見る距離（m）
   static let distance: Float = 4.6
   /// 止まった後の 3D の大きさ（止まる前に対する割合）
@@ -219,8 +222,8 @@ nonisolated private enum Shelf {
   static let wallOverlap: CGFloat = 4
   /// 3D が縮む量
   static let sceneShrink = sceneHeight * (1 - stuckScale)
-  /// 止まってから縮み切るまでのスクロールの量
-  static let shrinkDistance = sceneShrink + bottomPadding
+  /// 止まってから縮み切るまでのスクロールの量（縮み切ると、点の行と下の空きも詰まり、名前のすぐ下に中身が来る）
+  static let shrinkDistance = sceneShrink + dotsHeight + bottomPadding
   /// 3D が止まり始めるスクロールの量
   static let stickStart = titleHeight - stickTop
   /// 縮み切るスクロールの量
@@ -233,6 +236,8 @@ nonisolated private enum Shelf {
   /// 見えている並びの高さ（止まった後は、小さくした 3D と名前の高さ）
   static func visibleHeight(_ progress: CGFloat) -> CGFloat { height - shrinkDistance * progress }
   static func sceneScale(_ progress: CGFloat) -> CGFloat { 1 - (1 - stuckScale) * progress }
+  /// 点の濃さ。止まってから点の行の高さだけ送るうちに消える（上がってくる中身や、名前の下のぼかしと重ねない）
+  static func dotsOpacity(_ progress: CGFloat) -> Double { Double(max(0, 1 - progress * shrinkDistance / dotsHeight)) }
 }
 
 /// 3D が上に止まってから縮み切るまでの進み（0 は止まる前、1 は縮み切った後）。
@@ -300,8 +305,8 @@ private struct SceneShelf: View {
           HStack(spacing: 0) {
             ForEach(Array(scenes.enumerated()), id: \.element.id) { index, scene in
               ScenePage(
-                scene: scene, shows3D: shows3D(at: index), isMiddle: index == middle, isCovered: isCovered, stick: stick,
-                onStep: onStep)
+                scene: scene, position: index, total: scenes.count, shows3D: shows3D(at: index), isMiddle: index == middle,
+                isCovered: isCovered, stick: stick, onStep: onStep)
                 .frame(width: width, height: Shelf.height)
             }
           }
@@ -328,6 +333,15 @@ private struct SceneShelf: View {
       }
     }
     .frame(height: Shelf.height)
+    // 名前のすぐ下に、横にも場面があることと今の位置を示す点（横には送らず、ここに置いたまま）。横に送っている途中も、
+    // 画面にある場面に合わせて動く。止まって縮み始めたら、名前と一緒に上がりながら薄く消す。押したところは横の並びに渡す
+    .overlay(alignment: .top) {
+      ShelfDots(count: scenes.count, current: middle)
+        .frame(height: Shelf.dotsHeight)
+        .padding(.top, Shelf.sceneHeight + Shelf.nameHeight)
+        .shelfMotion(stick, lift: { -Shelf.sceneShrink * $0 }, opacity: { Shelf.dotsOpacity($0) })
+        .allowsHitTesting(false)
+    }
     .background(alignment: .top) {
       ZStack(alignment: .top) {
         // 止まった後に、下を通る中身を隠す地の色（名前の文字の下端まで）
@@ -375,6 +389,9 @@ private struct SceneShelf: View {
 /// 上に止まって縮むと、同じ 3D を小さくして、名前をその下に寄せる
 private struct ScenePage: View {
   let scene: RecordScene
+  /// 何番目の場面か（0 から）と、場面の数。読み上げで位置を伝える（点は読み上げない）
+  let position: Int
+  let total: Int
   let shows3D: Bool
   /// 画面にある場面か。それ以外は読み上げに出さない
   let isMiddle: Bool
@@ -413,12 +430,18 @@ private struct ScenePage: View {
     }
     .accessibilityElement(children: .ignore)
     .accessibilityLabel("\(scene.name)の場面")
-    .accessibilityValue("\(scene.entries.count) 回あそんだ")
+    .accessibilityValue(accessibilityValue)
     .accessibilityAction(named: "次の場面") { onStep(1) }
     .accessibilityAction(named: "前の場面") { onStep(-1) }
     .accessibilityHidden(!isMiddle)
     // UI テストが、場面の所を撮って 3D が描かれたかを見るための名前
     .accessibilityIdentifier("record-scene")
+  }
+
+  /// 遊んだ回数と、場面が 2 つ以上なら並びの中の位置（例: 3 回あそんだ、全 5 場面の 2 番目）
+  private var accessibilityValue: String {
+    let count = "\(scene.entries.count) 回あそんだ"
+    return total > 1 ? "\(count)、全 \(total) 場面の \(position + 1) 番目" : count
   }
 }
 
