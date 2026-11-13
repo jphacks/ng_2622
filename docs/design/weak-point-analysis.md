@@ -463,6 +463,7 @@ Counts computed by the app (do not recompute; do not write numbers in your text)
   "protocol": "scenenglish.weakpoints/1",
   "createdAt": "2026-11-13T01:23:45Z",
   "basedOn": ["8d4d75f1-…", "…"],
+  "records": 12,
   "result": {
     "habits": [
       {
@@ -492,7 +493,7 @@ Counts computed by the app (do not recompute; do not write numbers in your text)
   - 覚えている分析が無い（内容の内訳のある記録が 5 件以上のとき）。
   - 内容の内訳のある記録の数を N とし、覚えている分析を作ったときの数を N₀ とする。N を 5 で割った商が N₀ の商より大きい（5・10・15 件目…に達した）。例: 7 件目で作った分析は、10 件目で作り直す。12 件目までは作り直さない。
   - `basedOn` の記録が 1 つでも消えた（今のまま）。
-  - N₀ を覚えるため、ファイルに作ったときの記録の数の欄を足す（欄の名前は PR 4 で決める。欄を足すだけなので `/1` のまま）。欄の無い古いファイル（前の版のアプリが書いたもの）は、1 度だけ作り直す（`basedOn` は直近 10 件までなので、作ったときの数の代わりにならないため）。
+  - N₀ は、分析のファイルの `records`（作ったときの、内容の内訳のある記録の数）に覚える（2026-11-14、PR 4。欄を足しただけなので版は `/1` のまま）。欄の無い古いファイル（前の版のアプリが書いたもの）は `records` を無い（nil）として読み、前の決まり（`basedOn` に無い記録があれば作り直す）で 1 度だけ作り直す。作り直したファイルには `records` が入る。
   - 前は「記録が増えたら（R に `basedOn` に無い記録がある）作り直す」だった。作り直すたびに苦手の場面（[`part-generation.md`](./part-generation.md)）も作り直すので、費用と待ちを抑えるため、リーダーが 5 件ごとに変えた。
 - 失敗したら、その画面を開いている間は自動で呼び直さない。画面を開き直したら（上限の範囲で）また呼ぶ（「もう一度」のボタンを置くかは v2 の `weak.md`）。
 - 作っている途中で画面を閉じても、分析は裏で続け（アプリの中で 1 本だけ）、返ったら覚える。開き直したら、作っている間の続きを出す（2026-11-14。続けて苦手の場面も作るため。[`part-generation.md`](./part-generation.md)）。
@@ -501,10 +502,34 @@ Counts computed by the app (do not recompute; do not write numbers in your text)
 - 消し方:
   - 「すべて消す」: `records/` を消したあと、分析のファイルも消す。どちらかで止まっても、次に開いたときに `basedOn` が合わず出なくなる。
   - 記録を 1 つ消す: 分析のファイルは消さない。`basedOn` の記録が 1 つでも欠けた分析は、画面に出さずに作り直すので、見える動きは同じ（2026-11-13、#120 で決めた。今のアプリには 1 つ消す画面が無い。1 つ消す画面を作るときに、ファイルも消すかを改めて決める）。
-  - 苦手の場面の返り（[`part-generation.md`](./part-generation.md)。分析と一緒に 1 つだけ覚える）も、「すべて消す」と記録が 4 件以下になったときに、分析と一緒に消す（2026-11-14）。
+  - 苦手の場面のファイル（下の「苦手の場面のファイル」）も、「すべて消す」と記録が 4 件以下になったときに、分析と一緒に消す（2026-11-14）。
   - アプリを消すと消える。
 - 版: 欄を足すだけなら `/1` のまま。意味を変えるときは `/2` にする。知らない版のファイルは読まずに作り直す（分析は記録から作り直せるので、記録と違って古い版を読み続けなくてよい）。
 - プライバシーポリシーの「遊んだ記録」の行か、別の行に「苦手の分析の結果（あなたの文の引用を含む）を端末の中に保存する」を足す。
+
+### 苦手の場面のファイル（2026-11-14、PR 4）
+
+- 苦手の場面（[`part-generation.md`](./part-generation.md)）の返りは、分析と同じフォルダの `analysis/weak-scene.json` に 1 つだけ覚える。版は `scenenglish.weakscene/1`。
+- 欄は `protocol`・`createdAt`・`stage`（作ったときの区切り。内容の内訳のある記録の数 ÷ 5 の商）・`scene`（返った場面。`sceneId`・`name`・`difficulty`・`focus`・`pitch`・`layout`・`createdParts`）。
+- 同じ区切り（`stage`）の中では、このファイルの場面を出し、`POST /weak-scenes` は呼ばない。区切りが変わったら作り直して入れ替える。
+- 消し方は分析のファイルと同じ（上の「消し方」）。
+
+```json
+{
+  "protocol": "scenenglish.weakscene/1",
+  "createdAt": "2026-11-14T03:21:00Z",
+  "stage": 2,
+  "scene": {
+    "sceneId": "weak-…",
+    "name": "雨のバス停",
+    "difficulty": "eiken-pre2",
+    "focus": "reason",
+    "pitch": "because で理由を言いやすい場面です",
+    "layout": { "protocol": "scenenglish.scene/2", "…": "…" },
+    "createdParts": ["umbrella_yellow@1"]
+  }
+}
+```
 
 ## 8. 費用の見積もり
 
