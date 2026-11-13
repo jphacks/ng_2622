@@ -47,6 +47,10 @@ struct RecordsView: View {
     }
     .environment(\.sharedVoicePlayer, player)
     .onDisappear { player.stop() }
+    // 苦手の画面が重なっている間も、きろくは出したまま（onDisappear が走らない）なので、覆われたら録音を止める
+    .onChange(of: isCovered) { _, covered in
+      if covered { player.stop() }
+    }
     .task { await library.reload() }
     // きろくを閉じたら、組んで覚えた場面を忘れる（遊ぶたびに増えるので、持ち続けない）
     .onDisappear { SceneLibrary.shared.forgetComposedLayouts() }
