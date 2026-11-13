@@ -34,9 +34,33 @@ GROUP_ORDER = [
     ("room", "部屋"),
     ("play", "プレイ"),
     ("result", "結果"),
+    ("record", "きろく・設定"),
 ]
+# 画面の状態（frontmatter の status）。頭の語で種類を見分ける（例: 「確定（実装: #116）」は「確定」）。
+# 札の色と、遷移図の枠・矢印の描き方
+STATUS = {
+    "実装済み": dict(cls="done", node=None, edge=None),
+    "確定": dict(cls="fixed", node='color="#64748b", style="rounded", penwidth=2.5', edge=None),
+    "案": dict(cls="pending", node='color="#E8771E", style="rounded,dashed", penwidth=3', edge='color="#E8771E", fontcolor="#c2410c", style=dashed, penwidth=1.6'),
+    "未確定": dict(cls="open", node='color="#9ca3af", style="rounded,dotted", penwidth=3', edge='color="#9ca3af", fontcolor="#6b7280", style=dotted, penwidth=1.6'),
+}
+
+
+def status_kind(status: str) -> str | None:
+    """status の頭の語から、STATUS の種類を返す（無ければ None）。"""
+    return next((k for k in STATUS if status.startswith(k)), None)
+
+
+def status_tag(status: str) -> str:
+    """遷移図のノードに添える短い状態（例: 確定 #116、案、未確定）。"""
+    kind = status_kind(status)
+    prs = re.findall(r"#\d+", status)
+    # 幅に収めるため、2 つ目からは # を省く（例: 案 #114・116）
+    return f'{kind} #{"・".join(p.lstrip("#") for p in prs)}' if kind and prs else (kind or status)
+
+
 DISCUSSION_SECTIONS = ["課題", "改善案", "決定"]
-IMAGE_STATE = {"final": "確定", "draft": "下書き", "none": "未作成"}
+IMAGE_STATE = {"final": "あり", "draft": "下書き", "none": "未作成"}
 
 
 # ---------- 入力 ----------
@@ -69,15 +93,23 @@ def split_sections(body: str) -> dict[str, str]:
 
 
 def md_to_html(md: str) -> str:
-    """最小の Markdown 変換（段落・箇条書き・`code`・**強調**）。"""
+    """最小の Markdown 変換（段落・箇条書き・`code`・**強調**・[リンク](先)）。"""
     out: list[str] = []
     para: list[str] = []
     in_list = False
+
+    def link(m: re.Match) -> str:
+        text, url = m.group(1), m.group(2)
+        # 同じフォルダの画面（./<id>.md）は下の画面カードへ、http は外へ。ほかは文字だけ残す
+        card = re.fullmatch(r"\./([\w-]+)\.md", url)
+        href = f"#{card.group(1)}" if card else url if url.startswith("http") else None
+        return f'<a href="{href}">{text}</a>' if href else text
 
     def inline(s: str) -> str:
         s = html.escape(s)
         s = re.sub(r"`([^`]+)`", r"<code>\1</code>", s)
         s = re.sub(r"\*\*([^*]+)\*\*", r"<strong>\1</strong>", s)
+        s = re.sub(r"\[([^\]]+)\]\(([^)\s]+)\)", link, s)
         return s
 
     def flush():
@@ -122,7 +154,8 @@ def thumb(path: Path, height: int, fmt: str) -> Path:
     if out.exists() and out.stat().st_mtime >= path.stat().st_mtime:
         return out
     out.parent.mkdir(parents=True, exist_ok=True)
-    cmd = ["sips", "-Z", str(height), "-s", "format", fmt]
+    # 元が height 以下なら縮めない（形式だけ変える）。iPhone の 1 画面ぶんの画像を荒くしないため
+    cmd = ["sips", "-s", "format", fmt] if max(pixel_size(path)) <= height else ["sips", "-Z", str(height), "-s", "format", fmt]
     if fmt == "jpeg":
         cmd += ["-s", "formatOptions", "82"]
     subprocess.run(cmd + [str(path), "--out", str(out)], check=True, capture_output=True)
@@ -154,21 +187,81 @@ def placeholder_png(sid: str, title: str) -> Path | None:
     return out
 
 
+def image_names(s: dict) -> list[str]:
+    """frontmatter の image（文字列か、複数の画像の配列）をファイル名の一覧にする。"""
+    img = s.get("image", f"{s['id']}.png")
+    return [img] if isinstance(img, str) else list(img)
+
+
+def image_paths(src: Path, s: dict) -> list[tuple[Path, str]]:
+    """画面の画像と状態（final / draft）の一覧。見つからない画像は飛ばす。"""
+    found = []
+    for name in image_names(s):
+        for state, folder in (("final", "images"), ("draft", "drafts")):
+            p = src / folder / name
+            if p.exists():
+                found.append((p, state))
+                break
+    return found
+
+
 def image_path(src: Path, s: dict) -> tuple[Path | None, str]:
-    """画面の画像と状態（final / draft / none）を返す。"""
-    name = s.get("image", f"{s['id']}.png")
-    for state, folder in (("final", "images"), ("draft", "drafts")):
-        p = src / folder / name
-        if p.exists():
-            return p, state
+    """画面の 1 枚目の画像と状態（final / draft / none）を返す。遷移図のノードと状態の札に使う。"""
+    found = image_paths(src, s)
+    if found:
+        return found[0]
     return placeholder_png(s["id"], s["title"]), "none"
 
 
+def pixel_size(path: Path) -> tuple[int, int]:
+    """画像の横と縦の画素数（macOS の sips で読む。読めなければ iPhone の 1 画面ぶんとみなす）。"""
+    if shutil.which("sips"):
+        out = subprocess.run(["sips", "-g", "pixelWidth", "-g", "pixelHeight", str(path)], capture_output=True, text=True).stdout
+        size = dict(re.findall(r"pixel(Width|Height):\s*(\d+)", out))
+        if size.get("Width") and size.get("Height"):
+            return int(size["Width"]), int(size["Height"])
+    return 1206, 2622
+
+
+def aspect(path: Path) -> float:
+    """画像の縦 ÷ 横。"""
+    w, h = pixel_size(path)
+    return h / w
+
+
+# 画面カードに埋める画像の長辺の上限。iPhone の 1 画面ぶん（長辺 2622 など）は縮めない
+CARD_MAX = 2800
+
+
+def frame_html(p: Path, alt: str, label: str = "") -> str:
+    # 縦に長い画像は切り抜かず、枠の中で縦にスクロールさせる
+    # 横長の画像（図の部分の拡大など）は、iPhone の枠に入れずに 2 列ぶんの幅で出す
+    tall = aspect(p) > 19.5 / 9 * 1.05
+    wide = aspect(p) < 1
+    cls = " tall" if tall else " wide" if wide else ""
+    frame = (f'<div class="frame{cls}">'
+             f'<img src="{data_uri(thumb(p, CARD_MAX, "jpeg"))}" alt="{alt}"></div>')
+    if label:
+        return f'<div class="frame-item{" wide" if wide else ""}">{frame}<div class="frame-label">{html.escape(label)}</div></div>'
+    return frame
+
+
 def image_html(src: Path, s: dict) -> str:
+    found = image_paths(src, s)
     p, state = image_path(src, s)
     label = IMAGE_STATE[state]
-    if p:
-        return (f'<figure class="shot {state}"><img src="{data_uri(thumb(p, 1200, "jpeg"))}" alt="{html.escape(s["title"])}">'
+    if found:
+        # 画像が複数（長い画面を上下に分けたものなど）なら、縮めずに横に並べる
+        alt = html.escape(s["title"])
+        labels = list(s.get("image_labels", [])) + [""] * len(found)
+        frames = "".join(frame_html(q, f"{alt}（{i + 1}/{len(found)}）", labels[i]) for i, (q, _) in enumerate(found))
+        multi = len(found) > 1
+        tall = any(aspect(q) > 19.5 / 9 * 1.05 for q, _ in found)
+        hint = f"（{len(found)} 枚）" if multi else ("（縦にスクロール）" if tall else "")
+        return (f'<figure class="shot {state}{" multi" if multi else ""}"><div class="frames">{frames}</div>'
+                f"<figcaption>{label}{hint}</figcaption></figure>")
+    if p:  # 未作成の画面のダミー画像
+        return (f'<figure class="shot {state}"><div class="frames">{frame_html(p, html.escape(s["title"]))}</div>'
                 f"<figcaption>{label}</figcaption></figure>")
     return (f'<figure class="shot none"><div class="placeholder"><span>{html.escape(s["title"])}<br>'
             f'<small>{html.escape(s["id"])}（未作成）</small></span></div>'
@@ -201,11 +294,16 @@ def flow_svg(screens: list[dict], app: dict, src: Path) -> str:
         lines.append(f'subgraph cluster_{key} {{ label="{label}"; color="#cbd5e1"; fontcolor="#64748b"; fontsize=12; style="rounded,dashed"; margin=14;')
         for s in members:
             shot, _ = image_path(src, s)
+            st = STATUS[status_kind(s.get("status", "")) or "実装済み"]
             if shot:
                 shot = thumb(shot, 400, "png")
+                frame = st["node"] or 'style="rounded", color="transparent"'
+                # 長い名前は、枠からはみ出さないよう括弧の中を外す（カードには元の名前を出す）
+                title = s["title"] if len(s["title"]) <= 11 else re.sub(r"（.*?）", "", s["title"])
+                label = title if not st["node"] else f'{title}\\n{status_tag(s["status"])}'
                 lines.append(
-                    f'"{s["id"]}" [shape=box, style="rounded", color="transparent", label="{s["title"]}", image="{shot.resolve()}", '
-                    f'imagescale=true, imagepos="tc", labelloc=b, fixedsize=true, width=1.6, height=3.85, URL="#{s["id"]}"];')
+                    f'"{s["id"]}" [shape=box, {frame}, label="{label}", image="{shot.resolve()}", '
+                    f'imagescale=true, imagepos="tc", labelloc=b, fixedsize=true, width=1.6, height={4.15 if st["node"] else 3.85}, URL="#{s["id"]}"];')
             else:
                 lines.append(f'"{s["id"]}" [label="{s["title"]}", fillcolor="#f1f5f9", style="rounded,filled,dashed", URL="#{s["id"]}"];')
         lines.append("}")
@@ -214,6 +312,7 @@ def flow_svg(screens: list[dict], app: dict, src: Path) -> str:
         if e.get("to") in ids:
             lines.append(f'"_launch" -> "{e["to"]}" [label="{short(e.get("trigger", ""))}", style=dashed];')
     seen = set()
+    by_status = {s["id"]: s.get("status", "") for s in screens}
     for s in screens:
         for ex in s.get("exits", []):
             to = ex.get("to")
@@ -226,6 +325,12 @@ def flow_svg(screens: list[dict], app: dict, src: Path) -> str:
                     attrs.append("style=dashed")
                 if how == "戻る":
                     attrs.append('color="#cbd5e1"')
+                # 案・未確定の遷移は、色と線で見分ける。exits の status が無ければ、どちらかの端が未確定なら未確定、
+                # 片方の端が案で、もう片方が案か確定なら案（実装済みの画面とのあいだの遷移は今のまま）
+                ends = {status_kind(by_status.get(s["id"], "")), status_kind(by_status.get(to, ""))}
+                est = status_kind(ex["status"]) if ex.get("status") else ("未確定" if "未確定" in ends else "案" if "案" in ends and ends <= {"案", "確定"} else None)
+                if est and STATUS[est]["edge"]:
+                    attrs = [STATUS[est]["edge"]]
                 lines.append(f'"{s["id"]}" -> "{to}" [label="{short(ex.get("trigger", ""))}"{", " + ", ".join(attrs) if attrs else ""}];')
     lines.append("}")
     dot_src = "\n".join(lines)
@@ -258,6 +363,12 @@ h3 { font-size:1.1rem; margin:0; } h4 { font-size:0.9rem; margin:14px 0 4px; col
 table { border-collapse:collapse; width:100%; font-size:.9rem; } th,td { border-bottom:1px solid var(--line); padding:6px 8px; text-align:left; vertical-align:top; }
 th { color:var(--muted); font-weight:600; font-size:.8rem; }
 .badge { display:inline-block; padding:1px 8px; border-radius:999px; font-size:.75rem; font-weight:600; margin-right:4px; white-space:nowrap; }
+.badge.st-done { background:#e0e7ff; color:#3730a3; }
+.badge.st-fixed { background:#f1f5f9; color:#334155; border:1px solid #64748b; }
+.badge.st-pending { background:#fff7ed; color:#c2410c; border:1px dashed #E8771E; }
+.badge.st-open { background:#f9fafb; color:#6b7280; border:1px dotted #9ca3af; }
+.status-note { font-size:.85rem; color:#4b5563; background:#f8fafc; border-left:3px solid #c7d2fe; padding:2px 8px; margin:4px 0; }
+.frame-item { display:flex; flex-direction:column; gap:3px; } .frame-label { font-size:.72rem; color:var(--muted); text-align:center; line-height:1.3; }
 .badge.final { background:var(--final); color:var(--final-fg); } .badge.draft { background:var(--draft); color:var(--draft-fg); } .badge.none { background:var(--none); color:var(--none-fg); }
 section.screen { border:1px solid var(--line); border-radius:12px; padding:12px; margin:12px 0; background:var(--card); page-break-inside:avoid; display:grid; grid-template-columns: minmax(0,1fr); gap:12px; }
 @media (min-width: 640px) { section.screen { grid-template-columns: 220px minmax(0,1fr); } }
@@ -271,16 +382,23 @@ details ul { margin:2px 0 0; padding-left:18px; }
 .overview { margin-top:32px; } .overview summary { color:var(--fg); }
 ul.notes { padding-left:20px; } ul.notes li { margin:2px 0; }
 .shot { margin:0; }
-.shot img, .placeholder { width:100%; max-width:220px; aspect-ratio: 9/19.5; border-radius:16px; border:1px solid var(--line); object-fit:cover; background:#fff; display:block; }
+.shot .frame, .placeholder { width:100%; max-width:220px; aspect-ratio: 9/19.5; border-radius:16px; border:1px solid var(--line); background:#fff; display:block; overflow:hidden; }
+.shot .frame.tall { overflow-y:auto; overscroll-behavior:contain; }
+.shot .frame.wide { aspect-ratio:auto; max-width:none; }
+.shot.multi .frame-item.wide { grid-column: span 2; }
+.shot.multi .frames { display:grid; grid-template-columns:repeat(2, 220px); gap:8px; }
+@media (min-width: 640px) { section.screen.multi { grid-template-columns: 448px minmax(0,1fr); } }
+@media (max-width: 639px) { .shot.multi .frames { grid-template-columns:repeat(2, minmax(0,1fr)); } }
+.shot .frame img { width:100%; height:auto; display:block; }
 .placeholder { display:flex; align-items:center; justify-content:center; text-align:center; color:#6b7280; background:repeating-linear-gradient(45deg,#f3f4f6 0 10px,#e5e7eb 10px 20px); font-size:.8rem; padding:8px; }
 figcaption { text-align:center; font-size:.75rem; color:var(--muted); margin-top:4px; }
 .discussion { margin-top:6px; display:grid; gap:8px; grid-template-columns:repeat(auto-fit,minmax(200px,1fr)); }
-.discussion > div { background:var(--bg); border:1px solid var(--line); border-radius:8px; padding:8px 10px; min-height:64px; font-size:.9rem; }
+.discussion > div { background:var(--bg); border:1px solid var(--line); border-radius:8px; padding:8px 10px; min-height:64px; font-size:.9rem; overflow-wrap:anywhere; }
 .discussion .empty { color:var(--muted); font-style:italic; }
 svg.flow { max-width:none; height:auto; display:block; margin:12px auto; }
 code { font-family: ui-monospace, Menlo, monospace; font-size:.85em; }
 .legend { font-size:.85rem; } .legend span { margin-right:14px; white-space:nowrap; }
-@media print { body { padding:0; } section.screen { break-inside:avoid; } h2 { break-before:page; } }
+@media print { .shot .frame.tall { aspect-ratio:auto; overflow:visible; } body { padding:0; } section.screen { break-inside:avoid; } h2 { break-before:page; } }
 """
 
 
@@ -303,8 +421,15 @@ def edge_list(edges: list[dict], key: str, by_id: dict[str, dict]) -> str:
     return "<ul>" + "".join(items) + "</ul>"
 
 
+def status_badge(s: dict) -> str:
+    st = s.get("status", "")
+    kind = status_kind(st)
+    return f'<span class="badge st-{STATUS[kind]["cls"]}">状態: {html.escape(st)}</span>' if kind else ""
+
+
 def screen_section(s: dict, src: Path, by_id: dict[str, dict]) -> str:
     _, state = image_path(src, s)
+    multi = len(image_paths(src, s)) > 1
     body = s["body_sections"]
     filled = [n for n in DISCUSSION_SECTIONS if body.get(n)]
     discussion = "".join(
@@ -322,13 +447,14 @@ def screen_section(s: dict, src: Path, by_id: dict[str, dict]) -> str:
                 out.append(html.escape(short(other, 18) or other.strip("()（）")))
         return "、".join(dict.fromkeys(out)) or '<span class="muted">—</span>'
     return f"""
-<section class="screen" id="{html.escape(s['id'])}">
+<section class="screen{' multi' if multi else ''}" id="{html.escape(s['id'])}">
   {image_html(src, s)}
   <div class="card-text">
     <header><h3>{html.escape(s['title'])}</h3>
-      <span class="badge {state}">画像: {IMAGE_STATE[state]}</span>
+      {status_badge(s)}<span class="badge {state}">画像: {IMAGE_STATE[state]}</span>
       <code>{html.escape(s['id'])}</code></header>
     <p class="role">{html.escape(s.get('role', ''))}</p>
+    {f'<p class="status-note">{html.escape(s["status_note"])}</p>' if s.get("status_note") else ""}
     <p class="links"><span class="k">← 来る</span> {names(s.get('entry_points', []), 'from')}<br><span class="k">→ 行く</span> {names(s.get('exits', []), 'to')}</p>
     <details><summary>詳細（操作・データ・備考）</summary>
       <dl>
@@ -363,6 +489,7 @@ def build(src: Path, out: Path, pdf: bool) -> None:
         f'<tr><td>{html.escape(dict(GROUP_ORDER).get(s.get("group",""), s.get("group","")))}</td>'
         f'<td><a href="#{html.escape(s["id"])}">{html.escape(s["title"])}</a><br><code>{html.escape(s["id"])}</code></td>'
         f'<td>{html.escape(s.get("role",""))}</td>'
+        f'<td>{status_badge(s)}</td>'
         f'<td><span class="badge {st}">{IMAGE_STATE[st]}</span></td></tr>'
         for s, st in zip(screens, states)
     )
@@ -379,8 +506,9 @@ def build(src: Path, out: Path, pdf: bool) -> None:
 <ul class="notes">{notes}</ul>
 
 <h2 id="flow">1. 画面遷移マップ</h2>
-<p class="legend muted"><span>青の太線: 全員の画面が同時に移る</span><span>破線: 操作なしで自動に進む</span><span>薄い線: 戻る</span><span>点線の枠: 機能のまとまり</span></p>
-<p class="muted">ノードをクリックすると下の画面カードへ飛ぶ。画像は Codex の image gen で作った仮の画面で、実装の見た目ではない。</p>
+<p class="legend muted"><span>青の太線: 全員の画面が同時に移る</span><span>灰色の破線: 操作なしで自動に進む</span><span>薄い線: 戻る</span><span>点線の大きな枠: 機能のまとまり</span></p>
+<p class="legend muted"><span>画面の枠なし: 実装済み</span><span style="color:#334155">灰色の枠: 確定（実装は PR にある。PR の番号つき）</span><span style="color:#c2410c">オレンジの破線の枠と矢印: 案</span><span>灰色の点線の枠と矢印: 未確定（案の画像のみ）</span></p>
+<p class="muted">ノードをクリックすると下の画面カードへ飛ぶ。画像は、実装済みの画面は実際のアプリ（Mock）のスクリーンショット。確定の画面は、実装の PR の branch のアプリ（Mock）のスクリーンショット（状態バーは 9:41）。案・未確定の画面は、Codex の image gen で作った案（実装の見た目ではない）を状態の札と一緒に載せる。</p>
 <div class="flow-wrap">{flow_svg(screens, app, src)}</div>
 
 <h2 id="screens">2. 画面カード</h2>
@@ -388,7 +516,7 @@ def build(src: Path, out: Path, pdf: bool) -> None:
 {sections}
 
 <details class="overview"><summary><strong>付録. 画面一覧表</strong>（{len(screens)} 画面）</summary>
-<table><thead><tr><th>まとまり</th><th>画面</th><th>役割</th><th>画像</th></tr></thead><tbody>{rows}</tbody></table>
+<table><thead><tr><th>まとまり</th><th>画面</th><th>役割</th><th>状態</th><th>画像</th></tr></thead><tbody>{rows}</tbody></table>
 </details>
 </main></body></html>
 """
