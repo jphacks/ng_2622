@@ -153,6 +153,7 @@ test("規約で引く: 同梱・寄せる・前に作った部品（R2）・注�
   for (const order of [
     { ...LAMP, id: "toy_gun", words: ["gun"] },
     { ...LAMP, id: "toy", words: ["toy"], description: "A black toy pistol." },
+    { ...LAMP, id: "toy_box", words: ["toy"], label: "おもちゃのピストル" },
     { ...LAMP, id: "Lamp-1" },
     { ...LAMP, id: "grass_tuft", words: ["grass"] },
     { ...LAMP, id: "lamp_big", words: ["a", "b", "c", "d", "e", "f"] },

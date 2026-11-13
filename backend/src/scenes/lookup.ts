@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { isObjectId, MAX_ID_LENGTH, parsePartId, partRef } from "../parts/ids";
-import { orderProblem, type PartOrder } from "../parts/workshop";
+import { orderProblem, type PartOrder, refusedTerm } from "../parts/workshop";
 import { POSE_VERBS, poseVerbsOf, postureOf, whoOf } from "./pose-verbs";
 import type { LayoutItemV2, Part, PlanItem, SceneLayoutV2 } from "./types";
 import { nounFits, type Problem } from "./verify";
@@ -384,8 +384,7 @@ export const resolveParts = async (
 
 /**
  * 注文を断る理由（ID の形・同梱の ID と重なる・地面・部品を作る口が断る注文）。よければ undefined。
- * 部品を作る口（workshop.ts の orderProblem。作らない物の語は id・words・label・description を policy.ts の網で見る）と
- * 同じ確かめを先にして、作る前に「その物を使わない場面」に書き直させる（作る口で断られて場面ごと失敗しないため）
+ * 部品を作る口と同じ確かめ（作らない物の語は refusedTerm で id・words・label・description の全部を、形は orderProblem で）を先にして、作る前に「その物を使わない場面」に書き直させる（作る口で断られて場面ごと失敗しないため）
  */
 const refusedOrder = (
   order: PartOrder,
@@ -410,10 +409,12 @@ const refusedOrder = (
   if (ground) {
     return `${order.id} は地面（${ground}）。地面は作らない。英文の ${ground} は、地面の部品（grass_patch・sand_beach・floor_wood など）の item の key にする`;
   }
-  const problem = orderProblem(order);
-  if (problem?.startsWith("refused:")) {
-    return `${order.id} は作れない物（${problem.slice("refused:".length).trim()}）。この物を使わない場面にする（英文からも外す）`;
+  // 作らない物の語は、部品を作る口と同じ網（id・words・label・description の全部を見る）で先に見る
+  const refused = refusedTerm(order);
+  if (refused) {
+    return `${order.id} は作れない物（${refused}）。この物を使わない場面にする（英文からも外す）`;
   }
+  const problem = orderProblem(order);
   if (problem) {
     return `注文 ${order.id} の形が違う（${problem}）。注文を直すか、もう部品のある物にする`;
   }
