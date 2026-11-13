@@ -41,6 +41,8 @@ nonisolated enum WeakPointClients {
       group.addTask { try await operation() }
       group.addTask {
         try await Task.sleep(for: timeout)
+        // 頼んでいる側は打ち切られて止まる（止まったことはログに出さない）ので、ここで出す
+        weakPointLog.notice("苦手の分析を作れませんでした: 打ち切り")
         throw WeakPointFailure.failed
       }
       defer { group.cancelAll() }
@@ -66,6 +68,9 @@ nonisolated struct LiveWeakPointClient: WeakPointClient {
     do {
       output = try await client.analyzeWeakPoints(body: .json(request))
     } catch {
+      // 止められた（打ち切り・すべて消す・記録が増えて頼み直す）ときは、通信の失敗ではないのでログに出さない
+      let cancelled = error is CancellationError || (error as? ClientError)?.underlyingError is CancellationError
+      if Task.isCancelled || cancelled { throw CancellationError() }
       // 応答の本文が読めなかった（手前で返った 429 など）ときも、状態コードで分ける。応答が無ければ通信の失敗
       let status = (error as? ClientError)?.response?.status.code
       weakPointLog.notice("苦手の分析を作れませんでした: \(status.map { "\($0)" } ?? "応答なし", privacy: .public)")

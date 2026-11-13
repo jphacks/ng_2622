@@ -52,6 +52,15 @@ struct WeakPointClientTests {
     }
   }
 
+  /// 止められた（打ち切り・すべて消す・頼み直し）ときは、失敗にせず止まる（通信の失敗としてログにも出さない）
+  @Test func cancelledRequestIsNotAFailure() async throws {
+    let request = try Self.request()
+    let client = Self.client(FakeTransport(status: 200, body: Data(), delay: .seconds(10)))
+    let task = Task { try await client.analyze(request) }
+    task.cancel()
+    await #expect(throws: CancellationError.self) { try await task.value }
+  }
+
   /// 通信できない（応答が無い）は失敗
   @Test func networkErrorIsFailed() async throws {
     let transport = FakeTransport(status: 0, body: Data(), error: URLError(.notConnectedToInternet))
@@ -67,6 +76,8 @@ nonisolated struct FakeTransport: ClientTransport {
   let body: Data
   var contentType = "application/json"
   var error: (any Error & Sendable)?
+  /// 返すまで待つ時間（止められるかを見る）
+  var delay: Duration?
   let sent = Sent()
 
   actor Sent {
@@ -79,11 +90,15 @@ nonisolated struct FakeTransport: ClientTransport {
     }
   }
 
-  init(status: Int, body: Data, contentType: String = "application/json", error: (any Error & Sendable)? = nil) {
+  init(
+    status: Int, body: Data, contentType: String = "application/json", error: (any Error & Sendable)? = nil,
+    delay: Duration? = nil
+  ) {
     self.status = status
     self.body = body
     self.contentType = contentType
     self.error = error
+    self.delay = delay
   }
 
   func send(_ request: HTTPRequest, body: HTTPBody?, baseURL: URL, operationID: String) async throws -> (
@@ -91,6 +106,7 @@ nonisolated struct FakeTransport: ClientTransport {
   ) {
     let data: Data? = if let body { try await Data(collecting: body, upTo: 1 << 20) } else { nil }
     await sent.set(data, operationID: operationID)
+    if let delay { try await Task.sleep(for: delay) }
     if let error { throw error }
     var fields = HTTPFields()
     fields[.contentType] = contentType
