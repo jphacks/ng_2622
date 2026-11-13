@@ -271,8 +271,7 @@ private struct ExampleScene: View {
 private struct SceneGenerating: View {
   var body: some View {
     VStack(spacing: 6) {
-      LoadingRunner(size: 230)
-        .accessibilityHidden(true)
+      LoadingRunner(size: 230, announces: false)
       ShimmerText(text: "AI が場面を生成中…")
     }
     .frame(maxWidth: .infinity)
