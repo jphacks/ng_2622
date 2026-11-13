@@ -401,13 +401,17 @@ struct WeakPointAnalysisTests {
     #expect(analyzer.phase == .idle)
   }
 
-  /// 覚えるのに失敗しても（ファイルが無い）、メモリの分析を使い、開き直すたびには頼まない
-  @Test func analyzerKeepsAnalysisInMemoryWhenSavingFails() async throws {
-    // フォルダを作れない所（ファイルの下）にする
+  /// 覚えられない所（フォルダを作れない、ファイルの下）。blocker は終わったら消すファイル
+  static func unwritableStore() throws -> (store: WeakPointStore, blocker: URL) {
     let blocker = FileManager.default.temporaryDirectory.appending(path: "blocker-\(UUID().uuidString)")
     try Data().write(to: blocker)
+    return (WeakPointStore(directory: blocker.appending(path: "analysis", directoryHint: .isDirectory)), blocker)
+  }
+
+  /// 覚えるのに失敗しても（ファイルが無い）、メモリの分析を使い、開き直すたびには頼まない
+  @Test func analyzerKeepsAnalysisInMemoryWhenSavingFails() async throws {
+    let (store, blocker) = try Self.unwritableStore()
     defer { try? FileManager.default.removeItem(at: blocker) }
-    let store = WeakPointStore(directory: blocker.appending(path: "analysis", directoryHint: .isDirectory))
     let client = StubClient()
     let analyzer = WeakPointAnalyzer(client: client, store: store)
     let records = Self.records(10)
@@ -421,6 +425,50 @@ struct WeakPointAnalysisTests {
     #expect(analyzer.phase == .ready)
     #expect(analyzer.analysis == made)
     #expect(await client.calls == 1)
+  }
+
+  /// 覚えるのに失敗した（ファイルが無い）まま元の記録が 1 つ消えたら、メモリの分析は使わずに作り直す
+  @Test func analyzerRebuildsWhenInMemoryAnalysisLostARecord() async throws {
+    let (store, blocker) = try Self.unwritableStore()
+    defer { try? FileManager.default.removeItem(at: blocker) }
+    let client = StubClient()
+    let analyzer = WeakPointAnalyzer(client: client, store: store)
+    let records = Self.records(10)
+    analyzer.open(records: records, existing: { Set(records.map(\.id)) })
+    await analyzer.waitForPending()
+    #expect(analyzer.analysis?.basedOn.contains("r2") == true)
+    #expect(!store.exists())
+
+    let remaining = records.filter { $0.id != "r2" }
+    analyzer.open(records: remaining, existing: { Set(remaining.map(\.id)) })
+    #expect(analyzer.phase == .loading)
+    #expect(analyzer.analysis == nil)
+    await analyzer.waitForPending()
+    #expect(analyzer.phase == .ready)
+    #expect(analyzer.analysis?.basedOn == WeakPointCounts.recent(remaining).reversed().map(\.id))
+    #expect(await client.calls == 2)
+  }
+
+  /// forget のあと、捨てた分析が終わる前に同じ記録で開き直すと、新しく頼み、その分析を覚える
+  @Test func reopeningAfterForgetStoresNewAnalysis() async throws {
+    let store = WeakPointStore.temporary()
+    defer { try? store.delete() }
+    let client = StubClient()
+    await client.hold()
+    let analyzer = WeakPointAnalyzer(client: client, store: store)
+    let records = Self.records(10)
+    analyzer.open(records: records, existing: { Set(records.map(\.id)) })
+    await client.waitUntilCalled(1)
+    analyzer.forget()
+
+    analyzer.open(records: records, existing: { Set(records.map(\.id)) })
+    #expect(analyzer.phase == .loading)
+    await client.waitUntilCalled(2)
+    await client.release()
+    await analyzer.waitForPending()
+    #expect(analyzer.phase == .ready)
+    #expect(analyzer.analysis?.basedOn == WeakPointCounts.recent(records).reversed().map(\.id))
+    #expect(store.load() == analyzer.analysis)
   }
 
   /// 返るまで待つ長さを過ぎたら failed
