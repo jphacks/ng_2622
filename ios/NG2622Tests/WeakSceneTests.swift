@@ -512,6 +512,16 @@ struct WeakSceneTests {
     await #expect(throws: expected) { _ = try await Self.live(transport).make(try Self.request()) }
   }
 
+  /// 通信は、アプリの打ち切り（100 秒）より長く待つ（URLSession の既定の 60 秒では、サーバーが 60〜90 秒かけて
+  /// 返したときに通信できない扱いになる）
+  @Test func liveWaitsLongerThanTheAppLimit() {
+    let limit = Double(WeakSceneClients.timeout.components.seconds)
+    #expect(limit == 100)
+    let session = LiveWeakSceneClient.session()
+    #expect(session.configuration.timeoutIntervalForRequest > limit)
+    #expect(session.configuration.timeoutIntervalForResource > limit)
+  }
+
   @Test func liveOfflineAndUnreadable() async throws {
     let offline = FakeTransport(status: 0, body: Data(), error: URLError(.notConnectedToInternet))
     await #expect(throws: WeakSceneFailure.offline) { _ = try await Self.live(offline).make(try Self.request()) }

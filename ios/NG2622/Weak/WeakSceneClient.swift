@@ -6,7 +6,8 @@ nonisolated protocol WeakSceneClient: Sendable {
   func make(_ request: Components.Schemas.WeakSceneRequest) async throws -> WeakScene
 }
 
-/// 苦手の場面を作れなかった理由。画面の出し分けに使う（出し方はリーダーが決める。それまでは仮の文言）
+/// 苦手の場面を作れなかった理由。画面はどれも同じに出す（カードから場面を消し、数秒のバナーで知らせる。
+/// 2026-11-14 リーダーが決めた）。理由はログとテストで見分ける
 nonisolated enum WeakSceneFailure: Error, Equatable, Sendable {
   /// 本文が受け付けられない（400・413）
   case rejected
@@ -54,9 +55,23 @@ nonisolated enum WeakSceneClients {
 nonisolated struct LiveWeakSceneClient: WeakSceneClient {
   let client: Client
 
-  /// transport はテストで偽物に替える
-  init(baseURL: URL, transport: any ClientTransport = URLSessionTransport()) {
-    client = Client(serverURL: baseURL, configuration: .init(jsonEncodingOptions: [.sortedKeys]), transport: transport)
+  /// 通信が待つ長さ（秒）。URLSession の既定（60 秒）はサーバーの締め切り（90 秒）より短いので、アプリの打ち切り
+  /// （WeakSceneClients.timeout の 100 秒）より少し長くする。打ち切りは withTimeout に任せる
+  static let requestTimeout: TimeInterval = 110
+
+  /// transport はテストで偽物に替える。既定は requestTimeout まで待つ URLSession
+  init(baseURL: URL, transport: (any ClientTransport)? = nil) {
+    client = Client(
+      serverURL: baseURL, configuration: .init(jsonEncodingOptions: [.sortedKeys]),
+      transport: transport ?? URLSessionTransport(configuration: .init(session: Self.session())))
+  }
+
+  /// requestTimeout まで待つ URLSession（TitleStore の LiveTitleSource と同じ作り方）
+  static func session(configuration: URLSessionConfiguration = .default) -> URLSession {
+    let long = configuration.copy() as! URLSessionConfiguration
+    long.timeoutIntervalForRequest = requestTimeout
+    long.timeoutIntervalForResource = requestTimeout
+    return URLSession(configuration: long)
   }
 
   /// 失敗は状態コードだけをログに出す
