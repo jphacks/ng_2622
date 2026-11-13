@@ -36,10 +36,11 @@ GROUP_ORDER = [
     ("result", "結果"),
     ("record", "きろく・設定"),
 ]
-# 画面の状態（frontmatter の status）。頭の語で種類を見分ける（例: 「案（実装あり: #116）」は「案」）。
+# 画面の状態（frontmatter の status）。頭の語で種類を見分ける（例: 「案（直し待ち）」は「案」）。
 # 札の色と、遷移図の枠・矢印の描き方
 STATUS = {
     "実装済み": dict(cls="done", node=None, edge=None),
+    "確定": dict(cls="fixed", node='color="#64748b", style="rounded", penwidth=2.5', edge=None),
     "案": dict(cls="pending", node='color="#E8771E", style="rounded,dashed", penwidth=3', edge='color="#E8771E", fontcolor="#c2410c", style=dashed, penwidth=1.6'),
     "未確定": dict(cls="open", node='color="#9ca3af", style="rounded,dotted", penwidth=3', edge='color="#9ca3af", fontcolor="#6b7280", style=dotted, penwidth=1.6'),
 }
@@ -51,11 +52,11 @@ def status_kind(status: str) -> str | None:
 
 
 def status_tag(status: str) -> str:
-    """遷移図のノードに添える短い状態（例: 案 #114・116、未確定）。"""
+    """遷移図のノードに添える短い状態（例: 確定 #116、案、未確定）。"""
     kind = status_kind(status)
     prs = re.findall(r"#\d+", status)
     # 幅に収めるため、2 つ目からは # を省く（例: 案 #114・116）
-    return f'{kind} #{"・".join(p.lstrip("#") for p in prs)}' if kind == "案" and prs else (kind or status)
+    return f'{kind} #{"・".join(p.lstrip("#") for p in prs)}' if kind and prs else (kind or status)
 
 
 DISCUSSION_SECTIONS = ["課題", "改善案", "決定"]
@@ -319,10 +320,10 @@ def flow_svg(screens: list[dict], app: dict, src: Path) -> str:
                     attrs.append("style=dashed")
                 if how == "戻る":
                     attrs.append('color="#cbd5e1"')
-                # 案・未確定の遷移は、色と線で見分ける。exits の status が無ければ、
-                # どちらかの端が未確定なら未確定、両端が案なら案（実装済みの画面とのあいだの遷移は今のまま）
+                # 案・未確定の遷移は、色と線で見分ける。exits の status が無ければ、どちらかの端が未確定なら未確定、
+                # 片方の端が案で、もう片方が案か確定なら案（実装済みの画面とのあいだの遷移は今のまま）
                 ends = {status_kind(by_status.get(s["id"], "")), status_kind(by_status.get(to, ""))}
-                est = status_kind(ex["status"]) if ex.get("status") else ("未確定" if "未確定" in ends else "案" if ends == {"案"} else None)
+                est = status_kind(ex["status"]) if ex.get("status") else ("未確定" if "未確定" in ends else "案" if "案" in ends and ends <= {"案", "確定"} else None)
                 if est and STATUS[est]["edge"]:
                     attrs = [STATUS[est]["edge"]]
                 lines.append(f'"{s["id"]}" -> "{to}" [label="{short(ex.get("trigger", ""))}"{", " + ", ".join(attrs) if attrs else ""}];')
@@ -358,6 +359,7 @@ table { border-collapse:collapse; width:100%; font-size:.9rem; } th,td { border-
 th { color:var(--muted); font-weight:600; font-size:.8rem; }
 .badge { display:inline-block; padding:1px 8px; border-radius:999px; font-size:.75rem; font-weight:600; margin-right:4px; white-space:nowrap; }
 .badge.st-done { background:#e0e7ff; color:#3730a3; }
+.badge.st-fixed { background:#f1f5f9; color:#334155; border:1px solid #64748b; }
 .badge.st-pending { background:#fff7ed; color:#c2410c; border:1px dashed #E8771E; }
 .badge.st-open { background:#f9fafb; color:#6b7280; border:1px dotted #9ca3af; }
 .status-note { font-size:.85rem; color:#4b5563; background:#f8fafc; border-left:3px solid #c7d2fe; padding:2px 8px; margin:4px 0; }
@@ -498,8 +500,8 @@ def build(src: Path, out: Path, pdf: bool) -> None:
 
 <h2 id="flow">1. 画面遷移マップ</h2>
 <p class="legend muted"><span>青の太線: 全員の画面が同時に移る</span><span>灰色の破線: 操作なしで自動に進む</span><span>薄い線: 戻る</span><span>点線の大きな枠: 機能のまとまり</span></p>
-<p class="legend muted"><span>画面の枠なし: 実装済み</span><span style="color:#c2410c">オレンジの破線の枠と矢印: 案（実装あり。PR の番号つき）</span><span>灰色の点線の枠と矢印: 未確定（案の画像のみ）</span></p>
-<p class="muted">ノードをクリックすると下の画面カードへ飛ぶ。画像は、実装済みの画面は実際のアプリ（Mock）のスクリーンショット、案の画面はその PR の branch のアプリ（Mock）のスクリーンショット、未確定の画面は Codex の image gen で作った案（実装の見た目ではない）。</p>
+<p class="legend muted"><span>画面の枠なし: 実装済み</span><span style="color:#334155">灰色の枠: 確定（実装は PR にある。PR の番号つき）</span><span style="color:#c2410c">オレンジの破線の枠と矢印: 案（直し待ち）</span><span>灰色の点線の枠と矢印: 未確定（案の画像のみ）</span></p>
+<p class="muted">ノードをクリックすると下の画面カードへ飛ぶ。画像は、実装済み・確定の画面は実際のアプリ（Mock）のスクリーンショット（確定の画面は、その PR の branch のアプリ）。案（直し待ち）の画面は、今の実装のスクリーンショットと、Codex の image gen で作った直す案（*-proposal-v3*。実装の見た目ではない）を並べる。未確定の画面は Codex の案だけ。</p>
 <div class="flow-wrap">{flow_svg(screens, app, src)}</div>
 
 <h2 id="screens">2. 画面カード</h2>
