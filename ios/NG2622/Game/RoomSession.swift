@@ -43,6 +43,15 @@ final class RoomSession {
   /// 記録の保存（テストが終わりを待つ）
   private(set) var recordSaving: Task<Void, Never>?
 
+  enum MoveError: Error, Equatable {
+    /// いまいる部屋のコードを打った
+    case sameRoom
+    /// もう別の部屋に移り始めている
+    case alreadyMoving
+    /// 閉じた（または開き直した）シートからの「移る」。受け付けない
+    case sheetClosed
+  }
+
   private struct RoundRecord {
     let id = PlayRecordStore.newID()
     let info: RoundInfo
@@ -82,6 +91,50 @@ final class RoomSession {
     client.leaveRoom()
   }
 
+  // MARK: - 別の部屋に移る（待合の「他のルーム」）
+
+  /// 自分のほかに、部屋に人がいる（切断中の人も数える）。いれば、移る前に確かめる
+  var hasOthers: Bool {
+    participants.contains { !$0.isSelf }
+  }
+
+  /// 「他のルーム」でコードがそろったときに、次にすること
+  enum MoveStep: Equatable {
+    /// いまいる部屋のコード。通信せずに「いまいる部屋です」と出す
+    case sameRoom
+    /// ほかの人がいるので、「この部屋を抜けて、別のルームに入りますか？」と確かめてから移る
+    case confirm
+    /// 自分しかいないので、確かめずに移る
+    case move
+  }
+
+  /// コードがそろったときに、次にすることを決める（通信しない）
+  func step(for code: String) -> MoveStep {
+    if code == self.code { return .sameRoom }
+    return hasOthers ? .confirm : .move
+  }
+
+  /// 別の部屋に移り始めた（move を呼んだ）。移っている間は、この部屋の場面が変わる知らせを受けない
+  private(set) var isMoving = false
+
+  /// next で code の部屋に入ってから、今の部屋を抜ける。入れなければ next を後始末して投げ、今の部屋のまま
+  /// （もう一度移れる）。入れたあとの抜ける（leave）は、送れなくても進める。新しい部屋には入れているので、
+  /// 今の部屋の側は、つながりが切れた人として扱う（前の部屋の知らせは、抜けたときから受けない）。
+  /// 今いる部屋のコードは通信せずに MoveError.sameRoom、移っている途中の 2 度目は MoveError.alreadyMoving を投げる
+  func move(to code: String, with next: RoomSession) async throws {
+    guard code != self.code else { throw MoveError.sameRoom }
+    guard !isMoving else { throw MoveError.alreadyMoving }
+    isMoving = true
+    do {
+      try await next.join(code: code)
+    } catch {
+      next.leave()
+      isMoving = false
+      throw error
+    }
+    leave()
+  }
+
   /// ホストが難易度だけを選んでラウンドを始める。どの場面かはホストにも前もって伝えず、round で届く
   func start(difficulty: SceneDifficulty) {
     guard isHost, phase == .lobby, !isGenerating else { return }
@@ -114,6 +167,9 @@ final class RoomSession {
 
   /// できごとを受けて状態を変える（テストからも呼ぶ）
   func handle(_ event: GameEvent) {
+    // 別の部屋に入っている途中は、この部屋の場面が変わる知らせ（作り始め・開始・結果・待合に戻る）を受けない。
+    // 一瞬 2 つの部屋にいる間に、前の部屋の知らせで画面が替わらないように
+    if isMoving, event.changesPhase { return }
     switch event {
     case .room(let room):
       code = room.code
@@ -190,6 +246,16 @@ final class RoomSession {
   private func updateHost(from members: [Participant]) {
     if let me = members.first(where: \.isSelf) {
       isHost = me.isHost
+    }
+  }
+}
+
+extension GameEvent {
+  /// 部屋の場面（待合・場面を作っている・プレイ・結果）を替える知らせ。参加者やホストの知らせは替えない
+  var changesPhase: Bool {
+    switch self {
+    case .generating, .roundStarted, .results, .returnedToLobby: true
+    case .room, .participantsChanged, .hostChanged: false
     }
   }
 }

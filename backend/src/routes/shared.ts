@@ -14,6 +14,9 @@ export type AppEnv = {
       // POST /scenes/generate のモデルと effort（既定 claude-sonnet-5-5 の low）
       CLAUDE_SCENE_MODEL?: string;
       CLAUDE_SCENE_EFFORT?: string;
+      // POST /weak-points（苦手の分析）のモデルと effort（既定 claude-sonnet-5-5 の low）
+      CLAUDE_ANALYSIS_MODEL?: string;
+      CLAUDE_ANALYSIS_EFFORT?: string;
     };
 };
 

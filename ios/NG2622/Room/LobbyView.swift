@@ -2,15 +2,20 @@ import SwiftUI
 
 /// 待合。部屋のコードと QR、参加者を見せる。ホストだけが難易度を選び、「スタート」を押せる。
 /// 選んだシーンは参加者には見せない（ラウンドが始まると全員の画面に出る）。
-/// スタートのあと部屋が場面を AI で作っている間は、全員の画面で選ぶ所が走る人に替わる。退出はそのまま押せる
+/// スタートのあと部屋が場面を AI で作っている間は、全員の画面で選ぶ所が走る人に替わる。退出はそのまま押せる。
+/// ホストは「他のルーム」から、ほかの人の部屋に移れる（参加者には出さない。× で出てから入り直す）
 struct LobbyView: View {
   let session: RoomSession
   let onLeave: () -> Void
+  /// code の部屋に移る（入れてから今の部屋を抜ける）。入れたら新しい部屋の待合に替わる。入れないと投げる（今の部屋のまま）
+  var onMove: (String) async throws -> Void = { _ in }
   /// 難易度ごとの例の場面（出題はしない）。Mock も Live も同梱の作り置きの一覧から出す（バックエンドは呼ばない）
   var example: (SceneDifficulty) -> String? = { ScenePool.bundled.example(of: $0) }
 
   /// ホストが選んだ難易度
   @State private var difficulty = SceneDifficulty.eiken3
+  /// 「他のルーム」のシートの状態
+  @State private var flow = OtherRoomFlow()
 
   var body: some View {
     VStack(spacing: 0) {
@@ -59,10 +64,68 @@ struct LobbyView: View {
     }
     .frame(width: 346)
     .frame(maxWidth: .infinity)
+    .sheet(isPresented: Binding(get: { flow.sheetOpen }, set: { if !$0 { flow.close() } })) {
+      JoinRoomSheet(
+        ticket: flow.ticket,
+        step: { session.step(for: $0) },
+        move: { code, ticket in
+          // いま開いているシートからだけ移る（閉じたシートの古い操作では移らない）。
+          // 受け付けないときは投げ、シートが失敗として扱ってコードを消す（打ち直せるように）
+          guard flow.accepts(ticket) else { throw RoomSession.MoveError.sheetClosed }
+          try await onMove(code)
+        }
+      )
+      // 開き直したシートは、前のシートの状態（打ちかけのコード・確かめの途中）を持ち越さない
+      .id(flow.ticket)
+      .presentationDetents([.height(640)])
+      .presentationDragIndicator(.visible)
+      .presentationCornerRadius(32)
+      .presentationBackground(Theme.background)
+    }
   }
 
-  /// 部屋のコードと QR
+  /// 部屋のコードと QR。ホストには、その下に「他のルーム」を並べる
   private var ticket: some View {
+    VStack(spacing: 0) {
+      codeAndQR
+      if session.isHost {
+        Rectangle()
+          .fill(Theme.line)
+          .frame(height: 2)
+          .padding(.horizontal, 16)
+        otherRoom
+      }
+    }
+    .background(CardBackground())
+  }
+
+  /// 「他のルーム」。押すと、QR を読むかコードを打つシートを開く。場面を作っている間は押せない
+  private var otherRoom: some View {
+    Button {
+      flow.open()
+    } label: {
+      HStack(spacing: 14) {
+        Image(systemName: "qrcode.viewfinder")
+          .font(.system(size: 26, weight: .bold))
+          .foregroundStyle(session.isGenerating ? Theme.gray : Theme.accent)
+        Text("他のルーム")
+          .font(Theme.font(19, .heavy))
+          .foregroundStyle(session.isGenerating ? Theme.gray : Theme.ink)
+        Spacer(minLength: 8)
+        Image(systemName: "chevron.right")
+          .font(.system(size: 15, weight: .bold))
+          .foregroundStyle(Theme.gray)
+      }
+      .padding(.horizontal, 18)
+      .frame(height: 60)
+      .contentShape(Rectangle())
+    }
+    .buttonStyle(.plain)
+    .disabled(session.isGenerating)
+    .accessibilityLabel("他のルーム")
+  }
+
+  private var codeAndQR: some View {
     let code = session.code ?? "----"
     return HStack(spacing: 0) {
       Text(code)
@@ -81,7 +144,6 @@ struct LobbyView: View {
         .padding(16)
     }
     .fixedSize(horizontal: false, vertical: true)
-    .background(CardBackground())
   }
 
   /// 参加者を席のように 1 列に並べる。空いた席は点線。収まらない分は横にスクロールする

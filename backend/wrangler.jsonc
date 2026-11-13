@@ -13,28 +13,39 @@
   // 部屋が難易度のスタートで作る生成（それ以外は作り置きの場面から選ぶ）の両方のスイッチ。
   // 作り置きは手元の wrangler dev（.dev.vars* で on）で行う。本番は作り置きの場面（級ごとに 9）から選ぶため off（Award Day の当日は部屋での生成を止める。
   // docs/design/scene-protocol.md）。PR のプレビューも費用を抑えるため off
+  // WEAK_POINT_* は苦手の分析（POST /weak-points、docs/design/weak-point-analysis.md）。WEAK_POINT_ANALYSIS は "on" のときだけ Claude を呼ぶ
+  // スイッチ（それ以外は 503。PR のプレビューは off）。IP_PER_HOUR は IP ごとの 1 時間の回数、DAILY_LIMIT は全体の 1 日（日本時間）の回数
+  // （呼び直しも数える。1 回約 0.05 USD）、MAX_BODY_BYTES は本文の大きさ。普段は 10・200・65536（64 KB。記録の組 10 件は 11〜20 KB。大きいほど 1 回の費用が上がる）。
+  // Award Day の当日は 60・500 に書き換えてデプロイし、終わったら戻す（docs/design/cost-safety.md）
   "vars": {
     "SCORING_MODE": "live",
     "SCORE_WEIGHTS": "50,25,25",
     "AZURE_LOCATION": "japaneast",
     "CLAUDE_MODEL": "claude-sonnet-5-5",
     "CLAUDE_EFFORT": "low",
-    "SCENE_GENERATION": "off"
+    "SCENE_GENERATION": "off",
+    "WEAK_POINT_ANALYSIS": "on",
+    "WEAK_POINT_IP_PER_HOUR": "10",
+    "WEAK_POINT_DAILY_LIMIT": "200",
+    "WEAK_POINT_MAX_BODY_BYTES": "65536"
   },
-  // SCENE_REVIEWS はシーンの評価（全シーンで 1 つ）
+  // SCENE_REVIEWS はシーンの評価（全シーンで 1 つ）。USAGE_COUNTER は苦手の分析の回数（全体で 1 つ）
   "durable_objects": {
     "bindings": [
       { "name": "ROOM", "class_name": "Room" },
-      { "name": "SCENE_REVIEWS", "class_name": "SceneReviews" }
+      { "name": "SCENE_REVIEWS", "class_name": "SceneReviews" },
+      { "name": "USAGE_COUNTER", "class_name": "UsageCounter" }
     ]
   },
   // 無料プランは SQLite 版のみ。出した tag は書き換えず、新しい tag で足す
   // v4: 配置から作った採点の基準を場面ごとに覚えるのをやめた（採点基準の段階で付けるため）。中身は 1 日で消える基準だけ
+  // v5: 苦手の分析の回数を数える UsageCounter を足した
   "migrations": [
     { "tag": "v1", "new_sqlite_classes": ["Room"] },
     { "tag": "v2", "new_sqlite_classes": ["SceneReviews"] },
     { "tag": "v3", "new_sqlite_classes": ["SceneRubrics"] },
-    { "tag": "v4", "deleted_classes": ["SceneRubrics"] }
+    { "tag": "v4", "deleted_classes": ["SceneRubrics"] },
+    { "tag": "v5", "new_sqlite_classes": ["UsageCounter"] }
   ],
   // PR ごとのプレビュー（wrangler preview）の設定。vars や DO の binding は上の階層から引き継がれないので、
   // プレビューでも使うものはここにも書く
@@ -42,12 +53,14 @@
     "vars": {
       "SCORING_MODE": "fixed",
       "SCORE_WEIGHTS": "50,25,25",
-      "SCENE_GENERATION": "off"
+      "SCENE_GENERATION": "off",
+      "WEAK_POINT_ANALYSIS": "off"
     },
     "durable_objects": {
       "bindings": [
         { "name": "ROOM", "class_name": "Room" },
-        { "name": "SCENE_REVIEWS", "class_name": "SceneReviews" }
+        { "name": "SCENE_REVIEWS", "class_name": "SceneReviews" },
+        { "name": "USAGE_COUNTER", "class_name": "UsageCounter" }
       ]
     }
   }

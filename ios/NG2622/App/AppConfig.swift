@@ -38,6 +38,9 @@ struct AppConfig {
     if let delay = string("MockHostStartDelay").flatMap(Double.init) {
       mock.hostStartDelay = max(0, delay)
     }
+    if let duration = string("MockGeneratingDuration").flatMap(Double.init) {
+      mock.generatingDuration = max(0, duration)
+    }
     // 値が読めないときは、通信しない Mock にしておく
     let mode = BackendMode(rawValue: raw) ?? .mock
     // 例の記録の数は、起動の引数（-MockSampleRecords 4）でも替えられる（UI テストで、入口が出ない件数を確かめる）

@@ -1,8 +1,10 @@
 import SwiftUI
 
-/// 設定。端末に残した遊んだ記録と録音を、まとめて消せる
+/// 設定。自分の名前と色を、この画面の中で変えられる（戻るときに保存する）。端末に残した遊んだ記録と録音を、まとめて消せる
 struct SettingsView: View {
   let library: RecordLibrary
+  /// 自分の名前と色。変えると、次に入る部屋から使う
+  @Binding var profile: PlayerProfile
   let onBack: () -> Void
 
   @State private var confirming = false
@@ -10,12 +12,27 @@ struct SettingsView: View {
   @State private var deleting = false
   /// 消せなかった
   @State private var failed = false
+  /// 打っている名前と、選んでいる色。戻るときに profile に入れる
+  @State private var name: String
+  @State private var color: UInt32
+  @FocusState private var editing: Bool
+
+  init(library: RecordLibrary, profile: Binding<PlayerProfile>, onBack: @escaping () -> Void) {
+    self.library = library
+    _profile = profile
+    self.onBack = onBack
+    _name = State(initialValue: profile.wrappedValue.name)
+    _color = State(initialValue: profile.wrappedValue.color)
+  }
 
   var body: some View {
     VStack(spacing: 0) {
-      ResultSubHeader(title: "設定", onBack: onBack)
+      ResultSubHeader(title: "設定", onBack: back)
         .resultColumn()
         .padding(.top, 8)
+      profileCard
+        .resultColumn()
+        .padding(.top, 16)
       VStack(alignment: .leading, spacing: 12) {
         Text("きろく")
           .font(Theme.font(14, .heavy))
@@ -62,12 +79,16 @@ struct SettingsView: View {
       .padding(.top, 16)
       Spacer()
     }
+    .contentShape(Rectangle())
+    .onTapGesture { editing = false }
     .overlay {
       if confirming {
-        ConfirmDelete(
-          count: library.count, audioCount: library.audioCount,
+        ConfirmDialog(
+          title: "すべて消しますか？",
+          message: Self.deleteMessage(count: library.count, audioCount: library.audioCount),
+          action: "消す", actionColor: Theme.mismatch,
           onCancel: { confirming = false },
-          onDelete: {
+          onAction: {
             confirming = false
             deleting = true
             Task {
@@ -80,67 +101,36 @@ struct SettingsView: View {
     .animation(.easeOut(duration: 0.15), value: confirming)
     .task { await library.reload() }
   }
-}
 
-/// 「すべて消しますか？」の確かめ。消すほうはオレンジにする
-private struct ConfirmDelete: View {
-  let count: Int
-  /// 録音の本数。0 本なら、録音のことは書かない
-  let audioCount: Int
-  let onCancel: () -> Void
-  let onDelete: () -> Void
+  /// 戻る。打った名前と選んだ色を保存する（名前が空なら前の名前のまま）
+  private func back() {
+    editing = false
+    profile = profile.edited(name: name, color: color)
+    onBack()
+  }
 
-  /// 消えるものに合わせた文
-  private var message: String {
+  /// 「すべて消しますか？」の文。消えるものに合わせ、録音が 0 本なら録音のことは書かない
+  static func deleteMessage(count: Int, audioCount: Int) -> String {
     let what =
       switch (count > 0, audioCount > 0) {
       case (true, true): "きろく \(count) 回と録音 \(audioCount) 本"
       case (true, false): "きろく \(count) 回"
       case (false, _): "読めなかったきろくのファイル"
       }
-    return "\(what)が、この iPhone から消えます。元にもどせません。"
+    // 「ん。」などだけが次の行に落ちないよう、句の切れ目で改行する
+    return "\(what)が、\nこの iPhone から消えます。\n元にもどせません。"
   }
 
-  var body: some View {
-    ZStack {
-      Theme.ink.opacity(0.35)
-        .ignoresSafeArea()
-        .onTapGesture(perform: onCancel)
-      VStack(spacing: 0) {
-        VStack(spacing: 10) {
-          Text("すべて消しますか？")
-            .font(Theme.font(20, .black))
-          Text(message)
-            .font(Theme.font(15, .bold))
-            .foregroundStyle(Theme.muted)
-            .multilineTextAlignment(.center)
-            .fixedSize(horizontal: false, vertical: true)
-        }
-        .padding(.horizontal, 22)
-        .padding(.vertical, 24)
-        Rectangle().fill(Theme.line).frame(height: 1.5)
-        HStack(spacing: 0) {
-          // 文字だけでなく、枠の半分ずつを押せる範囲にする
-          Button(action: onCancel) {
-            Text("やめる")
-              .foregroundStyle(Theme.accent)
-              .frame(maxWidth: .infinity, minHeight: 54)
-              .contentShape(Rectangle())
-          }
-          Rectangle().fill(Theme.line).frame(width: 1.5, height: 54)
-          Button(action: onDelete) {
-            Text("消す")
-              .foregroundStyle(Theme.mismatch)
-              .frame(maxWidth: .infinity, minHeight: 54)
-              .contentShape(Rectangle())
-          }
-        }
-        .font(Theme.font(19, .heavy))
-      }
-      .frame(width: 300)
-      .background(Theme.card, in: RoundedRectangle(cornerRadius: 22))
-      .accessibilityAddTraits(.isModal)
+  /// 「あなた」。名前の欄と 6 色の丸を、この板の中に置く
+  private var profileCard: some View {
+    VStack(alignment: .leading, spacing: 12) {
+      Text("あなた")
+        .font(Theme.font(14, .heavy))
+        .foregroundStyle(Theme.muted)
+      ProfileFields(name: $name, color: $color, editing: $editing)
     }
-    .transition(.opacity)
+    .padding(18)
+    .frame(maxWidth: .infinity, alignment: .leading)
+    .resultCard()
   }
 }
