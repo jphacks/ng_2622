@@ -29,7 +29,8 @@ struct RecordsView: View {
   @State private var player = VoicePlayer()
   /// 3D が上に止まってから縮み切るまでの進み
   @State private var stick = ShelfStick()
-  @State private var position = ScrollPosition(edge: .top)
+  /// 縮み切った所（3D が止まって小さくなり切り、最新の回の頭が名前のすぐ下に来る所）の印
+  private static let settledAnchor = "records-settled"
 
   private var scenes: [RecordScene] { library.scenes }
   private var current: RecordScene? {
@@ -60,46 +61,18 @@ struct RecordsView: View {
   }
 
   private func records(_ current: RecordScene) -> some View {
+    // 位置を測る座標（Shelf.space）は、この VStack（安全な領域の中）に付ける。ScrollView は状態バーの下まで広がるため
     VStack(spacing: 0) {
-      ScrollView {
-        // 横の並びは遅延しない VStack に置く（下にスクロールして戻っても、3D と横の位置がそのまま残る）。
-        // 回の振り返りは数が多いことがあるので、その部分だけ遅延にする
-        VStack(spacing: 0) {
-          // 戻るボタンは上に浮かせて残すので、ここは見出しだけ（スクロールで流れて消える）
-          Text("きろく")
-            .font(Theme.font(20, .black))
-            .frame(height: 52)
-            .frame(maxWidth: .infinity)
-            .padding(.top, 8)
-            .frame(height: Shelf.titleHeight, alignment: .top)
-            .accessibilityAddTraits(.isHeader)
-            .accessibilityIdentifier("records-title")
-          SceneShelf(
-            scenes: scenes, selected: $selected, mode: Self.sceneMode, isCovered: isCovered, stick: stick, onStep: step)
-            // 上に止まった 3D と名前の下を、振り返りが通る
-            .zIndex(1)
-          SceneRounds(scene: current, recordings: library.recordings)
-            .resultColumn()
-            .padding(.top, 10)
-            .padding(.bottom, 56)
-            // 場面を替えたら、棒の伸びる動きなどを初めからにする
-            .id(current.id)
-        }
-      }
-      .scrollPosition($position)
-      // 上端は地の色でふさぐので、システムのぼかし（状態バーの下）は付けない
-      .scrollEdgeEffectHidden(true, for: .top)
-      // 縮んだまま場面を替えたら（読み上げの操作から）、その場面の最新の回から読めるようにする
-      .onChange(of: current.id) {
-        if stick.progress > 0 { position.scrollTo(y: Shelf.settledOffset) }
+      ScrollViewReader { proxy in
+        scroll(current, proxy: proxy)
       }
     }
-    // 上に止まった 3D の上（画面の上端まで）を、地の色でふさぐ（流れていく見出しや中身を見せない）
+    // 上に止まった 3D の上（画面の上端まで）を、地の色でふさぐ。流れていく見出しや中身を見せず、
+    // 押しても、見えていない中身には届かない（戻るボタンは、この上に重ねる）
     .overlay(alignment: .top) {
-      Color.clear
+      Theme.background
         .frame(height: Shelf.stickTop)
         .background(Theme.background.ignoresSafeArea(edges: .top))
-        .allowsHitTesting(false)
     }
     .overlay(alignment: .top) {
       HStack {
@@ -125,6 +98,50 @@ struct RecordsView: View {
       }
     }
     .coordinateSpace(.named(Shelf.space))
+  }
+
+  /// 縦のスクロール（見出し・場面の横の並び・選んだ場面の回）
+  private func scroll(_ current: RecordScene, proxy: ScrollViewProxy) -> some View {
+    ScrollView {
+      // 横の並びは遅延しない VStack に置く（下にスクロールして戻っても、3D と横の位置がそのまま残る）。
+      // 回の振り返りは数が多いことがあるので、その部分だけ遅延にする
+      VStack(spacing: 0) {
+        // 戻るボタンは上に浮かせて残すので、ここは見出しだけ（スクロールで流れて消える）
+        Text("きろく")
+          .font(Theme.font(20, .black))
+          .frame(height: 52)
+          .frame(maxWidth: .infinity)
+          .padding(.top, 8)
+          .frame(height: Shelf.titleHeight, alignment: .top)
+          .accessibilityAddTraits(.isHeader)
+          .accessibilityIdentifier("records-title")
+        SceneShelf(
+          scenes: scenes, selected: $selected, mode: Self.sceneMode, isCovered: isCovered, stick: stick, onStep: step)
+          // 上に止まった 3D と名前の下を、振り返りが通る
+          .zIndex(1)
+        SceneRounds(scene: current, recordings: library.recordings)
+          .resultColumn()
+          .padding(.top, 10)
+          .padding(.bottom, 56)
+          // 場面を替えたら、棒の伸びる動きなどを初めからにする
+          .id(current.id)
+      }
+      // 縮み切った所の印。中身の上端から、縮み切るまでのスクロールの量だけ下に置く
+      .background(alignment: .top) {
+        Color.clear
+          .frame(height: 1)
+          .id(Self.settledAnchor)
+          .padding(.top, Shelf.settledOffset)
+          .accessibilityHidden(true)
+      }
+    }
+    // 上端は地の色でふさぐので、システムのぼかし（状態バーの下）は付けない
+    .scrollEdgeEffectHidden(true, for: .top)
+    // 縮んだまま場面を替えたら（横に送ったか、読み上げの操作から）、その場面の最新の回から読めるようにする。
+    // 印を上（安全な領域の下端）にそろえると、ちょうど縮み切った所に着く
+    .onChange(of: current.id) {
+      if stick.progress > 0 { proxy.scrollTo(Self.settledAnchor, anchor: .top) }
+    }
   }
 
   private var empty: some View {

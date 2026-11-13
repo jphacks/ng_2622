@@ -79,19 +79,42 @@ final class RecordsScreens: XCTestCase {
           withVelocity: 600, thenHoldForDuration: 0.3)
       sleep(1)
     }
-    // 3D が上端に着いて止まり、縮んでいく途中
-    scrollDown(0.13)
+    // 3D が止まって縮み始め、まだ縮み切っていない所まで、少しずつ上下に送る（指の動きの分だけ正確には送れないため、
+    // 3D と名前の高さを見て、行き過ぎたら戻す）
+    func shrinkPartly() {
+      for _ in 0..<30 {
+        let height = scene.frame.height
+        print("FRAME shrinking-step \(height)")
+        if height > restScene.height * 0.88 {
+          scrollDown(0.02)
+        } else if height < restScene.height * 0.7 {
+          scrollDown(-0.02)
+        } else {
+          break
+        }
+      }
+      XCTAssertLessThan(scene.frame.height, restScene.height * 0.88 + 1)
+      XCTAssertGreaterThan(scene.frame.height, restScene.height * 0.7 - 1)
+    }
+    // 3D が上端に着いて止まり、縮んでいく途中（縮み始めるまで少しずつ送る）
+    shrinkPartly()
     shot("4a-records-shrinking")
+    print("FRAME scene-shrinking \(scene.frame)")
     // 縮み切って、小さな 3D と名前だけが上に残り、その下で中身がぼかしに溶ける
     scrollDown(0.15)
     shot("4-records-stuck")
-    print("FRAME scene-stuck \(scene.frame)")
-    XCTAssertLessThan(scene.frame.minY, restScene.minY)
+    let stuckScene = scene.frame
+    print("FRAME scene-stuck \(stuckScene)")
+    XCTAssertLessThan(stuckScene.minY, restScene.minY)
+    XCTAssertLessThan(stuckScene.height, restScene.height * 0.65)
+    // 縮み切っている間も、戻るボタンは押せる（上端をふさぐ地の色より手前）
+    XCTAssert(app.buttons["戻る"].firstMatch.isHittable)
     // さらに下（最新の回の振り返りの続き）
     scrollDown(0.45)
     shot("4b-records-scrolled-more")
     // 前の回との区切り（─── 11/13 3:02 ───）が、画面の中ほどに来るまで送る
-    let second = app.descendants(matching: .any).matching(identifier: "round-divider").element(boundBy: 1)
+    let dividers = app.descendants(matching: .any).matching(identifier: "round-divider")
+    let second = dividers.element(boundBy: 1)
     for _ in 0..<16 where !(second.exists && second.frame.minY < window.frame.height * 0.55) {
       scrollDown(0.3)
     }
@@ -116,6 +139,25 @@ final class RecordsScreens: XCTestCase {
     XCTAssertEqual(scene.frame.minY, restScene.minY, accuracy: 1)
     print("TIMING records-scene-after-scroll-back \(Self.drawnTime(of: scene, since: Date(), timeout: 4))")
     XCTAssertEqual(scene.label, name)
+
+    // 縮んでいく途中で横に送ると、送った場面の最新の回の頭（縮み切った所）に着く
+    shrinkPartly()
+    window.coordinate(withNormalizedOffset: CGVector(dx: 0.75, dy: scene.frame.midY / window.frame.height))
+      .press(
+        forDuration: 0.05,
+        thenDragTo: window.coordinate(withNormalizedOffset: CGVector(dx: 0.2, dy: scene.frame.midY / window.frame.height)))
+    sleep(3)
+    shot("6c-records-switched-while-shrinking")
+    print("FRAME scene-after-switch \(scene.frame)")
+    XCTAssertNotEqual(scene.label, name)
+    XCTAssertEqual(scene.frame.minY, stuckScene.minY, accuracy: 1)
+    XCTAssertEqual(scene.frame.height, stuckScene.height, accuracy: 2)
+    let head = dividers.element(boundBy: 0)
+    XCTAssert(head.exists)
+    print("FRAME first-divider-after-switch \(head.frame)")
+    XCTAssertGreaterThanOrEqual(head.frame.minY, stuckScene.maxY - 1)
+    XCTAssertLessThan(head.frame.minY, stuckScene.maxY + 40)
+    // 縮み切っている間に、戻るボタンで出る
     app.buttons["戻る"].firstMatch.tap()
 
     // 設定 → すべて消す
