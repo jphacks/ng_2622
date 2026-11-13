@@ -10,7 +10,7 @@ image_labels = ["上（次はここ・くり返す癖）", "下へスクロー�
 role = "端末に残した直近 10 回の記録から、くり返す癖と次に試すことを AI が出し、数えた内訳を添える。"
 main_actions = ["「次はここ」を見る（押した先は Award Day の後に決める）", "くり返す癖（最大 3 件）と直し方を読む", "良くなった点を読む", "「くわしく」（点の推移・どれだけ言えたか・間違いの種類）を見る", "戻る（きろくへ）"]
 data_shown = ["次はここ（AI の次の 1 回で試すこと。無ければ数えた結果で最も低い種類）", "くり返す癖（最大 3 件。足りなければ少なく、0 件もある。観点・見出し・自分の文の実例と日付・直し方）", "良くなった点（引用つき。無ければ出さない）", "点の推移（全部の回の合計の線と、内容・表現・話し方の今の点と伸び）", "どれだけ言えたか（項目の種類ごとの言えた割合。中心・理由・つながり・細部）", "間違いの種類の数（場面と食い違う・場面に無い・的外れ）"]
-note = "数え方と AI の呼び方の正本は、分析の設計の文書 `docs/design/weak-point-analysis.md` と ADR `docs/adr/20261113-analyze-weak-points-with-ai-from-on-device-counts.md`（どちらも branch docs/weak-point-analysis。main にはまだ無い）。見せ方はこの文書（v2）が正。"
+note = "数え方と AI の呼び方の正本は、分析の設計の文書 `docs/design/weak-point-analysis.md` と ADR `docs/adr/20261113-analyze-weak-points-with-ai-from-on-device-counts.md`（どちらも feat/eiken-switch（#117 で入った）。main にはまだ無い）。見せ方はこの文書（v2）が正。"
 entry_points = [
   { from = "records", how = "push", trigger = "フッターの苦手をぶっとばせ！（内容の内訳のある記録が 5 件以上のときだけ出る）" },
 ]

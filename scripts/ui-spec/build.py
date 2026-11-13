@@ -36,7 +36,7 @@ GROUP_ORDER = [
     ("result", "結果"),
     ("record", "きろく・設定"),
 ]
-# 画面の状態（frontmatter の status）。頭の語で種類を見分ける（例: 「案（直し待ち）」は「案」）。
+# 画面の状態（frontmatter の status）。頭の語で種類を見分ける（例: 「確定（実装: #116）」は「確定」）。
 # 札の色と、遷移図の枠・矢印の描き方
 STATUS = {
     "実装済み": dict(cls="done", node=None, edge=None),
@@ -60,7 +60,7 @@ def status_tag(status: str) -> str:
 
 
 DISCUSSION_SECTIONS = ["課題", "改善案", "決定"]
-IMAGE_STATE = {"final": "確定", "draft": "下書き", "none": "未作成"}
+IMAGE_STATE = {"final": "あり", "draft": "下書き", "none": "未作成"}
 
 
 # ---------- 入力 ----------
@@ -507,8 +507,8 @@ def build(src: Path, out: Path, pdf: bool) -> None:
 
 <h2 id="flow">1. 画面遷移マップ</h2>
 <p class="legend muted"><span>青の太線: 全員の画面が同時に移る</span><span>灰色の破線: 操作なしで自動に進む</span><span>薄い線: 戻る</span><span>点線の大きな枠: 機能のまとまり</span></p>
-<p class="legend muted"><span>画面の枠なし: 実装済み</span><span style="color:#334155">灰色の枠: 確定（実装は PR にある。PR の番号つき）</span><span style="color:#c2410c">オレンジの破線の枠と矢印: 案（直し待ち）</span><span>灰色の点線の枠と矢印: 未確定（案の画像のみ）</span></p>
-<p class="muted">ノードをクリックすると下の画面カードへ飛ぶ。画像は、実装済み・確定の画面は実際のアプリ（Mock）のスクリーンショット（確定の画面は、その PR の branch のアプリ）。案（直し待ち）の画面は、今の実装のスクリーンショットと、Codex の image gen で作った直す案（*-proposal-v3*。実装の見た目ではない）を並べる。未確定の画面は Codex の案だけ。</p>
+<p class="legend muted"><span>画面の枠なし: 実装済み</span><span style="color:#334155">灰色の枠: 確定（実装は PR にある。PR の番号つき）</span><span style="color:#c2410c">オレンジの破線の枠と矢印: 案</span><span>灰色の点線の枠と矢印: 未確定（案の画像のみ）</span></p>
+<p class="muted">ノードをクリックすると下の画面カードへ飛ぶ。画像は、実装済みの画面は実際のアプリ（Mock）のスクリーンショット。確定の画面は、実装の PR の branch のアプリ（Mock）のスクリーンショット（状態バーは 9:41）。案・未確定の画面は、Codex の image gen で作った案（実装の見た目ではない）を状態の札と一緒に載せる。</p>
 <div class="flow-wrap">{flow_svg(screens, app, src)}</div>
 
 <h2 id="screens">2. 画面カード</h2>
