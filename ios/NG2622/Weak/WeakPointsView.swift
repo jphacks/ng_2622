@@ -272,12 +272,18 @@ private struct TrendChart: View {
   }
 }
 
-/// 3 つの軸の 1 つ。今の点と伸び（+13 など）
+/// 3 つの軸の 1 つ。今の点と伸び（+13・−4 など）。伸びが 0 なら、今の点だけを出す（「±0」は伝わりにくいため）
 private struct AxisNow: View {
   let label: String
   let now: Int
-  /// 伸び。数えられなければ nil（出さない）
+  /// 伸び。数えられないか 0 なら nil（出さない）
   let growth: Int?
+
+  init(label: String, now: Int, growth: Int?) {
+    self.label = label
+    self.now = now
+    self.growth = growth == 0 ? nil : growth
+  }
 
   var body: some View {
     VStack(alignment: .leading, spacing: 2) {
@@ -302,8 +308,9 @@ private struct AxisNow: View {
     .accessibilityLabel(growth.map { "\(label) \(now) 点、伸び \(Self.signed($0))" } ?? "\(label) \(now) 点")
   }
 
+  /// 0 は渡さない（出さない）
   static func signed(_ value: Int) -> String {
-    value > 0 ? "+\(value)" : value < 0 ? "−\(-value)" : "±0"
+    value > 0 ? "+\(value)" : "−\(-value)"
   }
 }
 
