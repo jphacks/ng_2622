@@ -70,18 +70,34 @@ final class LiveGameClient: GameClient {
     return room.roomId
   }
 
-  func joinRoom(code: String, as player: PlayerProfile) async throws {
-    // 無い部屋に WebSocket でつなぐと、切り替えに失敗するだけで理由が分からないので、先に確かめる。
-    // 満員と始まっているかは、join の返事（error）で分かる
-    switch try await api.getRoom(path: .init(roomId: code)) {
-    case .ok:
-      break
+  /// join の前に、部屋があるか・満員でないか・待合かを確かめる（GET /rooms/:id）。join の一部で、画面からは呼ばない
+  private func checkRoom(code: String) async throws {
+    let room: Components.Schemas.RoomSummary
+    let response: Operations.GetRoom.Output
+    do {
+      response = try await api.getRoom(path: .init(roomId: code))
+    } catch {
+      // つながらない・返事が読めない（オフラインなど）。部屋が無いのとは分ける
+      liveLog.error("GET /rooms/\(code, privacy: .public) に失敗しました: \(error, privacy: .public)")
+      throw GameError.connectionFailed
+    }
+    switch response {
+    case .ok(let ok):
+      room = try ok.body.json
     case .notFound, .badRequest:
       throw GameError.roomNotFound
     case .undocumented(let status, _):
       liveLog.error("GET /rooms/\(code, privacy: .public) が \(status) を返しました")
       throw GameError.connectionFailed
     }
+    if room.phase != .lobby { throw GameError.alreadyStarted }
+    if room.playerCount >= room.maxPlayers { throw GameError.roomFull }
+  }
+
+  func joinRoom(code: String, as player: PlayerProfile) async throws {
+    // 無い部屋に WebSocket でつなぐと、切り替えに失敗するだけで理由が分からないので、先に確かめる。
+    // 確かめたあとで満員になった・始まったときは、join の返事（error）で分かる
+    try await checkRoom(code: code)
     try await enter(roomID: code, as: player)
   }
 

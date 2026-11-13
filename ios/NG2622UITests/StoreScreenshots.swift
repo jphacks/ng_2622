@@ -21,7 +21,7 @@ final class StoreScreenshots: XCTestCase {
     app.launchArguments += ["-player.name", "Mika", "-player.color", "0"]
     app.launch()
 
-    let create = app.buttons["部屋を作る"]
+    let create = app.buttons["あそぶ"]
     XCTAssert(create.waitForExistence(timeout: 20))
     sleep(4)  // 公園のシーンが出るのを待つ
     shot("1-home")
