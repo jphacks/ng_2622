@@ -23,7 +23,7 @@ python3 scripts/ui-spec/build.py --pdf    # 同名の .pdf も（Google Chrome �
 
 画面を作り直したときは、前の画像を消さずに別の名前（例: `3-lobby-v2.png`）で置き、frontmatter の `image` を差し替える。長い画面（振り返り）は、スクロール前とスクロール後の 1 画面ぶんずつの画像にし、`image` に配列で書く（例: `image = ["7-review-v5-top.png", "7-review-v5-bottom.png"]`）。HTML の画面カードでは横に並べ、遷移図のノードには 1 枚目を使う。iPhone の 1 画面ぶんの画像は縮めずに埋める。縦に長い画像は切り抜かずに枠の中で縦にスクロールさせる。
 
-2026-11-13 の画像: 実装済みの画面は、実際のアプリ（Mock）のスクリーンショット（`<番号>-<id>-app.png`）。確定と案（直し待ち）の画面の「今の実装」は、その PR の branch のアプリ（Mock）のスクリーンショットで、1 枚目はその PR と同じ名前と中身（例: `1-home.png`）。案（直し待ち）の画面には、Codex の image gen で作った直す案（`*-proposal-v3*.png`。きろくは 1 案につき スクロールの前 → 3D が止まった後 → さらに下 の 3 枚。`9-records-proposal-v3a-1.png` など）を並べる。未確定の画面は、Codex の案（`*-proposal.png`）だけ。v1 の画像は履歴として残す。
+2026-11-13 の画像: 実装済みの画面は、実際のアプリ（Mock）のスクリーンショット（`<番号>-<id>-app.png`）。確定と案（直し待ち）の画面の「今の実装」は、その PR の branch のアプリ（Mock）のスクリーンショットで、1 枚目はその PR と同じ名前と中身（例: `1-home.png`）。案（直し待ち）の画面には、Codex の image gen で作った直す案（`*-proposal-v3*.png`・`*-proposal-v4*.png`。きろくは 1 案につき スクロールの前 → 3D が止まった後 → さらに下 の 3 枚。`9-records-proposal-v4b-1.png` など。v4 は 2 回目のレビューで直した案）を並べる。未確定の画面は、Codex の案（`*-proposal.png`）だけ。v1 の画像は履歴として残す。
 
 frontmatter の主なキー:
 
