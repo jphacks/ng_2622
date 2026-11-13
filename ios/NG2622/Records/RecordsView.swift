@@ -31,6 +31,8 @@ struct RecordsView: View {
   @State private var stick = ShelfStick()
   /// 縮み切った所（3D が止まって小さくなり切り、最新の回の頭が名前のすぐ下に来る所）の印
   private static let settledAnchor = "records-settled"
+  /// 最下部の、地の色に溶かす帯のうち、下の安全な領域より上の高さ（帯は安全な領域の中を通って画面の下端まで続く）
+  private static let bottomFade: CGFloat = 72
 
   private var scenes: [RecordScene] { library.scenes }
   private var current: RecordScene? {
@@ -87,11 +89,18 @@ struct RecordsView: View {
       .resultColumn()
       .padding(.top, 8)
     }
-    // 最下部は、下に行くほど地の色に溶かして、続きがあることを示す
+    // 最下部は、下に行くほど地の色に溶かして、続きがあることを示す。縦のスクロールの中身は、下の安全な領域（ホームバーの所）
+    // まで流れるので、溶かす帯も画面の下端まで伸ばし、そこで地の色になり切るようにする。
+    // 高さを決めた帯に ignoresSafeArea を付けても、帯は伸びない。iOS 26 では安全な領域の上で止まり、その下を中身が
+    // そのまま流れて、溶けた途中に水平の切れ目ができた（iOS 27 では下端に寄り、安全な領域の上で溶かす所が狭くなった）。
+    // そこで、安全な領域の上の高さだけを枠で決め、帯は高さを決めない背景にして、安全な領域の分だけ下へ伸ばす
     .overlay(alignment: .bottom) {
-      LinearGradient(colors: [Theme.background.opacity(0), Theme.background], startPoint: .top, endPoint: .bottom)
-        .frame(height: 72)
-        .ignoresSafeArea(edges: .bottom)
+      Color.clear
+        .frame(height: Self.bottomFade)
+        .background {
+          LinearGradient(colors: [Theme.background.opacity(0), Theme.background], startPoint: .top, endPoint: .bottom)
+            .ignoresSafeArea(edges: .bottom)
+        }
         .allowsHitTesting(false)
         .accessibilityHidden(true)
     }
@@ -126,9 +135,10 @@ struct RecordsView: View {
         SceneRounds(scene: current, recordings: library.recordings)
           .resultColumn()
           .padding(.top, 10)
-          // 入口のフッターがあるときは、その高さだけ下を空ける（一番下まで送ったとき、最後の中身がフッターに隠れない。
-          // 振り返りが短くて 3D が止まるまで送れず、フッターが隠れないときも）
-          .padding(.bottom, library.canOpenWeakPoints ? WeakPointFooter.height : 56)
+          // 一番下まで送ったとき、最後の中身が、下の溶かす帯（安全な領域の上の分）に掛からないだけ下を空ける。
+          // 入口のフッターがあるときは、フッターの高さも空ける（振り返りが短くて 3D が止まるまで送れず、フッターが隠れないときも、
+          // 最後の中身がフッターに隠れない）
+          .padding(.bottom, max(Self.bottomFade, library.canOpenWeakPoints ? WeakPointFooter.height : 0))
           // 場面を替えたら、棒の伸びる動きなどを初めからにする
           .id(current.id)
       }
