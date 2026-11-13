@@ -91,6 +91,8 @@ struct SettingsView: View {
           onAction: {
             confirming = false
             deleting = true
+            // 作っている途中の苦手の分析も捨てる（消したあとに応答が返って、消した記録の文を覚え直さないよう）
+            WeakPointAnalyzer.app.forget()
             Task {
               failed = (try? await library.deleteAll()) == nil
               deleting = false

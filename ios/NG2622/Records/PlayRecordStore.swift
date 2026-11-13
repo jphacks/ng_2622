@@ -4,7 +4,8 @@ import os
 nonisolated let recordLog = Logger(subsystem: "jp.jphacks.ng2622", category: "Record")
 
 /// 遊んだ記録を端末の中に置く所。1 ラウンドが <id>.json（PlayRecord）と、同じ id の自分の録音 <id>.wav の 2 つ。
-/// docs/design/play-record.md。サーバーには送らない。
+/// docs/design/play-record.md。記録そのものはサーバーに送らない（苦手の分析を作るときだけ、直近の回の文字を送る。
+/// WeakPointRequestBuilder）。
 ///
 /// 録音は記録と同じ寿命にする。録音だけが残る状態を作らないよう、書くときは json → wav、消すときは wav → json の順にする
 /// （途中で止まっても、残るのは「録音なしの記録」で、記録を消せば録音も消える）
@@ -87,7 +88,8 @@ nonisolated struct PlayRecordStore: Sendable {
 
   // MARK: - 消去
 
-  /// 1 つの記録を、録音ごと消す
+  /// 1 つの記録を、録音ごと消す。覚えている苦手の分析（WeakPointStore）は消さない。分析は元の記録が欠けると出さずに
+  /// 作り直すが、それまでは消した回の文の引用がファイルに残る（docs/design/play-record.md の「消し方」）
   func delete(id: String) throws {
     let files = FileManager.default
     for url in [try audioFileURL(of: id), try jsonURL(of: id)] where files.fileExists(atPath: url.path) {

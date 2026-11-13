@@ -14,6 +14,8 @@ MOCK_HOST_START_DELAY = 6
 MOCK_GENERATING_DURATION = 3
 // きろくの画面に初めから出す例の記録の数（0 で出さない）。端末には書かず、「すべて消す」で一緒に消える（開き直すと戻る）
 MOCK_SAMPLE_RECORDS = 12
+// 苦手の分析（3 秒待ってから返す）。ok: 癖 2 件など / empty: 癖が 0 件 / fail: 作れない / limit: 回数の上限
+MOCK_WEAK_POINTS = ok
 
 // 各自の設定で上書きする（無くてもよい）
 #include? "Local.xcconfig"

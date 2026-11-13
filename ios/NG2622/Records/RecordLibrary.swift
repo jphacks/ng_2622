@@ -86,22 +86,27 @@ final class RecordLibrary {
     store: AppConfig.current.mockIgnoresSavedRecords
       ? PlayRecordStore(directory: URL.temporaryDirectory.appending(path: "records-ignored", directoryHint: .isDirectory))
       : .shared,
+    analysis: .app,
     samples: PlayRecord.samples(count: AppConfig.current.mockSampleRecords))
 
   private let store: PlayRecordStore
+  /// 苦手の分析を覚える所。「すべて消す」で一緒に消す
+  private let analysis: WeakPointStore
   /// 例の記録（Mock で画面を確かめるためのもの。端末には書かない）。「すべて消す」で一緒に出さなくなる
   private var samples: [PlayRecord]
   /// 読み直しの番号。後から始めた読み直しが先に終わったとき、古い結果で上書きしない
   private var generation = 0
 
-  init(store: PlayRecordStore = .shared, samples: [PlayRecord] = []) {
+  init(store: PlayRecordStore = .shared, analysis: WeakPointStore = .shared, samples: [PlayRecord] = []) {
     self.store = store
+    self.analysis = analysis
     self.samples = samples
   }
 
   /// 端末の記録を読み直す。ファイルは main の外で読む（記録が増えても画面を止めない）
   func reload() async {
     let store = store
+    let analysis = analysis
     generation += 1
     let mine = generation
     let (saved, audio, audioFiles, hasFiles) = await Task.detached {
@@ -112,7 +117,7 @@ final class RecordLibrary {
         guard let info = WAVInfo.read(pair.1) else { return }
         found[pair.0] = RecordedAudio(url: pair.1, duration: info.duration)
       }
-      return (saved, audio, urls.count, store.hasFiles())
+      return (saved, audio, urls.count, store.hasFiles() || analysis.exists())
     }.value
     guard mine == generation else { return }
     records = saved + samples
@@ -126,11 +131,16 @@ final class RecordLibrary {
 
 
 
-  /// 記録と録音をすべて消す
+  /// 記録と録音をすべて消す。覚えている苦手の分析も一緒に消す（記録のあとに消す。途中で止まっても、
+  /// 分析の元の記録が無ければ分析は出ない）
   func deleteAll() async throws {
     let store = store
+    let analysis = analysis
     do {
-      try await Task.detached { try store.deleteAll() }.value
+      try await Task.detached {
+        try store.deleteAll()
+        try analysis.delete()
+      }.value
     } catch {
       // 途中まで消えたかもしれないので、消せなくても今の中身に合わせ直す
       await reload()

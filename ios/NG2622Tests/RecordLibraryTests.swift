@@ -6,9 +6,12 @@ import Testing
 /// きろくの画面に出す形（場面ごとのまとめ方・並び順・消した後）
 struct RecordLibraryTests {
   let store = PlayRecordStore.temporary()
+  /// 苦手の分析を覚える所（アプリの本物の置き場所には触れない）
+  let analysis = WeakPointStore.temporary()
 
   func cleanUp() {
     try? FileManager.default.removeItem(at: store.directory)
+    try? analysis.delete()
   }
 
   /// 同梱の作り置きの場面（その級の出題の候補の index 番目）
@@ -82,7 +85,7 @@ struct RecordLibraryTests {
   /// 読み直すと、端末の記録と録音の数に合う
   @Test func reloadCounts() async throws {
     defer { cleanUp() }
-    let library = RecordLibrary(store: store)
+    let library = RecordLibrary(store: store, analysis: analysis)
     await library.reload()
     #expect(library.count == 0)
     #expect(library.scenes.isEmpty)
@@ -126,15 +129,18 @@ struct RecordLibraryTests {
     return data
   }
 
-  /// すべて消すと、端末の記録も例の記録も無くなり、数が 0 になる
+  /// すべて消すと、端末の記録も例の記録も、覚えた苦手の分析も無くなり、数が 0 になる
   @Test func deleteAll() async throws {
     defer { cleanUp() }
     try store.save(try record("a", sceneID: try sceneID(.eiken3), minutesAgo: 0))
-    let library = RecordLibrary(store: store, samples: PlayRecord.samples(count: 4))
+    try analysis.save(
+      WeakPointAnalysis(createdAt: Date(), basedOn: ["a"], result: .init(habits: [], improvement: nil, nextTry: nil)))
+    let library = RecordLibrary(store: store, analysis: analysis, samples: PlayRecord.samples(count: 4))
     await library.reload()
     #expect(library.count == 5)
 
     try await library.deleteAll()
+    #expect(!analysis.exists())
     #expect(library.count == 0)
     #expect(library.audioCount == 0)
     #expect(library.scenes.isEmpty)
@@ -148,7 +154,7 @@ struct RecordLibraryTests {
     defer { cleanUp() }
     try FileManager.default.createDirectory(at: store.directory, withIntermediateDirectories: true)
     try Data("{ こわれた".utf8).write(to: store.directory.appending(path: "broken.json"))
-    let library = RecordLibrary(store: store)
+    let library = RecordLibrary(store: store, analysis: analysis)
     await library.reload()
     #expect(library.count == 0)
     #expect(library.canDelete)
@@ -172,7 +178,7 @@ struct RecordLibraryTests {
       let totals = scene.entries.compactMap { $0.score?.total }
       #expect(totals == totals.sorted(by: >))
     }
-    let library = RecordLibrary(store: store, samples: samples)
+    let library = RecordLibrary(store: store, analysis: analysis, samples: samples)
     await library.reload()
     #expect(library.count == 12)
     #expect(store.all().isEmpty)

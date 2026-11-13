@@ -14,12 +14,13 @@ final class WeakPointsScreens: XCTestCase {
     }
   }
 
-  /// samples: 例の記録の数（nil ならビルドの設定のまま）
+  /// samples: 例の記録の数（nil ならビルドの設定のまま）。extra: ほかに足す起動の引数
   @MainActor
-  private func launch(samples: Int? = nil) -> XCUIApplication {
+  private func launch(samples: Int? = nil, extra: [String] = []) -> XCUIApplication {
     let app = XCUIApplication()
     app.launchArguments += ["-player.name", "Mika", "-player.color", "0", "-MockIgnoresSavedRecords", "YES"]
     if let samples { app.launchArguments += ["-MockSampleRecords", "\(samples)"] }
+    app.launchArguments += extra
     app.launch()
     XCTAssert(app.buttons["部屋を作る"].waitForExistence(timeout: 20))
     return app
@@ -82,6 +83,75 @@ final class WeakPointsScreens: XCTestCase {
     XCTAssertNotNil(drawn, "苦手から戻ったきろくの 3D が描かれていない")
   }
 
+  /// きろくから苦手の画面を開く（覚えた分析を忘れてから始める。behavior は Mock の分析の振る舞い）
+  @MainActor
+  private func openWeakPoints(behavior: String) -> XCUIApplication {
+    let app = launch(extra: ["-MockWeakPoints", behavior, "-MockForgetWeakPoints", "YES"])
+    openRecords(app)
+    let entry = app.buttons["苦手をぶっとばせ！"]
+    XCTAssert(entry.waitForExistence(timeout: 5))
+    entry.tap()
+    XCTAssert(app.staticTexts["weak-title"].waitForExistence(timeout: 10))
+    return app
+  }
+
+  @MainActor
+  private func scrollDown(_ app: XCUIApplication, times: Int) {
+    let window = app.windows.firstMatch
+    for _ in 0..<times {
+      window.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.8))
+        .press(
+          forDuration: 0.05, thenDragTo: window.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.25)),
+          withVelocity: 800, thenHoldForDuration: 0.3)
+    }
+    sleep(1)
+  }
+
+  /// AI の分析: 作っている間（灰色の仮の行と「AI が分析しています…」）→ 癖・良くなった点・次はここ
+  @MainActor
+  func testAnalysis() throws {
+    guard outDir != nil else { throw XCTSkip("RECORDS_SHOT_DIR が無いので撮らない") }
+    let app = openWeakPoints(behavior: "ok")
+    XCTAssert(app.descendants(matching: .any)["weak-analyzing"].waitForExistence(timeout: 2))
+    shot("a1-weak-analyzing")
+    let habit = app.descendants(matching: .any).matching(identifier: "weak-habit").firstMatch
+    XCTAssert(habit.waitForExistence(timeout: 15))
+    XCTAssertFalse(app.descendants(matching: .any)["weak-analyzing"].exists)
+    sleep(1)
+    shot("a2-weak-result-top")
+    scrollDown(app, times: 1)
+    shot("a3-weak-result-middle")
+    XCTAssert(app.descendants(matching: .any)["weak-improvement"].exists)
+    scrollDown(app, times: 3)
+    shot("a4-weak-result-bottom")
+    // 戻るボタンの右は、帯で地の色にふさがれ、流れていく見出し（くわしく など）が透けていない
+    XCTAssertEqual(Self.leaksBesideBackButton(app), 0, "戻るボタンの横に、流れていく中身が透けている")
+  }
+
+  /// AI の分析が作れなかった: 数えた結果の「次はここ」と、短い 1 行
+  @MainActor
+  func testAnalysisFailed() throws {
+    guard outDir != nil else { throw XCTSkip("RECORDS_SHOT_DIR が無いので撮らない") }
+    let app = openWeakPoints(behavior: "fail")
+    let status = app.staticTexts["weak-status"]
+    XCTAssert(status.waitForExistence(timeout: 15))
+    XCTAssert(status.label.hasPrefix("AI の分析を作れませんでした"))
+    XCTAssertFalse(app.descendants(matching: .any)["weak-analyzing"].exists)
+    sleep(1)
+    shot("a5-weak-failed")
+  }
+
+  /// くり返す癖が 0 件: 「くり返す癖は見つかりませんでした」の 1 行。良くなった点と次はここは出す
+  @MainActor
+  func testAnalysisNoHabits() throws {
+    guard outDir != nil else { throw XCTSkip("RECORDS_SHOT_DIR が無いので撮らない") }
+    let app = openWeakPoints(behavior: "empty")
+    XCTAssert(app.descendants(matching: .any)["weak-no-habits"].waitForExistence(timeout: 15))
+    XCTAssert(app.descendants(matching: .any)["weak-improvement"].exists)
+    sleep(1)
+    shot("a6-weak-no-habits")
+  }
+
   /// 記録が 4 件（例の記録だけ。保存済みの記録は読まない）: 入口ごと出ない
   @MainActor
   func testNoEntryWithFourRecords() throws {
@@ -131,6 +201,33 @@ final class WeakPointsScreens: XCTestCase {
       before = after
     } while Date() < limit
     return nil
+  }
+
+  /// 戻るボタンの右（4pt あけ、画面の幅の 7 割まで。ボタンの高さの中ほど）で、帯の地の色（いちばん右の点）より
+  /// 目立って暗い点の数。流れていく中身の文字が透けていれば数が出る。ボタンの影は薄い（地の色との差 16 ほど）ので数えない
+  @MainActor
+  static func leaksBesideBackButton(_ app: XCUIApplication) -> Int {
+    let button = app.buttons["戻る"].firstMatch.frame
+    let width = app.windows.firstMatch.frame.width
+    let image = XCUIScreen.main.screenshot().image
+    guard let cg = image.cgImage else { return -1 }
+    let s = image.scale
+    let rect = CGRect(
+      x: (button.maxX + 4) * s, y: (button.minY + 6) * s, width: (width * 0.7 - button.maxX - 4) * s,
+      height: (button.height - 12) * s
+    ).integral
+    guard let crop = cg.cropping(to: rect) else { return -1 }
+    let (w, h) = (crop.width, crop.height)
+    var raw = [UInt8](repeating: 0, count: w * h * 4)
+    guard
+      let ctx = CGContext(
+        data: &raw, width: w, height: h, bitsPerComponent: 8, bytesPerRow: w * 4,
+        space: CGColorSpaceCreateDeviceRGB(), bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue)
+    else { return -1 }
+    ctx.draw(crop, in: CGRect(x: 0, y: 0, width: w, height: h))
+    func luma(_ i: Int) -> Int { (Int(raw[i]) * 3 + Int(raw[i + 1]) * 6 + Int(raw[i + 2])) / 10 }
+    let ground = luma((w - 1) * 4)
+    return stride(from: 0, to: raw.count, by: 4).filter { ground - luma($0) > 24 }.count
   }
 
   /// 要素の上 8 割（3D の所。下の名前は入れない）を 60 × 40 に縮め、色を各 4 bit にまるめた点の並び
