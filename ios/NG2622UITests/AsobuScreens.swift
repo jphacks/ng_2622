@@ -1,6 +1,6 @@
 import XCTest
 
-/// 最初の画面 → ホーム →「あそぶ」→ 待合 →「他のルーム」→ 別の部屋、を Mock で通しで開き、各画面を PNG に書き出す
+/// 最初の画面 → ホーム →「あそぶ」→ 待合 →「他のルーム」→ 別の部屋（参加者の待合）、を Mock で通しで開き、各画面を PNG に書き出す
 /// （見た目の確かめ用）。続けて撮ったコマで、移った先や作った部屋で始めたラウンドの 3D が回っているかも見る。
 /// 書き出し先は環境変数 ASOBU_SHOT_DIR（xcodebuild には TEST_RUNNER_ASOBU_SHOT_DIR で渡す）。無ければ何もしない
 final class AsobuScreens: XCTestCase {
@@ -163,6 +163,53 @@ final class AsobuScreens: XCTestCase {
     for _ in 0..<70 {
       shot(String(format: "fast-f-%05d", Int(Date().timeIntervalSince(moved) * 1000)))
     }
+    finishRound(app)
+    XCTAssert(play.waitForExistence(timeout: 10))
+  }
+
+  /// ホストの待合と、「他のルーム」で移った先の参加者の待合を撮る。参加者の待合では、走る人の下に
+  /// 「ホストのスタートを待っています」が画面の中に出て、VoiceOver は一言だけを読む（走る人の「読み込み中」は読まない）。
+  /// 場面を作っている間は、真ん中の大きな走る人だけになる（下の走る人は消える）。機種ごとに -destination を替えて動かす。
+  /// 画面設計書の 3-lobby.png と同じ人（Mikako・緑）で撮る。参加者の待合は、ホームインジケータが消えるまで 8 秒待ってから撮るので、
+  /// MOCK_HOST_START_DELAY を 12 以上にしてビルドする（既定の 6 秒では、撮る前に場面を作り始めて止まる）
+  @MainActor
+  func testParticipantLobby() throws {
+    guard outDir != nil else { throw XCTSkip("ASOBU_SHOT_DIR が無いので撮らない") }
+    let app = XCUIApplication()
+    app.launchArguments += ["-player.name", "Mikako", "-player.color", String(0x2FAE9B)]
+    app.launch()
+    let play = app.buttons["あそぶ"]
+    XCTAssert(play.waitForExistence(timeout: 20))
+    sleep(2)
+    play.tap()
+    XCTAssert(app.buttons["スタート"].waitForExistence(timeout: 20))
+    sleep(6)  // 仮の参加者が入ってくるのを待つ
+    shot("lobby-host")
+
+    app.buttons["他のルーム"].tap()
+    XCTAssert(app.staticTexts["他のルームに入る"].waitForExistence(timeout: 5))
+    for key in ["4", "8", "2", "1"] { app.buttons[key].tap() }
+    let enter = app.buttons["入る"]
+    XCTAssert(enter.waitForExistence(timeout: 10))
+    enter.tap()
+
+    let waiting = app.staticTexts["ホストのスタートを待っています"]
+    XCTAssert(waiting.waitForExistence(timeout: 10))
+    XCTAssert(app.staticTexts["他のルームに入る"].waitForNonExistence(timeout: 5))
+    let loading = app.descendants(matching: .any)["読み込み中"]
+    XCTAssertFalse(loading.exists, loading.exists ? loading.debugDescription : "")
+    XCTAssert(app.windows.firstMatch.frame.contains(waiting.frame))
+    // ほかの参加者が入ってきて、ホームインジケータが消えるのを待つ
+    sleep(8)
+    let generating = app.descendants(matching: .any)["AI が場面を生成中…"]
+    XCTAssertFalse(generating.exists, "撮る前に場面を作り始めた。MOCK_HOST_START_DELAY を 12 以上にしてビルドする")
+    shot("lobby-participant")
+
+    XCTAssert(generating.waitForExistence(timeout: 30))
+    XCTAssert(waiting.exists)
+    XCTAssertFalse(loading.exists, loading.exists ? loading.debugDescription : "")
+    sleep(1)
+    shot("lobby-participant-generating")
     finishRound(app)
     XCTAssert(play.waitForExistence(timeout: 10))
   }

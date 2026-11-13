@@ -1,6 +1,7 @@
 import SwiftUI
 
 /// 待合。部屋のコードと QR、参加者を見せる。ホストだけが難易度を選び、「スタート」を押せる。
+/// 参加者には、スタートの所に走る人と「ホストのスタートを待っています」を出す。
 /// 選んだシーンは参加者には見せない（ラウンドが始まると全員の画面に出る）。
 /// スタートのあと部屋が場面を AI で作っている間は、全員の画面で選ぶ所が走る人に替わる。退出はそのまま押せる。
 /// ホストは「他のルーム」から、ほかの人の部屋に移れる（参加者には出さない。× で出てから入り直す）
@@ -57,8 +58,8 @@ struct LobbyView: View {
           .disabled(session.isGenerating)
           .padding(.bottom, 30)
       } else {
-        HostWaiting()
-          .frame(height: 64)
+        // 場面を作っている間は、真ん中に大きな走る人が出るので、下の走る人は消して一言だけにする
+        HostWaiting(showsRunner: !session.isGenerating)
           .padding(.bottom, 30)
       }
     }
@@ -270,8 +271,7 @@ private struct ExampleScene: View {
 private struct SceneGenerating: View {
   var body: some View {
     VStack(spacing: 6) {
-      LoadingRunner(size: 230)
-        .accessibilityHidden(true)
+      LoadingRunner(size: 230, announces: false)
       ShimmerText(text: "AI が場面を生成中…")
     }
     .frame(maxWidth: .infinity)
@@ -348,25 +348,28 @@ private struct EmptySeat: View {
   }
 }
 
-/// 参加者が、ホストのスタートを待つあいだの表示
+/// 参加者が、ホストのスタートを待つあいだの表示。走る人（LoadingRunner）の下に一言を出す。
+/// 一言は、ホストの画面の「スタート」と同じ高さ（64pt）の枠の真ん中に置く。
+/// VoiceOver は一言だけを読む（走る人の「読み込み中」は読ませない。LoadingRunner の announces）
 private struct HostWaiting: View {
-  @State private var phase = false
+  /// 走る人を出すか。場面を作っている間は、真ん中に大きな走る人（SceneGenerating）が出るので出さない
+  let showsRunner: Bool
+
+  /// 走る人の大きさ。いちばん低い iPhone SE（高さ 667pt）の参加者の待合でも、参加者の一覧と重ならず、
+  /// スクロールせずに収まる大きさ。コマの上の 1 割ほどは空いている
+  static let runnerSize: CGFloat = 140
 
   var body: some View {
-    VStack(spacing: 10) {
+    VStack(spacing: 0) {
+      if showsRunner {
+        LoadingRunner(size: Self.runnerSize, announces: false)
+          .transition(.opacity)
+      }
       Text("ホストのスタートを待っています")
         .font(Theme.font(16, .heavy))
         .foregroundStyle(Theme.muted)
-      HStack(spacing: 8) {
-        ForEach(0..<3, id: \.self) { i in
-          Circle()
-            .fill(Theme.accent)
-            .frame(width: 9, height: 9)
-            .opacity(phase ? 1 : 0.25)
-            .animation(.easeInOut(duration: 0.6).repeatForever().delay(Double(i) * 0.2), value: phase)
-        }
-      }
+        .frame(height: 64)
     }
-    .onAppear { phase = true }
+    .animation(.easeInOut(duration: 0.3), value: showsRunner)
   }
 }
