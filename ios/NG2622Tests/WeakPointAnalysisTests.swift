@@ -323,6 +323,54 @@ struct WeakPointAnalysisTests {
     #expect(await client.calls == 0)
   }
 
+  /// 作っている途中に開き直しても、同じ記録なら二重に頼まない
+  @Test func reopeningWhileLoadingDoesNotAskTwice() async throws {
+    let store = WeakPointStore.temporary()
+    defer { try? store.delete() }
+    let client = StubClient()
+    await client.hold()
+    let analyzer = WeakPointAnalyzer(client: client, store: store)
+    let records = Self.records(10)
+    analyzer.open(records: records, existing: { Set(records.map(\.id)) })
+    await client.waitUntilCalled(1)
+    analyzer.open(records: records, existing: { Set(records.map(\.id)) })
+    #expect(analyzer.phase == .loading)
+    await client.release()
+    await analyzer.waitForPending()
+    #expect(analyzer.phase == .ready)
+    #expect(await client.calls == 1)
+  }
+
+  /// すべて消す（forget）: 覚えた分析とメモリの分析を忘れる。作っている途中に忘れたら、あとで応答が返っても覚えず、出さない
+  @Test func forgetDropsStoredAndInFlightAnalysis() async throws {
+    let store = WeakPointStore.temporary()
+    defer { try? store.delete() }
+    let client = StubClient()
+    let analyzer = WeakPointAnalyzer(client: client, store: store)
+    var records = Self.records(10)
+    analyzer.open(records: records, existing: { [records] in Set(records.map(\.id)) })
+    await analyzer.waitForPending()
+    #expect(store.exists())
+
+    // 記録が増えて作り直している途中（前回の分析を出している）に忘れる
+    records.insert(Self.record("new", minutesAgo: -10), at: 0)
+    await client.hold()
+    analyzer.open(records: records, existing: { [records] in Set(records.map(\.id)) })
+    await client.waitUntilCalled(2)
+    #expect(analyzer.isPrevious)
+    analyzer.forget()
+    #expect(!store.exists())
+    #expect(analyzer.analysis == nil)
+    #expect(analyzer.phase == .idle)
+
+    // 応答が返っても、覚えず出さない
+    await client.release()
+    await analyzer.waitForPending()
+    #expect(!store.exists())
+    #expect(analyzer.analysis == nil)
+    #expect(analyzer.phase == .idle)
+  }
+
   /// 自分の文: 別の回の同じ文は 1 行にまとめ、回の数と一番新しい日時を持つ。並びは初めて出た順
   @Test func quoteLinesMergeTheSameSentence() {
     let now = Date(timeIntervalSince1970: 1_800_000_000)
@@ -357,13 +405,30 @@ struct WeakPointAnalysisTests {
   }
 }
 
-/// 呼ばれた回数を数え、決まった分析か失敗を返す
+/// 呼ばれた回数を数え、決まった分析か失敗を返す。hold() から release() までは、返さずに待たせる
 actor StubClient: WeakPointClient {
   private(set) var calls = 0
   private var failure: WeakPointFailure?
+  private var held = false
+  private var waiting: [CheckedContinuation<Void, Never>] = []
 
   func fail(with failure: WeakPointFailure?) {
     self.failure = failure
+  }
+
+  func hold() {
+    held = true
+  }
+
+  func release() {
+    held = false
+    waiting.forEach { $0.resume() }
+    waiting = []
+  }
+
+  /// n 回目に呼ばれるまで待つ
+  func waitUntilCalled(_ n: Int) async {
+    while calls < n { await Task.yield() }
   }
 
   nonisolated func analyze(_ request: Components.Schemas.WeakPointRequest) async throws
@@ -372,8 +437,11 @@ actor StubClient: WeakPointClient {
     try await respond(request)
   }
 
-  private func respond(_ request: Components.Schemas.WeakPointRequest) throws -> Components.Schemas.WeakPointResponse {
+  private func respond(_ request: Components.Schemas.WeakPointRequest) async throws
+    -> Components.Schemas.WeakPointResponse
+  {
     calls += 1
+    if held { await withCheckedContinuation { waiting.append($0) } }
     if let failure { throw failure }
     return MockWeakPointClient.response(for: request, habits: true)
   }

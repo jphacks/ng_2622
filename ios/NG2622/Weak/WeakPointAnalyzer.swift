@@ -29,6 +29,8 @@ final class WeakPointAnalyzer {
   /// 作っている途中の分析と、その元にした記録
   private var task: Task<Void, Never>?
   private var pendingIDs: [String] = []
+  /// 最後に始めた分析（捨てたものも。テストで終わるまで待つため）
+  private var latest: Task<Void, Never>?
 
   static let app: WeakPointAnalyzer = {
     // Mock では、起動の引数（-MockForgetWeakPoints YES）で覚えた分析を忘れてから始められる（UI テストで、作っている間を撮る）
@@ -96,6 +98,7 @@ final class WeakPointAnalyzer {
       guard let self, !Task.isCancelled else { return }
       self.finish(outcome, basedOn: built.recordIDs, existing: existing())
     }
+    latest = task
   }
 
   private func finish(
@@ -124,12 +127,12 @@ final class WeakPointAnalyzer {
     }
   }
 
-  /// 作っている途中の分析が終わるまで待つ（テスト用）
+  /// 最後に始めた分析が終わるまで待つ（テスト用。forget() で捨てたものも待つ）
   func waitForPending() async {
-    await task?.value
+    await latest?.value
   }
 
-  /// 「すべて消す」のあと。覚えている分析を忘れ、作っている途中のものも捨てる
+  /// 「すべて消す」の前（設定の画面）。覚えている分析を忘れ、作っている途中のものも捨てる（あとで応答が返っても覚えない）
   func forget() {
     task?.cancel()
     task = nil
