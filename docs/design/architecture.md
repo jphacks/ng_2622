@@ -13,7 +13,7 @@ flowchart LR
   subgraph CF[Cloudflare]
     W[Worker<br>入口・回数の上限]
     R[Durable Object<br>部屋ごとに 1 つ]
-    G[Durable Object<br>全体の利用量 1 つ<br>UsageCounter]
+    G[Durable Object<br>全体の利用量<br>UsageCounter<br>global・weak-scenes の 2 つ]
     P[Durable Object<br>WeakSceneMaker<br>苦手の場面 1 回ごとに 1 つ]
     B[(R2<br>作った部品・苦手の場面)]
   end
@@ -35,7 +35,7 @@ flowchart LR
 
 - iPhone はキーを持たず、Cloudflare の Worker とだけ話す。採点の外部 API（Azure・Claude）は部屋の Durable Object が呼ぶ。部屋の外の口のうち、苦手の分析の `POST /weak-points` と、手元だけの `POST /score`・`POST /scenes/generate` は、Worker が Claude を直に呼ぶ。苦手の場面の `POST /weak-scenes` は、Worker がスイッチと回数の上限を見たあと、1 回ごとに新しい Durable Object `WeakSceneMaker`（migration v6）に任せる。生成の全部（Claude の呼び出し、足りない部品の組み立て、R2 への書き込み、裏取りと座標の計算）は、その中で動く（2026-11-14。[`part-generation.md`](./part-generation.md)）。部品を作る部分（`backend/src/parts/`）は Durable Object を持たず、呼んだ側（`WeakSceneMaker`）の CPU で組む。
 - 部屋の状態（参加者、進行、点数）は、部屋ごとの Durable Object がメモリと保存領域に持つ。ThatsFight の `server/rooms.ts` の考え方（部屋の ID、端末ごとの合言葉、切断からの復帰）を移植する。
-- 全体の利用量を数える Durable Object `UsageCounter` を 1 つ置く。今は苦手の分析の、IP ごとの 1 時間の回数と全体の 1 日の回数だけを数える（2026-11-13。[`weak-point-analysis.md`](./weak-point-analysis.md) の 8）。苦手の場面も、同じ `UsageCounter` を別のインスタンスで使って数える（2026-11-14）。採点の 1 日の上限は、まだ乗せていない。
+- 全体の利用量を数える Durable Object `UsageCounter` を置く。1 つのクラスを 2 つのインスタンスで使う。`global` は苦手の分析の、`weak-scenes` は苦手の場面の、IP ごとの 1 時間の回数と全体の 1 日の回数を数える（2026-11-13・2026-11-14。[`weak-point-analysis.md`](./weak-point-analysis.md) の 8、[`part-generation.md`](./part-generation.md)）。採点の 1 日の上限は、まだ乗せていない。
 
 ## 1 ラウンドの流れ
 

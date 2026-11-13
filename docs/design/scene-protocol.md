@@ -505,7 +505,7 @@ Claude の API（Messages API）に渡すもの:
 - 苦手の場面は、部屋ではなく `POST /weak-scenes` が作る。生成の全部は、Worker がスイッチと回数の上限を見たあとの、Durable Object `WeakSceneMaker`（migration v6）の中で動く。部屋は作らずに読むだけなので、10 秒の上限と `SCENE_GENERATION` は関係しない。
 - ID は `weak-` ＋ uuid。start の `sceneId` が `weak-` で始まれば、部屋は R2 の `weak-scenes/<sceneId>.json` から配置（と作った部品のメタデータ）を読んで始める。無ければ、今の「知らない場面」のエラーにする。
 - 部屋からアプリへ送る `room`・`round` には欄を足さない（前の版のアプリが `room` ごと読めなくなるため）。ホストの待合に出す場面の名前は、ホストのアプリが `POST /weak-scenes` の返りから覚えておく（[`ui/screens/lobby.md`](./ui/screens/lobby.md)）。
-- 参加者の端末が配置を取る道は、部屋が作った場面と同じ `GET /scenes/{sceneId}/layout?room=<部屋の番号>` にそろえる（実装の PR で確かめる）。作った部品は、配置に `id@版` で書き、`GET /parts/{id}/{version}.usdz` で取る。
+- 参加者の端末は、今の部屋の場面と同じく `GET /scenes/{sceneId}/layout` で配置を取る。`weak-` の ID は、`?room=` が無くても R2 から返す（PR 3 で確かめた）。作った部品は、配置に `id@版` で書き、`GET /parts/{id}/{version}.usdz` で取る。
 - 採点には、配置と一緒に作った部品のメタデータを渡す。今の採点（`backend/src/scoring/layout.ts` の `describeLayoutWithRelations`）は、静的な一覧に無い部品を捨てるため。
 - 作った部品は物だけ（`thing`・`furniture`・`food`・`plant`・`vehicle`）。人（`person`）・動物（`animal`）・地面（`ground`）・建物（`building`。壁・ドア・窓など）は今の部品から選ぶ。部品は ID の規約で書かせ、一覧は渡さない。部品をその場で作るのは苦手の場面のときだけで、部屋のスタートの生成と作り置きの生成では作らない。部屋の生成と作り置きの生成の引き方は、スイッチ `SCENE_PART_LOOKUP` で選ぶ（`convention` なら規約で引く。それ以外は今の一覧を渡す道で、既定）。
 
