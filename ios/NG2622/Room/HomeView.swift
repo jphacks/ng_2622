@@ -79,6 +79,7 @@ struct HomeView: View {
       VStack(spacing: 0) {
         SpinningScene(
           title: title, parkDistance: Self.sceneDistance, advertDistance: Self.advertDistance,
+          ready: Self.isReady(title),
           onFallback: fallBackToPark,
           onSettled: { shown = $0 }
         )
@@ -137,6 +138,14 @@ struct HomeView: View {
     // 読み込みの間に、もっと新しいものに替わっていたら、そちらの入れ替えに任せる
     guard !Task.isCancelled, next == HomeTitle.current() else { return }
     title = next
+  }
+
+  /// その 3D がもう読み込み済みか。読み込み済みなら、ホームに戻ったときに 3D と札をすぐ一緒に出す（SpinningScene）
+  private static func isReady(_ title: HomeTitle) -> Bool {
+    switch title {
+    case .park: true
+    case .advert(let url, _): SceneLibrary.shared.isLoaded(usdzAt: url)
+    }
   }
 
   /// 広告の 3D（url）を読めなかった。今出している 3D のときだけ、公園に戻して字も消し、端末に取っておいたものなら消して
@@ -235,11 +244,6 @@ private struct SpinningScene: View {
   static let sceneID = ScenePool.bundled.example(of: .eiken3) ?? ScenePool.bundled.randomCandidate() ?? ""
   /// 入れ替えのクロスフェードの長さ
   static let fadeDuration = 0.4
-  /// 描かれる前の広告の層の濃さ。シミュレータで、0.001 にした層と、不透明な層の下に隠した層は描かれず、濃くした（見せた）時に
-  /// 描き始めて 3D が 0.2〜0.4 秒空になった。見えるか見えないかの濃さにして、描かせておく（札と同時に出すため）。
-  /// 公園は札が無いので、この濃さにせず、上にすぐ出す（部品を組んだ公園は 0.02 では描かれず、空になったため）。
-  /// 前の 3D と札は、公園が描かれたと見なせてから薄くする
-  static let pendingOpacity = 0.02
 
   let title: HomeTitle
   /// カメラから場面の中心までの距離。小さいほど大きく映る
@@ -247,21 +251,23 @@ private struct SpinningScene: View {
   var advertDistance: Float
   /// 広告の 3D を読めず、公園を出した
   var onFallback: (URL) -> Void = { _ in }
-  /// 見えている 3D が替わった（札を合わせる）。3D の入れ替えと同じアニメーションの中で呼ぶ
-  var onSettled: (HomeTitle) -> Void = { _ in }
+  /// 見えている 3D が替わった（札を合わせる）。3D の入れ替えと同じアニメーションの中で呼ぶ。まだ何も見えていなければ nil
+  var onSettled: (HomeTitle?) -> Void = { _ in }
 
   @State private var layers: TitleLayers
 
+  /// ready は、title の 3D がもう読み込み済みか。読み込み済みなら描かれた状態から始め、3D と札をすぐ一緒に出す
+  /// （きろく・設定を閉じてこの view を出し直したときに、札だけが先に出ないように）
   init(
-    title: HomeTitle, parkDistance: Float, advertDistance: Float, onFallback: @escaping (URL) -> Void = { _ in },
-    onSettled: @escaping (HomeTitle) -> Void = { _ in }
+    title: HomeTitle, parkDistance: Float, advertDistance: Float, ready: Bool = false,
+    onFallback: @escaping (URL) -> Void = { _ in }, onSettled: @escaping (HomeTitle?) -> Void = { _ in }
   ) {
     self.title = title
     self.parkDistance = parkDistance
     self.advertDistance = advertDistance
     self.onFallback = onFallback
     self.onSettled = onSettled
-    _layers = State(initialValue: TitleLayers(title))
+    _layers = State(initialValue: TitleLayers(title, ready: ready))
   }
 
   var body: some View {
@@ -270,11 +276,13 @@ private struct SpinningScene: View {
         // 新しい層ほど上。描かれる前の層は、ほとんど見えない濃さで描かせておく
         ForEach(layers.layers) { layer in
           diorama(layer, yaw: layer.title.spin.yaw(at: context.date.timeIntervalSince(layer.start)))
-            .opacity(layer.settled || layer.title == .park ? 1 : Self.pendingOpacity)
+            .opacity(layers.opacity(of: layer))
             .transition(.opacity)
         }
       }
     }
+    // 出し直したとき（きろく・設定を閉じたとき）は、札を今見えているもの（まだ描かれていなければ無し）に合わせる
+    .onAppear { onSettled(layers.shown) }
     .onChange(of: title) { _, next in
       // 字だけが替わり、その 3D がもう見えているなら、札の字だけを替える
       if layers.show(next) == .retitled, layers.top.settled { onSettled(next) }

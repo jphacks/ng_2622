@@ -95,6 +95,69 @@ struct TitleLayersTests {
     #expect(r16 == .added)
   }
 
+  /// もう読み込み済みの広告（きろく・設定から戻ったとき）は、描かれた状態から始め、3D と札をすぐ一緒に出す
+  @Test func readyAdvertStartsShown() {
+    let layers = TitleLayers(.advert(a, caption: "JPHACKS"), ready: true, now: t0)
+    #expect(layers.top.settled)
+    #expect(layers.shown == .advert(a, caption: "JPHACKS"))
+    #expect(layers.opacity(of: layers.top) == 1)
+    // 読み込み済みでなければ、描かれるまで薄く、札も出さない
+    let cold = TitleLayers(.advert(a, caption: "JPHACKS"), ready: false, now: t0)
+    #expect(cold.opacity(of: cold.top) == TitleLayers.pendingOpacity)
+    #expect(cold.shown == nil)
+  }
+
+  /// 濃さの決まり: 描かれる前の広告は薄く、公園はすぐ濃く出す
+  @Test func opacityRule() {
+    var layers = TitleLayers(.park, now: t0)
+    #expect(layers.opacity(of: layers.top) == 1)
+    _ = layers.show(.advert(a, caption: "JPHACKS"), now: t0 + 1)
+    #expect(layers.opacity(of: layers.top) == TitleLayers.pendingOpacity)
+    let id = layers.top.id
+    _ = layers.settle(id)
+    #expect(layers.opacity(of: layers.top) == 1)
+  }
+
+  /// 広告の 3D は札より先に見えない: A（描かれた広告）→ 公園 → B（広告）で、公園の知らせが B より後に届いても、
+  /// B は描かれるまで薄く、札は A のまま。B が描かれたら B だけが残り、札も B になる
+  @Test func advertNeverVisibleBeforeLabel() {
+    var layers = TitleLayers(.advert(a, caption: "JPHACKS"), ready: true, now: t0)
+    _ = layers.show(.park, now: t0 + 1)
+    let park = layers.top.id
+    _ = layers.show(.advert(b, caption: "ほかの会社"), now: t0 + 2)
+    let advertB = layers.top.id
+    func checkInvariant() {
+      // 濃く見えている広告の層は、どれも描かれている（札がその層の前の札か、その層の札になっている）
+      for layer in layers.layers where layer.title != .park && layers.opacity(of: layer) == 1 {
+        #expect(layer.settled)
+      }
+    }
+    checkInvariant()
+    #expect(layers.opacity(of: layers.top) == TitleLayers.pendingOpacity)
+    #expect(layers.shown == .advert(a, caption: "JPHACKS"))
+    let lateSettle = layers.settle(park)
+    #expect(!lateSettle)
+    checkInvariant()
+    #expect(layers.shown == .advert(a, caption: "JPHACKS"))
+    let settled = layers.settle(advertB)
+    #expect(settled)
+    checkInvariant()
+    #expect(layers.layers.map(\.id) == [advertB])
+    #expect(layers.shown == .advert(b, caption: "ほかの会社"))
+  }
+
+  /// まだ描かれていない層で字だけが替わってから描かれたら、出す字は新しい方
+  @Test func retitleBeforeSettleUsesNewCaption() {
+    var layers = TitleLayers(.park, now: t0)
+    _ = layers.show(.advert(a, caption: "広告の見本：JPHACKS"), now: t0 + 1)
+    let r = layers.show(.advert(a, caption: "JPHACKS"), now: t0 + 2)
+    #expect(r == .retitled)
+    #expect(layers.layers.count == 2)
+    let id = layers.top.id
+    _ = layers.settle(id)
+    #expect(layers.shown == .advert(a, caption: "JPHACKS"))
+  }
+
   /// 同じ 3D かは、URL の書き方の違い（./ など）を問わず、字は見ない
   @Test func sameModelIgnoresCaption() {
     #expect(HomeTitle.park.sameModel(as: .park))

@@ -110,13 +110,17 @@ struct DioramaView: View {
         failed = true
       }
       isShown = true
-      // 置いた 3D が描かれたかは RealityKit から直接は分からないので、時間と場面の更新で見なす（ShownWatch）
-      let watch = shownWatch
-      watch.begin(onShown)
-      watch.subscription = content.subscribe(to: SceneEvents.Update.self) { _ in watch.tick() }
-      Task {
-        try? await Task.sleep(for: ShownWatch.timeout)
-        watch.finish()
+      // 置いた 3D が描かれたかは RealityKit から直接は分からないので、時間と場面の更新で見なす（ShownWatch）。
+      // 知らせる先が無い（ホーム以外の）ときは見ない
+      if let onShown {
+        let watch = shownWatch
+        watch.begin(onShown)
+        watch.subscription = content.subscribe(to: SceneEvents.Update.self) { _ in watch.tick() }
+        watch.timeoutTask = Task {
+          try? await Task.sleep(for: ShownWatch.timeout)
+          guard !Task.isCancelled else { return }
+          watch.finish()
+        }
       }
     } update: { content in
       guard let world = content.entities.first(where: { $0.name == "world" }),
@@ -133,7 +137,11 @@ struct DioramaView: View {
         SceneUnavailable()
       }
     }
-    .onDisappear { motion.stop() }
+    .onDisappear {
+      motion.stop()
+      // 外れた view からは知らせない（購読と上限の待ちを止める）
+      shownWatch.cancel()
+    }
   }
 
   /// 中身を縦の軸まわりに回し、カメラを見下ろす角度の位置に置く
@@ -234,6 +242,7 @@ final class ShownWatch {
   static let timeout: Duration = .milliseconds(1500)
 
   var subscription: EventSubscription?
+  var timeoutTask: Task<Void, Never>?
   private var action: (() -> Void)?
   private var updates = 0
   private var begun = Date()
@@ -253,10 +262,18 @@ final class ShownWatch {
 
   func finish() {
     guard !done else { return }
+    let action = self.action
+    cancel()
+    action?()
+  }
+
+  /// 知らせずに止める
+  func cancel() {
     done = true
     subscription?.cancel()
     subscription = nil
-    action?()
+    timeoutTask?.cancel()
+    timeoutTask = nil
     action = nil
   }
 }

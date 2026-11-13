@@ -23,12 +23,23 @@ struct TitleLayers {
     case added
   }
 
+  /// 描かれる前の広告の層の濃さ。シミュレータで、0.001 にした層と、不透明な層の下に隠した層は描かれず、濃くした（見せた）時に
+  /// 描き始めて 3D が 0.2〜0.4 秒空になった。見えるか見えないかの濃さにして、描かせておく（札と同時に出すため）
+  static let pendingOpacity = 0.02
+
   private(set) var layers: [Layer]
 
   /// 最初の 3D。広告の 3D は、描かれるまで見えていないものとして扱い（薄くしておく）、描かれたら札と一緒に出す。
-  /// 公園は札が無いので、待たずにすぐ出す
-  init(_ title: HomeTitle, now: Date = Date()) {
-    layers = [Layer(id: UUID(), title: title, start: now, settled: title == .park)]
+  /// 公園は札が無いので、待たずにすぐ出す。ready は、その 3D がもう読み込み済みか（きろく・設定から戻ったときなど）。
+  /// 読み込み済みなら、描かれた状態から始め、3D と札をすぐ一緒に出す
+  init(_ title: HomeTitle, ready: Bool = false, now: Date = Date()) {
+    layers = [Layer(id: UUID(), title: title, start: now, settled: title == .park || ready)]
+  }
+
+  /// 層の濃さ。描かれた層と公園は 1、描かれる前の広告は pendingOpacity（札より先に広告の 3D を見せない）。
+  /// 公園は札が無く、部品を組んだ公園は薄くすると描かれなかったので、上にすぐ出す（前の広告と札は、公園が描かれてから薄くする）
+  func opacity(of layer: Layer) -> Double {
+    layer.settled || layer.title == .park ? 1 : Self.pendingOpacity
   }
 
   /// いちばん上（いちばん新しい）の層
