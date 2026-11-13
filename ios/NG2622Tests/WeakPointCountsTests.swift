@@ -143,6 +143,45 @@ struct WeakPointCountsTests {
     #expect(halves.growth(\.content) == 10)
   }
 
+  /// n = 5 なら h = 2 で、古いほうから 2 回と新しいほうから 2 回。3 回目は使わない
+  @Test func halvesOfFive() throws {
+    // 古いほうから 40, 50, 100（使わない）, 70, 80 点
+    let totals = [40, 50, 100, 70, 80]
+    let records = totals.enumerated().map { i, t in
+      record("r\(i)", minutesAgo: Double(5 - i), score: (t, t, t, t))
+    }
+    let halves = try #require(WeakPointCounts(records: records.shuffled()).halves)
+    #expect(halves.front.total == 45)
+    #expect(halves.back.total == 75)
+    #expect(halves.front.content == 45)
+    #expect(halves.back.speech == 75)
+    #expect(halves.growth(\.total) == 30)
+  }
+
+  /// 直近 10 件の外の記録と、内容の内訳の無い記録は、判定の数にも前半と後半にも入らない
+  @Test func verdictsAndHalvesUseOnlyRecent() throws {
+    // 直近 10 件: 古いほうから 5 回は 50 点、新しいほうから 5 回は 70 点。判定は 1 回に食い違い 1 つ
+    var records = (0..<10).map { i in
+      let t = i < 5 ? 70 : 50
+      return record("r\(i)", minutesAgo: Double(i), verdicts: ["contradiction"], score: (t, t, t, t))
+    }
+    // 10 件の外（いちばん古い）: 判定が多く、点も低い
+    records.append(
+      record("old", minutesAgo: 100, verdicts: ["absent", "absent", "offtopic", "contradiction"], score: (0, 0, 0, 0)))
+    // 内容の内訳の無い回（いちばん新しい）: 点が高い
+    records.append(record("no-content", minutesAgo: -1, items: nil, verdicts: ["absent"], score: (100, 100, 100, 100)))
+    let counts = WeakPointCounts(records: records.shuffled())
+    #expect(counts.recent.count == 10)
+    #expect(!counts.recent.contains { $0.id == "old" || $0.id == "no-content" })
+    #expect(counts.verdicts == VerdictCounts(contradiction: 10))
+    let halves = try #require(counts.halves)
+    #expect(halves.front.total == 50)
+    #expect(halves.back.total == 70)
+    #expect(halves.growth(\.content) == 20)
+    // 点の推移には、どちらも入る（全部の記録）
+    #expect(counts.trend.count == 12)
+  }
+
   /// 1 件では前半と後半を作らない
   @Test func noHalvesForOneRecord() {
     #expect(WeakPointCounts(records: [record("r0")]).halves == nil)
