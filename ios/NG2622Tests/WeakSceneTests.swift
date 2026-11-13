@@ -318,6 +318,35 @@ struct WeakSceneTests {
     #expect(await client.calls == 2)
   }
 
+  /// 止めずに区切りだけが替わった（新しい区切りの場面をもう覚えていた）あとで、前の区切りの頼みが返ったら、
+  /// 出さずに片づける。元の区切りに戻ったとき、「作っている」のまま止まらず、頼み直す
+  @Test func finishedRequestOfThePreviousStageIsCleared() async throws {
+    let store = WeakSceneStore(directory: WeakPointStore.temporary().directory)
+    defer { try? FileManager.default.removeItem(at: store.directory) }
+    let three = try Self.scene()
+    try store.save(SavedWeakScene(createdAt: Date(), stage: 3, scene: three))
+    let client = StubSceneClient()
+    await client.hold()
+    let maker = WeakSceneMaker(client: client, store: store)
+    maker.make(analysis: Self.analysis(), recent: Self.recent(), stage: 2)
+    await client.waitUntilCalled(1)
+    // 区切り 3 の場面を覚えているので、区切り 2 の頼みは止めずに区切り 3 の場面を出す
+    maker.waiting(stage: 3)
+    #expect(maker.phase == .ready(three))
+    await client.release()
+    await maker.waitForPending()
+    #expect(maker.phase == .ready(three))
+    #expect(store.load()?.stage == 3)
+
+    // 元の区切りに戻った（記録が消された）: 作っている途中のものは無いので、頼み直してできる
+    maker.make(analysis: Self.analysis(), recent: Self.recent(), stage: 2)
+    #expect(maker.phase == .making)
+    await maker.waitForPending()
+    guard case .ready = maker.phase else { Issue.record("できていない: \(maker.phase)"); return }
+    #expect(await client.calls == 2)
+    #expect(store.load()?.stage == 2)
+  }
+
   /// 作っている途中に開き直しても（同じ区切り）、頼んだものを止めずに待つ（アプリの中で 1 本だけ）
   @Test func reopeningWhileMakingKeepsTheRequest() async throws {
     let client = StubSceneClient()

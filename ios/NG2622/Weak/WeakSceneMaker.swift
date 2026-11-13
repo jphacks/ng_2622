@@ -166,10 +166,13 @@ final class WeakSceneMaker {
   }
 
   private func finish(_ outcome: Result<WeakScene, WeakSceneFailure>, stage: Int) {
-    // 区切りが替わったあとに返った前の区切りの頼みは、覚えず、出さず、失敗でも知らせない
-    guard stage == current, pending == stage else { return }
+    guard pending == stage else { return }
+    // 頼みは終わったので、区切りが替わっていても片づける（残すと、元の区切りに戻ったときに
+    // 「作っている」を出し続け、頼み直さない）
     task = nil
     pending = nil
+    // 区切りが替わったあとに返った前の区切りの頼みは、覚えず、出さず、失敗でも知らせない
+    guard stage == current else { return }
     switch outcome {
     case .success(let scene):
       let made = SavedWeakScene(createdAt: Date(), stage: stage, scene: scene)
