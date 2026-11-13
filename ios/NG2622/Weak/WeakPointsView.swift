@@ -9,8 +9,15 @@ struct WeakPointsView: View {
   let analyzer: WeakPointAnalyzer
   let onBack: () -> Void
 
-  /// 下にスクロールしたか（戻るボタンの後ろの帯を、スクロールしたときだけ出す。一番上では見出しを隠さない）
-  @State private var scrolled = false
+  /// 戻るボタンの後ろの帯の濃さ（0〜1）。一番上では見出しを隠さないよう 0 にし、下にスクロールし始めたら濃くする
+  @State private var cover: CGFloat = 0
+
+  /// 帯で地の色にふさぐ高さ（安全な領域の上端から、戻るボタンの下まで。上の余白 8 ＋ ボタンの段 52）
+  static let coverHeight: CGFloat = 60
+  /// 帯の下の、地の色に溶かす所の高さ（押した点はここでは止めない）
+  static let coverFade: CGFloat = 12
+  /// この長さだけスクロールしたら、帯をふさぎ切る。見出しの次の中身（16pt 下）が帯に入る前にふさぐ
+  static let coverDistance: CGFloat = 16
 
   var body: some View {
     // 数えるのは記録から毎回（覚えない）。数は多くても数百件で、すぐ終わる
@@ -77,29 +84,27 @@ struct WeakPointsView: View {
       // 待たない処理なので、最初の 1 フレームから様子（作っている間・前回の分析）がそろうよう、出る前に呼ぶ
       analyzer.open(records: library.records, existing: { [library] in Set(library.records.map(\.id)) })
     }
-    // 上端は、下の帯で地の色に溶かすので、システムのぼかし（状態バーの下）は付けない
+    // 上端は、下の帯で地の色にふさぐので、システムのぼかし（状態バーの下）は付けない
     .scrollEdgeEffectHidden(true, for: .top)
-    .onScrollGeometryChange(for: Bool.self) { geometry in
-      geometry.contentOffset.y + geometry.contentInsets.top > 8
+    .onScrollGeometryChange(for: CGFloat.self) { geometry in
+      min(1, max(0, (geometry.contentOffset.y + geometry.contentInsets.top) / Self.coverDistance))
     } action: { _, value in
-      scrolled = value
+      cover = value
     }
-    // 下にスクロールしたら、戻るボタンの後ろを、上ほど地の色に溶かす（流れていく中身がボタンと重なって読みにくくならないよう）
+    // 下にスクロールしたら、画面の上端から戻るボタンの下までを地の色でふさぐ（きろくの画面と同じ）。
+    // 流れていく中身が戻るボタンの横に透けず、押しても、見えていない中身には届かない（戻るボタンは、この上に重ねる）
     .overlay(alignment: .top) {
-      // 帯は、上の安全な領域（状態バー）まで広げる
-      Color.clear
-        .frame(height: 76)
-        .background {
-          LinearGradient(
-            stops: [.init(color: Theme.background, location: 0.6), .init(color: Theme.background.opacity(0), location: 1)],
-            startPoint: .top, endPoint: .bottom
-          )
-          .ignoresSafeArea(edges: .top)
-        }
-        .opacity(scrolled ? 1 : 0)
-        .animation(.easeOut(duration: 0.15), value: scrolled)
-        .allowsHitTesting(false)
-        .accessibilityHidden(true)
+      VStack(spacing: 0) {
+        Theme.background
+          .frame(height: Self.coverHeight)
+          .background(Theme.background.ignoresSafeArea(edges: .top))
+        LinearGradient(colors: [Theme.background, Theme.background.opacity(0)], startPoint: .top, endPoint: .bottom)
+          .frame(height: Self.coverFade)
+          .allowsHitTesting(false)
+      }
+      .opacity(cover)
+      .allowsHitTesting(cover > 0)
+      .accessibilityHidden(true)
     }
     .overlay(alignment: .top) {
       HStack {

@@ -124,6 +124,8 @@ final class WeakPointsScreens: XCTestCase {
     XCTAssert(app.descendants(matching: .any)["weak-improvement"].exists)
     scrollDown(app, times: 3)
     shot("a4-weak-result-bottom")
+    // 戻るボタンの右は、帯で地の色にふさがれ、流れていく見出し（くわしく など）が透けていない
+    XCTAssertEqual(Self.leaksBesideBackButton(app), 0, "戻るボタンの横に、流れていく中身が透けている")
   }
 
   /// AI の分析が作れなかった: 数えた結果の「次はここ」と、短い 1 行
@@ -199,6 +201,33 @@ final class WeakPointsScreens: XCTestCase {
       before = after
     } while Date() < limit
     return nil
+  }
+
+  /// 戻るボタンの右（4pt あけ、画面の幅の 7 割まで。ボタンの高さの中ほど）で、帯の地の色（いちばん右の点）より
+  /// 目立って暗い点の数。流れていく中身の文字が透けていれば数が出る。ボタンの影は薄い（地の色との差 16 ほど）ので数えない
+  @MainActor
+  static func leaksBesideBackButton(_ app: XCUIApplication) -> Int {
+    let button = app.buttons["戻る"].firstMatch.frame
+    let width = app.windows.firstMatch.frame.width
+    let image = XCUIScreen.main.screenshot().image
+    guard let cg = image.cgImage else { return -1 }
+    let s = image.scale
+    let rect = CGRect(
+      x: (button.maxX + 4) * s, y: (button.minY + 6) * s, width: (width * 0.7 - button.maxX - 4) * s,
+      height: (button.height - 12) * s
+    ).integral
+    guard let crop = cg.cropping(to: rect) else { return -1 }
+    let (w, h) = (crop.width, crop.height)
+    var raw = [UInt8](repeating: 0, count: w * h * 4)
+    guard
+      let ctx = CGContext(
+        data: &raw, width: w, height: h, bitsPerComponent: 8, bytesPerRow: w * 4,
+        space: CGColorSpaceCreateDeviceRGB(), bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue)
+    else { return -1 }
+    ctx.draw(crop, in: CGRect(x: 0, y: 0, width: w, height: h))
+    func luma(_ i: Int) -> Int { (Int(raw[i]) * 3 + Int(raw[i + 1]) * 6 + Int(raw[i + 2])) / 10 }
+    let ground = luma((w - 1) * 4)
+    return stride(from: 0, to: raw.count, by: 4).filter { ground - luma($0) > 24 }.count
   }
 
   /// 要素の上 8 割（3D の所。下の名前は入れない）を 60 × 40 に縮め、色を各 4 bit にまるめた点の並び
