@@ -29,7 +29,7 @@
 | 8 | みんなの描写 | 全員 | 実装済み | 全員の文字起こしを点数順に並べ、各行に合計の点を添える（2026-11-11 に変更。講評の一言は無くなった） |
 | 9 | きろく | 各自 | 確定（実装あり: #114。直す） | 3D と場面の名前の白いカードの横の並び（隣がのぞく）と、選んだ場面を遊んだ回の振り返り（7 と同じ中身。順位は無い）を新しい順に縦に続ける。下へスクロールすると、小さくした 3D と名前だけが上に止まり、その下で中身がぼかしの壁に溶ける（余白は詰める）。苦手の入口は下に固定したフッター。2026-11-13 に案 B 改に確定（[`ui/screens/records.md`](./ui/screens/records.md)） |
 | 10 | 設定 | 各自 | 確定（実装あり: #114 / #116。名前と色は直す） | 名前と色（2026-11-13 に、重ねる画面をやめて、前のホームの欄をこの画面の中に移すと確定）、きろくと録音をすべて消す（#114。オレンジ、回数つきの確かめ）。今はこの 2 つだけ。プライバシーポリシー・問い合わせの窓口・ライセンスの表示・アプリの版は後で足す（[`ui/screens/settings.md`](./ui/screens/settings.md)） |
-| 11 | 苦手 | 各自 | 未確定（案の画像のみ） | 入口はきろくの「苦手をぶっとばせ！」（確定）。分析は AI が前提で、数える分析と AI の分析の両方を直近 10 件（仮）で行う。AI に送るものは保存しない。「次はここ」を 1 つ大きく出し、下に内訳（点の推移・項目の種類ごとの言えた割合・間違いの種類の数）。何を送るか・画面の形・「次はここ」を押した先は未確定（[`ui/screens/weak.md`](./ui/screens/weak.md)） |
+| 11 | 苦手 | 各自 | 案（画面の形を比べている） | 入口はきろくのフッター「苦手をぶっとばせ！」（記録が 5 件以上のときだけ出る）。直近 10 件から AI が出す「次はここ」（次の 1 回で試すこと）→ くり返す癖 2〜3 件（観点・何が起きているか・自分の文・直し方）→ 良くなった点 → 数字の内訳（点の推移・項目の種類ごとの言えた割合・間違いの種類の数）。AI を作っている間は前回の分析か数えた結果を出す。点の推移の見せ方は 3 案を比べている。数え方と AI の呼び方は `docs/design/weak-point-analysis.md`（branch docs/weak-point-analysis。2026-11-13。[`ui/screens/weak.md`](./ui/screens/weak.md)） |
 
 ## 遷移
 
@@ -56,18 +56,16 @@ flowchart TD
   Records -->|戻る| Home
   Home -->|設定（歯車）| Settings[10 設定]
   Settings -->|戻る| Home
-  Records -.->|フッターの苦手をぶっとばせ！| Weak[11 苦手]
-  Weak -.->|戻る| Records
+  Records -->|フッターの苦手をぶっとばせ！（5 件以上）| Weak[11 苦手]
+  Weak -->|戻る| Records
 
   classDef fixed stroke:#64748b,stroke-width:3px
   classDef proposal stroke:#E8771E,stroke-width:3px,stroke-dasharray:6 4
-  classDef open stroke:#9ca3af,stroke-width:3px,stroke-dasharray:2 3
   class First,Join,Lobby,Records,Settings fixed
-  class Home proposal
-  class Weak open
+  class Home,Weak proposal
 ```
 
-凡例: 灰色の太い枠は確定（実装は #114・#116 の PR にある。他のルームの移り方・きろく・設定の名前と色は直す）、オレンジの破線の枠は案（直し待ち。今の実装は #114・#116 の PR にあり、直す案の画像を並べた）、灰色の点線の枠は未確定（案の画像のみ）、枠の無い画面は実装済み。点線の矢印は、未確定の画面への遷移（苦手の入口は、押した先を作るまで出さない）。画像つきの遷移図は `docs/design/ui/build/ui-spec.html`（`python3 scripts/ui-spec/build.py` で作る。[`ui/README.md`](./ui/README.md)）。
+凡例: 灰色の太い枠は確定（実装は #114・#116 の PR にある。他のルームの移り方・きろく・設定の名前と色は直す）、オレンジの破線の枠は案（直し待ち。今の実装は #114・#116 の PR にあり、直す案の画像を並べた）、枠の無い画面は実装済み（苦手は案で、画面の形を比べている）。画像つきの遷移図は `docs/design/ui/build/ui-spec.html`（`python3 scripts/ui-spec/build.py` で作る。[`ui/README.md`](./ui/README.md)）。
 
 初めて開いたとき（名前を保存していないとき）は、ホームの代わりに最初の画面が出る。名前を決めるとホームになり、2 回目からは出ない。
 

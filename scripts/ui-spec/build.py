@@ -235,10 +235,15 @@ CARD_MAX = 2800
 
 def frame_html(p: Path, alt: str, label: str = "") -> str:
     # 縦に長い画像は切り抜かず、枠の中で縦にスクロールさせる
+    # 横長の画像（図の部分の拡大など）は、iPhone の枠に入れずに 2 列ぶんの幅で出す
     tall = aspect(p) > 19.5 / 9 * 1.05
-    frame = (f'<div class="frame{" tall" if tall else ""}">'
+    wide = aspect(p) < 1
+    cls = " tall" if tall else " wide" if wide else ""
+    frame = (f'<div class="frame{cls}">'
              f'<img src="{data_uri(thumb(p, CARD_MAX, "jpeg"))}" alt="{alt}"></div>')
-    return f'<div class="frame-item">{frame}<div class="frame-label">{html.escape(label)}</div></div>' if label else frame
+    if label:
+        return f'<div class="frame-item{" wide" if wide else ""}">{frame}<div class="frame-label">{html.escape(label)}</div></div>'
+    return frame
 
 
 def image_html(src: Path, s: dict) -> str:
@@ -379,6 +384,8 @@ ul.notes { padding-left:20px; } ul.notes li { margin:2px 0; }
 .shot { margin:0; }
 .shot .frame, .placeholder { width:100%; max-width:220px; aspect-ratio: 9/19.5; border-radius:16px; border:1px solid var(--line); background:#fff; display:block; overflow:hidden; }
 .shot .frame.tall { overflow-y:auto; overscroll-behavior:contain; }
+.shot .frame.wide { aspect-ratio:auto; max-width:none; }
+.shot.multi .frame-item.wide { grid-column: span 2; }
 .shot.multi .frames { display:grid; grid-template-columns:repeat(2, 220px); gap:8px; }
 @media (min-width: 640px) { section.screen.multi { grid-template-columns: 448px minmax(0,1fr); } }
 @media (max-width: 639px) { .shot.multi .frames { grid-template-columns:repeat(2, minmax(0,1fr)); } }
