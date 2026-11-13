@@ -103,7 +103,7 @@ open ios/NG2622.xcodeproj                   # scheme「NG2622 Mock」（仮の�
 # ↑ 初めてビルドすると「Validate plug-in “OpenAPIGenerator”」のエラーが出るので、Issue navigator で Trust & Enable を押す（Mac ごとに一度。generator の版を上げたらもう一度）
 # API の型（import BackendAPI）は backend/openapi.json からビルドのたびに作られ、commit しない。openapi.json が変わればビルドし直すだけでよい
 xcodebuild -project ios/NG2622.xcodeproj -scheme "NG2622 Mock" -destination 'generic/platform=iOS Simulator' -skipPackagePluginValidation build   # コマンドラインでビルドするときは -skipPackagePluginValidation を付ける
-(cd ios/Packages/BackendAPI && swift test)  # WebSocket のメッセージが openapi.json から作った型で読めるか、BearerToken が合言葉を付けるかを確かめる（Mac で動く。シミュレータは要らない）
+(cd ios/Packages/BackendAPI && swift test)  # WebSocket のメッセージと GET /title の応答（日時を含む）が openapi.json から作った型で読めるか、BearerToken が合言葉を付けるかを確かめる（Mac で動く。シミュレータは要らない）
 xcodebuild -project ios/NG2622.xcodeproj -scheme "NG2622 Mock" -destination 'platform=iOS Simulator,name=iPhone 18 Pro' -skipPackagePluginValidation test   # アプリの unit test（ios/NG2622Tests。部屋のメッセージの変換など）
 TEST_RUNNER_RECORDS_SHOT_DIR=<dir> xcodebuild -project ios/NG2622.xcodeproj -scheme "NG2622 Mock" -destination 'platform=iOS Simulator,name=iPhone 18 Pro Max' -skipPackagePluginValidation -only-testing:NG2622UITests/RecordsScreens -only-testing:NG2622UITests/WeakPointsScreens test   # きろく・設定の画面（RecordsScreens）と、きろく → 苦手の画面（WeakPointsScreens。保存済みの記録は読まず、例の記録だけで数える）を Mock で通しで開き、<dir> に PNG を書き出す（例の記録の数は MOCK_SAMPLE_RECORDS）
 TEST_RUNNER_ASOBU_SHOT_DIR=<dir> xcodebuild -project ios/NG2622.xcodeproj -scheme "NG2622 Mock" -destination 'platform=iOS Simulator,name=iPhone 18 Pro Max' -skipPackagePluginValidation -only-testing:NG2622UITests/AsobuScreens test   # 最初の画面 → ホーム →「あそぶ」→ 待合 →「他のルーム」→ 別の部屋を Mock で通しで開き、<dir> に PNG を書き出す（回転中の 3D のコマも撮る）

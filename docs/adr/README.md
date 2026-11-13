@@ -57,3 +57,4 @@
 | 2026-11-12 | [遊んだ記録は端末の中だけに、1 ラウンド 1 ファイルで残す](./20261112-keep-play-records-on-device-one-file-per-round.md) | accepted（苦手の分析を別に保存しない条項のうち、AI の結果の控えのみ 2026-11-13 に部分 supersede） |
 | 2026-11-12 | [merge の前に PR のブランチを最新の main に追従させる](./20261112-require-up-to-date-branch-before-merge.md) | accepted |
 | 2026-11-13 | [苦手の分析は AI で行い、端末で数えた結果を渡し、送るのは文字だけで残さない](./20261113-analyze-weak-points-with-ai-from-on-device-counts.md) | accepted |
+| 2026-11-13 | [タイトル画面の 3D は、サーバーが期間つきで決め、アプリは id で取り直して期限で消す](./20261113-decide-title-diorama-on-server-with-expiry.md) | accepted |

@@ -200,6 +200,49 @@ export const ListPartsResponse = z
   .object({ parts: z.array(PartMeta) })
   .meta({ ref: "ListPartsResponse" });
 
+export const Title = z
+  .object({
+    id: z.string().meta({
+      description:
+        "広告の名前と 3D のファイルの sha256 の先頭 8 文字。アプリは覚えている id と違えば取り直す",
+      example: "jphacks-2026-ecc5df64",
+    }),
+    caption: z.string().meta({
+      description: "タイトルの下に小さく出す字",
+      example: "広告の見本：JPHACKS",
+    }),
+    model: z.string().meta({
+      description:
+        "3D（USDZ）の絶対 URL。Worker の静的アセットとして同じホストで配る",
+      example: "https://example.workers.dev/title/hackathon.usdz?v=ecc5df64",
+    }),
+    sha256: z
+      .string()
+      .regex(/^[0-9a-f]{64}$/)
+      .meta({
+        description:
+          "3D のファイルの中身の sha256（16 進数の小文字）。合わなければアプリは捨てる",
+      }),
+    expiresAt: z.iso.datetime().meta({
+      description:
+        "出す期間の終わり（秒までの UTC）。過ぎたら、サーバーにつながらなくてもアプリは消して既定の場面に戻す",
+      example: "2026-11-15T14:59:59Z",
+    }),
+  })
+  .meta({
+    ref: "Title",
+    description: "タイトル画面（ホーム）に、既定の場面の代わりに出す 3D",
+  });
+
+export const TitleResponse = z
+  .object({
+    title: Title.nullable().meta({
+      description:
+        "今出すタイトル。出すものが無ければ null（アプリは覚えているものを消し、既定の場面を出す）",
+    }),
+  })
+  .meta({ ref: "TitleResponse" });
+
 // 採点の口（POST /score）の入力にも同じ形を使う。ref 付きの型を入力と出力の両方で使うと、
 // OpenAPI で入力用と出力用（…Output）に分かれるので、入力の側は ref の無い形にする
 const checklistItemShape = {

@@ -32,10 +32,16 @@ let package = Package(
         .plugin(name: "OpenAPIGenerator", package: "swift-openapi-generator")
       ]
     ),
-    // WebSocket のメッセージが作った型で読めるか、BearerToken がヘッダーを付けるかの確認。cd ios/Packages/BackendAPI && swift test
+    // WebSocket のメッセージと GET /title の応答が作った型で読めるか、BearerToken がヘッダーを付けるかの確認。
+    // cd ios/Packages/BackendAPI && swift test
     .testTarget(
       name: "BackendAPITests",
-      dependencies: ["BackendAPI", .product(name: "HTTPTypes", package: "swift-http-types")]
+      dependencies: [
+        "BackendAPI",
+        .product(name: "HTTPTypes", package: "swift-http-types"),
+        // GET /title をクライアントで呼ぶテストが、通信（ClientTransport）を差し替えるのに使う
+        .product(name: "OpenAPIRuntime", package: "swift-openapi-runtime"),
+      ]
     ),
   ]
 )
