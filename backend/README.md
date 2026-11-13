@@ -194,8 +194,8 @@ CLAUDE_API_KEY=... pnpm tsx scripts/make-pool-v2.ts ~/pool-v2 --grade eiken-2 --
 | `build.ts` | 部品表 → 形 → USDA → 64 バイト境界の無圧縮 zip（USDZ）。原点は外接箱の底面の中心、Y が上・正面 +Z に直す。`top` の注文には上に置ける面の高さ（`anchors.top`）を付ける |
 | `check.ts` | 形の検査（下の表） |
 | `ids.ts` | 部品の ID の規約（物は `名詞` か `名詞_区別`、人は `person_動作_誰_変種`、動物は `animal_動作_種類_変種`） |
-| `policy.ts` | 作らない物の語（英語と日本語）。注文の ID・words・label・description に含めば、Claude を呼ばずに断る |
-| `store.ts` | R2（binding `BUCKET`）の置き場。`parts/<id>/<v>.usdz`・`parts/<id>/<v>.json`（index.json の 1 件と同じ形）・`recipes/<id>/<v>.json`（部品表と注文・回ごとの時間と費用）。usdz → recipes → json の順に、どれも「無いときだけ置く」（R2 の条件付きの put）。usdz を置けたらその版を取ったことにし、同じ ID を別の Durable Object で同時に作って版が既にあれば、版を上げて置き直す（5 回まで）。json の無い版は無いものとして扱う |
+| `policy.ts` | 作らない物の語（英語と日本語）。注文の ID・words・label・description に含めば、Claude を呼ばずに断る（`refusedTerm`）。普通の物を断らないよう、英語は語ごとに比べて合成語（bullet train・glue gun・root beer・blood orange など）と色の言い方（wine red・champagne gold・nude beige）を除き、日本語は 1 字の語（剣・刀・血・酒・裸）を使わず長い形（日本刀・お酒・日本酒など）にしている |
+| `store.ts` | R2（binding `BUCKET`）の置き場。`parts/<id>/<v>.usdz`・`parts/<id>/<v>.json`（index.json の 1 件と同じ形）・`recipes/<id>/<v>.json`（部品表と注文・回ごとの時間と費用）。usdz → recipes → json の順に、どれも「無いときだけ置く」（R2 の条件付きの put）。試す版は今ある usdz の版の最大＋1（無ければ 1）から。usdz を置けたらその版を取ったことにし、同じ ID を別の Durable Object で同時に作って版が既にあれば、版を上げて置き直す（5 回まで）。recipes を置けなければ json は置かない。json の無い版は無いものとして扱う |
 
 作った部品の USDZ は `GET /parts/{id}/{version}.usdz` で取れる（`cache-control: public, max-age=31536000, immutable`。無い版と、json がまだ無い版は 404）。
 
