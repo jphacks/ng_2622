@@ -1,11 +1,12 @@
 import SwiftUI
 
-/// 苦手。端末に残した記録から数えた結果（WeakPointCounts）を出す。上に「次はここ」を大きく 1 つ、
-/// その下の「くわしく」に、点の推移・どれだけ言えたか・間違いの種類。押す所は無い（「次はここ」も押せない）。
-/// AI の分析（くり返す癖・良くなった点・次の 1 回で試すこと）は後の PR で、「次はここ」と「くわしく」の間に足す
-/// （docs/design/weak-point-analysis.md の 14 章。見せ方は画面設計書 v2 の weak.md）
+/// 苦手。上に「次はここ」を大きく 1 つ、その下に AI の分析（くり返す癖・良くなった点）、
+/// その下の「くわしく」に、端末で数えた点の推移・どれだけ言えたか・間違いの種類。押す所は無い（「次はここ」と実例も押せない）。
+/// 数える分析は記録からすぐ出し、AI の分析は作っている間・失敗したときも画面を止めない
+/// （docs/design/weak-point-analysis.md。見せ方は画面設計書 v2 の weak.md）
 struct WeakPointsView: View {
   let library: RecordLibrary
+  let analyzer: WeakPointAnalyzer
   let onBack: () -> Void
 
   /// 下にスクロールしたか（戻るボタンの後ろの帯を、スクロールしたときだけ出す。一番上では見出しを隠さない）
@@ -14,6 +15,9 @@ struct WeakPointsView: View {
   var body: some View {
     // 数えるのは記録から毎回（覚えない）。数は多くても数百件で、すぐ終わる
     let counts = WeakPointCounts(records: library.records)
+    let analysis = analyzer.analysis
+    // 記録の ID から遊んだ日（実例の日付）
+    let dates = Dictionary(library.records.map { ($0.id, $0.playedAt) }, uniquingKeysWith: { first, _ in first })
     ScrollView {
       VStack(alignment: .leading, spacing: 16) {
         // 戻るボタンは上に浮かせて残すので、ここは見出しだけ（スクロールで流れて消える）
@@ -30,8 +34,36 @@ struct WeakPointsView: View {
         .frame(height: 52)
         .padding(.top, 8)
 
-        if let hint = counts.nextHint {
-          NextHintCard(hint: hint)
+        // 次はここ: AI の次に試すこと。無ければ（作っている間・失敗・確かめで落ちた）数えた結果の代わり
+        if let next = analysis?.result.nextTry {
+          NextCard(title: next.text)
+        } else if let hint = counts.nextHint {
+          NextCard(title: hint.title, detail: hint.detail, note: hint.rate)
+        }
+
+        if counts.recent.count >= WeakPointCounts.minimumRecords {
+          SectionTitle("くり返す癖")
+            .padding(.top, 8)
+          if let note = Self.note(analyzer.phase, previous: analyzer.isPrevious && analysis != nil) {
+            StatusLine(text: note)
+          }
+          if let analysis {
+            if analysis.result.habits.isEmpty {
+              StatusLine(text: "くり返す癖は見つかりませんでした")
+                .accessibilityIdentifier("weak-no-habits")
+            } else {
+              ForEach(Array(analysis.result.habits.enumerated()), id: \.offset) { _, habit in
+                HabitCard(habit: habit, dates: dates)
+              }
+            }
+            if let improvement = analysis.result.improvement {
+              SectionTitle("良くなった点")
+                .padding(.top, 8)
+              ImprovementCard(improvement: improvement, date: dates[improvement.example.record])
+            }
+          } else if analyzer.phase == .loading {
+            AnalyzingCard()
+          }
         }
 
         SectionTitle("くわしく")
@@ -42,6 +74,10 @@ struct WeakPointsView: View {
       }
       .resultColumn()
       .padding(.bottom, 40)
+    }
+    .task {
+      // 開くたびに確かめる（記録が増えた・元の記録が消えたら作り直す。失敗しても、開き直すとまた頼む）
+      analyzer.open(records: library.records, existing: { [library] in Set(library.records.map(\.id)) })
     }
     // 上端は、下の帯で地の色に溶かすので、システムのぼかし（状態バーの下）は付けない
     .scrollEdgeEffectHidden(true, for: .top)
@@ -77,13 +113,46 @@ struct WeakPointsView: View {
       .padding(.top, 8)
     }
   }
+
+  /// 癖の欄の上に出す短い 1 行。前回の分析を出しているときは、そのことも添える
+  static func note(_ phase: WeakPointAnalyzer.Phase, previous: Bool) -> String? {
+    switch phase {
+    case .loading:
+      previous ? "前回の分析です。新しい分析を作っています…" : nil
+    case .failed(let failure):
+      (previous ? "前回の分析です。" : "") + failureText(failure)
+    case .idle, .ready:
+      nil
+    }
+  }
+
+  static func failureText(_ failure: WeakPointFailure) -> String {
+    switch failure {
+    case .rateLimited: "いまは AI の分析の回数の上限です。時間をおいて開いてください。"
+    case .unavailable: "いまは AI の分析をお休みしています。"
+    case .failed: "AI の分析を作れませんでした。開き直すと、もう一度作ります。"
+    }
+  }
+}
+
+/// 遊んだ日（例: 11/12）
+private func dayText(_ date: Date?) -> String? {
+  guard let date else { return nil }
+  let c = Calendar.current.dateComponents([.month, .day], from: date)
+  return "\(c.month ?? 0)/\(c.day ?? 0)"
 }
 
 // MARK: - 次はここ
 
-/// 次はここ。薄い紫の地（振り返りの「次の一つ」と同じ見た目）。右上に、その種類の言えた割合
-private struct NextHintCard: View {
-  let hint: NextHint
+/// 次はここ。薄い紫の地（振り返りの「次の一つ」と同じ見た目）。AI の次に試すこと（文 1 つ）と、
+/// 数えた結果の代わり（大きな一行・下の一言・右上の種類と割合）の両方を出す。押せない
+private struct NextCard: View {
+  /// 大きく出す文
+  let title: String
+  /// 下の一言（無ければ出さない）
+  var detail: String? = nil
+  /// 右上の小さな数（例: 理由 41%。無ければ出さない）
+  var note: String? = nil
 
   var body: some View {
     VStack(alignment: .leading, spacing: 8) {
@@ -92,18 +161,23 @@ private struct NextHintCard: View {
           .font(Theme.font(15, .heavy))
           .foregroundStyle(Theme.muted)
         Spacer()
-        Text(hint.rate)
-          .font(Theme.font(15, .heavy))
-          .foregroundStyle(Theme.muted)
-          .monospacedDigit()
+        if let note {
+          Text(note)
+            .font(Theme.font(15, .heavy))
+            .foregroundStyle(Theme.muted)
+            .monospacedDigit()
+        }
       }
-      Text(hint.title)
-        .font(Theme.font(28, .black))
-        .fixedSize(horizontal: false, vertical: true)
-      Text(hint.detail)
-        .font(Theme.font(18, .heavy))
+      Text(title)
+        .font(Theme.font(26, .black))
         .lineSpacing(3)
         .fixedSize(horizontal: false, vertical: true)
+      if let detail {
+        Text(detail)
+          .font(Theme.font(18, .heavy))
+          .lineSpacing(3)
+          .fixedSize(horizontal: false, vertical: true)
+      }
     }
     .padding(20)
     .frame(maxWidth: .infinity, alignment: .leading)
@@ -114,6 +188,151 @@ private struct NextHintCard: View {
     .shadow(color: Theme.ink.opacity(0.07), radius: 10, y: 6)
     .accessibilityElement(children: .combine)
     .accessibilityIdentifier("weak-next")
+  }
+}
+
+// MARK: - AI の分析
+
+/// 欄の上の短い 1 行（前回の分析・失敗・癖が 0 件）
+private struct StatusLine: View {
+  let text: String
+
+  var body: some View {
+    Text(text)
+      .font(Theme.font(15, .bold))
+      .foregroundStyle(Theme.muted)
+      .fixedSize(horizontal: false, vertical: true)
+      .padding(.horizontal, 4)
+      .accessibilityIdentifier("weak-status")
+  }
+}
+
+/// 観点の札（内容・表現）
+private struct ViewpointChip: View {
+  let viewpoint: String
+
+  var body: some View {
+    Text(viewpoint == "expression" ? "表現" : "内容")
+      .font(Theme.font(14, .heavy))
+      .foregroundStyle(Theme.accent)
+      .padding(.horizontal, 12)
+      .padding(.vertical, 4)
+      .background(Theme.accentSoft, in: Capsule())
+  }
+}
+
+/// カードの中の小さな見出し（自分の文・直し方）
+private struct InnerLabel: View {
+  let text: String
+  init(_ text: String) { self.text = text }
+
+  var body: some View {
+    Text(text)
+      .font(Theme.font(14, .heavy))
+      .foregroundStyle(Theme.muted)
+  }
+}
+
+/// くり返す癖 1 件。観点の札、見出し、自分の文（実例と日付）、直し方
+private struct HabitCard: View {
+  let habit: WeakPointAnalysis.Habit
+  /// 記録の ID から遊んだ日時
+  let dates: [String: Date]
+
+  var body: some View {
+    VStack(alignment: .leading, spacing: 12) {
+      ViewpointChip(viewpoint: habit.viewpoint)
+      Text(habit.title)
+        .font(Theme.font(21, .black))
+        .fixedSize(horizontal: false, vertical: true)
+      Rectangle().fill(Theme.line).frame(height: 1.5)
+      VStack(alignment: .leading, spacing: 8) {
+        InnerLabel("自分の文")
+        ForEach(Array(habit.examples.enumerated()), id: \.offset) { _, example in
+          HStack(alignment: .firstTextBaseline, spacing: 10) {
+            Text(example.quote)
+              .font(Theme.font(17, .heavy))
+              .fixedSize(horizontal: false, vertical: true)
+              .frame(maxWidth: .infinity, alignment: .leading)
+            if let day = dayText(dates[example.record]) {
+              Text(day)
+                .font(Theme.font(14, .heavy))
+                .foregroundStyle(Theme.muted)
+                .monospacedDigit()
+            }
+          }
+        }
+      }
+      Rectangle().fill(Theme.line).frame(height: 1.5)
+      VStack(alignment: .leading, spacing: 6) {
+        InnerLabel("直し方")
+        Text(habit.fix)
+          .font(Theme.font(17, .heavy))
+          .lineSpacing(3)
+          .fixedSize(horizontal: false, vertical: true)
+      }
+    }
+    .padding(20)
+    .frame(maxWidth: .infinity, alignment: .leading)
+    .resultCard()
+    .accessibilityElement(children: .combine)
+    .accessibilityIdentifier("weak-habit")
+  }
+}
+
+/// 良くなった点（1 つ。引用と日付）
+private struct ImprovementCard: View {
+  let improvement: WeakPointAnalysis.Improvement
+  let date: Date?
+
+  var body: some View {
+    VStack(alignment: .leading, spacing: 8) {
+      Text(improvement.text)
+        .font(Theme.font(20, .black))
+        .fixedSize(horizontal: false, vertical: true)
+      HStack(alignment: .firstTextBaseline, spacing: 10) {
+        Text(improvement.example.quote)
+          .font(Theme.font(17, .heavy))
+          .fixedSize(horizontal: false, vertical: true)
+          .frame(maxWidth: .infinity, alignment: .leading)
+        if let day = dayText(date) {
+          Text(day)
+            .font(Theme.font(14, .heavy))
+            .foregroundStyle(Theme.muted)
+            .monospacedDigit()
+        }
+      }
+    }
+    .padding(20)
+    .frame(maxWidth: .infinity, alignment: .leading)
+    .resultCard()
+    .accessibilityElement(children: .combine)
+    .accessibilityIdentifier("weak-improvement")
+  }
+}
+
+/// AI の分析を作っている間（初めて。前回の分析が無い）。灰色の仮の行と「AI が分析しています…」
+private struct AnalyzingCard: View {
+  var body: some View {
+    VStack(alignment: .leading, spacing: 18) {
+      ForEach([1.0, 0.62, 0.78], id: \.self) { width in
+        GeometryReader { geo in
+          Capsule()
+            .fill(Theme.offlineIcon)
+            .frame(width: geo.size.width * width)
+        }
+        .frame(height: 18)
+      }
+      Text("AI が分析しています…")
+        .font(Theme.font(16, .heavy))
+        .foregroundStyle(Theme.muted)
+    }
+    .padding(24)
+    .frame(maxWidth: .infinity, alignment: .leading)
+    .resultCard()
+    .accessibilityElement(children: .ignore)
+    .accessibilityLabel("AI が分析しています")
+    .accessibilityIdentifier("weak-analyzing")
   }
 }
 

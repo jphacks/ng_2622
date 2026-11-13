@@ -73,6 +73,78 @@ final class WeakPointsScreens: XCTestCase {
     shot("w4-records-after-weak")
   }
 
+  /// きろくから苦手の画面を開く（覚えた分析を忘れてから始める。behavior は Mock の分析の振る舞い）
+  @MainActor
+  private func openWeakPoints(behavior: String) -> XCUIApplication {
+    let app = XCUIApplication()
+    app.launchArguments += [
+      "-player.name", "Mika", "-player.color", "0", "-MockWeakPoints", behavior, "-MockForgetWeakPoints", "YES",
+    ]
+    app.launch()
+    XCTAssert(app.buttons["部屋を作る"].waitForExistence(timeout: 20))
+    openRecords(app)
+    let entry = app.buttons["苦手をぶっとばせ！"]
+    XCTAssert(entry.waitForExistence(timeout: 5))
+    entry.tap()
+    XCTAssert(app.staticTexts["weak-title"].waitForExistence(timeout: 10))
+    return app
+  }
+
+  @MainActor
+  private func scrollDown(_ app: XCUIApplication, times: Int) {
+    let window = app.windows.firstMatch
+    for _ in 0..<times {
+      window.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.8))
+        .press(
+          forDuration: 0.05, thenDragTo: window.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.25)),
+          withVelocity: 800, thenHoldForDuration: 0.3)
+    }
+    sleep(1)
+  }
+
+  /// AI の分析: 作っている間（灰色の仮の行と「AI が分析しています…」）→ 癖・良くなった点・次はここ
+  @MainActor
+  func testAnalysis() throws {
+    guard outDir != nil else { throw XCTSkip("RECORDS_SHOT_DIR が無いので撮らない") }
+    let app = openWeakPoints(behavior: "ok")
+    XCTAssert(app.descendants(matching: .any)["weak-analyzing"].waitForExistence(timeout: 2))
+    shot("a1-weak-analyzing")
+    let habit = app.descendants(matching: .any).matching(identifier: "weak-habit").firstMatch
+    XCTAssert(habit.waitForExistence(timeout: 15))
+    XCTAssertFalse(app.descendants(matching: .any)["weak-analyzing"].exists)
+    sleep(1)
+    shot("a2-weak-result-top")
+    scrollDown(app, times: 1)
+    shot("a3-weak-result-middle")
+    XCTAssert(app.descendants(matching: .any)["weak-improvement"].exists)
+    scrollDown(app, times: 3)
+    shot("a4-weak-result-bottom")
+  }
+
+  /// AI の分析が作れなかった: 数えた結果の「次はここ」と、短い 1 行
+  @MainActor
+  func testAnalysisFailed() throws {
+    guard outDir != nil else { throw XCTSkip("RECORDS_SHOT_DIR が無いので撮らない") }
+    let app = openWeakPoints(behavior: "fail")
+    let status = app.staticTexts["weak-status"]
+    XCTAssert(status.waitForExistence(timeout: 15))
+    XCTAssert(status.label.hasPrefix("AI の分析を作れませんでした"))
+    XCTAssertFalse(app.descendants(matching: .any)["weak-analyzing"].exists)
+    sleep(1)
+    shot("a5-weak-failed")
+  }
+
+  /// くり返す癖が 0 件: 「くり返す癖は見つかりませんでした」の 1 行。良くなった点と次はここは出す
+  @MainActor
+  func testAnalysisNoHabits() throws {
+    guard outDir != nil else { throw XCTSkip("RECORDS_SHOT_DIR が無いので撮らない") }
+    let app = openWeakPoints(behavior: "empty")
+    XCTAssert(app.descendants(matching: .any)["weak-no-habits"].waitForExistence(timeout: 15))
+    XCTAssert(app.descendants(matching: .any)["weak-improvement"].exists)
+    sleep(1)
+    shot("a6-weak-no-habits")
+  }
+
   /// 記録が 4 件: 入口ごと出ない
   @MainActor
   func testNoEntryWithFourRecords() throws {

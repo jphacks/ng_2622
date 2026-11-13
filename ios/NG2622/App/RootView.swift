@@ -78,7 +78,7 @@ private struct AppFlow: View {
             .cover()
             .overlay {
               if screen == .weak {
-                WeakPointsView(library: library, onBack: { go(.records) })
+                WeakPointsView(library: library, analyzer: .app, onBack: { go(.records) })
                   .cover()
               }
             }
