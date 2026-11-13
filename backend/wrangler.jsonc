@@ -44,8 +44,8 @@
       { "name": "USAGE_COUNTER", "class_name": "UsageCounter" }
     ]
   },
-  // BUCKET は R2 のバケット ng-2622-bucket（アカウントに作ったもの）。プレビュー（previews）には足していない。
-  // 本番と同じバケットを PR から書き換えないようにするため
+  // BUCKET は R2 のバケット ng-2622-bucket（アカウントに作ったもの）。その場で作った部品（parts/・recipes/）などを置く（src/parts/store.ts）。
+  // プレビュー（previews）は別のバケット ng-2622-bucket-preview に結び付ける。本番と同じバケットを PR から書き換えないようにするため
   "r2_buckets": [{ "binding": "BUCKET", "bucket_name": "ng-2622-bucket" }],
   // 無料プランは SQLite 版のみ。出した tag は書き換えず、新しい tag で足す
   // v4: 配置から作った採点の基準を場面ごとに覚えるのをやめた（採点基準の段階で付けるため）。中身は 1 日で消える基準だけ
@@ -73,6 +73,9 @@
         { "name": "SCENE_REVIEWS", "class_name": "SceneReviews" },
         { "name": "USAGE_COUNTER", "class_name": "UsageCounter" }
       ]
-    }
+    },
+    "r2_buckets": [
+      { "binding": "BUCKET", "bucket_name": "ng-2622-bucket-preview" }
+    ]
   }
 }
