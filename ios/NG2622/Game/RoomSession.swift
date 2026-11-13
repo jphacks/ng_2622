@@ -26,6 +26,9 @@ final class RoomSession {
   private(set) var participants: [Participant] = []
   /// 自分の声の録音。ラウンドが始まると用意し、録音中の画面で録り始める
   let recorder = VoiceRecorder()
+  /// 苦手の場面で練習する部屋（苦手の画面の「この苦手の場面で練習する」で作った）なら、その場面。
+  /// ホストは難易度の代わりにこの場面でスタートする（startPractice）。ホストが替わった先の人は持たない
+  let practice: WeakScene?
 
   var isRoundOver: Bool {
     if case .results = phase { true } else { false }
@@ -58,14 +61,22 @@ final class RoomSession {
     var saved = false
   }
 
+  /// practice は苦手の場面。配置は受け取ってあるので覚えておき、ラウンド・3D・記録で取りに行かない。
+  /// 配置が読めなければ、ふつうの部屋（難易度を選ぶ）にする
   init(
     client: any GameClient, me: PlayerProfile, records: PlayRecordStore = .shared,
-    scenes: SceneLayoutStore = SceneLayouts.store
+    scenes: SceneLayoutStore = SceneLayouts.store, practice: WeakScene? = nil
   ) {
     self.client = client
     self.me = me
     self.records = records
     self.scenes = scenes
+    if let practice, let document = try? practice.document() {
+      scenes.remember(document, for: practice.sceneId)
+      self.practice = practice
+    } else {
+      self.practice = nil
+    }
   }
 
   /// 部屋を作り、ホストとして入る
@@ -139,6 +150,13 @@ final class RoomSession {
   func start(difficulty: SceneDifficulty) {
     guard isHost, phase == .lobby, !isGenerating else { return }
     Task { try? await client.startRound(difficulty: difficulty) }
+  }
+
+  /// ホストが苦手の場面でラウンドを始める（start の sceneId に苦手の場面の ID を入れる）
+  func startPractice() {
+    guard isHost, phase == .lobby, !isGenerating, let practice else { return }
+    let sceneID = practice.sceneId
+    Task { try? await client.startRound(sceneID: sceneID) }
   }
 
   /// 「話し終えた」か、20 秒たった

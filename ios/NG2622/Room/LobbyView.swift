@@ -4,7 +4,8 @@ import SwiftUI
 /// 参加者には、スタートの所に走る人と「ホストのスタートを待っています」を出す。
 /// 選んだシーンは参加者には見せない（ラウンドが始まると全員の画面に出る）。
 /// スタートのあと部屋が場面を AI で作っている間は、全員の画面で選ぶ所が走る人に替わる。退出はそのまま押せる。
-/// ホストは「他のルーム」から、ほかの人の部屋に移れる（参加者には出さない。× で出てから入り直す）
+/// ホストは「他のルーム」から、ほかの人の部屋に移れる（参加者には出さない。× で出てから入り直す）。
+/// 苦手の場面で練習する部屋（session.practice）では、ホストに難易度の代わりに苦手の場面の名前を出し、スタートでその場面を始める
 struct LobbyView: View {
   let session: RoomSession
   let onLeave: () -> Void
@@ -37,6 +38,9 @@ struct LobbyView: View {
             SceneGenerating()
               .padding(.top, 16)
               .transition(.opacity)
+          } else if session.isHost, let practice = session.practice {
+            PracticeScene(scene: practice)
+              .padding(.top, 16)
           } else if session.isHost {
             DifficultyPicker(selected: $difficulty, example: example(difficulty))
               .padding(.top, 16)
@@ -53,10 +57,16 @@ struct LobbyView: View {
 
       if session.isHost {
         // 場面を作っている間は押せない（2 度押さないように）
-        Button("スタート") { session.start(difficulty: difficulty) }
-          .buttonStyle(BigButtonStyle(kind: .primary))
-          .disabled(session.isGenerating)
-          .padding(.bottom, 30)
+        Button("スタート") {
+          if session.practice != nil {
+            session.startPractice()
+          } else {
+            session.start(difficulty: difficulty)
+          }
+        }
+        .buttonStyle(BigButtonStyle(kind: .primary))
+        .disabled(session.isGenerating)
+        .padding(.bottom, 30)
       } else {
         // 場面を作っている間は、真ん中に大きな走る人が出るので、下の走る人は消して一言だけにする
         HostWaiting(showsRunner: !session.isGenerating)
@@ -235,6 +245,43 @@ private struct DifficultyPicker: View {
     .buttonStyle(.plain)
     .accessibilityLabel(difficulty.label)
     .accessibilityAddTraits(on ? .isSelected : [])
+  }
+}
+
+/// 苦手の場面で練習する部屋の、難易度の代わりの表示（ホストだけ）。場面の名前と一言。
+/// 待合では 3D を出さない（ExampleScene と同じ理由）ので、絵は出さない
+private struct PracticeScene: View {
+  let scene: WeakScene
+
+  var body: some View {
+    VStack(alignment: .leading, spacing: 10) {
+      Text("苦手の場面")
+        .font(Theme.font(16, .heavy))
+      HStack(alignment: .center, spacing: 14) {
+        Image(systemName: "scope")
+          .font(.system(size: 26, weight: .bold))
+          .foregroundStyle(Theme.accent)
+          .frame(width: 56, height: 56)
+          .background(Theme.accentSoft, in: Circle())
+        VStack(alignment: .leading, spacing: 4) {
+          Text(scene.name)
+            .font(Theme.font(22, .black))
+            .fixedSize(horizontal: false, vertical: true)
+          Text(scene.pitch)
+            .font(Theme.font(15, .heavy))
+            .foregroundStyle(Theme.muted)
+            .fixedSize(horizontal: false, vertical: true)
+        }
+        Spacer(minLength: 0)
+      }
+      .padding(14)
+      .frame(maxWidth: .infinity, alignment: .leading)
+      .background(Theme.background, in: RoundedRectangle(cornerRadius: 14))
+    }
+    .padding(14)
+    .background(CardBackground())
+    .accessibilityElement(children: .combine)
+    .accessibilityIdentifier("lobby-practice")
   }
 }
 
