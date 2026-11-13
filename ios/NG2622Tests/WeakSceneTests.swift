@@ -289,6 +289,35 @@ struct WeakSceneTests {
     #expect(await client.calls == 1)
   }
 
+  /// 区切りが替わったら、前の区切りの頼みは止め、あとで返っても画面にも weak-scene.json にも出さない
+  /// （できたときも、作れなかったときも。作れなかったときのバナーも出さない）
+  @Test(arguments: [nil, WeakSceneFailure.rateLimited])
+  func dropsResultOfThePreviousStage(failure: WeakSceneFailure?) async throws {
+    let client = StubSceneClient()
+    await client.fail(with: failure)
+    await client.hold()
+    let (maker, store) = maker(client)
+    defer { try? FileManager.default.removeItem(at: store.directory) }
+    maker.make(analysis: Self.analysis(), recent: Self.recent(), stage: 2)
+    await client.waitUntilCalled(1)
+    // 記録が 15 件目になり、分析を作り直している
+    maker.waiting(stage: 3)
+    #expect(maker.phase == .making)
+    await client.release()
+    await maker.waitForPending()
+    #expect(maker.phase == .making)
+    #expect(store.load() == nil)
+    #expect(maker.notices == 0)
+
+    // 新しい区切りの分析が届いたら、その区切りで頼む
+    await client.fail(with: nil)
+    maker.make(analysis: Self.analysis(basedOn: ["new"]), recent: Self.recent(), stage: 3)
+    await maker.waitForPending()
+    guard case .ready = maker.phase else { Issue.record("できていない: \(maker.phase)"); return }
+    #expect(store.load()?.stage == 3)
+    #expect(await client.calls == 2)
+  }
+
   /// 作っている途中に開き直しても（同じ区切り）、頼んだものを止めずに待つ（アプリの中で 1 本だけ）
   @Test func reopeningWhileMakingKeepsTheRequest() async throws {
     let client = StubSceneClient()

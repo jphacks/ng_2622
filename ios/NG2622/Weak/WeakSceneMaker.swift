@@ -47,6 +47,8 @@ final class WeakSceneMaker {
   /// 作っている途中の場面と、その区切り
   private var task: Task<Void, Never>?
   private var pending: Int?
+  /// いまの区切り（最後に waiting・make・makeWithoutAnalysis で渡された区切り）。違う区切りの頼みの結果は捨てる
+  private var current: Int?
   /// 作れなかった区切りと理由。苦手の画面を開き直す（reopen）までは頼み直さない
   private var failure: (stage: Int, reason: WeakSceneFailure)?
   /// 最後に始めた頼み（テストで終わるまで待つため）
@@ -71,6 +73,7 @@ final class WeakSceneMaker {
     cancel()
     forgetSaved()
     failure = nil
+    current = nil
     phase = .idle
   }
 
@@ -82,7 +85,10 @@ final class WeakSceneMaker {
   /// 新しい分析を待っている（初めて・作り直し・失敗の後の頼み直し）。その区切りの場面がもうあればそれを出し、
   /// 無ければ作っている。作っている途中の場面は止めない（1 本だけ）
   func waiting(stage: Int) {
+    current = stage
     if show(stage) { return }
+    // 前の区切りの頼みは止める（その結果は、画面にも weak-scene.json にも出さない）
+    if task != nil, pending != stage { cancel() }
     phase = .making
   }
 
@@ -119,6 +125,7 @@ final class WeakSceneMaker {
   }
 
   private func request(stage: Int, build: () -> Components.Schemas.WeakSceneRequest?) {
+    current = stage
     if show(stage) { return }
     guard let request = build() else {
       // 数えられる種類が無い（頼めない）。出さない
@@ -149,6 +156,8 @@ final class WeakSceneMaker {
   }
 
   private func finish(_ outcome: Result<WeakScene, WeakSceneFailure>, stage: Int) {
+    // 区切りが替わったあとに返った前の区切りの頼みは、覚えず、出さず、失敗でも知らせない
+    guard stage == current, pending == stage else { return }
     task = nil
     pending = nil
     switch outcome {
