@@ -80,16 +80,30 @@ struct WeakPointCountsTests {
     #expect(detail.said == 9)
   }
 
-  /// 項目の数は直近 10 件の中だけで数える。知らない種類と知らない達成は、種類の外・言えないとして扱う
-  @Test func coverageUsesOnlyRecentAndToleratesUnknownValues() throws {
+  /// 項目の数は直近 10 件の中だけで数える。知らない種類と知らない達成の項目は、振り返りの画面と同じく捨てる
+  /// （分母にも入れない）
+  @Test func coverageUsesOnlyRecentAndDropsUnknownValues() throws {
     var records = (0..<10).map { record("r\($0)", minutesAgo: Double($0), items: [("reason", "full")]) }
     records.append(record("old", minutesAgo: 100, items: [("reason", "none"), ("reason", "none")]))
-    records.append(record("odd", minutesAgo: -1, items: [("reason", "great"), ("future-kind", "full")]))
+    records.append(
+      record("odd", minutesAgo: -1, items: [("reason", "great"), ("reason", "none"), ("future-kind", "full")]))
     let counts = WeakPointCounts(records: records)
     let reason = try #require(counts.coverage.first { $0.kind == .reason })
-    // odd（いちばん新しい）と r0〜r8 の 10 件。old は入らない
+    // odd（いちばん新しい）と r0〜r8 の 10 件。old は入らない。odd の great は捨て、none は分母に入る
+    #expect(counts.recent.map(\.id) == ["odd"] + (0..<9).map { "r\($0)" })
     #expect(reason.count == 10)
     #expect(reason.said == 9)
+    #expect(counts.coverage.map(\.count).reduce(0, +) == 10)
+  }
+
+  /// 知らない達成だけの種類は、分母が 0 になり「—」（0% にしない）
+  @Test func unknownLevelsAloneLeaveTheKindUncounted() throws {
+    let records = (0..<5).map { record("r\($0)", minutesAgo: Double($0), items: [("link", "great"), ("center", "full")]) }
+    let counts = WeakPointCounts(records: records)
+    let link = try #require(counts.coverage.first { $0.kind == .link })
+    #expect(link.count == 0)
+    #expect(link.percent == nil)
+    #expect(counts.nextHint?.kind == .center)
   }
 
   /// 判定の種類ごとの数は、直近 10 件の描写をそのまま数える

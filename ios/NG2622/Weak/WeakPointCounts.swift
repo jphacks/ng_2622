@@ -44,21 +44,23 @@ nonisolated struct WeakPointCounts: Equatable, Sendable {
   }
 
   /// 種類ごとに、R の中のその種類の項目の数（分母）と、言えた量（言えた 1・一部 0.5・言えない 0 の和）を数える。
-  /// その他（一覧に無い正しい描写）は数えない。重み（中心 2 など）は掛けない
+  /// その他（一覧に無い正しい描写）は数えない。重み（中心 2 など）は掛けない。
+  /// 知らない種類や知らない達成の項目は、分母にも入れずに捨てる（振り返りの画面が記録を読むときと同じ。ContentBreakdown.init）
   static func coverage(_ recent: [PlayRecord]) -> [KindCoverage] {
     let items = recent.flatMap { $0.result.content?.items ?? [] }
     return KindCoverage.order.map { kind in
-      let mine = items.filter { $0.kind == kind.rawValue }
-      return KindCoverage(kind: kind, said: mine.map { Self.value(of: $0.level) }.reduce(0, +), count: mine.count)
+      let values = items.filter { $0.kind == kind.rawValue }.compactMap { Self.value(of: $0.level) }
+      return KindCoverage(kind: kind, said: values.reduce(0, +), count: values.count)
     }
   }
 
-  /// 項目の達成の重さ（言えた 1・一部 0.5・言えない 0）。知らない値は言えないと同じにする
-  static func value(of level: String) -> Double {
+  /// 項目の達成の重さ（言えた 1・一部 0.5・言えない 0）。知らない値は nil（数えない）
+  static func value(of level: String) -> Double? {
     switch level {
     case "full": 1
     case "partial": 0.5
-    default: 0
+    case "none": 0
+    default: nil
     }
   }
 
