@@ -109,7 +109,7 @@ export const ErrorCode = z
       "generation_unavailable: Claude を呼べない（タイムアウト・API の失敗・止めてある）",
       "rate_limited: 苦手の分析の回数の上限（IP ごとの 1 時間か、全体の 1 日）に達した",
       "analysis_failed: 苦手の分析で Claude が失敗した（API の失敗・途中で止まった・JSON が読めない・時間切れ）",
-      "analysis_unavailable: 苦手の分析は止めてある（WEAK_POINT_ANALYSIS が on でない。PR のプレビューも止めてある）",
+      "analysis_unavailable: 苦手の分析ができない（WEAK_POINT_ANALYSIS が on でない・PR のプレビュー・Claude のキーが無い・回数を数える場所が失敗した）",
     ].join("\n"),
   });
 

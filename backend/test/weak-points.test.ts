@@ -703,13 +703,15 @@ test("数える場所が失敗したら、初めの数えは 503 で Claude を�
     },
   };
   const twice = fakeClaude(fakeHabits, goodAnalysis);
-  const { value } = await captureLogs(() =>
+  const { value, lines } = await captureLogs(() =>
     post(body(), { create: twice.create, usage: retryBroken }),
   );
   assert.equal(value.res.status, 200);
   assert.deepEqual(value.json.habits, []);
   assert.equal(value.json.retries, 0);
   assert.equal(twice.seen.length, 1);
+  // ログでは、上限（daily）と見分けて counter と残す
+  assert.ok(lines.some((l) => l.includes('"retrySkipped":"counter"')));
 });
 
 test("IP ごとの回数は、IPv4 はそのまま、IPv6 は先頭の /64 で数える", async () => {
@@ -752,7 +754,9 @@ test("測定の記録の組（person-*.json）の本文は、口の本文の形�
     );
     const parsed = WeakPointRequest.safeParse(fixture.request);
     assert.ok(parsed.success, `person-${n}: ${parsed.error?.message}`);
-    // 64 KB の上限に収まる
-    assert.ok(JSON.stringify(fixture.request).length < 65_536);
+    // 64 KB の上限に収まる。iOS が整形して送ると約 1.44 倍になるので、その分の余裕を見て 40 KB 未満（UTF-8 のバイト数）
+    assert.ok(
+      Buffer.byteLength(JSON.stringify(fixture.request), "utf8") < 40 * 1024,
+    );
   }
 });

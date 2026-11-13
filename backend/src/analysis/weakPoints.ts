@@ -206,7 +206,7 @@ export type AnalysisOutcome = {
   model: string;
   attempts: Attempt[];
   // 呼び直しをしなかった理由（呼び直しが要ったときだけ）。daily: 全体の 1 日の上限、time: 残りの時間が足りない、failed: 呼び直しが失敗した
-  retrySkipped?: "daily" | "time" | "failed";
+  retrySkipped?: "daily" | "counter" | "time" | "failed";
   elapsedMs: number;
 };
 
@@ -328,8 +328,15 @@ export async function analyzeWeakPoints(
 
   const remaining = ANALYSIS_DEADLINE_MS - (now() - started);
   if (remaining < MIN_RETRY_MS) return done(first.analysis, 0, "time");
-  if (deps.beforeRetry && !(await deps.beforeRetry())) {
-    return done(first.analysis, 0, "daily");
+  if (deps.beforeRetry) {
+    let allowed: boolean;
+    try {
+      allowed = await deps.beforeRetry();
+    } catch {
+      // 数える場所の失敗は、上限（daily）と見分けて残し、呼び直さない
+      return done(first.analysis, 0, "counter");
+    }
+    if (!allowed) return done(first.analysis, 0, "daily");
   }
   try {
     const second = await attempt(remaining);

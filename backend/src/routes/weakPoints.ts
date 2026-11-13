@@ -78,7 +78,7 @@ export const makeWeakPointRoutes = (deps: WeakPointRouteDeps = {}) =>
           "Claude が失敗した（analysis_failed）。API の失敗・途中で止まった・JSON が読めない・時間切れ",
         ),
         503: errorResponse(
-          "止めてある（analysis_unavailable）。WEAK_POINT_ANALYSIS が on でない（PR のプレビュー）か、Claude のキーが無い",
+          "分析できない（analysis_unavailable）。WEAK_POINT_ANALYSIS が on でない（PR のプレビュー）、Claude のキーが無い、または回数を数える場所（UsageCounter）が失敗した",
         ),
       },
     }),

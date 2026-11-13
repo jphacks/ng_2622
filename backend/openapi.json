@@ -832,7 +832,7 @@
           "analysis_failed",
           "analysis_unavailable"
         ],
-        "description": "room_not_found: 部屋が無い\nroom_full: 満員\ninvalid_message: メッセージの形が違う\nunauthorized: 参加者の ID と合言葉が合わない（POST /scenes/generate では SCENE_WRITE_TOKEN が違う）\nnot_host: ホストだけができる操作\nnot_in_lobby: 待合でしかできない操作\nunknown_scene: シーンの ID が無い\nserver_busy: 空いている部屋のコードが無い\nnot_playing: ラウンド中でない、ラウンドの番号が違う、またはそのラウンドに参加していない\nalready_submitted: このラウンドの音声はもう受け取った\ndeadline_passed: このラウンドの音声の締め切り（録音が終わるはずの時刻から 15 秒）を過ぎた。その人は採点できなかった扱いになっている\ninvalid_audio: 音声が 1 MB までの WAV でない\nnot_in_results: 結果発表のときにしかできない操作\nscoring_failed: 採点の途中で失敗した（Claude の呼び出しなど）\ngeneration_refused: Claude が断った\ngeneration_failed: Claude の応答が途中で止まった・形が違った・作り直しても裏取りを通らなかった\ngeneration_unavailable: Claude を呼べない（タイムアウト・API の失敗・止めてある）\nrate_limited: 苦手の分析の回数の上限（IP ごとの 1 時間か、全体の 1 日）に達した\nanalysis_failed: 苦手の分析で Claude が失敗した（API の失敗・途中で止まった・JSON が読めない・時間切れ）\nanalysis_unavailable: 苦手の分析は止めてある（WEAK_POINT_ANALYSIS が on でない。PR のプレビューも止めてある）"
+        "description": "room_not_found: 部屋が無い\nroom_full: 満員\ninvalid_message: メッセージの形が違う\nunauthorized: 参加者の ID と合言葉が合わない（POST /scenes/generate では SCENE_WRITE_TOKEN が違う）\nnot_host: ホストだけができる操作\nnot_in_lobby: 待合でしかできない操作\nunknown_scene: シーンの ID が無い\nserver_busy: 空いている部屋のコードが無い\nnot_playing: ラウンド中でない、ラウンドの番号が違う、またはそのラウンドに参加していない\nalready_submitted: このラウンドの音声はもう受け取った\ndeadline_passed: このラウンドの音声の締め切り（録音が終わるはずの時刻から 15 秒）を過ぎた。その人は採点できなかった扱いになっている\ninvalid_audio: 音声が 1 MB までの WAV でない\nnot_in_results: 結果発表のときにしかできない操作\nscoring_failed: 採点の途中で失敗した（Claude の呼び出しなど）\ngeneration_refused: Claude が断った\ngeneration_failed: Claude の応答が途中で止まった・形が違った・作り直しても裏取りを通らなかった\ngeneration_unavailable: Claude を呼べない（タイムアウト・API の失敗・止めてある）\nrate_limited: 苦手の分析の回数の上限（IP ごとの 1 時間か、全体の 1 日）に達した\nanalysis_failed: 苦手の分析で Claude が失敗した（API の失敗・途中で止まった・JSON が読めない・時間切れ）\nanalysis_unavailable: 苦手の分析ができない（WEAK_POINT_ANALYSIS が on でない・PR のプレビュー・Claude のキーが無い・回数を数える場所が失敗した）"
       },
       "ErrorMessage": {
         "type": "object",
@@ -3099,7 +3099,7 @@
             }
           },
           "503": {
-            "description": "止めてある（analysis_unavailable）。WEAK_POINT_ANALYSIS が on でない（PR のプレビュー）か、Claude のキーが無い",
+            "description": "分析できない（analysis_unavailable）。WEAK_POINT_ANALYSIS が on でない（PR のプレビュー）、Claude のキーが無い、または回数を数える場所（UsageCounter）が失敗した",
             "content": {
               "application/json": {
                 "schema": {

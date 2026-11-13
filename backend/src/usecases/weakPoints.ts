@@ -152,7 +152,8 @@ export async function analyzeWithLimits(
               name: e instanceof Error ? e.name : "Error",
             }),
           );
-          return false;
+          // analyzeWeakPoints が「呼び直さない」（retrySkipped: counter）として扱う
+          throw e;
         }
       },
     });
