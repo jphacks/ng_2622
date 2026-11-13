@@ -21,7 +21,7 @@
   // それ以外は部品の一覧を出す今の道（既定）。どちらでも部品は作らない。部品をその場で作るのは苦手の場面（いつも規約で引く）だけ
   // WEAK_SCENE_* は苦手の場面（POST /weak-scenes、docs/design/part-generation.md）。WEAK_SCENE_GENERATION は "on" のときだけ作る
   // スイッチ（それ以外は 503。SCENE_GENERATION とは別。PR のプレビューは off）。IP_PER_HOUR は IP ごとの 1 時間の回数、
-  // DAILY_LIMIT は全体の 1 日（日本時間）の回数（受け付けた 1 回で 1 つ。1 回約 0.2〜0.4 USD）。普段は 5・40
+  // DAILY_LIMIT は全体の 1 日（日本時間）の回数（受け付けた 1 回で 1 つ。手元の実測で 1 回 0.01〜0.08 USD、平均 約 0.035 USD。部品を 1 個作ると +0.026 USD）。普段は 5・40
   // TITLE_CAMPAIGN はタイトル画面に出す広告（src/title/schedule.json の id。カンマ区切り）。本番は空で、既定の場面（公園）を出す。
   // staging だけ、デプロイのときに --var TITLE_CAMPAIGN:jphacks-2026 を付ける（backend/README.md）
   "vars": {
