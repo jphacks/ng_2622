@@ -136,6 +136,7 @@ WebSocket のメッセージ（ThatsFight の `src/shared/protocol.ts` に倣う
 
 ## Workers の無料プランで足りるか（2026-10-21 に確認）
 
+- 2026-11-14 に、チームのアカウントを Workers Paid に変える（苦手の場面の生成の CPU のため。[`part-generation.md`](./part-generation.md)）。下は無料プランで考えたときの記録。
 - Durable Objects は無料プランでも使える（SQLite の保存方式に限る）。1 日あたり 10 万リクエスト、13,000 GB 秒、保存 5 GB。WebSocket で受け取ったメッセージは 20 通で 1 リクエストと数える。WebSocket Hibernation API を使うと時間の課金を大きく減らせる。
   - 出典: https://developers.cloudflare.com/durable-objects/platform/pricing/ （2026-10-18 更新）
 - Worker の CPU 時間は、無料プランで 1 リクエスト 10 ms まで。ただし外部 API の応答待ちは CPU 時間に数えない。音声は変換せずにそのまま Azure へ送るので、足りる見込み（推測）。足りなければ有料プラン（月 5 USD〜、CPU 時間は既定 30 秒）にする。
