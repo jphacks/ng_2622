@@ -4,7 +4,8 @@ import os
 nonisolated let recordLog = Logger(subsystem: "jp.jphacks.ng2622", category: "Record")
 
 /// 遊んだ記録を端末の中に置く所。1 ラウンドが <id>.json（PlayRecord）と、同じ id の自分の録音 <id>.wav の 2 つ。
-/// docs/design/play-record.md。サーバーには送らない。
+/// docs/design/play-record.md。記録そのものはサーバーに送らない（苦手の分析を作るときだけ、直近の回の文字を送る。
+/// WeakPointRequestBuilder）。
 ///
 /// 録音は記録と同じ寿命にする。録音だけが残る状態を作らないよう、書くときは json → wav、消すときは wav → json の順にする
 /// （途中で止まっても、残るのは「録音なしの記録」で、記録を消せば録音も消える）
