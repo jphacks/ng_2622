@@ -427,6 +427,14 @@ const refusedOrder = (
       message: `${order.id} は作れない物（${refused}）。この物を使わない場面にする（英文からも外す）`,
     };
   }
+  // 物でも、id が人・動物・建物・地面の名詞そのもの（duck・chicken・house）なら、名詞_区別 の id に書き直させる
+  const bare = bareKindId(order.id, [...byId.values()]);
+  if (bare) {
+    return {
+      stage: "items",
+      message: `注文 ${order.id} の id が、人・動物・建物・地面の名詞（${bare}）だけになっている。物の部品の id は 名詞_区別 にする（rubber duck は duck_rubber、fried chicken は chicken_fried、bird house は house_bird）。素の ${bare} は、人・動物・建物・地面そのものと取り違えるので、物の id にしない`,
+    };
+  }
   const problem = orderProblem(order);
   if (problem) {
     return {
@@ -630,6 +638,22 @@ const nounSets = (parts: Part[]) => ({
     ...MORE_LIVING,
   ]),
 });
+
+/**
+ * 区別の語の無い 1 語の id（duck・dog・chicken・house）が、人・動物・建物・地面の名詞そのものなら、その語。
+ * 物（rubber duck など）にこの id を取らせると、共有の置き場（R2）に素の duck が残り、のちに別の場面が書いた素の duck に
+ * このおもちゃが引かれる。名詞_区別（duck_rubber）の id なら当てない
+ */
+export const bareKindId = (id: string, parts: Part[]): string | undefined => {
+  if (id.includes("_")) return undefined;
+  const sets = nounSets(parts);
+  return (
+    formIn(sets.ground, id) ??
+    formIn(sets.building, id) ??
+    formIn(HOUSE_NOUNS, id) ??
+    formIn(sets.living, id)
+  );
+};
 
 /**
  * 注文が「物」でない（地面・建物・生きている人や動物）か。英語の主の名詞（words の各句の最後の語。「X of Y」は X。複数形は単数に寄せる）で決める。

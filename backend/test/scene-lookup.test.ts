@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 import { test } from "node:test";
 import type { PartOrder } from "../src/parts/workshop";
 import {
+  bareKindId,
   bundledThing,
   MAX_NEW_PARTS,
   nearestLiving,
@@ -278,13 +279,14 @@ test("物かどうかは英語の主の名詞（words の各句の最後の語�
     { id: "teacher_desk", words: ["teacher desk"], category: "furniture" },
     { id: "mat_door", words: ["door mat"] },
     { id: "window_box", words: ["window box"] },
-    { id: "chicken", words: ["chicken"], category: "food" },
+    // 食べ物の id は 名詞_区別 にする（素の chicken・fish は下の「1 語の id」で書き直させる）
+    { id: "chicken_roast", words: ["chicken"], category: "food" },
     {
       id: "chicken_fried",
       words: ["fried chicken", "chicken"],
       category: "food",
     },
-    { id: "fish", words: ["fish"], category: "food" },
+    { id: "fish_raw", words: ["fish"], category: "food" },
     { id: "fish_grilled", words: ["grilled fish", "fish"], category: "food" },
     { id: "sushi", words: ["sushi", "fish"], category: "food" },
     { id: "goat_cheese", words: ["goat cheese"], category: "food" },
@@ -362,6 +364,51 @@ test("物かどうかは英語の主の名詞（words の各句の最後の語�
   // id と words が食い違えば words の主の名詞（fish_tank の words が tank なら物）
   assert.equal(verdict({ id: "fish_tank", words: ["tank"] }), "ok");
   assert.equal(verdict({ id: "fish", words: [] }), "living");
+});
+
+test("区別の語の無い 1 語の id（duck・dog・chicken・house）は、物でも作らずに 名詞_区別 の id に書き直させる（2 回目から）", async () => {
+  const resolve = (order: PartOrder) =>
+    resolveParts(
+      [{ key: "x", part: order.id, place: { relation: "ground" } }],
+      [order],
+      PARTS,
+      async () => null,
+    );
+  for (const order of [
+    { ...LAMP, id: "duck", words: ["rubber duck", "duck"] },
+    { ...LAMP, id: "dog", words: ["dog toy"] },
+    { ...LAMP, id: "ducks", words: ["rubber ducks"] },
+    {
+      ...LAMP,
+      id: "chicken",
+      words: ["fried chicken"],
+      category: "food" as const,
+    },
+    { ...LAMP, id: "fish", words: ["fish"], category: "food" as const },
+    { ...LAMP, id: "house", words: ["bird house"] },
+  ]) {
+    const result = await resolve(order);
+    assert.deepEqual(
+      result.problems.map((p) => [p.code, p.stage]),
+      [["bad_part_order", "items"]],
+      order.id,
+    );
+    assert.ok(result.problems[0].message.includes("名詞_区別"), order.id);
+    assert.ok(result.problems[0].message.includes("duck_rubber"), order.id);
+    assert.deepEqual(result.orders, [], order.id);
+  }
+  // 名詞_区別 の id と、人・動物などでない 1 語の id は当てない
+  for (const id of [
+    "duck_rubber",
+    "chicken_fried",
+    "house_bird",
+    "kite",
+    "teapot",
+  ]) {
+    assert.equal(bareKindId(id, PARTS), undefined, id);
+  }
+  assert.equal(bareKindId("dogs", PARTS), "dog");
+  assert.equal(bareKindId("grass", PARTS), "grass");
 });
 
 test("新しい物の数は、1 回目の指示・2 回目とコードの上限でそろえる（4 個）", () => {
