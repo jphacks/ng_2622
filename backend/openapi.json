@@ -2406,7 +2406,8 @@
           },
           "name": {
             "type": "string",
-            "description": "場面の名前（日本語）",
+            "maxLength": 30,
+            "description": "場面の名前（日本語、30 文字まで。layout.name と同じ）",
             "example": "雨の公園"
           },
           "difficulty": {
@@ -2417,7 +2418,8 @@
           },
           "pitch": {
             "type": "string",
-            "description": "場面の一言（日本語）",
+            "maxLength": 60,
+            "description": "場面の一言（日本語、60 文字まで。長ければサーバーが切る）",
             "example": "because で理由を言いやすい場面です"
           },
           "layout": {

@@ -21,7 +21,12 @@ import {
 import { MAX_NEW_PARTS, withVersions } from "../scenes/lookup";
 import { PARTS } from "../scenes/parts";
 import { pickFocus } from "../scenes/weak";
-import type { WeakSceneRequest, WeakSceneResponse } from "../schemas/http";
+import {
+  WEAK_SCENE_NAME_MAX,
+  WEAK_SCENE_PITCH_MAX,
+  type WeakSceneRequest,
+  type WeakSceneResponse,
+} from "../schemas/http";
 import { rateKeyOf } from "./weakPoints";
 
 // 苦手の場面の口（POST /weak-scenes）の中身。止めるスイッチ・回数の上限を見てから、苦手を入れた場面を作り、
@@ -94,6 +99,18 @@ export type WeakSceneDeps = {
   budgetMs?: number;
 };
 
+/** 長さ（UTF-16 の単位。zod の max と同じ数え方）max までに切る。文字の途中では切らず、切ったら末尾を … にする */
+const clip = (text: string, max: number) => {
+  const trimmed = text.trim();
+  if (trimmed.length <= max) return trimmed;
+  let out = "";
+  for (const ch of trimmed) {
+    if (out.length + ch.length > max - 1) break;
+    out += ch;
+  }
+  return `${out}…`;
+};
+
 const unavailable = (message: string): WeakSceneOutcome => ({
   ok: false,
   code: "generation_unavailable",
@@ -159,16 +176,18 @@ export async function makeWeakScene(
           id: sceneId,
           grade: input.difficulty,
         });
-    const layout = withVersions(composed, result.extraParts);
+    // 名前と一言は長さの上限で切る（名前は配置の name とそろえる）
+    const name = clip(composed.name, WEAK_SCENE_NAME_MAX);
+    const layout = withVersions({ ...composed, name }, result.extraParts);
     if (layout.items.length === 0) {
       throw new SceneGenerationError("invalid", "置ける部品が無かった");
     }
     const body: WeakSceneBody = {
       sceneId,
-      name: layout.name,
+      name,
       difficulty: input.difficulty,
       focus,
-      pitch: result.pitch ?? "",
+      pitch: clip(result.pitch ?? "", WEAK_SCENE_PITCH_MAX),
       layout,
       createdParts: result.extraParts.map((p) => `${p.id}@${p.version}`),
     };

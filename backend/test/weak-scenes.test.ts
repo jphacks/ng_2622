@@ -780,3 +780,25 @@ test("作る所が上限の時間（90 秒）までに返さなければ 502", a
   const body = (await res.json()) as { error: { code: string } };
   assert.equal(body.error.code, "generation_failed");
 });
+
+test("名前と一言は長さの上限（30・60 文字）で切り、配置の name もそろえる", async () => {
+  const long = {
+    ...ANSWER,
+    name: "とても長い場面の名前".repeat(6),
+    pitch: "because で理由を言いやすい場面です。".repeat(5),
+  };
+  const outcome = await makeWeakScene(ENV, WeakSceneRequest.parse(BODY), {
+    create: fakeClaude([
+      () => message(long),
+      () => message({ items: conventionItems(), newParts: [] }),
+    ]).create,
+    workshop: fakeWorkshop().workshop,
+    store: fakeStore().store,
+  });
+  assert.ok(outcome.ok, JSON.stringify(outcome));
+  assert.ok(outcome.body.name.length <= 30);
+  assert.ok(outcome.body.name.endsWith("…"));
+  assert.equal(outcome.body.layout.name, outcome.body.name);
+  assert.ok(outcome.body.pitch.length <= 60);
+  assert.ok(WeakSceneResponse.safeParse(outcome.body).success);
+});

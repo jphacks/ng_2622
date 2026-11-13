@@ -715,6 +715,10 @@ export const WeakPointResponse = z
 export const WEAK_SCENE_ID =
   /^weak-[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
 
+/** 苦手の場面の名前と一言の長さの上限（文字）。Claude が長く書いたらサーバーが切る */
+export const WEAK_SCENE_NAME_MAX = 30;
+export const WEAK_SCENE_PITCH_MAX = 60;
+
 /** 1 つの場面でその場で作る部品の数の上限（費用のヒューズ） */
 export const WEAK_SCENE_MAX_NEW_PARTS = 4;
 
@@ -781,13 +785,20 @@ export const WeakSceneResponse = z
     }),
     name: z
       .string()
-      .meta({ description: "場面の名前（日本語）", example: "雨の公園" }),
+      .max(WEAK_SCENE_NAME_MAX)
+      .meta({
+        description: `場面の名前（日本語、${WEAK_SCENE_NAME_MAX} 文字まで。layout.name と同じ）`,
+        example: "雨の公園",
+      }),
     difficulty: Difficulty,
     focus: ChecklistKind,
-    pitch: z.string().meta({
-      description: "場面の一言（日本語）",
-      example: "because で理由を言いやすい場面です",
-    }),
+    pitch: z
+      .string()
+      .max(WEAK_SCENE_PITCH_MAX)
+      .meta({
+        description: `場面の一言（日本語、${WEAK_SCENE_PITCH_MAX} 文字まで。長ければサーバーが切る）`,
+        example: "because で理由を言いやすい場面です",
+      }),
     layout: SceneLayout,
     createdParts: z
       .array(z.string())
