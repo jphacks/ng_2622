@@ -213,7 +213,7 @@ CLAUDE_API_KEY=... pnpm tsx scripts/make-pool-v2.ts ~/pool-v2 --grade eiken-2 --
 
 `pnpm dev`（`ENABLE_DEV_ROUTES=true`）で開く `POST /dev/parts` に、`{ "orders": [PartOrder...], "maxNew": 4 }` を送ると `ensureParts` を直に呼ぶ。作った部品は手元の R2（`.wrangler/state`）に置かれ、`GET /parts/<id>/1.usdz` で取れる。部品表は `pnpm exec wrangler r2 object get ng-2622-bucket/recipes/<id>/1.json --local --pipe` で読める。
 
-2026-11-14 の実測（`claude-sonnet-5-5` の `low`、12 個を 4 個ずつ並べて）: 1 個 3.6〜11.7 秒（書き直しの 2 回は 11.6 秒）、4 個並べて 8.6〜11.7 秒。1 個 0.006〜0.049 USD（system の約 8,300 トークンのキャッシュに当たれば約 0.01 USD、並べた 1 回目は 4 個ともキャッシュを書くので約 0.03 USD）。12 個のうち書き直しは 2 個（浮いた基本形・奥行きの取り違え）で、2 個とも書き直しで通った。武器と人の名前の注文は断った。作った USDZ はすべて `usdchecker --arkit` を通った。
+2026-11-14 の実測（`claude-sonnet-5-5` の `low`、16 個を 4 個ずつ並べて）: 1 個 3.6〜16.0 秒（中央値 6.1 秒。Claude 1 回は 3.6〜9.9 秒で、書き直した 4 個は 11.4〜16.0 秒）、4 個並べて 8.6〜16.0 秒。1 個 0.006〜0.049 USD、平均 0.026 USD（system の約 8,300 トークンのキャッシュに当たれば 1 回約 0.01 USD。並べた 1 回目は 4 個ともキャッシュを書くので 1 回約 0.03 USD）。16 個のうち書き直しは 4 個（浮いた基本形 2・幅か奥行きの取り違え 2）で、4 個とも書き直しで通った。武器と人の名前の注文は断った（包丁は料理の道具として作った）。作った USDZ はすべて `usdchecker --arkit` を通った。
 
 ## タイトル画面の 3D（`GET /title`、`src/title/`）
 
