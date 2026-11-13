@@ -45,6 +45,8 @@ export const WEAK_SCENE_MAX_BODY_BYTES = 8_192;
 /** サーバーの上限時間（ms）。生成はこれより前に締め切り、置き場に置いて返す余裕を残す */
 export const WEAK_SCENE_TIME_LIMIT_MS = 90_000;
 const GENERATION_BUDGET_MS = 84_000;
+/** 裏取りに落ちたときに作り直す回数の上限（作り置きの 2 回より 1 回多い。手元の通しで eiken-2 が 3 回目まで落ちることがあった） */
+const WEAK_SCENE_MAX_REMAKES = 3;
 /** Claude の 1 回の上限（ms）。2 回目と部品の注文で 30 秒近くかかることがある */
 const CALL_TIMEOUT_MS = 45_000;
 
@@ -138,6 +140,8 @@ export async function makeWeakScene(
         timeoutMs: CALL_TIMEOUT_MS,
         signal,
         deadline: started + budget,
+        // 1 ラウンドは 6〜20 秒なので、締め切り（84 秒）までに 3 回まで作り直せる（締め切りが近ければ呼ばない）
+        maxRemakes: WEAK_SCENE_MAX_REMAKES,
       },
     );
     const sceneId = `weak-${(deps.newId ?? (() => crypto.randomUUID()))()}`;

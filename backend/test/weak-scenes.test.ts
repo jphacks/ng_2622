@@ -386,7 +386,8 @@ test("苦手は 1 回目の user の文に足し、system は変えない（cach
     userOf(first),
     sentenceMessage({ grade: "eiken-pre2", weak: focus }),
   );
-  assert.ok(userOf(first).includes(weakText(focus)));
+  assert.ok(userOf(first).includes(weakText(focus, "eiken-pre2")));
+  assert.ok(userOf(first).includes("The whole scene has 3 people or animals"));
   assert.ok(userOf(first).includes("The player often misses the reason items"));
   assert.ok(userOf(first).includes("理由をつけずに終わる"));
   assert.ok(userOf(first).includes("not in the list of things"));

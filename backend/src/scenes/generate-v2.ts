@@ -649,7 +649,7 @@ const avoidText = (avoid: string[] | undefined) =>
 
 /** 1 回目の user の文 */
 export const sentenceMessage = (input: GenerateV2Input, feedback?: Retry) =>
-  `級: ${input.grade}\nテーマ: ${input.theme ?? "一覧から選ぶ"}\nchecklist: ${checklistCounts(input.grade)}（計 ${checklistSize(input.grade)} 個）${input.weak ? weakText(input.weak) : ""}${avoidText(input.avoid)}${feedbackText(feedback)}`;
+  `級: ${input.grade}\nテーマ: ${input.theme ?? "一覧から選ぶ"}\nchecklist: ${checklistCounts(input.grade)}（計 ${checklistSize(input.grade)} 個）${input.weak ? weakText(input.weak, input.grade) : ""}${avoidText(input.avoid)}${feedbackText(feedback)}`;
 
 /** 2 回目の user の文。1 回目の出力の全部と、コードが refs から集めた呼び名の一覧 */
 export function itemsMessage(
