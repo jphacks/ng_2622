@@ -73,10 +73,12 @@ struct TitleDioramaTests {
     #expect(nearEnd < middle / 50)
   }
 
-  /// 会場は、横断幕が見える向き（-60〜30 度）だけを振る
-  @Test func hackathonSwingKeepsBannerInView() {
-    guard case .swing(let center, let amplitude, let period) = TitleDiorama.hackathon.spin else {
-      Issue.record("会場は左右に振る")
+  /// 広告の 3D（会場）は、横断幕が見える向き（-60〜30 度）だけを振る。公園は 1 周する
+  @Test func advertSwingKeepsBannerInView() {
+    #expect(HomeTitle.park.spin == .rotate(period: 24))
+    guard case .swing(let center, let amplitude, let period) = HomeTitle.advert(URL(filePath: "/x.usdz"), caption: "").spin
+    else {
+      Issue.record("広告の 3D は左右に振る")
       return
     }
     #expect(center - amplitude >= -60)
@@ -96,21 +98,28 @@ struct TitleDioramaTests {
     #expect(scene.root.findEntity(named: "banner") != nil)
     #expect(scene.root.findEntity(named: "monument") != nil)
     #expect(scene.root.children.contains { $0.components[DirectionalLightComponent.self] != nil })
-    #expect(SceneLibrary.shared.isLoaded(usdz: TitleDiorama.hackathon.usdzName))
+    #expect(SceneLibrary.shared.isLoaded(usdzAt: try #require(TitleDiorama.hackathon.url())))
   }
 
   /// USDZ を読めなければ作り置きの場面に戻す（ホームを空にしない）。読めれば戻さない
   @Test func fallsBackToSceneWhenUSDZMissing() async throws {
     let park = try #require(ScenePool.bundled.example(of: .eiken3) ?? ScenePool.bundled.randomCandidate())
-    let missing = await SceneLibrary.shared.instance(usdz: "no_such_diorama", fallback: park)
+    let nowhere = URL.temporaryDirectory.appending(path: "no_such_diorama.usdz")
+    let missing = await SceneLibrary.shared.instance(usdzAt: nowhere, fallback: park)
     #expect(missing.fellBack)
     #expect(missing.scene != nil)
 
-    let none = await SceneLibrary.shared.instance(usdz: "no_such_diorama", fallback: nil)
+    let none = await SceneLibrary.shared.instance(usdzAt: nowhere, fallback: nil)
     #expect(!none.fellBack)
     #expect(none.scene == nil)
 
-    let found = await SceneLibrary.shared.instance(usdz: TitleDiorama.hackathon.usdzName, fallback: park)
+    // 壊れたファイル（USDZ でない中身）も読めないので戻す
+    let broken = URL.temporaryDirectory.appending(path: "broken-\(UUID().uuidString).usdz")
+    try Data("not a usdz".utf8).write(to: broken)
+    defer { try? FileManager.default.removeItem(at: broken) }
+    #expect(await SceneLibrary.shared.instance(usdzAt: broken, fallback: park).fellBack)
+
+    let found = await SceneLibrary.shared.instance(usdzAt: try #require(TitleDiorama.hackathon.url()), fallback: park)
     #expect(!found.fellBack)
     #expect(found.scene?.root.findEntity(named: "banner") != nil)
   }

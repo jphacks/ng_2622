@@ -3,6 +3,7 @@ import SwiftUI
 /// 画面の入り口。どちらもホームから始まる。Mock は仮のデータで、Live は BACKEND_URL のバックエンドにつないで動く
 struct RootView: View {
   let config: AppConfig
+  @Environment(\.scenePhase) private var scenePhase
 
   var body: some View {
     ZStack {
@@ -25,6 +26,12 @@ struct RootView: View {
     // （Live も同梱の配置を使う。SceneLayouts.client）
     .task {
       SceneLibrary.shared.preload(SceneDifficulty.allCases.flatMap { ScenePool.bundled.scenes[$0] ?? [] })
+    }
+    // Live は、起動時と前に戻ったときに、タイトル画面の 3D をサーバーに毎回確かめる（期限の内でも）。裏で待ち、描画は待たせない。
+    // 取り直した 3D は、次にホームを開いたときから出す（TitleStore・HomeTitle）
+    .onChange(of: scenePhase, initial: true) { _, phase in
+      guard config.mode == .live, phase == .active else { return }
+      Task { await TitleStore.shared.refresh() }
     }
   }
 }

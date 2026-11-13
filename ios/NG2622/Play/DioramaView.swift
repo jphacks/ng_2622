@@ -9,15 +9,15 @@ struct DioramaView: View {
     case id(String, room: String?)
     /// key は組んだ場面を覚える名前で、同じ key の場面は組み直さない
     case layout(SceneLayout, key: String)
-    /// 同梱の USDZ を 1 つ読んで出す（ホームの広告の見本）。読めなければ fallback の作り置きの場面を出す
-    case usdz(String, fallback: String?)
+    /// USDZ のファイル（同梱か、端末に取っておいたもの）を 1 つ読んで出す（ホームの広告）。読めなければ fallback の作り置きの場面を出す
+    case usdz(URL, fallback: String?)
 
     /// 場面が替わったかを見分ける名前
     var identity: String {
       switch self {
       case .id(let id, _): "id:\(id)"
       case .layout(_, let key): "layout:\(key)"
-      case .usdz(let name, let fallback): "usdz:\(name):\(fallback ?? "")"
+      case .usdz(let url, let fallback): "usdz:\(url.path):\(fallback ?? "")"
       }
     }
   }
@@ -59,26 +59,26 @@ struct DioramaView: View {
     _isShown = State(initialValue: false)
   }
 
-  /// 同梱の USDZ（title/<name>.usdz）を出す（ホームの広告の見本）。読めなければ fallbackSceneID の作り置きの場面を出し、
+  /// USDZ のファイル（同梱か、端末に取っておいたもの）を出す（ホームの広告）。読めなければ fallbackSceneID の作り置きの場面を出し、
   /// onFallback を呼ぶ（ホームを空にしない）
   init(
-    usdz name: String, fallbackSceneID: String?, yaw: Double, tilt: Double, distance: Float = 7.8,
+    usdzAt url: URL, fallbackSceneID: String?, yaw: Double, tilt: Double, distance: Float = 7.8,
     onFallback: (() -> Void)? = nil
   ) {
-    source = .usdz(name, fallback: fallbackSceneID)
+    source = .usdz(url, fallback: fallbackSceneID)
     self.yaw = yaw
     self.tilt = tilt
     self.distance = distance
     self.onFallback = onFallback
-    _isShown = State(initialValue: SceneLibrary.shared.isLoaded(usdz: name))
+    _isShown = State(initialValue: SceneLibrary.shared.isLoaded(usdzAt: url))
   }
 
   private func load() async -> SceneComposer.Composed? {
     switch source {
     case .id(let id, let room): return await SceneLibrary.shared.instance(of: id, room: room)
     case .layout(let layout, let key): return await SceneLibrary.shared.instance(composing: layout, key: key)
-    case .usdz(let name, let fallback):
-      let (scene, fellBack) = await SceneLibrary.shared.instance(usdz: name, fallback: fallback)
+    case .usdz(let url, let fallback):
+      let (scene, fellBack) = await SceneLibrary.shared.instance(usdzAt: url, fallback: fallback)
       if fellBack { onFallback?() }
       return scene
     }

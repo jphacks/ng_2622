@@ -16,16 +16,12 @@ final class SceneLibrary {
   private var loaded: Set<String> = []
   /// 手元の配置から組んだ場面（key ごと）。遊んだ記録の場面を、きろくの画面で何度も出すので覚えておく
   private var composed: [String: Task<SceneComposer.Composed?, Never>] = [:]
-  /// 同梱の USDZ を読んだ場面（名前ごと）
+  /// USDZ のファイルを読んだ場面（ファイルの場所ごと）
   private var usdzLoads: [String: Task<SceneComposer.Composed?, Never>] = [:]
   private var loadedUSDZ: Set<String> = []
 
   func isLoaded(_ id: String) -> Bool {
     loaded.contains(id)
-  }
-
-  func isLoaded(usdz name: String) -> Bool {
-    loadedUSDZ.contains(name)
   }
 
   /// 先に読み込んでおく（画面に出す前に呼ぶ）。room は部屋のコードで、部屋がその場で作った場面の配置を取るときに要る
@@ -79,27 +75,50 @@ final class SceneLibrary {
   /// アプリに同梱した、1 つの USDZ でできた場面を置くフォルダ。ビルドのときに assets/title から写す（project.yml の Copy title dioramas）
   static let usdzDirectory = "title"
 
-  /// 同梱の USDZ（title/<name>.usdz）を読んだ場面の複製。組んだ場面と同じく、地面の中心を原点に置き、横幅を footprint にそろえ、
-  /// 光を足す。無い・読めないときは nil
-  func instance(usdz name: String) async -> SceneComposer.Composed? {
-    guard let template = await loadUSDZ(name).value else { return nil }
+  /// 同梱の USDZ（title/<name>.usdz）の場所。無ければ nil
+  static func bundledUSDZ(_ name: String, in bundle: Bundle = .main) -> URL? {
+    bundle.url(forResource: name, withExtension: "usdz", subdirectory: usdzDirectory)
+  }
+
+  func isLoaded(usdzAt url: URL) -> Bool {
+    loadedUSDZ.contains(url.standardizedFileURL.path)
+  }
+
+  /// USDZ のファイル（同梱か、端末に取っておいたもの）を読んだ場面の複製。組んだ場面と同じく、地面の中心を原点に置き、
+  /// 横幅を footprint にそろえ、光を足す。無い・読めないときは nil
+  func instance(usdzAt url: URL) async -> SceneComposer.Composed? {
+    guard let template = await loadUSDZ(url).value else { return nil }
     return Self.copy(of: template)
   }
 
+  /// 同梱の USDZ（title/<name>.usdz）を読んだ場面の複製。無い・読めないときは nil
+  func instance(usdz name: String) async -> SceneComposer.Composed? {
+    guard let url = Self.bundledUSDZ(name) else {
+      sceneLog.error("USDZ の場面がアプリにありません（\(name, privacy: .public)）")
+      return nil
+    }
+    return await instance(usdzAt: url)
+  }
+
   /// USDZ の場面を出す。読めなければ fallback（作り置きの場面の ID）を組み、fellBack を true にする（ホームを空にしないため）
-  func instance(usdz name: String, fallback sceneID: String?) async -> (scene: SceneComposer.Composed?, fellBack: Bool) {
-    if let scene = await instance(usdz: name) { return (scene, false) }
+  func instance(usdzAt url: URL, fallback sceneID: String?) async -> (scene: SceneComposer.Composed?, fellBack: Bool) {
+    if let scene = await instance(usdzAt: url) { return (scene, false) }
     guard let sceneID else { return (nil, false) }
     return (await instance(of: sceneID), true)
   }
 
-  private func loadUSDZ(_ name: String) -> Task<SceneComposer.Composed?, Never> {
-    if let task = usdzLoads[name] { return task }
+  /// 覚えた USDZ の場面を忘れる（端末に取っておいた 3D を消したとき）
+  func forget(usdzAt url: URL) {
+    let key = url.standardizedFileURL.path
+    usdzLoads[key] = nil
+    loadedUSDZ.remove(key)
+  }
+
+  private func loadUSDZ(_ url: URL) -> Task<SceneComposer.Composed?, Never> {
+    let key = url.standardizedFileURL.path
+    let name = url.lastPathComponent
+    if let task = usdzLoads[key] { return task }
     let task = Task { () -> SceneComposer.Composed? in
-      guard let url = Bundle.main.url(forResource: name, withExtension: "usdz", subdirectory: Self.usdzDirectory) else {
-        sceneLog.error("USDZ の場面がアプリにありません（\(name, privacy: .public)）")
-        return nil
-      }
       do {
         let model = try await Entity(contentsOf: url)
         let bounds = model.visualBounds(relativeTo: model)
@@ -107,17 +126,17 @@ final class SceneLibrary {
           sceneLog.error("USDZ の場面に形がありません（\(name, privacy: .public)）")
           return nil
         }
-        loadedUSDZ.insert(name)
+        loadedUSDZ.insert(key)
         return SceneComposer.Composed(root: Self.fit(model, bounds: bounds, minSpan: 0), moving: [])
       } catch {
         sceneLog.error("USDZ の場面を読めませんでした（\(name, privacy: .public)）: \(error, privacy: .public)")
         return nil
       }
     }
-    usdzLoads[name] = task
+    usdzLoads[key] = task
     Task {
       // 読めなかったものは覚えず、次にまた読む
-      if await task.value == nil { usdzLoads[name] = nil }
+      if await task.value == nil, usdzLoads[key] == task { usdzLoads[key] = nil }
     }
     return task
   }

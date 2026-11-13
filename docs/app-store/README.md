@@ -78,26 +78,26 @@ Mock の仮の結果（`MockResults.swift`）は公園の場面向けの文な�
 
 ### Award Day の TestFlight 版の作り方
 
-Award Day（2026-11-15）の会場で使う版。App Store の版との違いは 2 つで、ホームの 3D が企業の 3D 広告の見本（ハッカソンの会場。[`assets/title/`](../../assets/title/README.md)、タイトルの下に「広告の見本：JPHACKS」）になり、つなぎ先が staging のバックエンドになる。scheme と構成は App Store の版と同じ `NG2622 Store` のまま、Archive のコマンドで設定を上書きする（別の構成や scheme は作らない）。
+Award Day（2026-11-15）の会場で使う版。App Store の版との違いは、つなぎ先が staging のバックエンドになることだけ。ホームの 3D を企業の 3D 広告の見本（ハッカソンの会場。[`assets/title/`](../../assets/title/README.md)、タイトルの下に「広告の見本：JPHACKS」）にするのは、アプリではなく staging のバックエンドが決める（`GET /title`。staging にだけ `TITLE_CAMPAIGN` を付けてデプロイする。手順は [`backend/README.md`](../../backend/README.md) の「staging だけで出す」、決め方は [ADR](../adr/20261113-decide-title-diorama-on-server-with-expiry.md)）。アプリは、起動時と前に戻ったときに確かめ、次にホームを開いたときから会場を出し、期限（日本時間 11/15 23:59:59）を過ぎたら公園に戻す。scheme と構成は App Store の版と同じ `NG2622 Store` のまま、Archive のコマンドでつなぎ先と版の番号だけを上書きする（別の構成や scheme は作らない）。
 
-**この版は App Store の審査に出さない。** TestFlight で配るだけにする。見本の広告（実際の提供ではない）と、使い捨ての staging のつなぎ先が入っているため。App Store Connect で審査に出すビルドを選ぶときに取り違えないよう、版の番号を App Store の版と分ける。
+**この版は App Store の審査に出さない。** TestFlight で配るだけにする。使い捨ての staging のつなぎ先が入っているため。App Store Connect で審査に出すビルドを選ぶときに取り違えないよう、版の番号を App Store の版と分ける。
 
 ```sh
 (cd ios && xcodegen)
 xcodebuild -project ios/NG2622.xcodeproj -scheme "NG2622 Store" -destination 'generic/platform=iOS' \
   -archivePath build/NG2622-awardday.xcarchive -skipPackagePluginValidation -allowProvisioningUpdates \
-  BACKEND_URL='<staging の URL>' TITLE_DIORAMA=hackathon \
-  MARKETING_VERSION=<版> CURRENT_PROJECT_VERSION=<ビルド番号> archive
+  BACKEND_URL='<staging の URL>' MARKETING_VERSION=<版> CURRENT_PROJECT_VERSION=<ビルド番号> archive
 xcodebuild -exportArchive -archivePath build/NG2622-awardday.xcarchive -exportPath build/export-awardday \
   -exportOptionsPlist docs/app-store/ExportOptions.plist -allowProvisioningUpdates
 ```
 
 - `BACKEND_URL`: staging の Worker の URL（`https://…workers.dev`）。コマンドの引数なので、xcconfig と違い `https:/$()/` と書かなくてよい。
-- `TITLE_DIORAMA=hackathon`: ホームの 3D を会場にする。既定（空）は今の場面のまま。USDZ は設定にかかわらずアプリに入っている。
+- `TITLE_DIORAMA` は付けない。Live（ストアの構成も）では使わず、サーバーが決める（`TITLE_DIORAMA` は Mock だけで効く）。
 - `MARKETING_VERSION`: 審査に出している版と別の番号にする（例 `1.0.1`）。App Store Connect は、承認済みの版より低い番号を受け付けない。App Store に出す次の版は、この番号より上にする。
 - `CURRENT_PROJECT_VERSION`: その `MARKETING_VERSION` で上げたことのある番号より大きい数（初めての版なら `1` でよい）。
 - 上げたビルドは TestFlight の「内部テスト」のグループに入れて配る。App Store Connect の「提出準備中」の版には選ばない。
-- 上書きが効いたかは、`build/NG2622-awardday.xcarchive/Products/Applications/NG2622.app/Info.plist` の `TitleDiorama`・`BackendURL`・`CFBundleShortVersionString`・`CFBundleVersion` で確かめられる（`plutil -p`）。
+- 上書きが効いたかは、`build/NG2622-awardday.xcarchive/Products/Applications/NG2622.app/Info.plist` の `BackendURL`・`CFBundleShortVersionString`・`CFBundleVersion` で確かめられる（`plutil -p`）。
+- 会場が出るかは、配る前に `curl -s <staging の URL>/title` で `title` が返ることを確かめる。アプリは 1 回目の起動で 3D を取り、2 回目に開いたときから会場を出す（1 回目は公園）。
 
 ## 入れる値
 

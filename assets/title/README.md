@@ -3,7 +3,7 @@
 タイトル画面（ホーム）で回す 3D のうち、遊ぶ場面ではないもの。いまは、企業の 3D 広告の見本として作った、ハッカソンの会場のジオラマ 1 つ。
 
 - JPHACKS が提供した場合に見立てた見本（2026-10-26 に README の画像と動画のために作ったものを、スクリプトごと作り直した）。実際の提供ではない。
-- 出すのは Award Day 用の TestFlight の版だけで、App Store に出す版のホームは今の場面（作り置きの場面を部品で組んだもの）のまま（2026-11-13 のリーダーの決定）。
+- 出すのは Award Day の staging のバックエンドにつないだ版（TestFlight）だけで、本番（App Store の利用者）のホームは今の場面（作り置きの場面を部品で組んだもの）のまま。出すかはサーバー（`GET /title`）が決める（[ADR](../../docs/adr/20261113-decide-title-diorama-on-server-with-expiry.md)）。
 - 団体のロゴの画像や SVG は使わない。横断幕と手前右の看板の「JPHACKS」は、フォントの文字に色（JP は水色、HACKS は黒）を付けて立体にしている。
 
 ![ハッカソンの会場](./hackathon.png)
@@ -29,8 +29,10 @@
 
 ## アプリでの出し方
 
-- `hackathon.usdz` は、ビルドのたびにアプリの `title/hackathon.usdz` に写す（`ios/project.yml` の Copy title dioramas。設定にかかわらず入る）。
-- ホームに出すのは、ビルド設定 `TITLE_DIORAMA` が `hackathon` のときだけ（`ios/Config/Shared.xcconfig`。既定は空）。選び方と回し方は `ios/NG2622/Room/TitleDiorama.swift`、読み込みは `SceneLibrary.instance(usdz:fallback:)`（遊ぶ場面と同じく横幅 2.3 m に縮め、光を足す。読めなければ作り置きの場面に戻す）。
+- バックエンドは、`assets/title/*.usdz` を Worker の静的アセットとして `/title/<file>` で配り、`GET /title` で今出すもの（id・caption・sha256・期限）を返す（`backend/README.md` の「タイトル画面の 3D」）。作り直したら `backend/src/title/schedule.json` の `sha256` を書き直す。
+- Live のアプリは、起動時と前に戻ったときに `GET /title` を確かめ、id が変われば 3D を取って端末のキャッシュに置き、次にホームを開いたときから出す（`ios/NG2622/Room/TitleStore.swift`）。期限を過ぎたら消す。
+- `hackathon.usdz` は、ビルドのたびにアプリの `title/hackathon.usdz` にも写す（`ios/project.yml` の Copy title dioramas）。Mock でビルド設定 `TITLE_DIORAMA` が `hackathon` のときに出すほか、Live でサーバーの 3D と中身が同じなら、通信で取らずにこれを写す。
+- 選び方と回し方は `ios/NG2622/Room/TitleDiorama.swift`（`HomeTitle`）、読み込みは `SceneLibrary.instance(usdzAt:fallback:)`（遊ぶ場面と同じく横幅 2.3 m に縮め、光を足す。読めなければ作り置きの場面に戻す）。
 - 見え方は [`docs/design/ui/screens/home.md`](../../docs/design/ui/screens/home.md)、TestFlight の版の作り方は [`docs/app-store/README.md`](../../docs/app-store/README.md) の「Award Day の TestFlight 版の作り方」。
 
 ## 作り直す

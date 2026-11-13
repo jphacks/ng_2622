@@ -20,8 +20,8 @@ struct AppConfig {
   var mockIgnoresSavedRecords = false
   /// Mock の苦手の分析の振る舞い（ok・empty・fail・limit）
   var mockWeakPoints = MockWeakPointClient.Behavior.ok
-  /// ホーム（タイトル画面）に、作り置きの場面の代わりに出す 3D（TITLE_DIORAMA）。nil なら作り置きの場面。
-  /// Mock でも Live でもストアの構成でも同じに読む。出すときは TitleDiorama.shown で USDZ があるかも確かめる
+  /// ホーム（タイトル画面）に、作り置きの場面の代わりに出す同梱の 3D（TITLE_DIORAMA）。nil なら作り置きの場面。
+  /// Mock だけで使う（Live はサーバーの GET /title が決める。HomeTitle）
   var titleDiorama: TitleDiorama?
 
   static let current: AppConfig = {
