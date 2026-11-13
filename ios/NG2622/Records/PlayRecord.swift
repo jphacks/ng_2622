@@ -123,12 +123,23 @@ nonisolated struct PlayRecord: Codable, Sendable, Equatable, Identifiable {
     /// 言い直しの例。直す所が無ければ nil
     let rewrite: Rewrite?
     let speechTip: SpeechTip
+    /// 表現の点の根拠（英語 1 文）。2026-11-12 に足した欄で、版は上げていない。根拠が無い回は nil（届いたときも null）。
+    /// 欄が無い前の記録は nil で読む（合成の Decodable は、無い欄の Optional を nil にする）。書くときは nil も null と書く
+    let expressionBasis: String?
+
+    init(nextStep: NextStep, rewrite: Rewrite?, speechTip: SpeechTip, expressionBasis: String? = nil) {
+      self.nextStep = nextStep
+      self.rewrite = rewrite
+      self.speechTip = speechTip
+      self.expressionBasis = expressionBasis
+    }
 
     func encode(to encoder: any Encoder) throws {
       var c = encoder.container(keyedBy: CodingKeys.self)
       try c.encode(nextStep, forKey: .nextStep)
       try c.encode(rewrite, forKey: .rewrite)
       try c.encode(speechTip, forKey: .speechTip)
+      try c.encode(expressionBasis, forKey: .expressionBasis)
     }
 
     nonisolated struct NextStep: Codable, Sendable, Equatable {
@@ -254,7 +265,8 @@ extension PlayRecord.Feedback {
         kind: review.nextStep.kind.rawValue, text: review.nextStep.text, item: review.nextStep.item,
         gain: review.nextStep.gain),
       rewrite: review.rewrite.map { .init(before: $0.before, after: $0.after, reason: $0.reason) },
-      speechTip: .init(aspect: review.speechTip.aspect.rawValue, text: review.speechTip.text))
+      speechTip: .init(aspect: review.speechTip.aspect.rawValue, text: review.speechTip.text),
+      expressionBasis: review.expressionBasis)
   }
 }
 
@@ -285,6 +297,7 @@ extension RoundResults.Review {
         item: feedback.nextStep.item, gain: feedback.nextStep.gain),
       rewrite: feedback.rewrite.map { Rewrite(before: $0.before, after: $0.after, reason: $0.reason) },
       speechTip: SpeechTip(
-        aspect: SpeechTip.Aspect(rawValue: feedback.speechTip.aspect) ?? .fluency, text: feedback.speechTip.text))
+        aspect: SpeechTip.Aspect(rawValue: feedback.speechTip.aspect) ?? .fluency, text: feedback.speechTip.text),
+      expressionBasis: feedback.expressionBasis)
   }
 }
