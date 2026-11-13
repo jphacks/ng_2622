@@ -25,6 +25,9 @@ struct WeakPointsView: View {
     let analysis = analyzer.analysis
     // 記録の ID から遊んだ日（実例の日付）
     let dates = Dictionary(library.records.map { ($0.id, $0.playedAt) }, uniquingKeysWith: { first, _ in first })
+    // 苦手の場面（記録が足りないときは出さない）
+    let enough = counts.recent.count >= WeakPointCounts.minimumRecords
+    let scenePhase = enough ? analyzer.scenes?.phase ?? .idle : .idle
     ScrollView {
       VStack(alignment: .leading, spacing: 16) {
         // 戻るボタンは上に浮かせて残すので、ここは見出しだけ（スクロールで流れて消える）
@@ -41,15 +44,12 @@ struct WeakPointsView: View {
         .frame(height: 52)
         .padding(.top, 8)
 
-        let enough = counts.recent.count >= WeakPointCounts.minimumRecords
-        let scenePhase = enough ? analyzer.scenes?.phase ?? .idle : .idle
         let showsScene = scenePhase.showsInCard
         let next = Self.next(analysis, counts: counts)
         if next != nil || showsScene {
           NextCard(content: next, showsScene: showsScene) {
             WeakSceneSection(phase: scenePhase, onPractice: onPractice)
           }
-          .animation(.easeInOut(duration: 0.3), value: scenePhase)
         }
 
         if counts.recent.count >= WeakPointCounts.minimumRecords {
@@ -85,6 +85,8 @@ struct WeakPointsView: View {
       }
       .resultColumn()
       .padding(.bottom, 40)
+      // 苦手の場面の行が出入りするときは、カードの下の中身も一緒に動かす（カードだけが縮んで下の中身と重ならないように）
+      .animation(.easeInOut(duration: 0.3), value: scenePhase)
     }
     .onAppear {
       // 開くたびに確かめる（記録が 5 件ずつ増えた・元の記録が消えたら作り直す。失敗しても、開き直すとまた頼む。

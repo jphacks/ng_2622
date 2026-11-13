@@ -121,8 +121,8 @@ private struct WeakSceneThumbnail: View {
   var body: some View {
     ZStack {
       if let layout = try? scene.document().layout {
-        // 小さな枠なので、きろくの 3D（5.4）より近づけて枠いっぱいに出す
-        RecordSceneView(layout: layout, key: scene.sceneId, name: scene.name, distance: 3.9)
+        // 小さな枠なので、きろくの 3D（5.4）より少し近づける（回っても盤の角が枠から大きく切れない近さ）
+        RecordSceneView(layout: layout, key: scene.sceneId, name: scene.name, distance: 4.6)
       } else {
         ScenePlaceholder()
       }

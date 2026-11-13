@@ -259,9 +259,9 @@ private struct PracticeScene: View {
         .font(Theme.font(16, .heavy))
       HStack(alignment: .center, spacing: 14) {
         Image(systemName: "scope")
-          .font(.system(size: 26, weight: .bold))
+          .font(.system(size: 24, weight: .bold))
           .foregroundStyle(Theme.accent)
-          .frame(width: 56, height: 56)
+          .frame(width: 52, height: 52)
           .background(Theme.accentSoft, in: Circle())
         VStack(alignment: .leading, spacing: 4) {
           Text(scene.name)
@@ -274,11 +274,9 @@ private struct PracticeScene: View {
         }
         Spacer(minLength: 0)
       }
-      .padding(14)
-      .frame(maxWidth: .infinity, alignment: .leading)
-      .background(Theme.background, in: RoundedRectangle(cornerRadius: 14))
     }
-    .padding(14)
+    .padding(16)
+    .frame(maxWidth: .infinity, alignment: .leading)
     .background(CardBackground())
     .accessibilityElement(children: .combine)
     .accessibilityIdentifier("lobby-practice")
