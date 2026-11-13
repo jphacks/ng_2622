@@ -1172,7 +1172,14 @@ const conventionItems = async (
   );
   if (resolved.mapped.length > 0) {
     console.log(
-      JSON.stringify({ event: "scene_parts_mapped", mapped: resolved.mapped }),
+      JSON.stringify({
+        event: "scene_parts_mapped",
+        // Claude が書いた ID は形を確かめていないので、ID の形のものだけを出す（英文などはログに残さない）
+        mapped: resolved.mapped.map((m) => ({
+          from: /^[a-z0-9_]{1,64}$/.test(m.from) ? m.from : "(ID の形でない)",
+          to: m.to,
+        })),
+      }),
     );
   }
   const none = { extraParts: [], madeParts: [] };

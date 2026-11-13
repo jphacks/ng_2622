@@ -213,11 +213,19 @@ export async function makeWeakScene(
             : e instanceof SceneVerificationError
               ? "verification"
               : "claude",
+        // 理由の文（e.message）は出さない。裏取りの文は Claude が書いた英文（本人の文に近い癖の例を元にしたもの）を引き、
+        // 部品の理由は Claude の英文を含むため。出すのは問題の code と、作れなかった部品の ID と理由の種類だけ
         problems:
           e instanceof SceneVerificationError
             ? e.rejected.map((r) => r.map((p) => p.code))
             : undefined,
-        message: e.message,
+        failedParts:
+          e instanceof PartBuildError
+            ? e.failed.map((f) => ({
+                id: f.id,
+                kind: f.reason.split(":")[0].trim().slice(0, 40),
+              }))
+            : undefined,
         sceneUsd: Number(sceneUsd.toFixed(4)),
         partsUsd: Number(partsUsd.toFixed(4)),
         elapsedMs: Date.now() - started,

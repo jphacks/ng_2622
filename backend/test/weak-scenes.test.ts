@@ -597,3 +597,125 @@ test("作る Durable Object が落ちたら（CPU の上限など）502 generati
   const body = (await res.json()) as { error: { code: string } };
   assert.equal(body.error.code, "generation_failed");
 });
+
+// ---------- ログ ----------
+
+/** fn の間に console.log・console.error に出た文を集める */
+const captureLogs = async (fn: () => Promise<unknown>) => {
+  const lines: string[] = [];
+  const { log, error } = console;
+  console.log = (...args: unknown[]) => {
+    lines.push(args.map(String).join(" "));
+  };
+  console.error = (...args: unknown[]) => {
+    lines.push(args.map(String).join(" "));
+  };
+  try {
+    await fn();
+  } finally {
+    console.log = log;
+    console.error = error;
+  }
+  return lines.join("\n");
+};
+
+const SECRET_BODY = {
+  difficulty: "eiken-pre2",
+  kinds: ["reason"],
+  habits: [
+    {
+      viewpoint: "expression",
+      title: "秘密の癖の見出し",
+      fix: "秘密の直し方。例: My secret sentence about grandma.",
+    },
+  ],
+  nextTry: { viewpoint: "content", text: "秘密の次に試すこと" },
+};
+
+const assertNoPrivateText = (logs: string, extra: string[] = []) => {
+  for (const text of [
+    "秘密の癖の見出し",
+    "秘密の直し方",
+    "secret sentence",
+    "秘密の次に試すこと",
+    ...extra,
+  ]) {
+    assert.ok(!logs.includes(text), `ログに「${text}」が出ている`);
+  }
+};
+
+test("癖・直し方・次に試すこと・Claude の英文は、成功でも失敗でもログに出ない（出すのは級・種類・数・code・部品の ID だけ）", async () => {
+  // 成功
+  const success = await captureLogs(() =>
+    makeWeakScene(ENV, WeakSceneRequest.parse(SECRET_BODY), {
+      create: fakeClaude([
+        () => message(ANSWER),
+        () =>
+          message({
+            items: conventionItems([LAMP_ITEM]),
+            newParts: [LAMP_ORDER],
+          }),
+      ]).create,
+      workshop: fakeWorkshop().workshop,
+      store: fakeStore().store,
+    }),
+  );
+  assert.ok(success.includes('"event":"weak_scene_generated"'));
+  assertNoPrivateText(success, EXAMPLE_ANSWER.sentences);
+
+  // 裏取りで落ちる（問題の文が Claude の英文を引く: 主語が代名詞の accept）
+  const leaky = {
+    ...ANSWER,
+    sentences: ["She is reading a hidden diary.", ...ANSWER.sentences.slice(1)],
+    checklist: ANSWER.checklist.map((c, i) =>
+      i === 0
+        ? { ...c, sentence: 1, accept: "she is reading a hidden diary" }
+        : c,
+    ),
+  };
+  const verification = await captureLogs(() =>
+    makeWeakScene(ENV, WeakSceneRequest.parse(SECRET_BODY), {
+      create: fakeClaude(Array.from({ length: 8 }, () => () => message(leaky)))
+        .create,
+      workshop: fakeWorkshop().workshop,
+      store: fakeStore().store,
+    }),
+  );
+  assert.ok(verification.includes('"event":"weak_scene_failed"'));
+  assert.ok(verification.includes("accept_pronoun"), "問題の code は出す");
+  assertNoPrivateText(verification, ["hidden diary"]);
+
+  // 部品を作れない（理由は Claude の英文を含む）
+  const parts = await captureLogs(() =>
+    makeWeakScene(ENV, WeakSceneRequest.parse(SECRET_BODY), {
+      create: fakeClaude([
+        () => message(ANSWER),
+        () =>
+          message({
+            items: conventionItems([LAMP_ITEM]),
+            newParts: [LAMP_ORDER],
+          }),
+      ]).create,
+      workshop: {
+        lookup: async () => null,
+        ensure: async (orders) => ({
+          parts: [],
+          failed: orders.map((o) => ({
+            id: o.id,
+            reason: "refused: The lamp looks like a private thing",
+          })),
+        }),
+      },
+      store: fakeStore().store,
+    }),
+  );
+  const failed = parts
+    .split("\n")
+    .filter((l) => l.startsWith("{"))
+    .map((l) => JSON.parse(l))
+    .find((l) => l.event === "weak_scene_failed");
+  assert.deepEqual(failed?.failedParts, [
+    { id: "lamp_street", kind: "refused" },
+  ]);
+  assertNoPrivateText(parts, ["looks like a private thing"]);
+});
