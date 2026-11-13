@@ -7,17 +7,21 @@ struct OtherRoomFlow: Equatable {
   private(set) var found: String?
   /// ほかの人がいるので、移るかを確かめている部屋のコード
   private(set) var confirming: String?
+  /// シートを開くたびに増やす番号。シートに渡し、確かめの結果に付けて返してもらう
+  private(set) var ticket = 0
 
-  /// シートを開く。前に開いたときの確かめは捨てる
+  /// シートを開く。前に開いたときの確かめは捨て、番号を新しくする
   mutating func open() {
+    ticket += 1
     sheetOpen = true
     found = nil
   }
 
-  /// シートの中で、入れそうなコードが分かった。開いている間だけ受け取り、シートを閉じる。
-  /// 確かめている途中で下に引いて閉じていたら、受け取らない（後で開いたときに古いコードで移らないように）
-  mutating func found(_ code: String) {
-    guard sheetOpen else { return }
+  /// シートの中で、入れそうなコードが分かった。いま開いているシート（番号が合う）の結果だけを受け取り、シートを閉じる。
+  /// 確かめている途中で下に引いて閉じたシートの結果は、後から届いても受け取らない
+  /// （閉じたままでも、もう一度開いたあとでも、古いコードで移らないように）
+  mutating func found(_ code: String, ticket: Int) {
+    guard sheetOpen, ticket == self.ticket else { return }
     found = code
     sheetOpen = false
   }

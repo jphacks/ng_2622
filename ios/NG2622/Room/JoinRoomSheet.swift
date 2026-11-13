@@ -3,10 +3,14 @@ import SwiftUI
 /// 待合（ホスト）の「他のルーム」で開くシート。QR を読み取るか、ほかの部屋の 4 桁のコードを打つと、
 /// そろったところで自動で、その部屋に入れそうかを確かめる。入れそうなら onFound を呼ぶ（移るのは待合が行う）
 struct JoinRoomSheet: View {
+  /// このシートを開いたときの番号（OtherRoomFlow.ticket）。確かめたコードに付けて返す
+  let ticket: Int
   /// コードの部屋に入れそうかを確かめる。入れないと投げる
   let check: (String) async throws -> Void
-  /// 確かめたコード
-  let onFound: (String) -> Void
+  /// 確かめたコードと、このシートの番号
+  let onFound: (String, Int) -> Void
+  /// 確かめている途中。シートが消えたら止める
+  @State private var checkTask: Task<Void, Never>?
 
   @State private var code = ""
   @State private var checking = false
@@ -69,6 +73,8 @@ struct JoinRoomSheet: View {
       )
     }
     .sensoryFeedback(.success, trigger: scans)
+    // 確かめの途中で下に引いて閉じたら、確かめを止める（結果を返さない）
+    .onDisappear { checkTask?.cancel() }
   }
 
   /// 入れなかった理由の一言（シートの中に出す）。部屋が無いと分かったときだけ「部屋が見つかりません」にし、
@@ -90,7 +96,7 @@ struct JoinRoomSheet: View {
       case GameError.roomNotFound: "部屋が見つかりません"
       case GameError.roomFull: "満員"
       case GameError.alreadyStarted: "ゲーム中"
-      default: "つながりませんでした"
+      default: "つながらない"
       }
     return "入れませんでした（\(reason)）"
   }
@@ -191,14 +197,19 @@ struct JoinRoomSheet: View {
   private func submit() {
     checking = true
     let entered = code
-    Task {
+    let ticket = ticket
+    checkTask = Task {
       do {
         try await check(entered)
-        onFound(entered)
+        guard !Task.isCancelled else { return }
+        onFound(entered, ticket)
       } catch {
-        failure = Self.message(for: error)
+        guard !Task.isCancelled else { return }
+        let message = Self.message(for: error)
+        failure = message
         shakes += 1
         code = ""
+        AccessibilityNotification.Announcement(message).post()
       }
       checking = false
     }

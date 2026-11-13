@@ -72,9 +72,12 @@ struct LobbyView: View {
       onDismiss: afterSheet
     ) {
       JoinRoomSheet(
+        ticket: flow.ticket,
         check: { try await session.checkMove(to: $0) },
-        onFound: { flow.found($0) }
+        onFound: { flow.found($0, ticket: $1) }
       )
+      // 開き直したシートは、前のシートの状態（打ちかけのコード・確かめの途中）を持ち越さない
+      .id(flow.ticket)
       .presentationDetents([.height(640)])
       .presentationDragIndicator(.visible)
       .presentationCornerRadius(32)

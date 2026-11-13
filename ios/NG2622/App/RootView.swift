@@ -101,6 +101,8 @@ private struct AppFlow: View {
 
   /// 「あそぶ」。自分の部屋を作り、ホストとして待合に入る
   private func create() {
+    // 前に別の部屋に入れなかった知らせは、「あそぶ」を押したら消す（部屋を作れなくても残さない）
+    notice = nil
     let session = newSession()
     creating = true
     Task {

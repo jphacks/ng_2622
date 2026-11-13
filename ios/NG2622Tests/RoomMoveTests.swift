@@ -119,7 +119,7 @@ struct RoomMoveTests {
     #expect(JoinRoomSheet.message(for: GameError.connectionFailed) == "つながりませんでした")
     #expect(JoinRoomSheet.message(for: URLError(.notConnectedToInternet)) == "つながりませんでした")
     #expect(JoinRoomSheet.notice(for: GameError.roomFull) == "入れませんでした（満員）")
-    #expect(JoinRoomSheet.notice(for: URLError(.timedOut)) == "入れませんでした（つながりませんでした）")
+    #expect(JoinRoomSheet.notice(for: URLError(.timedOut)) == "入れませんでした（つながらない）")
   }
 
   /// 移っている途中にもう一度 move を呼んでも、2 つ目の部屋には入らない（幽霊の参加者を残さない）
@@ -186,7 +186,7 @@ struct OtherRoomFlowTests {
     flow.open()
     flow.close()
     #expect(flow.sheetDismissed(hasOthers: false) == nil)
-    flow.found("4821")
+    flow.found("4821", ticket: flow.ticket)
     #expect(flow.found == nil)
     flow.open()
     flow.close()
@@ -194,11 +194,32 @@ struct OtherRoomFlowTests {
     #expect(flow.confirming == nil)
   }
 
+  /// 確かめ中に閉じてすぐ開き直したあとで、前のシートの結果が届いても受け取らない（開いたシートは閉じない）。
+  /// 今のシートの結果は受け取る
+  @Test func lateFoundAfterReopenIsIgnored() {
+    var flow = OtherRoomFlow()
+    flow.open()
+    let old = flow.ticket
+    flow.close()
+    #expect(flow.sheetDismissed(hasOthers: false) == nil)
+    flow.open()
+    flow.found("4821", ticket: old)
+    #expect(flow.sheetOpen)
+    #expect(flow.found == nil)
+    flow.close()
+    #expect(flow.sheetDismissed(hasOthers: false) == nil)
+
+    flow.open()
+    flow.found("5300", ticket: flow.ticket)
+    #expect(!flow.sheetOpen)
+    #expect(flow.sheetDismissed(hasOthers: false) == "5300")
+  }
+
   /// 開くと、前に残っていたコードは捨てる
   @Test func openClearsFound() {
     var flow = OtherRoomFlow()
     flow.open()
-    flow.found("4821")
+    flow.found("4821", ticket: flow.ticket)
     flow.open()
     #expect(flow.found == nil)
   }
@@ -207,14 +228,14 @@ struct OtherRoomFlowTests {
   @Test func confirmOnlyWithOthers() {
     var alone = OtherRoomFlow()
     alone.open()
-    alone.found("4821")
+    alone.found("4821", ticket: alone.ticket)
     #expect(!alone.sheetOpen)
     #expect(alone.sheetDismissed(hasOthers: false) == "4821")
     #expect(alone.confirming == nil)
 
     var withOthers = OtherRoomFlow()
     withOthers.open()
-    withOthers.found("4821")
+    withOthers.found("4821", ticket: withOthers.ticket)
     #expect(withOthers.sheetDismissed(hasOthers: true) == nil)
     #expect(withOthers.confirming == "4821")
     #expect(withOthers.confirm() == "4821")
@@ -222,7 +243,7 @@ struct OtherRoomFlowTests {
 
     var cancelled = OtherRoomFlow()
     cancelled.open()
-    cancelled.found("4821")
+    cancelled.found("4821", ticket: cancelled.ticket)
     _ = cancelled.sheetDismissed(hasOthers: true)
     cancelled.cancel()
     #expect(cancelled.confirm() == nil)

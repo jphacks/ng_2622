@@ -74,6 +74,12 @@ struct HomeView: View {
       }
     }
     .animation(.easeOut(duration: 0.2), value: notice)
+    // 知らせが出たら VoiceOver で読み上げる（ホームに切り替わる動きが落ち着いてから）
+    .task(id: notice) {
+      guard let notice else { return }
+      try? await Task.sleep(for: .milliseconds(600))
+      if !Task.isCancelled { AccessibilityNotification.Announcement(notice).post() }
+    }
   }
 
   /// きろくへの入口。「あそぶ」より目立たせない（白い板）
