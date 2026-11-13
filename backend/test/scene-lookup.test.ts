@@ -148,11 +148,14 @@ test("規約で引く: 同梱・寄せる・前に作った部品（R2）・注�
     ["too_many_new_parts"],
   );
 
-  // 武器・規約の形でない ID・地面（芝生など）の注文は断る
+  // 武器（id・words・label・description のどこにあっても。部品を作る口と同じ網）・規約の形でない ID・地面（芝生など）・
+  // 形の違う注文（words が 6 個）は、作る前に断る
   for (const order of [
     { ...LAMP, id: "toy_gun", words: ["gun"] },
+    { ...LAMP, id: "toy", words: ["toy"], description: "A black toy pistol." },
     { ...LAMP, id: "Lamp-1" },
     { ...LAMP, id: "grass_tuft", words: ["grass"] },
+    { ...LAMP, id: "lamp_big", words: ["a", "b", "c", "d", "e", "f"] },
   ]) {
     const refused = await resolveParts(
       [{ key: "x", part: order.id, place: { relation: "ground" } }],
@@ -163,8 +166,25 @@ test("規約で引く: 同梱・寄せる・前に作った部品（R2）・注�
     assert.deepEqual(
       refused.problems.map((p) => p.code),
       ["bad_part_order"],
+      order.id,
     );
+    assert.deepEqual(refused.orders, []);
   }
+});
+
+test("作れない物（武器など）は英文から書き直させ（stage sentences）、形の違う注文は 2 回目だけ書き直させる", async () => {
+  const resolve = (order: PartOrder) =>
+    resolveParts(
+      [{ key: "x", part: order.id, place: { relation: "ground" } }],
+      [order],
+      PARTS,
+      async () => null,
+    );
+  const weapon = await resolve({ ...LAMP, id: "sword", words: ["sword"] });
+  assert.equal(weapon.problems[0].stage, "sentences");
+  assert.ok(weapon.problems[0].message.includes("この物を使わない場面にする"));
+  const shape = await resolve({ ...LAMP, id: "lamp_big", label: "" });
+  assert.equal(shape.problems[0].stage, "items");
 });
 
 test("作れない道（canMake が false）では、注文があっても同梱に無い物は問題にし、前に作った部品も引かない", async () => {

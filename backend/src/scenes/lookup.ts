@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { isObjectId, MAX_ID_LENGTH, parsePartId, partRef } from "../parts/ids";
-import type { PartOrder } from "../parts/workshop";
+import { orderProblem, type PartOrder } from "../parts/workshop";
 import { POSE_VERBS, poseVerbsOf, postureOf, whoOf } from "./pose-verbs";
 import type { LayoutItemV2, Part, PlanItem, SceneLayoutV2 } from "./types";
 import { nounFits, type Problem } from "./verify";
@@ -23,23 +23,6 @@ export const MAKEABLE_CATEGORIES = [
 
 /** 1 場面で、同梱に無い部品（作る・前に作った）を使う数の上限。費用のヒューズ */
 export const MAX_NEW_PARTS = 4;
-
-/** 作らない物（武器・暴力・性的な物）。ID の語にあれば注文を断り、その物を使わない場面にさせる */
-const REFUSED_WORDS = new Set([
-  "gun",
-  "pistol",
-  "rifle",
-  "sword",
-  "bomb",
-  "grenade",
-  "weapon",
-  "missile",
-  "bullet",
-  "blood",
-  "corpse",
-  "nude",
-  "sex",
-]);
 
 /** 2 回目の注文の形（Claude に書かせる）。size は w・h・d の object で書かせ、コードで組にする */
 export const orderJsonSchema = {
@@ -370,7 +353,12 @@ export const resolveParts = async (
     }
     const why = refusedOrder(order, byId);
     if (why) {
-      add("bad_part_order", why);
+      // 作れない物は英文にも出てくるので、1 回目（英文）から書き直させる
+      problems.push({
+        code: "bad_part_order",
+        stage: why.includes("作れない物") ? "sentences" : "items",
+        message: why,
+      });
       continue;
     }
     toMake.push(order);
@@ -394,7 +382,11 @@ export const resolveParts = async (
   };
 };
 
-/** 注文を断る理由（ID の形・同梱の ID と重なる・作らない物）。よければ undefined */
+/**
+ * 注文を断る理由（ID の形・同梱の ID と重なる・地面・部品を作る口が断る注文）。よければ undefined。
+ * 部品を作る口（workshop.ts の orderProblem。作らない物の語は id・words・label・description を policy.ts の網で見る）と
+ * 同じ確かめを先にして、作る前に「その物を使わない場面」に書き直させる（作る口で断られて場面ごと失敗しないため）
+ */
 const refusedOrder = (
   order: PartOrder,
   byId: Map<string, Part>,
@@ -404,11 +396,6 @@ const refusedOrder = (
   }
   if (byId.has(order.id)) {
     return `注文 ${order.id} はもう部品がある。注文せずにその id を使う`;
-  }
-  const words = [...tokensOf(order.id), ...order.words.flatMap(tokensOf)];
-  const bad = words.find((w) => REFUSED_WORDS.has(w));
-  if (bad) {
-    return `${order.id} は作れない物（${bad}）。この物を使わない場面にする`;
   }
   // 地面（芝生・砂・床など）そのものは作らない。refs の grass などは、地面の部品の key にする。
   // 語の一部（street lamp の street）では断らず、注文の名前が地面の語そのものかで見る
@@ -422,6 +409,13 @@ const refusedOrder = (
   );
   if (ground) {
     return `${order.id} は地面（${ground}）。地面は作らない。英文の ${ground} は、地面の部品（grass_patch・sand_beach・floor_wood など）の item の key にする`;
+  }
+  const problem = orderProblem(order);
+  if (problem?.startsWith("refused:")) {
+    return `${order.id} は作れない物（${problem.slice("refused:".length).trim()}）。この物を使わない場面にする（英文からも外す）`;
+  }
+  if (problem) {
+    return `注文 ${order.id} の形が違う（${problem}）。注文を直すか、もう部品のある物にする`;
   }
   return undefined;
 };
