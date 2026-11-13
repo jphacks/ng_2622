@@ -36,18 +36,28 @@ GROUP_ORDER = [
     ("result", "結果"),
     ("record", "きろく・設定"),
 ]
-# 画面の状態（frontmatter の status）。札の色と、遷移図の枠・矢印の描き方
+# 画面の状態（frontmatter の status）。頭の語で種類を見分ける（例: 「案（実装あり: #116）」は「案」）。
+# 札の色と、遷移図の枠・矢印の描き方
 STATUS = {
     "実装済み": dict(cls="done", node=None, edge=None),
-    "実装中": dict(cls="wip", node='color="#6366f1", style="rounded", penwidth=2.5', edge=None),
-    "確定・未実装": dict(cls="fixed", node='color="#64748b", style="rounded", penwidth=2.5', edge=None),
-    "合意待ち": dict(cls="pending", node='color="#E8771E", style="rounded,dashed", penwidth=3', edge='color="#E8771E", fontcolor="#c2410c", style=dashed, penwidth=1.6'),
+    "案": dict(cls="pending", node='color="#E8771E", style="rounded,dashed", penwidth=3', edge='color="#E8771E", fontcolor="#c2410c", style=dashed, penwidth=1.6'),
     "未確定": dict(cls="open", node='color="#9ca3af", style="rounded,dotted", penwidth=3', edge='color="#9ca3af", fontcolor="#6b7280", style=dotted, penwidth=1.6'),
 }
-# 矢印だけの状態（exits の status）。合意すると無くなる遷移など
-EDGE_ONLY_STATUS = {
-    "合意で外す": 'color="#cbd5e1", fontcolor="#94a3b8", style=dashed',
-}
+
+
+def status_kind(status: str) -> str | None:
+    """status の頭の語から、STATUS の種類を返す（無ければ None）。"""
+    return next((k for k in STATUS if status.startswith(k)), None)
+
+
+def status_tag(status: str) -> str:
+    """遷移図のノードに添える短い状態（例: 案 #114・116、未確定）。"""
+    kind = status_kind(status)
+    prs = re.findall(r"#\d+", status)
+    # 幅に収めるため、2 つ目からは # を省く（例: 案 #114・116）
+    return f'{kind} #{"・".join(p.lstrip("#") for p in prs)}' if kind == "案" and prs else (kind or status)
+
+
 DISCUSSION_SECTIONS = ["課題", "改善案", "決定"]
 IMAGE_STATE = {"final": "確定", "draft": "下書き", "none": "未作成"}
 
@@ -82,15 +92,23 @@ def split_sections(body: str) -> dict[str, str]:
 
 
 def md_to_html(md: str) -> str:
-    """最小の Markdown 変換（段落・箇条書き・`code`・**強調**）。"""
+    """最小の Markdown 変換（段落・箇条書き・`code`・**強調**・[リンク](先)）。"""
     out: list[str] = []
     para: list[str] = []
     in_list = False
+
+    def link(m: re.Match) -> str:
+        text, url = m.group(1), m.group(2)
+        # 同じフォルダの画面（./<id>.md）は下の画面カードへ、http は外へ。ほかは文字だけ残す
+        card = re.fullmatch(r"\./([\w-]+)\.md", url)
+        href = f"#{card.group(1)}" if card else url if url.startswith("http") else None
+        return f'<a href="{href}">{text}</a>' if href else text
 
     def inline(s: str) -> str:
         s = html.escape(s)
         s = re.sub(r"`([^`]+)`", r"<code>\1</code>", s)
         s = re.sub(r"\*\*([^*]+)\*\*", r"<strong>\1</strong>", s)
+        s = re.sub(r"\[([^\]]+)\]\(([^)\s]+)\)", link, s)
         return s
 
     def flush():
@@ -270,14 +288,16 @@ def flow_svg(screens: list[dict], app: dict, src: Path) -> str:
         lines.append(f'subgraph cluster_{key} {{ label="{label}"; color="#cbd5e1"; fontcolor="#64748b"; fontsize=12; style="rounded,dashed"; margin=14;')
         for s in members:
             shot, _ = image_path(src, s)
-            st = STATUS.get(s.get("status", ""), STATUS["実装済み"])
+            st = STATUS[status_kind(s.get("status", "")) or "実装済み"]
             if shot:
                 shot = thumb(shot, 400, "png")
                 frame = st["node"] or 'style="rounded", color="transparent"'
-                label = s["title"] if not st["node"] else f'{s["title"]}\\n（{s["status"]}）'
+                # 長い名前は、枠からはみ出さないよう括弧の中を外す（カードには元の名前を出す）
+                title = s["title"] if len(s["title"]) <= 11 else re.sub(r"（.*?）", "", s["title"])
+                label = title if not st["node"] else f'{title}\\n（{status_tag(s["status"])}）'
                 lines.append(
                     f'"{s["id"]}" [shape=box, {frame}, label="{label}", image="{shot.resolve()}", '
-                    f'imagescale=true, imagepos="tc", labelloc=b, fixedsize=true, width=1.6, height={4.1 if st["node"] else 3.85}, URL="#{s["id"]}"];')
+                    f'imagescale=true, imagepos="tc", labelloc=b, fixedsize=true, width=1.6, height={4.15 if st["node"] else 3.85}, URL="#{s["id"]}"];')
             else:
                 lines.append(f'"{s["id"]}" [label="{s["title"]}", fillcolor="#f1f5f9", style="rounded,filled,dashed", URL="#{s["id"]}"];')
         lines.append("}")
@@ -299,11 +319,11 @@ def flow_svg(screens: list[dict], app: dict, src: Path) -> str:
                     attrs.append("style=dashed")
                 if how == "戻る":
                     attrs.append('color="#cbd5e1"')
-                # 合意待ち・未確定の遷移（exits の status。無ければ行き先の画面の状態）は、色と線で見分ける
-                est = ex.get("status") or by_status.get(to, "")
-                if est in EDGE_ONLY_STATUS:
-                    attrs = [EDGE_ONLY_STATUS[est]]
-                elif STATUS.get(est, {}).get("edge"):
+                # 案・未確定の遷移は、色と線で見分ける。exits の status が無ければ、
+                # どちらかの端が未確定なら未確定、両端が案なら案（実装済みの画面とのあいだの遷移は今のまま）
+                ends = {status_kind(by_status.get(s["id"], "")), status_kind(by_status.get(to, ""))}
+                est = status_kind(ex["status"]) if ex.get("status") else ("未確定" if "未確定" in ends else "案" if ends == {"案"} else None)
+                if est and STATUS[est]["edge"]:
                     attrs = [STATUS[est]["edge"]]
                 lines.append(f'"{s["id"]}" -> "{to}" [label="{short(ex.get("trigger", ""))}"{", " + ", ".join(attrs) if attrs else ""}];')
     lines.append("}")
@@ -337,8 +357,8 @@ h3 { font-size:1.1rem; margin:0; } h4 { font-size:0.9rem; margin:14px 0 4px; col
 table { border-collapse:collapse; width:100%; font-size:.9rem; } th,td { border-bottom:1px solid var(--line); padding:6px 8px; text-align:left; vertical-align:top; }
 th { color:var(--muted); font-weight:600; font-size:.8rem; }
 .badge { display:inline-block; padding:1px 8px; border-radius:999px; font-size:.75rem; font-weight:600; margin-right:4px; white-space:nowrap; }
-.badge.st-done { background:#e0e7ff; color:#3730a3; } .badge.st-wip { background:#eef2ff; color:#4f46e5; border:1px solid #6366f1; }
-.badge.st-fixed { background:#f1f5f9; color:#334155; border:1px solid #64748b; } .badge.st-pending { background:#fff7ed; color:#c2410c; border:1px dashed #E8771E; }
+.badge.st-done { background:#e0e7ff; color:#3730a3; }
+.badge.st-pending { background:#fff7ed; color:#c2410c; border:1px dashed #E8771E; }
 .badge.st-open { background:#f9fafb; color:#6b7280; border:1px dotted #9ca3af; }
 .status-note { font-size:.85rem; color:#4b5563; background:#f8fafc; border-left:3px solid #c7d2fe; padding:2px 8px; margin:4px 0; }
 .frame-item { display:flex; flex-direction:column; gap:3px; } .frame-label { font-size:.72rem; color:var(--muted); text-align:center; line-height:1.3; }
@@ -364,7 +384,7 @@ ul.notes { padding-left:20px; } ul.notes li { margin:2px 0; }
 .placeholder { display:flex; align-items:center; justify-content:center; text-align:center; color:#6b7280; background:repeating-linear-gradient(45deg,#f3f4f6 0 10px,#e5e7eb 10px 20px); font-size:.8rem; padding:8px; }
 figcaption { text-align:center; font-size:.75rem; color:var(--muted); margin-top:4px; }
 .discussion { margin-top:6px; display:grid; gap:8px; grid-template-columns:repeat(auto-fit,minmax(200px,1fr)); }
-.discussion > div { background:var(--bg); border:1px solid var(--line); border-radius:8px; padding:8px 10px; min-height:64px; font-size:.9rem; }
+.discussion > div { background:var(--bg); border:1px solid var(--line); border-radius:8px; padding:8px 10px; min-height:64px; font-size:.9rem; overflow-wrap:anywhere; }
 .discussion .empty { color:var(--muted); font-style:italic; }
 svg.flow { max-width:none; height:auto; display:block; margin:12px auto; }
 code { font-family: ui-monospace, Menlo, monospace; font-size:.85em; }
@@ -394,7 +414,8 @@ def edge_list(edges: list[dict], key: str, by_id: dict[str, dict]) -> str:
 
 def status_badge(s: dict) -> str:
     st = s.get("status", "")
-    return f'<span class="badge st-{STATUS[st]["cls"]}">状態: {html.escape(st)}</span>' if st in STATUS else ""
+    kind = status_kind(st)
+    return f'<span class="badge st-{STATUS[kind]["cls"]}">状態: {html.escape(st)}</span>' if kind else ""
 
 
 def screen_section(s: dict, src: Path, by_id: dict[str, dict]) -> str:
@@ -477,8 +498,8 @@ def build(src: Path, out: Path, pdf: bool) -> None:
 
 <h2 id="flow">1. 画面遷移マップ</h2>
 <p class="legend muted"><span>青の太線: 全員の画面が同時に移る</span><span>灰色の破線: 操作なしで自動に進む</span><span>薄い線: 戻る</span><span>点線の大きな枠: 機能のまとまり</span></p>
-<p class="legend muted"><span>画面の枠なし: 実装済み</span><span style="color:#4f46e5">紫の枠: 実装中</span><span style="color:#334155">灰色の枠: 確定・未実装</span><span style="color:#c2410c">オレンジの破線の枠と矢印: 合意待ち</span><span>灰色の点線の枠と矢印: 未確定</span><span style="color:#94a3b8">薄い破線の矢印: 合意すると無くなる遷移</span></p>
-<p class="muted">ノードをクリックすると下の画面カードへ飛ぶ。画像は、実装済み・実装中の画面は実際のアプリ（Mock）のスクリーンショット、合意待ち・未確定の画面は Codex の image gen で作った案（実装の見た目ではない）。</p>
+<p class="legend muted"><span>画面の枠なし: 実装済み</span><span style="color:#c2410c">オレンジの破線の枠と矢印: 案（実装あり。PR の番号つき）</span><span>灰色の点線の枠と矢印: 未確定（案の画像のみ）</span></p>
+<p class="muted">ノードをクリックすると下の画面カードへ飛ぶ。画像は、実装済みの画面は実際のアプリ（Mock）のスクリーンショット、案の画面はその PR の branch のアプリ（Mock）のスクリーンショット、未確定の画面は Codex の image gen で作った案（実装の見た目ではない）。</p>
 <div class="flow-wrap">{flow_svg(screens, app, src)}</div>
 
 <h2 id="screens">2. 画面カード</h2>
