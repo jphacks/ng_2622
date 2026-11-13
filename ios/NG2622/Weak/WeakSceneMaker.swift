@@ -107,6 +107,16 @@ final class WeakSceneMaker {
     noticed = notices
   }
 
+  /// 練習しようとした場面を、部屋が置き場に無いと断った（unknown_scene）。覚えたままだと次も断られるので、
+  /// その場面を覚えていれば忘れ、カードからも外す。苦手の画面を開き直したら、覚えた場面が無いので作り直す
+  func discard(sceneId: String) {
+    guard let saved, saved.scene.sceneId == sceneId else { return }
+    forgetSaved()
+    if case .ready(let scene) = phase, scene.sceneId == sceneId {
+      phase = .idle
+    }
+  }
+
   /// 覚えた場面・この起動の間の失敗・作っている途中から、出すものが決まれば出して true
   private func show(_ stage: Int) -> Bool {
     if let saved, saved.stage == stage {

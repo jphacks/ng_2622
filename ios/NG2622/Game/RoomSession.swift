@@ -1,3 +1,4 @@
+import BackendAPI
 import Foundation
 import Observation
 
@@ -53,6 +54,8 @@ final class RoomSession {
   private var roundRecord: RoundRecord?
   /// 記録の保存（テストが終わりを待つ）
   private(set) var recordSaving: Task<Void, Never>?
+  /// 苦手の場面を覚えている所。練習する場面が置き場に無いと断られたら（unknown_scene）、覚えた場面を忘れさせる
+  private let weakScenes: WeakSceneMaker?
 
   enum MoveError: Error, Equatable {
     /// いまいる部屋のコードを打った
@@ -70,15 +73,16 @@ final class RoomSession {
   }
 
   /// practice は苦手の場面。配置は受け取ってあるので覚えておき、ラウンド・3D・記録で取りに行かない。
-  /// 配置が読めなければ、ふつうの部屋（難易度を選ぶ）にする
+  /// 配置が読めなければ、ふつうの部屋（難易度を選ぶ）にする。weakScenes は、その場面を覚えている所
   init(
     client: any GameClient, me: PlayerProfile, records: PlayRecordStore = .shared,
-    scenes: SceneLayoutStore = SceneLayouts.store, practice: WeakScene? = nil
+    scenes: SceneLayoutStore = SceneLayouts.store, practice: WeakScene? = nil, weakScenes: WeakSceneMaker? = nil
   ) {
     self.client = client
     self.me = me
     self.records = records
     self.scenes = scenes
+    self.weakScenes = weakScenes
     if let practice, let document = try? practice.document() {
       scenes.remember(document, for: practice.sceneId)
       self.practice = practice
@@ -236,6 +240,11 @@ final class RoomSession {
       guard startingPractice else { return }
       startingPractice = false
       weakPointLog.notice("苦手の場面のスタートを断られました: \(code, privacy: .public)")
+      // 置き場に無い場面は、次も断られる。端末に覚えた場面も忘れ、苦手の画面を開き直したら作り直す。
+      // ほかの断り（not_in_lobby など）は場面のせいではないので、覚えたままにする
+      if code == Components.Schemas.ErrorCode.unknownScene.rawValue, let practice {
+        weakScenes?.discard(sceneId: practice.sceneId)
+      }
       practice = nil
       practiceNotice = Self.practiceRejectedText
     }

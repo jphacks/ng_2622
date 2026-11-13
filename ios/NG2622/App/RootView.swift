@@ -115,7 +115,9 @@ private struct AppFlow: View {
   }
 
   private func newSession(practice: WeakScene? = nil) -> RoomSession {
-    RoomSession(client: makeClient(), me: profile, practice: practice)
+    RoomSession(
+      client: makeClient(), me: profile, practice: practice,
+      weakScenes: practice == nil ? nil : WeakPointAnalyzer.app.scenes)
   }
 
   /// 「あそぶ」。自分の部屋を作り、ホストとして待合に入る。practice（苦手の場面）があれば、その場面で練習する部屋にする

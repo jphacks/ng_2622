@@ -52,6 +52,55 @@ struct WeakScenePracticeTests {
     #expect(!GameEvent.rejected(code: "unknown_scene", message: "").changesPhase)
   }
 
+  /// 置き場に無い場面（unknown_scene）で断られたら、端末に覚えた苦手の場面も忘れ、苦手の画面を開き直したら作り直す。
+  /// ほかの断り（not_in_lobby など）と、別の場面の ID では忘れない
+  @Test func unknownSceneForgetsTheSavedScene() async throws {
+    let store = WeakSceneStore(directory: WeakPointStore.temporary().directory)
+    defer { try? FileManager.default.removeItem(at: store.directory) }
+    let scenes = StubSceneClient()
+    let maker = WeakSceneMaker(client: scenes, store: store)
+    let analysis = WeakSceneTests.analysis()
+    maker.make(analysis: analysis, recent: WeakSceneTests.recent(), stage: 2)
+    await maker.waitForPending()
+    guard case .ready(let scene) = maker.phase else { Issue.record("できていない: \(maker.phase)"); return }
+
+    func practiceRoom() async throws -> RoomSession {
+      let session = RoomSession(
+        client: StartLogClient(), me: PlayerProfile(name: "みか", color: 0x5B5BE6), records: .temporary(),
+        scenes: SceneLayoutStore(client: MockSceneLayoutClient()), practice: scene, weakScenes: maker)
+      try await session.create()
+      session.startPractice()
+      return session
+    }
+
+    // ほかの断り: ふつうの待合には戻すが、覚えた場面はそのまま
+    let busy = try await practiceRoom()
+    busy.handle(.rejected(code: "not_in_lobby", message: ""))
+    #expect(busy.practice == nil)
+    #expect(store.load()?.scene == scene)
+    #expect(maker.phase == .ready(scene))
+    // 別の場面の ID では忘れない
+    maker.discard(sceneId: "weak-00000000-0000-0000-0000-000000000001")
+    #expect(store.load()?.scene == scene)
+
+    // 置き場に無い: 覚えた場面を忘れ、カードからも外す
+    let missing = try await practiceRoom()
+    missing.handle(.rejected(code: "unknown_scene", message: "シーンがありません"))
+    #expect(missing.practice == nil)
+    #expect(missing.practiceNotice == RoomSession.practiceRejectedText)
+    #expect(store.load() == nil)
+    #expect(maker.phase == .idle)
+
+    // 苦手の画面を開き直したら（同じ区切り）、覚えた場面が無いので作り直す
+    maker.reopen()
+    maker.make(analysis: analysis, recent: WeakSceneTests.recent(), stage: 2)
+    #expect(maker.phase == .making)
+    await maker.waitForPending()
+    guard case .ready = maker.phase else { Issue.record("作り直していない: \(maker.phase)"); return }
+    #expect(await scenes.calls == 2)
+    #expect(store.load()?.stage == 2)
+  }
+
   /// 配置の読めない苦手の場面は持たない（ふつうの部屋になる）
   @Test func unreadablePracticeIsDropped() {
     let broken = WeakScene(
