@@ -11,6 +11,7 @@ import { scoreRoutes } from "./routes/score";
 import { type AppEnv, devOnly } from "./routes/shared";
 import { titleRoutes } from "./routes/title";
 import { weakPointRoutes } from "./routes/weakPoints";
+import { weakSceneRoutes } from "./routes/weakScenes";
 
 // Worker の入口（index.ts）と OpenAPI の生成スクリプトの両方から読むので、Cloudflare の実行環境にしか無いもの（cloudflare:workers など）はここから import しない
 
@@ -22,6 +23,7 @@ const app = new Hono<AppEnv>()
   .route("/", scoreRoutes)
   .route("/", partRoutes)
   .route("/", weakPointRoutes)
+  .route("/", weakSceneRoutes)
   .route("/", titleRoutes)
   .route("/", devRoutes);
 

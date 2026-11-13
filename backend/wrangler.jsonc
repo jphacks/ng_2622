@@ -17,6 +17,8 @@
   // スイッチ（それ以外は 503。PR のプレビューは off）。IP_PER_HOUR は IP ごとの 1 時間の回数、DAILY_LIMIT は全体の 1 日（日本時間）の回数
   // （呼び直しも数える。1 回約 0.05 USD）、MAX_BODY_BYTES は本文の大きさ。普段は 10・200・65536（64 KB。記録の組 10 件は 11〜20 KB。大きいほど 1 回の費用が上がる）。
   // Award Day の当日は 60・500 に書き換えてデプロイし、終わったら戻す（docs/design/cost-safety.md）
+  // WEAK_SCENE_GENERATION は苦手の場面（POST /weak-scenes、docs/design/part-generation.md）。"on" のときだけ作る（それ以外は 503）。
+  // SCENE_GENERATION（部屋での生成）とは別のスイッチ
   // TITLE_CAMPAIGN はタイトル画面に出す広告（src/title/schedule.json の id。カンマ区切り）。本番は空で、既定の場面（公園）を出す。
   // staging だけ、デプロイのときに --var TITLE_CAMPAIGN:jphacks-2026 を付ける（backend/README.md）
   "vars": {
@@ -30,6 +32,7 @@
     "WEAK_POINT_IP_PER_HOUR": "10",
     "WEAK_POINT_DAILY_LIMIT": "200",
     "WEAK_POINT_MAX_BODY_BYTES": "65536",
+    "WEAK_SCENE_GENERATION": "off",
     "TITLE_CAMPAIGN": ""
   },
   // タイトル画面の 3D（repo の assets/title/*.usdz）を、Worker と一緒に静的アセットとして配る（/title/<file>）。
@@ -65,6 +68,7 @@
       "SCORE_WEIGHTS": "50,25,25",
       "SCENE_GENERATION": "off",
       "WEAK_POINT_ANALYSIS": "off",
+      "WEAK_SCENE_GENERATION": "off",
       "TITLE_CAMPAIGN": ""
     },
     "durable_objects": {
