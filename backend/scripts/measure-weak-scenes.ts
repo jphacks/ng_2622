@@ -3,7 +3,7 @@
 // 1 回の要求の中で使う CPU（裏取り・座標の計算・部品の組み立て・JSON の読み書き。Claude を待つ時間は入らない）を測る
 // （WeakSceneMaker の Durable Object の CPU の上限と比べるため）。R2 はメモリの偽物（本番の置き場に書かない）。
 // 上限（UsageCounter）は通さない。Claude を実際に呼ぶので費用がかかる（1 回約 0.07〜0.3 USD）。上限に達したらそこで止める。
-//   CLAUDE_API_KEY=... pnpm tsx scripts/measure-weak-scenes.ts <結果の JSON> [場面の数（既定 3）] [費用の上限ドル（既定 2）]
+//   CLAUDE_API_KEY=... pnpm tsx scripts/measure-weak-scenes.ts <結果の JSON> [場面の数（既定 4）] [費用の上限ドル（既定 2）]
 import { writeFile } from "node:fs/promises";
 import Anthropic from "@anthropic-ai/sdk";
 import { ensureParts, lookupPart } from "../src/parts/workshop";
@@ -25,11 +25,11 @@ if (!out || !process.env.CLAUDE_API_KEY) {
   );
   process.exit(2);
 }
-const count = Number(countArg ?? 3);
+const count = Number(countArg ?? 4);
 const cap = Number(capArg ?? 2);
 const env = { CLAUDE_API_KEY: process.env.CLAUDE_API_KEY };
 
-// 級ごとに 1 つずつ（苦手の種類・癖を変える）
+// 級ごとに 1 つずつ（苦手の種類・癖を変える）と、新しい部品を使いやすい 1 つ
 const CASES: WeakSceneInput[] = [
   {
     difficulty: "eiken-3",
@@ -65,6 +65,18 @@ const CASES: WeakSceneInput[] = [
         viewpoint: "content",
         title: "目的を言わない",
         fix: "to + 動詞で目的を足す。例: She is running to catch the bus.",
+      },
+    ],
+  },
+  // 級に無い種類（reason）を飛ばして center を狙う。公園の場面で新しい物（凧など）を使いやすい
+  {
+    difficulty: "eiken-3",
+    kinds: ["reason", "center", "detail"],
+    habits: [
+      {
+        viewpoint: "content",
+        title: "人の動作を言わない",
+        fix: "誰が何をしているかを先に言う。例: A boy is running.",
       },
     ],
   },
