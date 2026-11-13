@@ -88,7 +88,8 @@ nonisolated struct PlayRecordStore: Sendable {
 
   // MARK: - 消去
 
-  /// 1 つの記録を、録音ごと消す
+  /// 1 つの記録を、録音ごと消す。覚えている苦手の分析（WeakPointStore）は消さない。分析は元の記録が欠けると出さずに
+  /// 作り直すが、それまでは消した回の文の引用がファイルに残る（docs/design/play-record.md の「消し方」）
   func delete(id: String) throws {
     let files = FileManager.default
     for url in [try audioFileURL(of: id), try jsonURL(of: id)] where files.fileExists(atPath: url.path) {
