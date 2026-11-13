@@ -117,6 +117,8 @@ export async function makeWeakScene(
   const budget = deps.budgetMs ?? GENERATION_BUDGET_MS;
   const signal = AbortSignal.timeout(budget);
   let sceneUsd = 0;
+  // 部品を作るのに払った額（作れなかった部品の分も含む）
+  let partsUsd = 0;
   try {
     const result = await generateVerifiedScene(
       env,
@@ -134,6 +136,9 @@ export async function makeWeakScene(
         lookup: { workshop: deps.workshop, maxNew: MAX_NEW_PARTS },
         onUsage: (u) => {
           sceneUsd += costOf(u);
+        },
+        onPartsUsd: (usd) => {
+          partsUsd += usd;
         },
       },
       {
@@ -182,11 +187,9 @@ export async function makeWeakScene(
         remakes: result.remakes,
         rejected: result.rejected.map((r) => r.map((p) => p.code)),
         made: result.madeParts,
-        // 場面（1 回目・2 回目と作り直し）と部品を作るのに Claude に払った額（USD。Sonnet 5.5 の値段で数える）
+        // 場面（1 回目・2 回目と作り直し）と部品（作れなかった分も含む）を作るのに Claude に払った額（USD。Sonnet 5.5 の値段で数える）
         sceneUsd: Number(sceneUsd.toFixed(4)),
-        partsUsd: Number(
-          result.partLogs.reduce((n, l) => n + l.usd, 0).toFixed(4),
-        ),
+        partsUsd: Number(partsUsd.toFixed(4)),
         partsMs: result.partLogs.map((l) => l.ms),
         reused: result.extraParts
           .map((p) => p.id)
@@ -216,10 +219,7 @@ export async function makeWeakScene(
             : undefined,
         message: e.message,
         sceneUsd: Number(sceneUsd.toFixed(4)),
-        partsUsd:
-          e instanceof PartBuildError
-            ? Number(e.logs.reduce((n, l) => n + l.usd, 0).toFixed(4))
-            : 0,
+        partsUsd: Number(partsUsd.toFixed(4)),
         elapsedMs: Date.now() - started,
       }),
     );

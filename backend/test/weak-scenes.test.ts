@@ -152,6 +152,8 @@ const fakeWorkshop = (
         failed: orders
           .filter((o) => fail(o.id, attempt))
           .map((o) => ({ id: o.id, reason: "形の検査を通らなかった" })),
+        // 作れなかった部品の分も含めた費用（1 個 0.03 USD とする）
+        usd: orders.length * 0.03,
       };
     },
   };
@@ -463,11 +465,28 @@ test("部品を作れなかったら（作り直しは部品を作る口の中�
   ]);
   const never = fakeWorkshop([], () => true);
   const { store, put } = fakeStore();
-  const failed = await makeWeakScene(ENV, WeakSceneRequest.parse(BODY), {
-    create,
-    workshop: never.workshop,
-    store,
-  });
+  const errors: string[] = [];
+  const original = console.error;
+  console.error = (...args: unknown[]) => {
+    errors.push(args.map(String).join(" "));
+  };
+  let failed: Awaited<ReturnType<typeof makeWeakScene>>;
+  try {
+    failed = await makeWeakScene(ENV, WeakSceneRequest.parse(BODY), {
+      create,
+      workshop: never.workshop,
+      store,
+    });
+  } finally {
+    console.error = original;
+  }
+  // 作れなかった部品にかかった費用もログに出す
+  const log = errors
+    .filter((e) => e.startsWith("{"))
+    .map((e) => JSON.parse(e))
+    .find((e) => e.event === "weak_scene_failed");
+  assert.equal(log?.reason, "parts");
+  assert.equal(log?.partsUsd, 0.03);
   assert.ok(!failed.ok && failed.status === 502);
   assert.ok(!failed.ok && failed.code === "generation_failed");
   assert.ok(!failed.ok && failed.message.includes("lamp_street"));

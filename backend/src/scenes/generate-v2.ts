@@ -680,6 +680,8 @@ export type GenerateV2Deps = {
   now?: () => number;
   /** Claude を 1 回呼ぶたびの usage（失敗した生成の費用も数えるため） */
   onUsage?: (usage: Anthropic.Usage) => void;
+  /** 部品を作る口を 1 回呼ぶたびの費用（USD。作れなかった部品の分も含む） */
+  onPartsUsd?: (usd: number) => void;
   /**
    * 2 回目の部品の引き方。渡すと ID の規約で引く道（部品の一覧を出さず、無い物は workshop で作る）。
    * 渡さなければ今の道（部品の一覧を出す）
@@ -701,6 +703,8 @@ export type Workshop = {
     failed: { id: string; reason: string }[];
     /** 部品ごとの時間と費用（作ったときだけ。測定とログ用） */
     logs?: { id: string; made: boolean; ms: number; usd: number }[];
+    /** この呼び出しで部品を作るのに Claude に払った額（USD。作れなかった部品の分も含む） */
+    usd?: number;
   }>;
 };
 /**
@@ -1212,6 +1216,7 @@ const conventionItems = async (
     });
     made.push(...result.parts);
     partLogs = result.logs ?? [];
+    deps.onPartsUsd?.(result.usd ?? partLogs.reduce((n, l) => n + l.usd, 0));
     const got = new Set(made.map((p) => p.id));
     const failed = resolved.orders
       .filter((o) => !got.has(o.id))
