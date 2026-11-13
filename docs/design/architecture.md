@@ -14,7 +14,7 @@ flowchart LR
     W[Worker<br>入口・回数の上限]
     R[Durable Object<br>部屋ごとに 1 つ]
     G[Durable Object<br>全体の利用量 1 つ<br>UsageCounter]
-    P[Durable Object<br>部品の組み立て]
+    P[Durable Object<br>WeakSceneMaker<br>苦手の場面と部品を作る]
     B[(R2<br>作った部品・苦手の場面)]
   end
   Az[Azure AI Speech<br>REST・短い音声用]
@@ -32,7 +32,7 @@ flowchart LR
   R -->|内容・表現の採点と講評| Cl
 ```
 
-- iPhone はキーを持たず、Cloudflare の Worker とだけ話す。採点の外部 API（Azure・Claude）は部屋の Durable Object が呼ぶ。部屋の外の口（苦手の分析の `POST /weak-points`、苦手の場面の `POST /weak-scenes`、手元だけの `POST /score`・`POST /scenes/generate`）は、Worker が Claude を直に呼ぶ。苦手の場面で足りない部品は、AI が書いた部品表を Durable Object の中の TypeScript が USDZ に組み、R2 に置く（2026-11-14。[`part-generation.md`](./part-generation.md)。新しい Durable Object を足すか、今のものの中で組むかは PR 2 で決める）。
+- iPhone はキーを持たず、Cloudflare の Worker とだけ話す。採点の外部 API（Azure・Claude）は部屋の Durable Object が呼ぶ。部屋の外の口（苦手の分析の `POST /weak-points`、苦手の場面の `POST /weak-scenes`、手元だけの `POST /score`・`POST /scenes/generate`）は、Worker が Claude を直に呼ぶ。苦手の場面で足りない部品は、AI が書いた部品表を Durable Object の中の TypeScript が USDZ に組み、R2 に置く（2026-11-14。[`part-generation.md`](./part-generation.md)。PR 3 では、1 回ごとに新しい Durable Object `WeakSceneMaker` の中で、生成・部品の組み立て・裏取り・座標の計算を行う）。
 - 部屋の状態（参加者、進行、点数）は、部屋ごとの Durable Object がメモリと保存領域に持つ。ThatsFight の `server/rooms.ts` の考え方（部屋の ID、端末ごとの合言葉、切断からの復帰）を移植する。
 - 全体の利用量を数える Durable Object `UsageCounter` を 1 つ置く。今は苦手の分析の、IP ごとの 1 時間の回数と全体の 1 日の回数だけを数える（2026-11-13。[`weak-point-analysis.md`](./weak-point-analysis.md) の 8）。苦手の場面も、同じ形で数える（2026-11-14。実装の PR で確かめる）。採点の 1 日の上限は、まだ乗せていない。
 
@@ -128,7 +128,8 @@ WebSocket のメッセージ（ThatsFight の `src/shared/protocol.ts` に倣う
 | 苦手の分析の IP ごとの 1 時間の回数 | 10 回（Award Day 当日は 60 回） | `wrangler.jsonc` の `WEAK_POINT_IP_PER_HOUR`。EXPO の会場は同じ Wi-Fi（同じ IP）から使うので当日は増やす |
 | 苦手の分析の全体の 1 日の回数 | 200 回（当日は 500 回） | `WEAK_POINT_DAILY_LIMIT`。Claude を呼んだ回数（呼び直しも 1 回）。1 回約 0.05 USD なので約 10 USD（当日は約 25 USD） |
 | 苦手の分析の本文 | 64 KB | `WEAK_POINT_MAX_BODY_BYTES`。測定の記録の組（10 件）は 11〜20 KB。大きいほど 1 回の費用が上がるので、余裕は少なめにした |
-| 苦手の場面の IP ごとの 1 時間の回数・全体の 1 日の回数 | PR 3 で決める（実装の PR で確かめる） | 苦手の分析と同じ形で `UsageCounter` で数える。1 回の費用は、場面の 2 段の生成と、新しい部品 1 個ごとの部品表（まだ測っていない） |
+| 苦手の場面の IP ごとの 1 時間の回数 | 5 回（Award Day 当日は 60 回） | `wrangler.jsonc` の `WEAK_SCENE_IP_PER_HOUR`。苦手の分析と同じ `UsageCounter` の別のインスタンスで数える。会場ではデモの端末が同じ IP になるので、当日は増やす（当日の vars の PR で入れる） |
+| 苦手の場面の全体の 1 日の回数 | 40 回（当日は 200 回） | `WEAK_SCENE_DAILY_LIMIT`。受け付けた 1 回で 1 つ。1 回約 0.2〜0.4 USD の見込み（場面の 2 段の生成と、新しい部品 1 個あたり平均 0.026 USD）なので約 8〜16 USD（当日は約 40〜80 USD） |
 | 苦手の場面の新しい部品 | 1 場面 4 個まで | 費用のヒューズ。同時に作り、失敗した部品の作り直しは 1 回まで（[`part-generation.md`](./part-generation.md)） |
 | 苦手の場面の本文 | 8 KB | 級・種類・癖 3 個の題と直し方・次に試すことで約 2 KB（実装の PR で確かめる） |
 
