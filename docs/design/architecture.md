@@ -45,10 +45,14 @@ sequenceDiagram
   Note over H,P: 開始時刻にそろって 3D が 1 周（約 3 秒）→ 録音（最長 20 秒）
   Note over P: 録り終えた WAV を端末で文字起こし（SpeechAnalyzer）
   P->>R: 音声（WAV）＋端末の文字起こし
-  R->>Az: 発音評価（端末の文字起こしを正解文にする）
-  Az-->>R: 話し方の点数（端末で文字にできなかったときは Azure の文字起こしも使う）
-  R->>Cl: 文字起こし＋シーンの説明＋採点基準
-  Cl-->>R: 内容・表現の点数、講評の材料（JSON）
+  par 端末の文字起こしがあれば同時に呼ぶ
+    R->>Az: 発音評価（端末の文字起こしを正解文にする）
+    Az-->>R: 話し方の点数
+  and
+    R->>Cl: 文字起こし＋シーンの説明＋採点基準
+    Cl-->>R: 内容・表現の点数、講評の材料（JSON）
+  end
+  Note over R: 端末で文字にできなかったときは、Azure の文字起こしを待ってから Claude を呼ぶ。次の一つを話し方にするかは、Azure の点からコードが決める
   R-->>H: 進み具合（はなこ: 採点中 → 完了）
   Note over R: 全員そろう、または締め切りの時刻が来る（録音が終わるはずの時刻から、音声 15 秒・採点 30 秒）
   R-->>H: results（順位、全員の描写、自分の内訳）
@@ -74,7 +78,7 @@ sequenceDiagram
 | `POST /scenes/generate` | HTTP | 作り置きのスクリプト（手元）が使う。級（`difficulty`）とテーマから、Claude が 2 段（見本の答えとチェックリスト → 部品と関係）で書き、バックエンドが裏取りをして座標に直した配置の JSON（`scenenglish.scene/2`）を返す（保存しない）。合言葉が要る。形は [`scene-protocol.md`](./scene-protocol.md) |
 | `PUT /scenes/:id/reviews` | HTTP | シーンを評価する（★ 1〜5、コメントは 200 文字までで任意）。端末ごとの ID を付け、同じ ID で送り直すと上書きする（結果発表の下で送る） |
 | `POST /weak-points` | HTTP | 苦手の分析。端末に残した直近の記録（内容の内訳のある 5〜10 件）の文字（文字起こし・描写の判定・言い直し・次の一つ・級・表現の根拠と、場面の見本の答え・言えなかった項目）と、端末で数えた値を送ると、Claude（Sonnet 5.5 の low）がくり返す癖（最大 3 件、自分の文の実例つき）・前より良くなった点・次の 1 回で試すことを書いて返す。実例の引用はバックエンドが文字起こしと照らして確かめ、無いものは返さない。録音・名前・端末の ID は送らず、サーバーは保存しない。認証は無く、本文の大きさ・IP ごとの 1 時間の回数・全体の 1 日の回数の上限と、止めるスイッチ（`WEAK_POINT_ANALYSIS`）で守る（[`weak-point-analysis.md`](./weak-point-analysis.md)） |
-| `POST /score` | HTTP | 配置の JSON（`layout` の `difficulty`・`checklist`・`items`・`description`）と文字起こしを送ると、部屋の採点と同じチェックリストの採点で、内容と表現の点・内容の内訳・講評を返す。話し方の点は付けないが、Azure の 3 つの点（`speech`）を送ると次に伸ばす一つに話し方も選ばれる。手元で試すときだけ開く（`ENABLE_DEV_ROUTES`）（[ADR](../adr/20261111-score-only-with-checklist-and-drop-handmade-scenes.md)） |
+| `POST /score` | HTTP | 配置の JSON（`layout` の `difficulty`・`checklist`・`items`・`description`）と文字起こしを送ると、部屋の採点と同じチェックリストの採点で、内容と表現の点・内容の内訳・講評を返す。話し方の点は付けないが、Azure の 3 つの点（`speech`）を送ると、部屋の採点と同じ基準で次に伸ばす一つが話し方になることがある（Claude には渡さない）。手元で試すときだけ開く（`ENABLE_DEV_ROUTES`）（[ADR](../adr/20261111-score-only-with-checklist-and-drop-handmade-scenes.md)） |
 
 API の型の正本は `backend/src/schemas/`（zod）で、そこから生成した `backend/openapi.json` を iOS が読む（2026-10-24 に決定）。WebSocket のメッセージは OpenAPI の `components.schemas` の `ClientMessage`・`ServerMessage` に載せる。
 
