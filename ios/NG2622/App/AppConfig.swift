@@ -37,7 +37,10 @@ struct AppConfig {
     }
     // 値が読めないときは、通信しない Mock にしておく
     let mode = BackendMode(rawValue: raw) ?? .mock
-    let samples = mode == .mock ? max(0, string("MockSampleRecords").flatMap(Int.init) ?? 0) : 0
+    // 例の記録の数は、起動の引数（-MockSampleRecords 4）でも替えられる（UI テストで、入口が出ない件数を確かめる）
+    let argument = UserDefaults.standard.object(forKey: "MockSampleRecords")
+    let sampleCount = (argument as? String) ?? (argument as? NSNumber)?.stringValue ?? string("MockSampleRecords")
+    let samples = mode == .mock ? max(0, sampleCount.flatMap(Int.init) ?? 0) : 0
     return AppConfig(mode: mode, backendURL: url, mock: mock, mockSampleRecords: samples)
   }()
 }

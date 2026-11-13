@@ -29,7 +29,7 @@ struct RootView: View {
   }
 }
 
-/// ホーム → 部屋に入る → 部屋（待合・プレイ・結果）の切り替え。ホームからは、きろくと設定にも入る
+/// ホーム → 部屋に入る → 部屋（待合・プレイ・結果）の切り替え。ホームからは、きろく（その先の苦手）と設定にも入る
 private struct AppFlow: View {
   /// 端末に残した遊んだ記録（アプリ全体で 1 つ。body が走るたびに作り直さない）
   let library: RecordLibrary
@@ -41,6 +41,8 @@ private struct AppFlow: View {
     case join
     case room
     case records
+    /// 苦手（きろくの上に重ねる）
+    case weak
     case settings
   }
 
@@ -52,7 +54,7 @@ private struct AppFlow: View {
   var body: some View {
     ZStack {
       switch screen {
-      case .home, .records, .settings:
+      case .home, .records, .weak, .settings:
         // きろくと設定は、ホームを出したまま上に重ねる。ホームの 3D を消して出し直さないため
         // （3D の入った view を画面の切り替えと同時に出し入れすると、後から出た 3D が描き直されないことがある）
         HomeView(
@@ -65,9 +67,21 @@ private struct AppFlow: View {
         // 部屋から戻ったときに、遊んだ回を数え直す
         .task { await library.reload() }
         .overlay {
-          if screen == .records {
-            RecordsView(library: library, onBack: { go(.home) })
-              .cover()
+          if screen == .records || screen == .weak {
+            // 苦手は、きろくを出したまま上に重ねる（戻ったときに、選んでいた場面とスクロールの位置が残る）。
+            // 重なっている間は、きろくの 3D を外す
+            RecordsView(
+              library: library, isCovered: screen == .weak, onBack: { go(.home) }, onWeakPoints: { go(.weak) }
+            )
+            .disabled(screen != .records)
+            .accessibilityHidden(screen != .records)
+            .cover()
+            .overlay {
+              if screen == .weak {
+                WeakPointsView(library: library, onBack: { go(.records) })
+                  .cover()
+              }
+            }
           } else if screen == .settings {
             SettingsView(library: library, onBack: { go(.home) })
               .cover()

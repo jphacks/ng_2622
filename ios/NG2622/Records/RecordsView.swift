@@ -6,7 +6,11 @@ import SwiftUI
 /// その下では、上がってくる中身が地の色のぼかしに溶けて消える
 struct RecordsView: View {
   let library: RecordLibrary
+  /// 上に苦手の画面が重なっているか。重なっている間は、場面の 3D を外す（unmountedWhileCovered）
+  var isCovered = false
   let onBack: () -> Void
+  /// 下のフッター「苦手をぶっとばせ！」から苦手の画面へ
+  let onWeakPoints: () -> Void
 
   /// 横の並びで 3D を出す場面
   enum SceneMode {
@@ -18,8 +22,6 @@ struct RecordsView: View {
 
   /// 3D を同時にいくつ出すか。3 つ出して遊ぶ側の 3D に障りが出るときは .selectedOnly にする
   static let sceneMode = SceneMode.neighbors
-  /// 下のフッターに「苦手」への入口を出すか。押した先（苦手の画面）を作るまで隠しておく
-  static let showsWeakPointEntry = false
 
   /// 選んでいる場面の ID
   @State private var selected: String?
@@ -72,7 +74,8 @@ struct RecordsView: View {
             .frame(height: Shelf.titleHeight, alignment: .top)
             .accessibilityAddTraits(.isHeader)
             .accessibilityIdentifier("records-title")
-          SceneShelf(scenes: scenes, selected: $selected, mode: Self.sceneMode, stick: stick, onStep: step)
+          SceneShelf(
+            scenes: scenes, selected: $selected, mode: Self.sceneMode, isCovered: isCovered, stick: stick, onStep: step)
             // 上に止まった 3D と名前の下を、振り返りが通る
             .zIndex(1)
           SceneRounds(scene: current, recordings: library.recordings)
@@ -116,8 +119,9 @@ struct RecordsView: View {
         .accessibilityHidden(true)
     }
     .overlay(alignment: .bottom) {
-      if Self.showsWeakPointEntry {
-        WeakPointFooter(stick: stick)
+      // 苦手の画面に入れるとき（内容の内訳のある記録が 5 件以上）だけ出す。4 件以下は入口ごと出さない
+      if library.canOpenWeakPoints {
+        WeakPointFooter(stick: stick, action: onWeakPoints)
       }
     }
     .coordinateSpace(.named(Shelf.space))
@@ -246,6 +250,8 @@ private struct SceneShelf: View {
   let scenes: [RecordScene]
   @Binding var selected: String?
   let mode: RecordsView.SceneMode
+  /// 上に別の画面が重なっているか
+  let isCovered: Bool
   let stick: ShelfStick
   /// 隣の場面を選ぶ（-1 で前、+1 で次）。読み上げでは横に送れないので、場面の操作で替える
   let onStep: (Int) -> Void
@@ -260,7 +266,9 @@ private struct SceneShelf: View {
         ScrollView(.horizontal) {
           HStack(spacing: 0) {
             ForEach(Array(scenes.enumerated()), id: \.element.id) { index, scene in
-              ScenePage(scene: scene, shows3D: shows3D(at: index), isMiddle: index == middle, stick: stick, onStep: onStep)
+              ScenePage(
+                scene: scene, shows3D: shows3D(at: index), isMiddle: index == middle, isCovered: isCovered, stick: stick,
+                onStep: onStep)
                 .frame(width: width, height: Shelf.height)
             }
           }
@@ -337,6 +345,8 @@ private struct ScenePage: View {
   let shows3D: Bool
   /// 画面にある場面か。それ以外は読み上げに出さない
   let isMiddle: Bool
+  /// 上に別の画面が重なっているか
+  let isCovered: Bool
   let stick: ShelfStick
   let onStep: (Int) -> Void
 
@@ -345,6 +355,8 @@ private struct ScenePage: View {
       Group {
         if shows3D, let layout = scene.layout {
           RecordSceneView(layout: layout, key: scene.sceneKey, name: scene.name, distance: Shelf.distance)
+            // 苦手の画面が重なっている間は外す（覆われた 3D を残すと、ほかの 3D が描き直されなくなる）
+            .unmountedWhileCovered(isCovered)
         } else {
           ScenePlaceholder()
         }
@@ -394,12 +406,11 @@ private struct ShelfWall: View {
 /// 下に固定する「苦手」への入口。下へスクロールして振り返りを読み始めたら（3D が止まったら）下に隠れ、上に戻ると出る
 private struct WeakPointFooter: View {
   let stick: ShelfStick
+  let action: () -> Void
 
   var body: some View {
     let hidden = stick.progress > 0
-    Button {
-      // 押した先（苦手の画面）は次の PR で作る
-    } label: {
+    Button(action: action) {
       Text("苦手をぶっとばせ！")
     }
     .buttonStyle(BigButtonStyle(kind: .primary))

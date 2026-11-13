@@ -1,8 +1,9 @@
 import Foundation
 
 extension PlayRecord {
-  /// 例の記録（Mock で、きろくの画面を遊ばずに確かめるためのもの）。同梱の作り置きの場面から 5 つを使い、
-  /// 同じ場面を何回か遊んだ形にする。新しい回ほど点が高い。端末には書かず、録音も無い
+  /// 例の記録（Mock で、きろく・苦手の画面を遊ばずに確かめるためのもの）。同梱の作り置きの場面から 5 つを使い、
+  /// 同じ場面を何回か遊んだ形にする。新しい回ほど点が高い（苦手の画面の点の推移が伸びる形になる）。
+  /// 古い半分は、項目を半分ほどしか言えていない回にする。端末には書かず、録音も無い
   static func samples(count: Int, now: Date = Date(), pool: ScenePool = .bundled) -> [PlayRecord] {
     let sceneIDs = Array(SceneDifficulty.allCases.flatMap { pool.candidates(of: $0).prefix(2) }.prefix(5))
     guard count > 0, !sceneIDs.isEmpty else { return [] }
@@ -10,15 +11,16 @@ extension PlayRecord {
     let pattern = [0, 1, 0, 2, 1, 0, 3, 2, 4, 0, 1, 3]
     return (0..<count).compactMap { i -> PlayRecord? in
       let sceneID = sceneIDs[pattern[i % pattern.count] % sceneIDs.count]
-      guard let scene = try? MockSceneLayoutClient.readDocument(sceneID),
-        let me = RoundResults.mock(
-          sceneID: sceneID, players: [(id: "me", name: "", color: 0, isSelf: true, graded: true)], layout: scene.layout
-        ).me.flatMap({ PlayRecord.Result($0, review: nil) }),
+      // 新しい半分はほとんど言えた回、古い半分は半分ほど言えた回（内容の点も伸びる形にする）
+      let variant: MockVariant = i < max(1, count / 2) ? .rich : .half
+      guard let scene = try? MockSceneLayoutClient.readDocument(sceneID) else { return nil }
+      let results = RoundResults.mock(
+        sceneID: sceneID, players: [(id: "me", name: "", color: 0, isSelf: true, graded: true)], layout: scene.layout,
+        selfVariant: variant)
+      guard let me = results.me.flatMap({ PlayRecord.Result($0, review: nil) }),
         let sceneJSON = try? JSONValue(data: scene.data)
       else { return nil }
-      let review = RoundResults.mock(
-        sceneID: sceneID, players: [(id: "me", name: "", color: 0, isSelf: true, graded: true)], layout: scene.layout
-      ).myReview
+      let review = results.myReview
       // 古い回ほど、表現と話し方の点を少し下げる（内容の点は内訳と合わせたままにする）
       let drop = min(30, i * 3)
       let expression = max(0, me.score.expression - drop)

@@ -8,7 +8,8 @@ extension RoundResults {
   static func mock(
     sceneID: String,
     players: [(id: String, name: String, color: UInt32, isSelf: Bool, graded: Bool)],
-    layout: SceneLayout? = nil
+    layout: SceneLayout? = nil,
+    selfVariant: MockVariant = .rich
   ) -> RoundResults {
     let layout = layout ?? (try? MockSceneLayoutClient.read(sceneID))
     let checklist = layout?.checklist ?? []
@@ -25,7 +26,7 @@ extension RoundResults {
       }
       let variant: MockVariant
       if p.isSelf {
-        variant = .rich
+        variant = selfVariant
       } else {
         variant = MockVariant.others[otherIndex % MockVariant.others.count]
         otherIndex += 1
@@ -47,7 +48,7 @@ extension RoundResults {
 }
 
 /// 仮の結果の作り方
-private enum MockVariant {
+enum MockVariant {
   /// ほとんど言えた。一部・言えていない項目、おまけ、場面に無い物が 1 つずつ
   case rich
   /// 半分ほど言えた。場面と矛盾する描写が 1 つ

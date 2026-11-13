@@ -61,7 +61,7 @@ enum RecordScenes {
   }
 }
 
-/// 端末に残した遊んだ記録を、画面（ホーム・きろく・設定）に出すために読んでおく所。
+/// 端末に残した遊んだ記録を、画面（ホーム・きろく・設定・苦手）に出すために読んでおく所。
 /// 記録が増える・消えるたびに reload して、どの画面の回数も同じになるようにする
 @Observable
 final class RecordLibrary {
@@ -69,6 +69,10 @@ final class RecordLibrary {
   private(set) var scenes: [RecordScene] = []
   /// 記録の数
   private(set) var count = 0
+  /// 記録（端末の記録と例の記録。並びは決めない）。苦手の画面で数えるのに使う
+  private(set) var records: [PlayRecord] = []
+  /// 苦手の画面に入れるか（内容の内訳のある記録が 5 件以上。WeakPointCounts）
+  private(set) var canOpenWeakPoints = false
   /// 録音のある記録の数
   private(set) var audioCount = 0
   /// 記録の ID ごとの自分の録音。読み直すときに 1 度だけ読む（画面を描くたびにファイルを読まない）
@@ -106,8 +110,10 @@ final class RecordLibrary {
       return (saved, audio, urls.count, store.hasFiles())
     }.value
     guard mine == generation else { return }
-    scenes = RecordScenes.group(saved + samples)
-    count = saved.count + samples.count
+    records = saved + samples
+    scenes = RecordScenes.group(records)
+    count = records.count
+    canOpenWeakPoints = WeakPointCounts.canOpen(records)
     recordings = audio
     audioCount = audioFiles
     canDelete = hasFiles || !samples.isEmpty
