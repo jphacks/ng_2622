@@ -50,7 +50,22 @@ export const openAPIOptions: Partial<GenerateSpecOptions> = {
 
 export const buildOpenAPISpec = async <E extends Env, S extends Schema>(
   app: Hono<E, S, string>,
-) => normalizeNullable(await generateSpecs(app, openAPIOptions));
+) => renamePaths(normalizeNullable(await generateSpecs(app, openAPIOptions)));
+
+// Hono の経路では「:version の後ろに .usdz」を書けないので、GET /parts/:id/:version{…\.usdz} と受けている。
+// OpenAPI では本当の形（/parts/{id}/{version}.usdz）に直して出す
+const PATH_RENAMES: Record<string, string> = {
+  "/parts/{id}/{version}": "/parts/{id}/{version}.usdz",
+};
+
+const renamePaths = <T>(spec: T): T => {
+  if (!isObject(spec) || !isObject(spec.paths)) return spec;
+  const paths: JSONObject = {};
+  for (const [path, item] of Object.entries(spec.paths)) {
+    paths[PATH_RENAMES[path] ?? path] = item;
+  }
+  return { ...spec, paths };
+};
 
 // zod の .nullable() は `anyOf: [X, { type: "null" }]` になるが、iOS が使う swift-openapi-generator は
 // anyOf の中の `{ type: "null" }` を読めず、その項目ごと落とす（additionalProperties: false なので、
