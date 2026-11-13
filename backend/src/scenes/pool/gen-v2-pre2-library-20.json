@@ -3,7 +3,7 @@
   "id": "gen-v2-pre2-library-20",
   "name": "図書館で机を運ぶ",
   "difficulty": "eiken-pre2",
-  "description": "A boy is carrying a desk with a girl because it is too heavy for one person. A girl is carrying the desk too. A man is sitting on a chair and reading a book. There is a bookshelf behind the girl. There is a table next to the man.",
+  "description": "A boy is carrying a desk with a girl because it is too big for one person. A girl is carrying the desk too. A man is sitting on a chair and reading a book. There is a bookshelf behind the girl. There is a table next to the man.",
   "checklist": [
     {
       "id": "boy_carry",
@@ -30,7 +30,7 @@
       "id": "why_carry",
       "kind": "reason",
       "label": "男の子が女の子と二人で机を運んでいる理由",
-      "accept": "a boy is carrying a desk with a girl because it is too heavy for one person",
+      "accept": "a boy is carrying a desk with a girl because it is too big for one person",
       "refs": ["boy", "girl", "desk"]
     },
     {
