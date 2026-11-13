@@ -187,9 +187,16 @@ export async function ensureParts(
     else valid.push(order);
   }
   const stop = aborted(opts.signal);
-  // R2 に既にあるか（並べて引く）
+  // R2 に既にあるか（並べて引く）。読めなかった ID は undefined（作らずに失敗にする）
   const found = await Promise.race([
-    Promise.all(valid.map((o) => lookupPart(env, o.id))),
+    Promise.all(
+      valid.map((o) =>
+        lookupPart(env, o.id).catch((e) => {
+          console.error(`部品 ${o.id} を R2 から読めなかった`, e);
+          return undefined;
+        }),
+      ),
+    ),
     stop,
   ]);
   if (found === "aborted") {
@@ -200,6 +207,8 @@ export async function ensureParts(
   valid.forEach((order, i) => {
     const part = found[i];
     if (part) done.set(order.id, part);
+    else if (part === undefined)
+      failed.push({ id: order.id, reason: "unavailable: R2 を読めなかった" });
     else if (toMake.length < opts.maxNew) toMake.push(order);
     else
       failed.push({

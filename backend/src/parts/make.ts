@@ -173,5 +173,7 @@ export async function makePart(
       { role: "user", content: retryMessage(problems) },
     );
   }
+  if (options.signal?.aborted)
+    return { ok: false, kind: "unavailable", reason: "止めた", usd: usd() };
   return { ok: false, kind: last.kind, reason: last.reason, usd: usd() };
 }
