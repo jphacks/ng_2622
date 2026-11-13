@@ -3,7 +3,7 @@ import Foundation
 /// 1 ラウンドの結果。全員の採点がそろうか、部屋が時間で締め切ると届く。
 /// 結果の画面（結果発表・みんなの描写・振り返り）はこれだけを見る
 struct RoundResults: Sendable, Equatable {
-  /// 遊んだシーンの ID（シーンの評価と、振り返りの見本の答えに使う）
+  /// 遊んだシーンの ID（振り返りの見本の答えなどに使う）
   let sceneID: String
   /// 遊んだシーンの名前（例: 公園）
   let sceneName: String

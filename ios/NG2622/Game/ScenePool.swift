@@ -52,11 +52,6 @@ struct ScenePool {
     examples[difficulty].flatMap { (scenes[difficulty] ?? []).contains($0) ? $0 : nil }
   }
 
-  /// 作り置きの場面か（例も入る）。部屋がその場で AI で作った場面は入らない
-  func contains(_ sceneID: String) -> Bool {
-    scenes.values.contains { $0.contains(sceneID) }
-  }
-
   /// 出題の候補。例は外す
   func candidates(of difficulty: SceneDifficulty) -> [String] {
     (scenes[difficulty] ?? []).filter { $0 != examples[difficulty] }
@@ -91,7 +86,7 @@ struct ScenePool {
   /// アプリの中で作り置きの場面を置くフォルダ。ビルドのときに backend/src/scenes/pool から写す（project.yml の Copy scene pool）
   static let directory = "pool"
 
-  /// アプリに同梱した作り置きの場面（pool/index.json と pool/<sceneId>.json）。Mock の出題と、待合の例、シーンの評価を出すかに使う
+  /// アプリに同梱した作り置きの場面（pool/index.json と pool/<sceneId>.json）。Mock の出題と、待合の例に使う
   static let bundled = ScenePool(bundle: .main)
 
   /// 作り置きの場面の一覧（backend/src/scenes/pool/index.json）の、1 つの難易度の分。

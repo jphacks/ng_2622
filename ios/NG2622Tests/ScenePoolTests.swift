@@ -133,10 +133,8 @@ struct ScenePoolTests {
         let layout = try await client.layout(sceneID: id)
         #expect(layout.difficulty == difficulty)
         #expect(!layout.checklist.isEmpty, "\(id) にチェックリストが無い")
-        #expect(pool.contains(id))
       }
     }
-    #expect(!pool.contains("park"))
     // pool/ の JSON はどれも index.json に載っている（載っていない場面は使われない）
     let files = (Bundle.main.urls(forResourcesWithExtension: "json", subdirectory: ScenePool.directory) ?? [])
       .map { $0.deletingPathExtension().lastPathComponent }.filter { $0 != "index" }

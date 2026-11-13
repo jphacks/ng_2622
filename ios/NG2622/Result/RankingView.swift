@@ -33,13 +33,6 @@ struct RankingView: View {
               .transition(.scale(scale: 0.6).combined(with: .opacity))
           }
           Spacer(minLength: 28)
-          // 評価するのは作り置きの場面だけ。部屋がその場で AI で作った場面は使い回さないので評価しない
-          // （バックエンドも /scenes/{id}/reviews を受け付けない）
-          if winnerShown, let me = results.me, ScenePool.bundled.contains(results.sceneID) {
-            SceneRatingCard(sceneID: results.sceneID, sceneName: results.sceneName, playerName: me.name)
-              .padding(.bottom, 20)
-              .transition(.opacity)
-          }
           actions
             .padding(.bottom, 24)
         }
