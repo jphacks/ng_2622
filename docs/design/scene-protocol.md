@@ -490,8 +490,11 @@ Claude の API（Messages API）に渡すもの:
 > 苦手の画面で作った場面を、部屋で遊ぶ道。決めた理由は [ADR](../adr/20261114-build-parts-from-ai-part-tables-in-typescript-and-share-on-r2.md)、口の形と作り方の正本は [`part-generation.md`](./part-generation.md)。
 
 ```
-アプリ（苦手の画面）──POST /weak-scenes──▶ Worker ──▶ Claude（苦手を入れた 2 段の生成と、足りない部品の部品表）
+アプリ（苦手の画面）──POST /weak-scenes──▶ Worker（スイッチ・回数の上限）
+                                             ▼
+                          Durable Object WeakSceneMaker（1 回ごとに 1 つ）──▶ Claude（苦手を入れた 2 段の生成と、足りない部品の部品表）
                                              │ 部品を組んで R2 に置く（parts/…）
+                                             │ 裏取りと座標の計算
                                              │ 配置を R2 に置く（weak-scenes/<sceneId>.json）
                      ◀── sceneId（weak-…）・名前・配置 ──┘
 ホスト ──POST /rooms → start { sceneId: "weak-…" }──▶ 部屋（Room DO）──▶ R2 の weak-scenes/<sceneId>.json を読む
@@ -499,12 +502,12 @@ Claude の API（Messages API）に渡すもの:
                                       round { sceneId } を全員へ（形は変えない）
 ```
 
-- 苦手の場面は、部屋ではなく `POST /weak-scenes` が作る。部屋は作らずに読むだけなので、10 秒の上限と `SCENE_GENERATION` は関係しない。
+- 苦手の場面は、部屋ではなく `POST /weak-scenes` が作る。生成の全部は、Worker がスイッチと回数の上限を見たあとの、Durable Object `WeakSceneMaker`（migration v6）の中で動く。部屋は作らずに読むだけなので、10 秒の上限と `SCENE_GENERATION` は関係しない。
 - ID は `weak-` ＋ uuid。start の `sceneId` が `weak-` で始まれば、部屋は R2 の `weak-scenes/<sceneId>.json` から配置（と作った部品のメタデータ）を読んで始める。無ければ、今の「知らない場面」のエラーにする。
 - 部屋からアプリへ送る `room`・`round` には欄を足さない（前の版のアプリが `room` ごと読めなくなるため）。ホストの待合に出す場面の名前は、ホストのアプリが `POST /weak-scenes` の返りから覚えておく（[`ui/screens/lobby.md`](./ui/screens/lobby.md)）。
 - 参加者の端末が配置を取る道は、部屋が作った場面と同じ `GET /scenes/{sceneId}/layout?room=<部屋の番号>` にそろえる（実装の PR で確かめる）。作った部品は、配置に `id@版` で書き、`GET /parts/{id}/{version}.usdz` で取る。
 - 採点には、配置と一緒に作った部品のメタデータを渡す。今の採点（`backend/src/scoring/layout.ts` の `describeLayoutWithRelations`）は、静的な一覧に無い部品を捨てるため。
-- 作った部品は物だけ（`thing`・`furniture`・`food`・`plant`・`vehicle`）。人・動物・地面・壁は今の部品から選ぶ。部品は ID の規約で書かせ、一覧は渡さない（今の一覧を渡す生成も、スイッチで戻せる形で残す）。
+- 作った部品は物だけ（`thing`・`furniture`・`food`・`plant`・`vehicle`）。人（`person`）・動物（`animal`）・地面（`ground`）・建物（`building`。壁・ドア・窓など）は今の部品から選ぶ。部品は ID の規約で書かせ、一覧は渡さない。部品をその場で作るのは苦手の場面のときだけで、部屋のスタートの生成と作り置きの生成では作らない。部屋の生成と作り置きの生成の引き方は、スイッチ `SCENE_PART_LOOKUP` で選ぶ（`convention` なら規約で引く。それ以外は今の一覧を渡す道で、既定）。
 
 ## アプリの組み立て
 
