@@ -6,6 +6,8 @@ import type { CreateMessage } from "../src/analysis/weakPoints";
 import app from "../src/app";
 import type { UsageCounterRepository } from "../src/repositories/usageCounterRepository";
 import { makeWeakPointRoutes } from "../src/routes/weakPoints";
+import { WeakPointRequest } from "../src/schemas/http";
+import { rateKeyOf } from "../src/usecases/weakPoints";
 
 const transcriptOf = (n: number) =>
   [
@@ -66,7 +68,7 @@ const ENV = {
   WEAK_POINT_ANALYSIS: "on",
   WEAK_POINT_IP_PER_HOUR: "10",
   WEAK_POINT_DAILY_LIMIT: "200",
-  WEAK_POINT_MAX_BODY_BYTES: "204800",
+  WEAK_POINT_MAX_BODY_BYTES: "65536",
 };
 
 /** 数える場所のまね。take の結果を決め、呼ばれた回数を数える */
@@ -248,9 +250,14 @@ test("wrangler.jsonc は本番で分析を on、プレビューで off にし、
   // 行の頭の // のコメントだけを消して読む（値の中に // は無い）
   const config = JSON.parse(text.replace(/^\s*\/\/.*$/gm, ""));
   assert.equal(config.vars.WEAK_POINT_ANALYSIS, "on");
-  assert.equal(config.vars.WEAK_POINT_IP_PER_HOUR, "10");
-  assert.equal(config.vars.WEAK_POINT_DAILY_LIMIT, "200");
-  assert.equal(config.vars.WEAK_POINT_MAX_BODY_BYTES, "204800");
+  // 値そのものは決め打ちしない（Award Day の当日の値の PR が vars と worker-configuration.d.ts だけで済むように）
+  for (const key of [
+    "WEAK_POINT_IP_PER_HOUR",
+    "WEAK_POINT_DAILY_LIMIT",
+    "WEAK_POINT_MAX_BODY_BYTES",
+  ]) {
+    assert.match(config.vars[key], /^[1-9]\d*$/, key);
+  }
   assert.equal(config.previews.vars.WEAK_POINT_ANALYSIS, "off");
   for (const bindings of [
     config.durable_objects.bindings,
@@ -318,6 +325,14 @@ test("本文が上限（WEAK_POINT_MAX_BODY_BYTES）を超えたら 413", async 
   assert.equal(res.status, 413);
   assert.equal(codeOf(json), "invalid_message");
   assert.equal(claude.seen.length, 0);
+  // 数える場所も呼ばない（413 は数えない）
+  const { usage, calls } = fakeUsage();
+  await post(body(), {
+    env: { WEAK_POINT_MAX_BODY_BYTES: "1000" },
+    create: claude.create,
+    usage,
+  });
+  assert.deepEqual(calls, { take: [], takeDaily: 0 });
 });
 
 test("回数の上限に達したら 429 で、Claude を呼ばない。IP は CF-Connecting-IP から数える", async () => {
@@ -517,12 +532,15 @@ test("残りの時間が足りなければ呼び直さず、呼び直しの時�
     t += 21_000;
     return fakeClaude(fakeHabits).create(params, options);
   };
+  const usage1 = fakeUsage();
   const claude1 = await post(body(), {
     create: slow,
-    usage: fakeUsage().usage,
+    usage: usage1.usage,
     now: () => t,
   });
   assert.equal(claude1.json.retries, 0);
+  // 呼び直さないので、1 日の回数も足さない
+  assert.equal(usage1.calls.takeDaily, 0);
 
   // 1 回目に 14 秒かかった（残り 11 秒。12 秒に足りない）
   t = 0;
@@ -530,12 +548,33 @@ test("残りの時間が足りなければ呼び直さず、呼び直しの時�
     t += 14_000;
     return fakeClaude(fakeHabits).create(params, options);
   };
+  const usage2 = fakeUsage();
   const claude2 = await post(body(), {
     create: middle,
-    usage: fakeUsage().usage,
+    usage: usage2.usage,
     now: () => t,
   });
   assert.equal(claude2.json.retries, 0);
+  assert.equal(usage2.calls.takeDaily, 0);
+
+  // 1 回目に 13 秒かかった（残りがちょうど 12 秒。呼び直す）
+  t = 0;
+  const edge: number[] = [];
+  const edgeReplies = [fakeHabits, goodAnalysis];
+  const atEdge: CreateMessage = async (params, options) => {
+    edge.push(options.timeout);
+    t += 13_000;
+    return fakeClaude(edgeReplies[edge.length - 1]).create(params, options);
+  };
+  const usage3 = fakeUsage();
+  const claude3 = await post(body(), {
+    create: atEdge,
+    usage: usage3.usage,
+    now: () => t,
+  });
+  assert.equal(claude3.json.retries, 1);
+  assert.deepEqual(edge, [25_000, 12_000]);
+  assert.equal(usage3.calls.takeDaily, 1);
 
   // 1 回目に 10 秒かかった（残り 15 秒）
   t = 0;
@@ -639,4 +678,81 @@ test("null を許す欄は、欄が無くても null として読む（iOS は n
       `{"n":1,"grade":"unknown","transcript":"${transcriptOf(1)}","claims":[{"quote":"${transcriptOf(1)}","verdict":"correct","item":null,"note":null}],"rewrite":null,"nextStep":{"kind":"content","text":"理由を足そう。","item":null},"expressionBasis":null,`,
     ),
   );
+});
+
+test("数える場所が失敗したら、初めの数えは 503 で Claude を呼ばず、呼び直しの前の数えは呼び直さずに 1 回目の結果を返す", async () => {
+  const broken: UsageCounterRepository = {
+    take: async () => {
+      throw new Error("Durable Object reset");
+    },
+    takeDaily: async () => true,
+  };
+  const claude = fakeClaude(goodAnalysis);
+  const failed = await captureLogs(() =>
+    post(body(), { create: claude.create, usage: broken }),
+  );
+  assert.equal(failed.value.res.status, 503);
+  assert.equal(codeOf(failed.value.json), "analysis_unavailable");
+  assert.equal(claude.seen.length, 0);
+  assert.ok(failed.lines.some((l) => l.includes("weak_points_counter_failed")));
+
+  const retryBroken: UsageCounterRepository = {
+    take: async () => ({ ok: true }),
+    takeDaily: async () => {
+      throw new Error("Durable Object reset");
+    },
+  };
+  const twice = fakeClaude(fakeHabits, goodAnalysis);
+  const { value } = await captureLogs(() =>
+    post(body(), { create: twice.create, usage: retryBroken }),
+  );
+  assert.equal(value.res.status, 200);
+  assert.deepEqual(value.json.habits, []);
+  assert.equal(value.json.retries, 0);
+  assert.equal(twice.seen.length, 1);
+});
+
+test("IP ごとの回数は、IPv4 はそのまま、IPv6 は先頭の /64 で数える", async () => {
+  assert.equal(rateKeyOf("203.0.113.7"), "203.0.113.7");
+  assert.equal(rateKeyOf("2001:db8:1:2:3:4:5:6"), "2001:db8:1:2::/64");
+  assert.equal(rateKeyOf("2001:DB8:0001:0002::abcd"), "2001:db8:1:2::/64");
+  assert.equal(rateKeyOf("2001:db8::1"), "2001:db8:0:0::/64");
+  assert.equal(rateKeyOf("fe80::1%en0"), "fe80:0:0:0::/64");
+  assert.equal(rateKeyOf("::ffff:192.0.2.1"), "192.0.2.1");
+  assert.equal(rateKeyOf("64:ff9b::192.0.2.1"), "64:ff9b:0:0::/64");
+  assert.equal(rateKeyOf("unknown"), "unknown");
+
+  // 同じ /64 の違うアドレスは、同じ値で数える場所に渡す
+  const { usage, calls } = fakeUsage();
+  for (const ip of ["2001:db8:1:2::1", "2001:db8:1:2:aaaa:bbbb:cccc:dddd"]) {
+    const routes = makeWeakPointRoutes({
+      create: fakeClaude(goodAnalysis).create,
+      usage: () => usage,
+    });
+    await routes.request(
+      "/weak-points",
+      {
+        method: "POST",
+        headers: { "content-type": "application/json", "cf-connecting-ip": ip },
+        body: JSON.stringify(body()),
+      },
+      ENV,
+    );
+  }
+  assert.deepEqual(calls.take, ["2001:db8:1:2::/64", "2001:db8:1:2::/64"]);
+});
+
+test("測定の記録の組（person-*.json）の本文は、口の本文の形を通る", () => {
+  for (const n of [1, 2, 3]) {
+    const fixture = JSON.parse(
+      readFileSync(
+        new URL(`./fixtures/weak-points/person-${n}.json`, import.meta.url),
+        "utf8",
+      ),
+    );
+    const parsed = WeakPointRequest.safeParse(fixture.request);
+    assert.ok(parsed.success, `person-${n}: ${parsed.error?.message}`);
+    // 64 KB の上限に収まる
+    assert.ok(JSON.stringify(fixture.request).length < 65_536);
+  }
 });

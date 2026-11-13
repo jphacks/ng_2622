@@ -23,7 +23,7 @@ export type WeakPointEnv = AnalysisEnv & {
 };
 
 // vars が無い・読めないときの値（docs/design/weak-point-analysis.md の 8 の「普段」）
-const DEFAULTS = { perHour: 10, daily: 200, maxBodyBytes: 204_800 };
+const DEFAULTS = { perHour: 10, daily: 200, maxBodyBytes: 65_536 };
 
 const count = (raw: string | undefined, fallback: number) => {
   const n = Number(raw);
@@ -54,8 +54,41 @@ export type WeakPointResult =
     };
 
 /**
+ * IP ごとの回数を数えるときの IP の形。IPv4 はそのまま、IPv6 は先頭の /64（1 つの回線や端末が持つ範囲）にまとめる。
+ * IPv4 を埋め込んだ IPv6（::ffff:192.0.2.1）は IPv4 として数える。読めない値はそのまま使う
+ */
+export const rateKeyOf = (ip: string): string => {
+  const raw = ip.trim().toLowerCase().split("%")[0];
+  if (!raw.includes(":")) return raw;
+  const mapped = raw.match(/^::ffff:(\d+\.\d+\.\d+\.\d+)$/);
+  if (mapped) return mapped[1];
+  // 末尾の IPv4（::1.2.3.4 など）は 16 bit の 2 つに直す
+  let text = raw;
+  const v4 = text.match(/(\d+)\.(\d+)\.(\d+)\.(\d+)$/);
+  if (v4) {
+    const [a, b, c, d] = v4.slice(1).map(Number);
+    text = `${text.slice(0, v4.index)}${((a << 8) | b).toString(16)}:${((c << 8) | d).toString(16)}`;
+  }
+  const halves = text.split("::");
+  if (halves.length > 2) return raw;
+  const left = halves[0] ? halves[0].split(":") : [];
+  const right = halves.length === 2 && halves[1] ? halves[1].split(":") : [];
+  const fill = halves.length === 2 ? 8 - left.length - right.length : 0;
+  const groups = [...left, ...Array(Math.max(fill, 0)).fill("0"), ...right];
+  if (groups.length !== 8 || groups.some((g) => !/^[0-9a-f]{1,4}$/.test(g))) {
+    return raw;
+  }
+  return `${groups
+    .slice(0, 4)
+    .map((g) => Number.parseInt(g, 16).toString(16))
+    .join(":")}::/64`;
+};
+
+/**
  * 回数の上限を数えてから分析する。ip は接続元の IP（CF-Connecting-IP）。usage が数える場所（UsageCounter）。
- * 分析が呼び直すときは、全体の 1 日の回数をもう 1 つ数え、上限なら呼び直さない
+ * 分析が呼び直すときは、全体の 1 日の回数をもう 1 つ数え、上限なら呼び直さない。
+ * 数える場所が失敗したら、初めの数え（take）は 503 にし（数えずに Claude を呼ばない）、
+ * 呼び直しの前の数え（takeDaily）は「呼び直さない」として 1 回目の結果を返す
  */
 export async function analyzeWithLimits(
   env: WeakPointEnv,
@@ -73,7 +106,24 @@ export async function analyzeWithLimits(
     };
   }
   const limits = weakPointLimits(env);
-  const taken = await usage.take(ip, limits);
+  let taken: Awaited<ReturnType<UsageCounterRepository["take"]>>;
+  try {
+    taken = await usage.take(rateKeyOf(ip), limits);
+  } catch (e) {
+    console.error(
+      JSON.stringify({
+        event: "weak_points_counter_failed",
+        step: "take",
+        name: e instanceof Error ? e.name : "Error",
+      }),
+    );
+    return {
+      ok: false,
+      code: "analysis_unavailable",
+      status: 503,
+      message: "苦手の分析の回数を数えられなかった",
+    };
+  }
   if (!taken.ok) {
     console.log(
       JSON.stringify({ event: "weak_points_limited", reason: taken.reason }),
@@ -91,7 +141,20 @@ export async function analyzeWithLimits(
   try {
     const outcome = await analyzeWeakPoints(env, input, {
       ...deps,
-      beforeRetry: () => usage.takeDaily(limits),
+      beforeRetry: async () => {
+        try {
+          return await usage.takeDaily(limits);
+        } catch (e) {
+          console.error(
+            JSON.stringify({
+              event: "weak_points_counter_failed",
+              step: "takeDaily",
+              name: e instanceof Error ? e.name : "Error",
+            }),
+          );
+          return false;
+        }
+      },
     });
     const { habits, improvement, nextTry } = outcome.analysis;
     console.log(

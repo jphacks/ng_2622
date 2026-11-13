@@ -608,7 +608,7 @@ export const WeakPointHabit = z
       .meta({ description: "何が起きているか（日本語 1〜2 文）" }),
     examples: z.array(WeakPointQuote).min(2).max(3).meta({
       description:
-        "自分の文の実例。2 つ以上の違う回にまたがる（2〜3 個。古い回から、話した順）",
+        "自分の文の実例。2 つ以上の違う回にまたがる（2〜3 個。新しい回から、同じ回の中は話した順）",
     }),
     fix: z
       .string()

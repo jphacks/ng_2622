@@ -141,3 +141,42 @@ test("作り直しても（休止のあと）保存した回数から続ける",
     reason: "ip_hourly",
   });
 });
+
+test("同時に届いても、上限の数だけを通す（同じ IP・違う IP・takeDaily を混ぜる）", async () => {
+  const { read } = clockAt();
+  const sameIp = await openCounter(read);
+  const same = await Promise.all(
+    Array.from({ length: 20 }, () =>
+      sameIp.counter.take("203.0.113.7", { perHour: 3, daily: 100 }),
+    ),
+  );
+  assert.equal(same.filter((r) => r.ok).length, 3);
+
+  const manyIps = await openCounter(read);
+  const many = await Promise.all(
+    Array.from({ length: 20 }, (_, i) =>
+      manyIps.counter.take(`198.51.100.${i}`, { perHour: 3, daily: 5 }),
+    ),
+  );
+  assert.equal(many.filter((r) => r.ok).length, 5);
+  assert.equal(
+    (manyIps.storage.get("weak-points") as { daily: number }).daily,
+    5,
+  );
+
+  const mixed = await openCounter(read);
+  const results = await Promise.all(
+    Array.from({ length: 20 }, (_, i) =>
+      i % 2 === 0
+        ? mixed.counter
+            .take(`192.0.2.${i}`, { perHour: 3, daily: 4 })
+            .then((r) => r.ok)
+        : mixed.counter.takeDaily({ daily: 4 }),
+    ),
+  );
+  assert.equal(results.filter(Boolean).length, 4);
+  assert.equal(
+    (mixed.storage.get("weak-points") as { daily: number }).daily,
+    4,
+  );
+});

@@ -15,7 +15,7 @@
   // docs/design/scene-protocol.md）。PR のプレビューも費用を抑えるため off
   // WEAK_POINT_* は苦手の分析（POST /weak-points、docs/design/weak-point-analysis.md）。WEAK_POINT_ANALYSIS は "on" のときだけ Claude を呼ぶ
   // スイッチ（それ以外は 503。PR のプレビューは off）。IP_PER_HOUR は IP ごとの 1 時間の回数、DAILY_LIMIT は全体の 1 日（日本時間）の回数
-  // （呼び直しも数える。1 回約 0.05 USD）、MAX_BODY_BYTES は本文の大きさ。普段は 10・200・204800。
+  // （呼び直しも数える。1 回約 0.05 USD）、MAX_BODY_BYTES は本文の大きさ。普段は 10・200・65536（64 KB。記録の組 10 件は 11〜20 KB。大きいほど 1 回の費用が上がる）。
   // Award Day の当日は 60・500 に書き換えてデプロイし、終わったら戻す（docs/design/cost-safety.md）
   "vars": {
     "SCORING_MODE": "live",
@@ -27,7 +27,7 @@
     "WEAK_POINT_ANALYSIS": "on",
     "WEAK_POINT_IP_PER_HOUR": "10",
     "WEAK_POINT_DAILY_LIMIT": "200",
-    "WEAK_POINT_MAX_BODY_BYTES": "204800"
+    "WEAK_POINT_MAX_BODY_BYTES": "65536"
   },
   // SCENE_REVIEWS はシーンの評価（全シーンで 1 つ）。USAGE_COUNTER は苦手の分析の回数（全体で 1 つ）
   "durable_objects": {
