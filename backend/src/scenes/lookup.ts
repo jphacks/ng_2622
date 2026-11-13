@@ -455,20 +455,37 @@ const GROUND_NOUNS = [
   "platform",
 ];
 
-// 建物と部屋の主の名詞（建物の部品の ID に足す）
+// 建物と部屋の主の名詞（建物の部品の ID に足す）。前に何が付いても建物（brick wall・living room）
 const BUILDING_NOUNS = [
   "wall",
   "door",
   "window",
   "room",
-  "house",
-  "home",
   "building",
   "roof",
   "ceiling",
   "stairs",
   "stair",
 ];
+
+// 家の主の名詞。人・動物と同じく、前に様子・材質の語だけが付けば家そのもの（house・big house・brick house）、
+// ほかの語が付けば家の形の物（bird house・dog house・doll house）
+const HOUSE_NOUNS = new Set(["house", "home"]);
+
+// 家の前に付いても家そのものを言う、材質の語
+const MATERIALS = new Set([
+  "brick",
+  "wooden",
+  "wood",
+  "stone",
+  "concrete",
+  "glass",
+  "metal",
+  "steel",
+  "iron",
+  "log",
+  "straw",
+]);
 
 // 同梱の人・動物の「誰」「種類」の語（verify.ts の PERSON_NOUNS と部品の words）に足す、よく出る人と動物の語
 const MORE_LIVING = [
@@ -577,24 +594,52 @@ const nounForms = (word: string): string[] => [
 const formIn = (set: Set<string>, word: string) =>
   nounForms(word).find((f) => set.has(f));
 
-/** 句を、主の名詞（最後の語）と前に付いた語に分ける（a・an・the は外す） */
+/**
+ * 句を、主の名詞（最後の語）と前に付いた語に分ける（a・an・the は外す）。
+ * 「X of Y」は X が主なので、of より前だけを見る（bucket of sand の bucket・picture of a house の picture）
+ */
 const headOf = (phrase: string) => {
   const tokens = phrase
     .toLowerCase()
     .replace(/_/g, " ")
     .split(/\s+/)
     .filter((t) => t !== "" && !["a", "an", "the"].includes(t));
-  return { head: tokens.at(-1) ?? "", modifiers: tokens.slice(0, -1) };
+  const of = tokens.indexOf("of");
+  const core = of > 0 ? tokens.slice(0, of) : tokens;
+  return { head: core.at(-1) ?? "", modifiers: core.slice(0, -1) };
 };
 
+/** 地面・建物・人と動物の主の名詞の一覧（同梱の部品の ID と「誰」に、上の一覧を足す。家は HOUSE_NOUNS） */
+const nounSets = (parts: Part[]) => ({
+  ground: new Set([
+    ...parts
+      .filter((p) => p.category === "ground")
+      .map((p) => p.id.split("_")[0]),
+    ...GROUND_NOUNS,
+  ]),
+  // 建物の部品は 1 語の ID（door・wall・window）だけ足す（bus_shelter の bus は主の名詞でない。words には bus・menu など物の語も入っている）
+  building: new Set([
+    ...parts
+      .filter((p) => p.category === "building" && !p.id.includes("_"))
+      .map((p) => p.id),
+    ...BUILDING_NOUNS,
+  ]),
+  living: new Set([
+    ...Object.keys(PERSON_NOUNS).map((n) => headOf(n).head),
+    ...parts.filter(isLiving).map((p) => headOf(whoOf(p)).head),
+    ...MORE_LIVING,
+  ]),
+});
+
 /**
- * 注文が「物」でない（地面・建物・生きている人や動物）か。英語の主の名詞（words の各句の最後の語。複数形は単数に寄せる）で決める。
+ * 注文が「物」でない（地面・建物・生きている人や動物）か。英語の主の名詞（words の各句の最後の語。「X of Y」は X。複数形は単数に寄せる）で決める。
  * words が無ければ id の先頭の語（名詞_区別 の名詞）で決める。id と words が食い違うとき（fish_tank の words が fish tank）は words を見る。
  * - 地面・建物: どれか 1 つの句の主の名詞が地面・建物の語なら当たる（brick wall・wooden door・grass）。
- *   主でない語（door mat の door・window box の window・street lamp の street）では当てない
- * - 人・動物: どの句も、主の名詞が人・動物で、前に付いた語が色・大きさ・年齢・様子だけ（brown dog・old man）のときだけ当たる。
- *   別の語が前に付いた句（teddy bear・rubber duck）や、主の名詞が物の句（fish tank の tank）が 1 つでもあれば、人や動物の形の物とみる
- *   （rubber duck の words に短い呼び名の duck が並んでいても断らない）。食べ物（category が food）は動物の語（chicken・fish）で断らない
+ *   主でない語（door mat の door・window box の window・street lamp の street・bucket of sand の sand）では当てない
+ * - 家（house・home）と人・動物: どの句も、主の名詞がそれで、前に付いた語が様子だけ（家は材質も。big house・brick house・brown dog・old man）のときだけ当たる。
+ *   別の語が前に付いた句（bird house・doll house・teddy bear・rubber duck）や、主の名詞が物の句（fish tank の tank）が 1 つでもあれば、
+ *   家や人・動物の形の物とみる（rubber duck の words に短い呼び名の duck が並んでいても断らない）。
+ *   食べ物（category が food）は動物の語（chicken・fish）で断らない
  */
 export const notAThing = (
   order: Pick<PartOrder, "id" | "category" | "words">,
@@ -604,42 +649,34 @@ export const notAThing = (
   const phrases = (words.length > 0 ? words : [order.id.split("_")[0]]).map(
     headOf,
   );
-  const ground = new Set([
-    ...parts
-      .filter((p) => p.category === "ground")
-      .map((p) => p.id.split("_")[0]),
-    ...GROUND_NOUNS,
-  ]);
-  // 建物の部品は 1 語の ID（door・wall・window）だけ足す（bus_shelter の bus は主の名詞でない。words には bus・menu など物の語も入っている）
-  const building = new Set([
-    ...parts
-      .filter((p) => p.category === "building" && !p.id.includes("_"))
-      .map((p) => p.id),
-    ...BUILDING_NOUNS,
-  ]);
+  const sets = nounSets(parts);
   for (const [what, set] of [
-    ["ground", ground],
-    ["building", building],
+    ["ground", sets.ground],
+    ["building", sets.building],
   ] as const) {
     for (const { head } of phrases) {
       const word = formIn(set, head);
       if (word) return { what, word };
     }
   }
-  if (order.category === "food") return undefined;
-  const living = new Set([
-    ...Object.keys(PERSON_NOUNS).map((n) => headOf(n).head),
-    ...parts.filter(isLiving).map((p) => headOf(whoOf(p)).head),
-    ...MORE_LIVING,
-  ]);
-  const livingWords = phrases.map(({ head, modifiers }) =>
-    modifiers.every((m) => DESCRIBING.has(m) || formIn(living, m))
-      ? formIn(living, head)
-      : undefined,
+  /** どの句も、主の名詞が set の語で、前に付いた語が keeps に当たる語だけなら、その語（最初の句の） */
+  const itself = (set: Set<string>, keeps: (m: string) => boolean) => {
+    const found = phrases.map(({ head, modifiers }) =>
+      modifiers.every(keeps) ? formIn(set, head) : undefined,
+    );
+    return found.every((w) => w !== undefined) ? found[0] : undefined;
+  };
+  const house = itself(
+    HOUSE_NOUNS,
+    (m) => DESCRIBING.has(m) || MATERIALS.has(m),
   );
-  if (livingWords.every((w) => w !== undefined)) {
-    return { what: "living", word: livingWords[0] as string };
-  }
+  if (house) return { what: "building", word: house };
+  if (order.category === "food") return undefined;
+  const living = itself(
+    sets.living,
+    (m) => DESCRIBING.has(m) || formIn(sets.living, m) !== undefined,
+  );
+  if (living) return { what: "living", word: living };
   return undefined;
 };
 

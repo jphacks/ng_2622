@@ -302,6 +302,16 @@ test("物かどうかは英語の主の名詞（words の各句の最後の語�
     { id: "ball_beach", words: ["beach ball"] },
     { id: "bus", words: ["bus"], category: "vehicle" },
     { id: "boxes", words: ["boxes"] },
+    // 家の形の物（家の前に様子・材質でない語が付く）
+    { id: "house_bird", words: ["bird house"] },
+    { id: "house_bird", words: ["bird house", "house"] },
+    { id: "house_dog", words: ["dog house"] },
+    { id: "house_doll", words: ["doll house"] },
+    // 「X of Y」の主は X
+    { id: "bucket_sand", words: ["bucket of sand"] },
+    { id: "picture_house", words: ["picture of a house"] },
+    { id: "statue_man", words: ["statue of a man"] },
+    { id: "cup_tea", words: ["cup of tea"] },
   ];
   const refuse: [Case, string][] = [
     [{ id: "dog_brown", words: ["brown dog"] }, "living"],
@@ -316,6 +326,10 @@ test("物かどうかは英語の主の名詞（words の各句の最後の語�
     [{ id: "door_wooden", words: ["wooden door"] }, "building"],
     [{ id: "window_round", words: ["round window"] }, "building"],
     [{ id: "house", words: ["house"] }, "building"],
+    [{ id: "house_brick", words: ["brick house"] }, "building"],
+    [{ id: "house_big", words: ["big house", "home"] }, "building"],
+    // 部屋は前に何が付いても部屋（living room・waiting room）
+    [{ id: "room_living", words: ["living room"] }, "building"],
     [{ id: "windows", words: ["windows"] }, "building"],
     [{ id: "grass", words: ["grass"] }, "ground"],
     [{ id: "grass_tuft", words: ["grass tuft", "grass"] }, "ground"],
