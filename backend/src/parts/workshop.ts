@@ -18,6 +18,7 @@ import {
 // 場面の生成と同じ Durable Object（WeakSceneMaker）の中から呼ぶ。テストや手元の確かめでは直に呼んでよい
 
 export { isBundledPart, isObjectId, OBJECT_ID, parsePartId } from "./ids";
+export { type RefusalFields, refusedTerm } from "./policy";
 export { PART_CATEGORIES } from "./write";
 
 /** 作る部品の注文 */
@@ -120,9 +121,7 @@ export const orderProblem = (order: PartOrder): string | null => {
     return `description は 1〜${MAX_DESCRIPTION} 文字`;
   if (order.top !== undefined && typeof order.top !== "boolean")
     return "top は true か false";
-  const refused = [order.id, ...order.words, order.label, order.description]
-    .map(refusedTerm)
-    .find((t) => t !== null);
+  const refused = refusedTerm(order);
   if (refused) return `refused: 作らない物の語（${refused}）を含む`;
   return null;
 };
