@@ -2,6 +2,7 @@
 
 ## Status
 - accepted
+- 部分 supersede: 「苦手の分析は、別に保存せず、この記録を読んで計算する」（Decision の 7 項目め）のうち、分析の結果の控え（AI の結果）は、[20261113-analyze-weak-points-with-ai-from-on-device-counts](./20261113-analyze-weak-points-with-ai-from-on-device-counts.md) で端末に 1 つ覚えることにした。数える分析を毎回記録から計算すること、回ごとの集計を別に持たないことは存続する。
 
 ## Situation
 - Award Day（2026-11-15）の前。アプリとバックエンドを、チェックリストの採点と英検の級の場面に切り替えるまとめ用の branch（`feat/eiken-switch`）を作っている。
