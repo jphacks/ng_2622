@@ -122,7 +122,9 @@ struct RecordsView: View {
         SceneRounds(scene: current, recordings: library.recordings)
           .resultColumn()
           .padding(.top, 10)
-          .padding(.bottom, 56)
+          // 入口のフッターがあるときは、その高さだけ下を空ける（一番下まで送ったとき、最後の中身がフッターに隠れない。
+          // 振り返りが短くて 3D が止まるまで送れず、フッターが隠れないときも）
+          .padding(.bottom, library.canOpenWeakPoints ? WeakPointFooter.height : 56)
           // 場面を替えたら、棒の伸びる動きなどを初めからにする
           .id(current.id)
       }
@@ -421,19 +423,40 @@ private struct ShelfWall: View {
 }
 
 /// 下に固定する「苦手」への入口。下へスクロールして振り返りを読み始めたら（3D が止まったら）下に隠れ、上に戻ると出る
+/// ボタンの後ろは、上ほど地の色に溶かした帯にし、下を流れる中身の文字がボタンのすぐ上で消えるようにする
 private struct WeakPointFooter: View {
   let stick: ShelfStick
   let action: () -> Void
 
+  /// ボタンの上の、地の色に溶かす帯
+  private static let fade: CGFloat = 28
+  /// ボタンの下の空き（安全な領域の上）
+  private static let bottom: CGFloat = 8
+  /// フッターが占める高さ（上の帯・ボタン 64・押せる影 6・下の空き。安全な領域は含まない）。中身の下の空きに使う
+  static let height: CGFloat = fade + 64 + 6 + bottom
+
   var body: some View {
     let hidden = stick.progress > 0
-    Button(action: action) {
-      Text("苦手をぶっとばせ！")
+    // 空きと帯は、ボタンの外側に付ける（押せる所と読み上げの枠を、ボタンの形だけにする）
+    VStack(spacing: 0) {
+      Button(action: action) {
+        Text("苦手をぶっとばせ！")
+      }
+      .buttonStyle(BigButtonStyle(kind: .primary))
     }
-    .buttonStyle(BigButtonStyle(kind: .primary))
+    .accessibilityElement(children: .contain)
     .resultColumn()
-    .padding(.bottom, 8)
-    .offset(y: hidden ? 160 : 0)
+    .padding(.top, Self.fade)
+    .padding(.bottom, Self.bottom + 6)
+    .background {
+      LinearGradient(
+        stops: [.init(color: Theme.background.opacity(0), location: 0), .init(color: Theme.background, location: 0.45)],
+        startPoint: .top, endPoint: .bottom
+      )
+      .ignoresSafeArea(edges: .bottom)
+      .allowsHitTesting(false)
+    }
+    .offset(y: hidden ? 200 : 0)
     .animation(.easeInOut(duration: 0.25), value: hidden)
     .allowsHitTesting(!hidden)
     .accessibilityHidden(hidden)
