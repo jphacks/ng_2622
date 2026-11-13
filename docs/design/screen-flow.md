@@ -35,6 +35,7 @@ flowchart TD
   Home[1 ホーム] -->|あそぶ| Lobby[3 待合]
   Lobby -->|ホストが他のルーム| Join[2 他のルームに入る]
   Join -->|コード / QR → 確かめ → 今の部屋を抜けて入る| Lobby
+  Join -->|確かめの後で入れない（理由を一言出す）| Home
   Lobby -->|退出| Home
   Lobby -->|ホストがスタート| Play[4 プレイ]
   Play -->|自分の録音が終わる| Wait[5 待機]
