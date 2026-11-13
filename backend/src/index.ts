@@ -4,4 +4,5 @@ import app from "./app";
 
 export { Room } from "./durable-objects/room";
 export { SceneReviews } from "./durable-objects/sceneReviews";
+export { UsageCounter } from "./durable-objects/usageCounter";
 export default app;

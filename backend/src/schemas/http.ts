@@ -1,6 +1,7 @@
 import { z } from "zod";
 import {
   DISTANCES,
+  GRADE_IDS,
   LINKS,
   PATHS,
   RELATIONS,
@@ -420,3 +421,245 @@ export const GenerateSceneRequest = z
     }),
   })
   .meta({ ref: "GenerateSceneRequest" });
+
+// 苦手の分析の口（POST /weak-points）。設計は docs/design/weak-point-analysis.md の 3。
+// 本文は端末の記録の文字だけ。録音・名前・端末や記録の ID・日時・場面の ID は受け取らない（知らない欄は捨てる）
+
+/** 1 回の分析に送る回の数（内容の内訳のある記録の直近 10 件。4 件以下はアプリが呼ばない） */
+export const WEAK_POINT_MIN_ROUNDS = 5;
+export const WEAK_POINT_MAX_ROUNDS = 10;
+
+const RoundNumber = z.int().min(1).max(WEAK_POINT_MAX_ROUNDS);
+
+// null を許す欄は、欄が無くても null と同じに読む（iOS の生成器の型は nil の欄を書かずに送るため）
+const WeakPointRound = z.object({
+  n: RoundNumber.meta({
+    description:
+      "回の番号。古い順に 1 から振る（rounds の並びと同じ）。記録の ID は送らず、アプリが番号と記録の ID を対応させる",
+  }),
+  // Difficulty（ref 付き）を nullable にすると anyOf になり、iOS の生成器が読めないので、同じ値の enum を直に書く
+  grade: z.enum(GRADE_IDS).nullish().meta({
+    description:
+      "級（記録の difficulty。eiken-3・eiken-pre2・eiken-2）。級は混ざってよい。分からなければ null（Claude には級は不明と渡す）",
+  }),
+  transcript: z
+    .string()
+    .trim()
+    .min(1)
+    .max(2000)
+    .meta({ description: "文字起こし（1〜2000 文字）" }),
+  claims: z
+    .array(
+      z.object({
+        quote: z.string().max(2000),
+        verdict: z.enum(["correct", "contradiction", "absent", "offtopic"]),
+        item: z.string().max(100).nullish(),
+        note: z.string().max(500).nullish(),
+      }),
+    )
+    .max(30)
+    .meta({
+      description:
+        "描写ごとの判定（記録の content.claims の quote・verdict・item・note）。0〜30 個",
+    }),
+  rewrite: z
+    .object({
+      before: z.string().max(2000),
+      after: z.string().max(2000),
+      reason: z.string().max(500),
+    })
+    .nullish()
+    .meta({ description: "言い直しの例（記録の feedback.rewrite）" }),
+  nextStep: z
+    .object({
+      kind: z.enum(["content", "expression", "speech"]),
+      text: z.string().max(500),
+      item: z.string().max(100).nullish(),
+    })
+    .nullish()
+    .meta({
+      description:
+        "次の一つ（記録の feedback.nextStep の kind・text・item）。gain は送らない",
+    }),
+  expressionBasis: z.string().max(1000).nullish().meta({
+    description:
+      "表現の根拠（記録の feedback.expressionBasis）。欄の無い前の記録・3 語未満の回・固定の点数のモードは null",
+  }),
+  scene: z.object({
+    description: z
+      .string()
+      .max(1000)
+      .meta({ description: "場面の見本の答えの全文（1000 文字まで）" }),
+    missedItems: z
+      .array(
+        z.object({
+          id: z.string().max(100),
+          kind: ChecklistKind,
+          label: z.string().max(200),
+          accept: z.string().max(500),
+          level: z.enum(["none", "partial"]),
+        }),
+      )
+      .max(12)
+      .meta({
+        description:
+          "言えなかった（none）・一部だけ言えた（partial）チェックリストの項目。0〜12 個",
+      }),
+  }),
+});
+
+const Average = z.number().min(0).max(100);
+const WeakPointHalf = z.object({
+  rounds: z
+    .int()
+    .min(1)
+    .max(WEAK_POINT_MAX_ROUNDS / 2)
+    .meta({
+      description: "その半分の回の数（⌊回の数 / 2⌋）",
+    }),
+  content: Average.meta({ description: "内容の点の平均" }),
+  expression: Average.meta({ description: "表現の点の平均" }),
+});
+
+const Tally = z.int().min(0);
+
+export const WeakPointRequest = z
+  .object({
+    rounds: z
+      .array(WeakPointRound)
+      .min(WEAK_POINT_MIN_ROUNDS)
+      .max(WEAK_POINT_MAX_ROUNDS)
+      // 引用の確かめで回を番号で引くので、番号は古い順に 1 から欠けずに振る
+      .refine((rounds) => rounds.every((r, i) => r.n === i + 1), {
+        message: "n は古い順に 1 から振る",
+      })
+      .meta({ description: "直近の回（5〜10 件）。古い順" }),
+    counts: z
+      .object({
+        rounds: z
+          .int()
+          .min(WEAK_POINT_MIN_ROUNDS)
+          .max(WEAK_POINT_MAX_ROUNDS)
+          .meta({ description: "数えた回の数" }),
+        kinds: z
+          .array(
+            z.object({
+              kind: ChecklistKind,
+              earned: z.number().min(0).meta({
+                description:
+                  "言えた項目の値の合計（full 1・partial 0.5・none 0。重みは掛けない）",
+              }),
+              total: z.int().min(1).meta({ description: "その種類の項目の数" }),
+            }),
+          )
+          .max(4)
+          .meta({
+            description:
+              "項目の種類ごとの言えた割合の分子と分母。total が 0 の種類は入れない",
+          }),
+        verdicts: z
+          .object({
+            correct: Tally,
+            contradiction: Tally,
+            absent: Tally,
+            offtopic: Tally,
+          })
+          .meta({ description: "判定の種類ごとの描写の数" }),
+        halves: z.object({ first: WeakPointHalf, second: WeakPointHalf }).meta({
+          description:
+            "点の前半と後半（古いほうと新しいほうの ⌊回の数 / 2⌋ 回。奇数なら真ん中の 1 回は使わない）",
+        }),
+      })
+      .meta({
+        description:
+          "端末で数えた値（docs/design/weak-point-analysis.md の 4）。Claude には参考として渡し、文に数字を書かせない",
+      }),
+  })
+  .meta({
+    ref: "WeakPointRequest",
+    description:
+      "苦手の分析に送る、直近の記録の文字と端末で数えた値。録音・名前・端末や記録の ID・遊んだ日時・場面の ID は送らない。サーバーは保存しない",
+  });
+
+export const WeakPointViewpoint = z.enum(["content", "expression"]).meta({
+  ref: "WeakPointViewpoint",
+  description:
+    "英検の二次試験の評価の観点。content: 内容（応答内容・情報量）・expression: 表現（語い・文法・語法）",
+});
+
+export const WeakPointQuote = z
+  .object({
+    n: RoundNumber.meta({ description: "回の番号（送った rounds の n）" }),
+    quote: z.string().meta({
+      description:
+        "その回の文字起こし（transcript）に書かれているとおりの文字列。サーバーが確かめ、見つからない引用は返さない",
+    }),
+  })
+  .meta({ ref: "WeakPointQuote", description: "自分の文の引用" });
+
+export const WeakPointHabit = z
+  .object({
+    viewpoint: WeakPointViewpoint,
+    title: z.string().meta({
+      description: "短い見出し（日本語。例「理由をつけずに終わる」）",
+    }),
+    what: z
+      .string()
+      .meta({ description: "何が起きているか（日本語 1〜2 文）" }),
+    examples: z.array(WeakPointQuote).min(2).max(3).meta({
+      description:
+        "自分の文の実例。2 つ以上の違う回にまたがる（2〜3 個。新しい回から、同じ回の中は話した順）",
+    }),
+    fix: z
+      .string()
+      .meta({ description: "直し方（日本語 1 文と、短い英語の例）" }),
+  })
+  .meta({ ref: "WeakPointHabit", description: "くり返す癖" });
+
+export const WeakPointImprovement = z
+  .object({
+    viewpoint: WeakPointViewpoint,
+    text: z.string().meta({ description: "良くなった点（日本語 1 文）" }),
+    example: WeakPointQuote,
+  })
+  .meta({
+    ref: "WeakPointImprovement",
+    description:
+      "前より良くなった点。example は根拠の引用で、後半の回（新しいほうの ⌊回の数 / 2⌋ 回）から引く",
+  });
+
+export const WeakPointNextTry = z
+  .object({
+    viewpoint: WeakPointViewpoint,
+    text: z.string().meta({
+      description: "次の 1 回で試すこと（日本語 1 文と、短い英語の例）",
+    }),
+  })
+  .meta({
+    ref: "WeakPointNextTry",
+    description: "次の 1 回で試すこと。苦手の画面の「次はここ」に出す",
+  });
+
+export const WeakPointResponse = z
+  .object({
+    habits: z.array(WeakPointHabit).max(3).meta({
+      description:
+        "くり返す癖（内容と表現を合わせて 2〜3 件を頼む）。確かめを通ったものだけなので 0〜1 件のこともある。空なら「くり返す癖は見つかりませんでした」",
+    }),
+    improvement: WeakPointImprovement.nullable().meta({
+      description:
+        "前より良くなった点。良くなっていない・根拠の引用が後半の回に見つからないときは null（欄を出さない）",
+    }),
+    nextTry: WeakPointNextTry.nullable().meta({
+      description:
+        "次の 1 回で試すこと。確かめで落ちたら null（アプリが数える分析から「次はここ」の代わりを出す）",
+    }),
+    retries: z.int().min(0).max(1).meta({
+      description: "確かめで癖が全部落ちて Claude を呼び直した回数（0〜1）",
+    }),
+  })
+  .meta({
+    ref: "WeakPointResponse",
+    description:
+      "確かめを通った苦手の分析。サーバーは保存しない。文に割合や点の数字は入らない（数字はアプリが数えた値を出す）",
+  });
