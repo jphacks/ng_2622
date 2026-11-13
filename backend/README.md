@@ -181,6 +181,40 @@ CLAUDE_API_KEY=... pnpm tsx scripts/make-pool-v2.ts ~/pool-v2 --grade eiken-2 --
 
 `--count` は級ごとに試す数、`--grade` は級（`,` 区切り）、`--start` は開始番号（テーマの回し始めと id の連番。同じ id のファイルがあれば飛ばす）。ここで出来るのは候補で、絵に描いて（`scripts/scene/render_layout.py`）人が選んでから `src/scenes/pool/` に入れる。
 
+## 部品をその場で作る（`src/parts/`）
+
+苦手の場面の生成が、手持ちに無い物（thing・furniture・food・plant・vehicle）の 3D の部品をその場で作るための部分。決めたことの正本は [`docs/design/part-generation.md`](../docs/design/part-generation.md)。AI（Claude）は部品表（基本形の JSON）だけを書き、組み立ては依存の無い自前の TS が行う。
+
+| ファイル | 中身 |
+| --- | --- |
+| `workshop.ts` | 口。`ensureParts(env, orders, { maxNew, signal?, timeoutMs? })` は R2 に既にある ID は作らずにメタデータを返し、無い物だけ並べて作る。`lookupPart(env, id, version?)` は R2 の部品のメタデータを引く（同梱の部品は引かない）。組み立ては呼んだ側の CPU で動く（1 個で初回 7〜12 ms。Worker の無料プランの 10 ms を超えるので、Durable Object の中から呼ぶ） |
+| `write.ts` | Claude に部品表を書かせる。構造化出力（`recipe.ts` の JSON Schema）、system に `cache_control`。見本は同じ category の今の部品の部品表 2〜3 個（`samples.json`）。人の名前・武器・暴力・性的な物の注文は断らせる。モデルと effort は `CLAUDE_PART_MODEL`・`CLAUDE_PART_EFFORT`、無ければ `CLAUDE_SCENE_*`（既定 `claude-sonnet-5-5` の `low`） |
+| `make.ts` | 1 個を作る流れ。書かせる → 確かめる → 組む → 検査する。検査に落ちたら、落ちた理由（英語）を付けて 1 回だけ書き直させる |
+| `recipe.ts`・`materials.json` | 部品表の形（box・cyl・sphere・limb・slab・poly、座標は Blender の Z が上）と zod。材質は `scripts/scene/parts.py` の `make_materials()` の 248 種（`python3 -I scripts/scene/export_materials.py` で書き出す） |
+| `build.ts` | 部品表 → 形 → USDA → 64 バイト境界の無圧縮 zip（USDZ）。原点は外接箱の底面の中心、Y が上・正面 +Z に直す。`top` の注文には上に置ける面の高さ（`anchors.top`）を付ける |
+| `check.ts` | 形の検査（下の表） |
+| `ids.ts` | 部品の ID の規約（物は `名詞` か `名詞_区別`、人は `person_動作_誰_変種`、動物は `animal_動作_種類_変種`） |
+| `store.ts` | R2（binding `BUCKET`）の置き場。`parts/<id>/<v>.usdz`・`parts/<id>/<v>.json`（index.json の 1 件と同じ形）・`recipes/<id>/<v>.json`（部品表と注文・回ごとの時間と費用）。json を最後に書く |
+
+作った部品の USDZ は `GET /parts/{id}/{version}.usdz` で取れる（`cache-control: public, max-age=31536000, immutable`、無ければ 404）。
+
+形の検査の値（`check.ts` の `LIMITS`）:
+
+| 検査 | 値 | 決めた理由 |
+| --- | --- | --- |
+| op と材質 | enum の中だけ（材質は 248 種） | 組み立てと色を決められる物だけにする |
+| 基本形の数 | 120 まで | 同梱の物は多くて本棚の 115 |
+| 三角形の数 | 6,000 まで（組む前に見積もり、組んだあとにも数える） | 同梱の物は多くて 3,300、人は 6,800 |
+| 材質の数 | 10 まで | 同梱の物は多くて電車の 9 |
+| 頼んだ寸法との差 | 軸ごとに、頼んだ寸法の 35% か 2 cm の大きい方まで | 形の向き（幅と奥行きの取り違え）や桁の間違いを落とし、形の工夫は許す |
+| 浮いた基本形 | 基本形ごとの外接箱を、部品の最も長い辺の 2% か 5 mm の大きい方だけ膨らませ、触れ合うものをつなぐ。1 つにつながらなければ落とす | 同梱の物（破片・雨・ろうそくなど、もともと離れた物を除く）は全部通る |
+
+### 手元で部品を作ってみる
+
+`pnpm dev`（`ENABLE_DEV_ROUTES=true`）で開く `POST /dev/parts` に、`{ "orders": [PartOrder...], "maxNew": 4 }` を送ると `ensureParts` を直に呼ぶ。作った部品は手元の R2（`.wrangler/state`）に置かれ、`GET /parts/<id>/1.usdz` で取れる。部品表は `pnpm exec wrangler r2 object get ng-2622-bucket/recipes/<id>/1.json --local --pipe` で読める。
+
+2026-11-14 の実測（`claude-sonnet-5-5` の `low`、12 個を 4 個ずつ並べて）: 1 個 3.6〜11.7 秒（書き直しの 2 回は 11.6 秒）、4 個並べて 8.6〜11.7 秒。1 個 0.006〜0.049 USD（system の約 8,300 トークンのキャッシュに当たれば約 0.01 USD、並べた 1 回目は 4 個ともキャッシュを書くので約 0.03 USD）。12 個のうち書き直しは 2 個（浮いた基本形・奥行きの取り違え）で、2 個とも書き直しで通った。武器と人の名前の注文は断った。作った USDZ はすべて `usdchecker --arkit` を通った。
+
 ## タイトル画面の 3D（`GET /title`、`src/title/`）
 
 タイトル画面（ホーム）に、既定の場面（公園）の代わりに期間つきで出す 3D（企業の 3D 広告。今は JPHACKS が提供した場合の見本）。決め方は [ADR](../docs/adr/20261113-decide-title-diorama-on-server-with-expiry.md)。
