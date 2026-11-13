@@ -215,3 +215,20 @@ test("止めたら、できていない部品を失敗として返す", async ()
   const result = await pending;
   assert.deepEqual(result.failed, [{ id: "kite", reason: "止めた" }]);
 });
+
+test("注文の本文には、同じ category の今の部品の部品表（見本）と、軸を添えた寸法が入る", async () => {
+  const { orderMessage } = await import("../src/parts/write");
+  const text = orderMessage({
+    ...order("cactus_pot"),
+    category: "plant",
+    top: true,
+  });
+  assert.match(text, /- plant_pot \(/);
+  assert.match(text, /- tree \(/);
+  assert.doesNotMatch(text, /- chair \(/);
+  assert.match(
+    text,
+    /size: width 0\.3 m \(X\), height 0\.5 m \(Z\), depth 0\.3 m \(Y\)/,
+  );
+  assert.match(text, /top surface/);
+});

@@ -64,15 +64,15 @@ The ordered size is [width, height, depth] = [extent along X, extent along Z, ex
 
 Primitives (all lengths in meters, rot = Euler angles in radians around X, Y, Z applied in XYZ order):
 - box: size [x, y, z] full lengths, loc = center. bevel rounds the edges (use about 10-25% of the smallest side for soft shapes, 0 for sharp ones).
-- cyl: cylinder or cone along Z, loc = center, depth = height, r1 = bottom radius, r2 = top radius (r2 = 0 is a cone). segs = number of sides (default 16; 8-12 for thin ones, up to 32 for large round ones). Use rot to lay it down, e.g. rot [1.5708, 0, 0] points it along Y.
-- sphere: radius r at loc. scale [sx, sy, sz] makes an ellipsoid. segs default 20 (8-12 for small ones).
+- cyl: cylinder or cone along Z, loc = center, depth = height, r1 = bottom radius, r2 = top radius (r2 = 0 is a cone). segs = number of sides (default 16; 8-12 for thin ones, up to 32 for large round ones). A few sides make prisms: segs 3 is a triangular prism, 4 a square one, 6 a hexagonal one. Use rot to lay it down, e.g. rot [1.5708, 0, 0] points it along Y. Its caps are closed; to show an open container, put a thin dark disc just below the rim.
+- sphere: radius r at loc. scale [sx, sy, sz] makes an ellipsoid whose half-extents are r*sx, r*sy, r*sz (its front surface is at y = loc.y - r*sy). segs default 20 (8-12 for small ones).
 - limb: tapered tube from point a (radius r1) to point b (radius r2). Best for handles, legs, rods, poles, arcs made of several limbs, and frames at any angle.
 - slab: flat plate with rounded corners, size [x, y], z_top = height of its top face, thickness, radius = corner radius, center [x, y].
 - poly: one flat polygon through 3 or more points (in order, on one plane). For flat thin shapes such as signs, labels, flags or blades. It has no thickness.
 
 Rules:
 - Every primitive must touch or overlap another one, so the object is one connected piece (nothing floats in the air). Parts that rest on something must sit exactly on it.
-- Use at most ${LIMITS.maxOps} primitives (usually 5-40), at most ${LIMITS.maxMaterials} materials and about ${LIMITS.maxTris} triangles in total. Prefer few, well-placed primitives with clear, readable silhouettes. Small details (buttons, screens, labels) should sit slightly in front of the surface they decorate (a few millimeters), not inside it.
+- Use at most ${LIMITS.maxOps} primitives (usually 5-40), at most ${LIMITS.maxMaterials} materials and about ${LIMITS.maxTris} triangles in total. Prefer few, well-placed primitives with clear, readable silhouettes. Small details (buttons, holes, screens, labels) must sit slightly in front of the surface they decorate (a few millimeters), not hidden inside it: compute where that surface is from the sizes.
 - Choose materials only from this list (name and color; pick by color, the names are just labels): ${materialList}.
 - If the order is a real person or their name, a weapon (gun, sword, bomb and the like), violence or injury, or anything sexual, do not build it: set decision to "refuse", explain briefly in reason, and leave ops empty. Ordinary things (kitchen tools, sports equipment, toys, food, vehicles, furniture, plants) are fine.
 - reason: one short English sentence about how you built the shape (or why you refused).`;
