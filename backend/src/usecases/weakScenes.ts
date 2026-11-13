@@ -1,5 +1,6 @@
 import type { z } from "zod";
 import type { UsageLimits } from "../durable-objects/usageCounter";
+import { costOf } from "../parts/write";
 import type { UsageCounterRepository } from "../repositories/usageCounterRepository";
 import type {
   WeakSceneRecord,
@@ -113,6 +114,7 @@ export async function makeWeakScene(
   const focus = pickFocus(input.difficulty, input.kinds);
   const budget = deps.budgetMs ?? GENERATION_BUDGET_MS;
   const signal = AbortSignal.timeout(budget);
+  let sceneUsd = 0;
   try {
     const result = await generateVerifiedScene(
       env,
@@ -128,6 +130,9 @@ export async function makeWeakScene(
       {
         ...(deps.create ? { create: deps.create } : {}),
         lookup: { workshop: deps.workshop, maxNew: MAX_NEW_PARTS },
+        onUsage: (u) => {
+          sceneUsd += costOf(u);
+        },
       },
       {
         timeoutMs: CALL_TIMEOUT_MS,
@@ -172,7 +177,8 @@ export async function makeWeakScene(
         remakes: result.remakes,
         rejected: result.rejected.map((r) => r.map((p) => p.code)),
         made: result.madeParts,
-        // 部品を作るのに Claude に払った額（USD。部品を作る口のログの合計）
+        // 場面（1 回目・2 回目と作り直し）と部品を作るのに Claude に払った額（USD。Sonnet 5.5 の値段で数える）
+        sceneUsd: Number(sceneUsd.toFixed(4)),
         partsUsd: Number(
           result.partLogs.reduce((n, l) => n + l.usd, 0).toFixed(4),
         ),
@@ -204,6 +210,11 @@ export async function makeWeakScene(
             ? e.rejected.map((r) => r.map((p) => p.code))
             : undefined,
         message: e.message,
+        sceneUsd: Number(sceneUsd.toFixed(4)),
+        partsUsd:
+          e instanceof PartBuildError
+            ? Number(e.logs.reduce((n, l) => n + l.usd, 0).toFixed(4))
+            : 0,
         elapsedMs: Date.now() - started,
       }),
     );

@@ -676,6 +676,8 @@ export type GenerateV2Deps = {
   create?: CreateMessage;
   candidates?: CandidateSearch;
   now?: () => number;
+  /** Claude を 1 回呼ぶたびの usage（失敗した生成の費用も数えるため） */
+  onUsage?: (usage: Anthropic.Usage) => void;
   /**
    * 2 回目の部品の引き方。渡すと ID の規約で引く道（部品の一覧を出さず、無い物は workshop で作る）。
    * 渡さなければ今の道（部品の一覧を出す）
@@ -725,6 +727,8 @@ export type GenerateV2Options = GenerateOptions & { deadline?: number };
 
 /** 締め切りまでに、Claude をもう 1 回呼ぶのに要る残り時間（ms） */
 const MIN_CALL_MS = 12_000;
+/** 部品を作る Claude の 1 回の上限（ms）。実測は 1 個 3.6〜16 秒 */
+const PART_CALL_TIMEOUT_MS = 35_000;
 
 type Call = {
   create: CreateMessage;
@@ -1091,6 +1095,7 @@ const listItems = async (
     feedback,
   );
   usage.push(second.usage);
+  deps.onUsage?.(second.usage);
   const items = second.items;
   let problems = verifyItems(input.grade, sentences, items, parts);
   if (problems.length === 0) {
@@ -1132,6 +1137,7 @@ const conventionItems = async (
     feedback,
   );
   usage.push(second.usage);
+  deps.onUsage?.(second.usage);
   const previous = { items: second.items, newParts: second.orders };
   const resolved = await resolveParts(
     second.items,
@@ -1165,10 +1171,14 @@ const conventionItems = async (
   const made: Part[] = [];
   let partLogs: ItemsOutcome["partLogs"] = [];
   if (resolved.orders.length > 0) {
+    // 部品 1 個は Claude を最悪 2 回呼ぶので、1 回の上限は残りの半分（35 秒まで）。締め切りでは signal で止まる
     const left =
       options.deadline === undefined
         ? undefined
-        : Math.max(1_000, options.deadline - Date.now());
+        : Math.min(
+            PART_CALL_TIMEOUT_MS,
+            Math.max(5_000, (options.deadline - Date.now()) / 2),
+          );
     const result = await lookup.workshop.ensure(resolved.orders, {
       signal: options.signal,
       maxNew,
@@ -1242,6 +1252,7 @@ export async function generateVerifiedScene(
           feedback,
         );
         usage.push(first.usage);
+        deps.onUsage?.(first.usage);
         written = first.sentences;
         lastAnswer = first.answer;
         problems = [
