@@ -54,7 +54,7 @@
 | App Attest（足すかは 13 日の昼に決める） | 本物のアプリが本物の iPhone から呼んでいるかを Apple の仕組みで確かめる | 最も堅い | 誰かは分からない。シミュレータで動かない。バックエンドで証明書の連なりと署名の確かめを書く。鍵の ID と公開鍵をサーバーに覚える |
 
 ## Decision
-- この ADR に書いた数（直近 10 件、AI を呼ぶ 5 件、癖の最大 3 件、本文 200 KB、IP ごとの 10 回・60 回、1 日の 200 回・500 回）は初期値。今の値は設計文書（[`weak-point-analysis.md`](../design/weak-point-analysis.md)）が正とする。
+- この ADR に書いた数（直近 10 件、AI を呼ぶ 5 件、癖の最大 3 件、本文 64 KB、IP ごとの 10 回・60 回、1 日の 200 回・500 回）は初期値。今の値は設計文書（[`weak-point-analysis.md`](../design/weak-point-analysis.md)）が正とする。
 - 苦手の分析は AI（Claude）で行う。端末で数える分析と AI の分析の両方を、直近 10 件（級を混ぜる）で行う。AI を呼ぶのは、内容の内訳のある記録が 5 件以上のときだけにする。
 - 数えられるもの（項目の種類ごとの言えた割合、判定の種類ごとの数、点の前半と後半）は端末で数えて送り、AI には数えさせない。AI の文には割合や点の数字を書かせず、コードでも確かめる。
 - AI に書かせるのは、くり返す癖（内容と表現を合わせて最大 3 件。2 つ以上の違う回に出たものだけで、足りなければ少なくてよく、0 件もある。目安は 2〜3 件）、前より良くなった点（1 つか無し）、次の 1 回で試すこと（1 つ）。発音は入れない。英検の配点や合格ラインは言わない。
@@ -66,7 +66,7 @@
   - これにより、[20261112-keep-play-records-on-device-one-file-per-round](./20261112-keep-play-records-on-device-one-file-per-round.md) の「苦手の分析は、別に保存せず、この記録を読んで計算する」は、AI の結果の控えに限って部分 supersede する（20261112 の Status に書いた）。
 - 口は `POST /weak-points`。モデルは Sonnet 5.5 の `low` に決め打ちする。
 - 口の守り方:
-  - Award Day は認証なしで、本文の大きさ（200 KB）・IP ごとの 1 時間の回数・全体の 1 日の回数の上限と、止めるスイッチで守る（暫定）。全体の回数を数える Durable Object を 1 つ足す。IP は、その Durable Object が日ごとに作る乱数を混ぜた HMAC で覚え、乱数は日が変われば捨てる（新しい secret は要らない）。
+  - Award Day は認証なしで、本文の大きさ（64 KB）・IP ごとの 1 時間の回数・全体の 1 日の回数の上限と、止めるスイッチで守る（暫定）。全体の回数を数える Durable Object を 1 つ足す。IP は、その Durable Object が日ごとに作る乱数を混ぜた HMAC で覚え、乱数は日が変われば捨てる（新しい secret は要らない）。
   - 上限の初期値は、普段 IP ごと 10 回・1 日 200 回（約 10 USD）、Award Day 当日は IP ごと 60 回・1 日 500 回（約 25 USD）。EXPO の会場では来場者が同じ Wi-Fi（同じ IP）から使うため、当日は寛容にする。値は `wrangler.jsonc` の `vars` で切り替える。超えたら、アプリは数える分析だけを出す。
   - App Attest は、足すかを 13 日の昼に決める（この ADR では入れる決定はしない）。足すときは、その PR で新しい ADR を書き、[20261021-adopt-swiftui-app-and-cloudflare-workers-backend](./20261021-adopt-swiftui-app-and-cloudflare-workers-backend.md) の Status に部分 supersede（Decision の 5 項目め）を書き、索引も直す。鍵の ID と公開鍵をサーバーに覚えることと、プライバシーポリシーと App Store の申告の見直しも、その ADR と PR で扱う。
 
