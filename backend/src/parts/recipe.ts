@@ -139,15 +139,24 @@ const Sphere = z.strictObject({
   segs: segs.optional(),
   smooth: z.boolean().optional(),
 });
-const Limb = z.strictObject({
-  op: z.literal("limb"),
-  a: vec3,
-  b: vec3,
-  r1: z.number().finite().min(0),
-  r2: z.number().finite().min(0),
-  mat,
-  segs: segs.optional(),
-});
+// a と b が同じ点だと向きが決まらず、形の全部の点が NaN になる。1 mm 以上離す
+const MIN_LIMB_LENGTH = 0.001;
+const Limb = z
+  .strictObject({
+    op: z.literal("limb"),
+    a: vec3,
+    b: vec3,
+    r1: z.number().finite().min(0),
+    r2: z.number().finite().min(0),
+    mat,
+    segs: segs.optional(),
+  })
+  .refine(
+    (o) =>
+      Math.hypot(o.b[0] - o.a[0], o.b[1] - o.a[1], o.b[2] - o.a[2]) >=
+      MIN_LIMB_LENGTH,
+    { message: "a and b must be at least 1 mm apart", path: ["b"] },
+  );
 const Slab = z.strictObject({
   op: z.literal("slab"),
   size: z.union([len, z.tuple([len, len])]),

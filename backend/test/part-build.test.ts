@@ -209,3 +209,33 @@ test("Claude に渡す JSON Schema の基本形は、zod の部品表が受け�
     assert.deepEqual(parseRecipe([sample]).problems, [], op);
   }
 });
+
+test("長さ 0 の limb（a と b が同じ点）は部品表の確かめで落とし、組んだ形に NaN があれば検査で落とす", () => {
+  const limb = {
+    op: "limb",
+    a: [0, 0, 0.3],
+    b: [0, 0, 0.3],
+    r1: 0.01,
+    r2: 0.01,
+    mat: "wood",
+  };
+  const box = {
+    op: "box",
+    size: [0.3, 0.3, 0.3],
+    loc: [0, 0, 0.15],
+    mat: "wood",
+  };
+  const parsed = parseRecipe([box, limb]);
+  assert.deepEqual(
+    parsed.problems.map((p) => p.code),
+    ["schema"],
+  );
+  assert.match(parsed.problems[0].message, /ops\.1\.b: a and b must be/);
+  // zod を通さずに組むと NaN が広がる。検査はそれを落とす（寸法の比べで素通りさせない）
+  const mesh = buildMesh(toTraceOps({ ops: [box, limb] } as Recipe));
+  assert.ok(mesh.size.some((v) => Number.isNaN(v)));
+  assert.deepEqual(
+    checkBuilt(mesh, { size: [0.3, 0.3, 0.3] }).map((p) => p.code),
+    ["invalid"],
+  );
+});

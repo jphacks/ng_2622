@@ -20,7 +20,7 @@ export const LIMITS = {
   /** 頼んだ寸法との差の目安（軸ごと）。差が頼んだ寸法の 35% か 2 cm の大きい方を超えたら落とす */
   sizeTolerance: 0.35,
   sizeFloor: 0.02,
-  /** 浮いた基本形の検査で、外接箱を膨らませる幅。部品の最も長い辺の 2% か 5 mm の大きい方 */
+  /** 浮いた基本形の検査で、外接箱どうしが触れ合うとみなす隙間の上限。部品の最も長い辺の 2% か 5 mm の大きい方 */
   touchRatio: 0.02,
   touchFloor: 0.005,
 } as const;
@@ -33,7 +33,8 @@ export type ProblemCode =
   | "tris"
   | "materials"
   | "size"
-  | "floating";
+  | "floating"
+  | "invalid";
 
 export type Problem = { code: ProblemCode; message: string };
 
@@ -129,6 +130,16 @@ export const checkBuilt = (
   mesh: BuiltMesh,
   order: { size: Vec3 },
 ): Problem[] => {
+  // 数でない点（NaN・無限）があると、寸法や浮いた基本形の比べが素通りするので、先に落とす
+  if (!mesh.size.every(Number.isFinite) || !mesh.P.every(Number.isFinite)) {
+    return [
+      {
+        code: "invalid",
+        message:
+          "the shape has invalid coordinates (NaN). Check every primitive: a limb needs two different points a and b, and every size and radius must be a positive number",
+      },
+    ];
+  }
   const problems: Problem[] = [];
   if (mesh.tris > LIMITS.maxTris) {
     problems.push({
@@ -164,7 +175,7 @@ export const checkBuilt = (
 };
 
 /**
- * 浮いた基本形（ほかとつながらない基本形）の番号。基本形ごとの外接箱を少し膨らませ、重なるものをつなぐ。
+ * 浮いた基本形（ほかとつながらない基本形）の番号。基本形ごとの外接箱どうしの隙間が margin までなら（重なりも含む）つなぐ。
  * 最も大きいまとまり（基本形の数。同じなら最も低い点を持つ方）に入らないものを返す
  */
 export const floatingPrims = (mesh: BuiltMesh): number[] => {
