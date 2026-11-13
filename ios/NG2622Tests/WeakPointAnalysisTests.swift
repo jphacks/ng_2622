@@ -240,6 +240,17 @@ struct WeakPointAnalysisTests {
     #expect(!made.needsRebuild(recent: WeakPointCounts.recent(older), existing: Set(older.map(\.id))))
   }
 
+  /// 本文が大きくて新しい 5 回だけで作った分析は、送った 5 回と比べる（直近の 10 回と比べて、開くたびに作り直さない）
+  @Test func rebuildComparesOnlyTheSentRounds() {
+    let all = Self.records(10)
+    let recent = WeakPointCounts.recent(all)
+    let made = WeakPointAnalysis(Self.response(), basedOn: recent.prefix(5).reversed().map(\.id), createdAt: Date())
+    #expect(!made.needsRebuild(recent: recent, existing: Set(all.map(\.id))))
+    // 新しい記録が増えたら作り直す
+    let more = [Self.record("new", minutesAgo: -10)] + all
+    #expect(made.needsRebuild(recent: WeakPointCounts.recent(more), existing: Set(more.map(\.id))))
+  }
+
   /// 開いたとき: 覚えた分析が使えればそれを出して頼まない。記録が増えたら、前回の分析を出したまま作り直す。
   /// 失敗したら前回の分析を出したまま失敗を知らせ、開き直すとまた頼む
   @Test func analyzerUsesPreviousWhileRebuildingAndAfterFailure() async throws {
@@ -369,6 +380,28 @@ struct WeakPointAnalysisTests {
     #expect(!store.exists())
     #expect(analyzer.analysis == nil)
     #expect(analyzer.phase == .idle)
+  }
+
+  /// 覚えるのに失敗しても（ファイルが無い）、メモリの分析を使い、開き直すたびには頼まない
+  @Test func analyzerKeepsAnalysisInMemoryWhenSavingFails() async throws {
+    // フォルダを作れない所（ファイルの下）にする
+    let blocker = FileManager.default.temporaryDirectory.appending(path: "blocker-\(UUID().uuidString)")
+    try Data().write(to: blocker)
+    defer { try? FileManager.default.removeItem(at: blocker) }
+    let store = WeakPointStore(directory: blocker.appending(path: "analysis", directoryHint: .isDirectory))
+    let client = StubClient()
+    let analyzer = WeakPointAnalyzer(client: client, store: store)
+    let records = Self.records(10)
+    analyzer.open(records: records, existing: { Set(records.map(\.id)) })
+    await analyzer.waitForPending()
+    #expect(analyzer.phase == .ready)
+    #expect(!store.exists())
+    let made = try #require(analyzer.analysis)
+
+    analyzer.open(records: records, existing: { Set(records.map(\.id)) })
+    #expect(analyzer.phase == .ready)
+    #expect(analyzer.analysis == made)
+    #expect(await client.calls == 1)
   }
 
   /// 自分の文: 別の回の同じ文は 1 行にまとめ、回の数と一番新しい日時を持つ。並びは初めて出た順

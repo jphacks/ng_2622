@@ -60,7 +60,9 @@ final class WeakPointAnalyzer {
       phase = .idle
       return
     }
-    let stored = store.load().flatMap { $0.isUsable(existing: ids) ? $0 : nil }
+    // 覚えるのに失敗した（ファイルが無い）ときは、メモリに残した分析を使う（開くたびに頼み直さない）
+    let saved = store.load() ?? (store.exists() ? nil : analysis)
+    let stored = saved.flatMap { $0.isUsable(existing: ids) ? $0 : nil }
     if let stored, !stored.needsRebuild(recent: recent, existing: ids) {
       task?.cancel()
       task = nil

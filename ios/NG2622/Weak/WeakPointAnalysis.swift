@@ -83,10 +83,12 @@ nonisolated struct WeakPointAnalysis: Codable, Sendable, Equatable {
     `protocol` == Self.protocolName && !basedOn.isEmpty && basedOn.allSatisfy(existing.contains)
   }
 
-  /// 作り直すか。直近の回（R）に basedOn に無い記録がある（記録が増えた）、または basedOn の記録が 1 つでも消えた
+  /// 作り直すか。直近の回（R）の新しいほうから basedOn と同じ数の中に、basedOn に無い記録がある（記録が増えた）、
+  /// または basedOn の記録が 1 つでも消えた。本文が大きくて新しい 5 回だけで作った分析を、開くたびに作り直さないよう、
+  /// R の全部ではなく送った数だけと比べる
   func needsRebuild(recent: [PlayRecord], existing: Set<String>) -> Bool {
     let based = Set(basedOn)
-    return recent.contains { !based.contains($0.id) } || !isUsable(existing: existing)
+    return recent.prefix(basedOn.count).contains { !based.contains($0.id) } || !isUsable(existing: existing)
   }
 
   // MARK: - ファイルの中身
