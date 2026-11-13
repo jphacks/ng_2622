@@ -56,11 +56,31 @@ export type WeakSceneRouteDeps = {
 };
 
 /** 1 回ごとに新しい WeakSceneMaker で作る（CPU の重い裏取りと座標の計算を Worker で動かさない） */
-const makeInDurableObject = (
+const makeInDurableObject = async (
   env: AppEnv["Bindings"],
   input: WeakSceneInput,
-): Promise<WeakSceneOutcome> =>
-  env.WEAK_SCENE_MAKER.get(env.WEAK_SCENE_MAKER.newUniqueId()).make(input);
+): Promise<WeakSceneOutcome> => {
+  try {
+    return await env.WEAK_SCENE_MAKER.get(
+      env.WEAK_SCENE_MAKER.newUniqueId(),
+    ).make(input);
+  } catch (e) {
+    // Durable Object が落ちた（CPU の上限・思わぬ例外など）。中身は出さず、502 にする
+    console.error(
+      JSON.stringify({
+        event: "weak_scene_maker_failed",
+        name: e instanceof Error ? e.name : "Error",
+        message: e instanceof Error ? e.message.slice(0, 200) : "",
+      }),
+    );
+    return {
+      ok: false,
+      code: "generation_failed",
+      status: 502,
+      message: "苦手の場面を作れませんでした（作る所が途中で止まった）",
+    };
+  }
+};
 
 /** deps はテストで数える場所と作る関数を差し替えるためのもの */
 export const makeWeakSceneRoutes = (deps: WeakSceneRouteDeps = {}) =>

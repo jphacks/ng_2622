@@ -1201,7 +1201,8 @@ const conventionItems = async (
         ? undefined
         : Math.min(
             PART_CALL_TIMEOUT_MS,
-            Math.max(5_000, (options.deadline - Date.now()) / 2),
+            // SDK の timeout は整数でないと失敗する
+            Math.max(5_000, Math.floor((options.deadline - Date.now()) / 2)),
           );
     const result = await lookup.workshop.ensure(resolved.orders, {
       signal: options.signal,

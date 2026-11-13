@@ -134,14 +134,16 @@ const fakeWorkshop = (
   fail: (id: string, attempt: number) => boolean = () => false,
 ) => {
   const ensured: PartOrder[][] = [];
+  const options: { timeoutMs?: number; signal?: AbortSignal }[] = [];
   const looked: string[] = [];
   const workshop: Workshop = {
     lookup: async (id) => {
       looked.push(id);
       return r2.find((p) => p.id === id) ?? null;
     },
-    ensure: async (orders) => {
+    ensure: async (orders, opts) => {
       ensured.push(orders);
+      options.push(opts);
       const attempt = ensured.length;
       return {
         parts: orders
@@ -153,7 +155,7 @@ const fakeWorkshop = (
       };
     },
   };
-  return { workshop, ensured, looked };
+  return { workshop, ensured, looked, options };
 };
 
 const fakeStore = () => {
@@ -412,14 +414,20 @@ test("苦手の場面を作る: 足りない部品を作り、配置では id@�
     () =>
       message({ items: conventionItems([LAMP_ITEM]), newParts: [LAMP_ORDER] }),
   ]);
-  const { workshop, ensured } = fakeWorkshop();
+  const { workshop, ensured, options } = fakeWorkshop();
   const { store, put } = fakeStore();
   const outcome = await makeWeakScene(ENV, WeakSceneRequest.parse(BODY), {
     create,
     workshop,
     store,
     newId: () => "0f8fad5b-d9cb-469f-a165-70867728950e",
+    // 残りの半分が 35 秒より短く、端数の出る締め切り
+    budgetMs: 60_001,
   });
+  // 部品を作る Claude の 1 回の上限は整数（SDK が整数でないと失敗する）で 35 秒まで。全体の締め切りの signal も渡す
+  assert.ok(Number.isInteger(options[0].timeoutMs));
+  assert.ok((options[0].timeoutMs ?? 0) <= 35_000);
+  assert.ok(options[0].signal);
   assert.ok(outcome.ok, JSON.stringify(outcome));
   const body = outcome.body;
   assert.ok(WeakSceneResponse.safeParse(body).success);
@@ -549,4 +557,23 @@ test("wrangler.jsonc: 本番は苦手の場面を on・プレビューは off、
   }
   const v6 = config.migrations.find((m: { tag: string }) => m.tag === "v6");
   assert.deepEqual(v6?.new_sqlite_classes, ["WeakSceneMaker"]);
+});
+
+test("作る Durable Object が落ちたら（CPU の上限など）502 generation_failed", async () => {
+  const { usage } = fakeUsage();
+  const routes = makeWeakSceneRoutes({ usage: () => usage });
+  const res = await post(routes, BODY, {
+    ...ENV,
+    WEAK_SCENE_MAKER: {
+      newUniqueId: () => "id",
+      get: () => ({
+        make: async () => {
+          throw new Error("Worker exceeded CPU time limit.");
+        },
+      }),
+    },
+  });
+  assert.equal(res.status, 502);
+  const body = (await res.json()) as { error: { code: string } };
+  assert.equal(body.error.code, "generation_failed");
 });
