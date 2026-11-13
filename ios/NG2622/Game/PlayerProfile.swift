@@ -24,6 +24,12 @@ struct PlayerProfile: Sendable, Equatable {
     PlayerProfile(name: trimmed(name), color: color)
   }
 
+  /// 設定で打ち替えた名前と選んだ色を入れた profile。名前は前後の空白を除き、空なら前の名前のままにする
+  func edited(name: String, color: UInt32) -> PlayerProfile {
+    let trimmed = Self.trimmed(name)
+    return PlayerProfile(name: trimmed.isEmpty ? self.name : trimmed, color: color)
+  }
+
   /// 前後の空白を除いた名前
   static func trimmed(_ name: String) -> String {
     name.trimmingCharacters(in: .whitespaces)

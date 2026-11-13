@@ -70,7 +70,8 @@ final class LiveGameClient: GameClient {
     return room.roomId
   }
 
-  func findRoom(code: String) async throws {
+  /// join の前に、部屋があるか・満員でないか・待合かを確かめる（GET /rooms/:id）。join の一部で、画面からは呼ばない
+  private func checkRoom(code: String) async throws {
     let room: Components.Schemas.RoomSummary
     let response: Operations.GetRoom.Output
     do {
@@ -96,7 +97,7 @@ final class LiveGameClient: GameClient {
   func joinRoom(code: String, as player: PlayerProfile) async throws {
     // 無い部屋に WebSocket でつなぐと、切り替えに失敗するだけで理由が分からないので、先に確かめる。
     // 確かめたあとで満員になった・始まったときは、join の返事（error）で分かる
-    try await findRoom(code: code)
+    try await checkRoom(code: code)
     try await enter(roomID: code, as: player)
   }
 

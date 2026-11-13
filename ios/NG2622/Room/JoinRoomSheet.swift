@@ -1,18 +1,23 @@
 import SwiftUI
 
 /// 待合（ホスト）の「他のルーム」で開くシート。QR を読み取るか、ほかの部屋の 4 桁のコードを打つと、
-/// そろったところで自動で、その部屋に入れそうかを確かめる。入れそうなら onFound を呼ぶ（移るのは待合が行う）
+/// そろったところでその部屋に移る（入れてから今の部屋を抜ける）。自分の部屋にほかの人がいるときは、
+/// このシートの上で「この部屋を抜けて、別のルームに入りますか？」と確かめてから移る。
+/// 入れないときは今の部屋のまま、このシートの中で枠を揺らして理由を出す（打ち直せるように）
 struct JoinRoomSheet: View {
-  /// このシートを開いたときの番号（OtherRoomFlow.ticket）。確かめたコードに付けて返す
+  /// このシートを開いたときの番号（OtherRoomFlow.ticket）。移るときに付けて渡す
   let ticket: Int
-  /// コードの部屋に入れそうかを確かめる。入れないと投げる
-  let check: (String) async throws -> Void
-  /// 確かめたコードと、このシートの番号
-  let onFound: (String, Int) -> Void
-  /// 確かめている途中。シートが消えたら止める
-  @State private var checkTask: Task<Void, Never>?
+  /// コードがそろったときに、次にすること（通信しない）
+  let step: (String) -> RoomSession.MoveStep
+  /// code の部屋に移る。入れないと投げる（今の部屋のまま）
+  let move: (String, Int) async throws -> Void
+  /// 移っている途中。シートが消えたら止める
+  @State private var moveTask: Task<Void, Never>?
+  /// ほかの人がいるので、移るかを確かめている部屋のコード
+  @State private var confirming: String?
 
   @State private var code = ""
+  /// 移っている途中（入れるかの返事を待っている）。この間はキーを押せず、下に引いても閉じない
   @State private var checking = false
   /// 入れなかった理由
   @State private var failure: String?
@@ -73,12 +78,33 @@ struct JoinRoomSheet: View {
       )
     }
     .sensoryFeedback(.success, trigger: scans)
-    // 確かめの途中で下に引いて閉じたら、確かめを止める（結果を返さない）
-    .onDisappear { checkTask?.cancel() }
+    .overlay {
+      if let pending = confirming {
+        ConfirmDialog(
+          title: "この部屋を抜けて、\n別のルームに入りますか？",
+          message: "残った人は、このまま遊べます。",
+          action: "入る",
+          onCancel: {
+            confirming = nil
+            code = ""
+          },
+          onAction: {
+            // 2 度押しても、移るのは 1 度だけ
+            guard confirming != nil else { return }
+            confirming = nil
+            start(pending)
+          })
+      }
+    }
+    .animation(.easeOut(duration: 0.15), value: confirming)
+    // 確かめている間と移っている途中は、下に引いて閉じない（閉じたシートの結果で移らないように）
+    .interactiveDismissDisabled(checking || confirming != nil)
+    // それでもシートが消えたら、移るのを止める（今の部屋のまま）
+    .onDisappear { moveTask?.cancel() }
   }
 
   /// 入れなかった理由の一言（シートの中に出す）。部屋が無いと分かったときだけ「部屋が見つかりません」にし、
-  /// 通信の失敗やそのほかは「つながりませんでした」にする
+  /// 通信の失敗やそのほかは「つながりませんでした」にする。今いる部屋のコードは、通信せずに「いまいる部屋です」
   static func message(for error: any Error) -> String {
     switch error {
     case GameError.roomNotFound: "部屋が見つかりません"
@@ -87,18 +113,6 @@ struct JoinRoomSheet: View {
     case GameError.alreadyStarted: "ゲーム中で入れません"
     default: "つながりませんでした"
     }
-  }
-
-  /// 確かめたあとで入れなくなり、ホームに戻ったときの知らせ（例「入れませんでした（満員）」）
-  static func notice(for error: any Error) -> String {
-    let reason =
-      switch error {
-      case GameError.roomNotFound: "部屋が見つかりません"
-      case GameError.roomFull: "満員"
-      case GameError.alreadyStarted: "ゲーム中"
-      default: "つながらない"
-      }
-    return "入れませんでした（\(reason)）"
   }
 
   /// 「QR を読み取る」。読めない端末では、押したときに理由を出す
@@ -119,7 +133,7 @@ struct JoinRoomSheet: View {
     .disabled(checking)
   }
 
-  /// QR から読めたコードを、打ったときと同じように確かめる
+  /// QR から読めたコードを、打ったときと同じように扱う
   private func enterScanned() {
     guard let scanned = scannedCode else { return }
     scannedCode = nil
@@ -194,25 +208,43 @@ struct JoinRoomSheet: View {
     if code.count == Self.length { submit() }
   }
 
+  /// コードがそろった。今いる部屋なら通信せずに知らせ、ほかの人がいれば確かめ、いなければそのまま移る
   private func submit() {
-    checking = true
     let entered = code
+    switch step(entered) {
+    case .sameRoom:
+      fail(RoomSession.MoveError.sameRoom)
+    case .confirm:
+      confirming = entered
+    case .move:
+      start(entered)
+    }
+  }
+
+  /// code の部屋に移る。入れたら待合が移った先に替わり、このシートも閉じる
+  private func start(_ entered: String) {
+    guard !checking else { return }
+    checking = true
     let ticket = ticket
-    checkTask = Task {
+    moveTask = Task {
       do {
-        try await check(entered)
-        guard !Task.isCancelled else { return }
-        onFound(entered, ticket)
+        try await move(entered, ticket)
+      } catch RoomSession.MoveError.alreadyMoving {
+        // もう移り始めている。2 度目は何もしない
       } catch {
-        guard !Task.isCancelled else { return }
-        let message = Self.message(for: error)
-        failure = message
-        shakes += 1
-        code = ""
-        AccessibilityNotification.Announcement(message).post()
+        if !Task.isCancelled { fail(error) }
       }
       checking = false
     }
+  }
+
+  /// 入れなかった。枠を揺らして理由を出し、読み上げる。打ち直せるようにコードを消す
+  private func fail(_ error: any Error) {
+    let message = Self.message(for: error)
+    failure = message
+    shakes += 1
+    code = ""
+    AccessibilityNotification.Announcement(message).post()
   }
 }
 

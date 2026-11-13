@@ -7,17 +7,15 @@ import SwiftUI
 struct LobbyView: View {
   let session: RoomSession
   let onLeave: () -> Void
-  /// code の部屋に移る（今の部屋を抜けてから入る）。入れたら新しい部屋の待合に替わる
-  var onMove: (String) async -> Void = { _ in }
+  /// code の部屋に移る（入れてから今の部屋を抜ける）。入れたら新しい部屋の待合に替わる。入れないと投げる（今の部屋のまま）
+  var onMove: (String) async throws -> Void = { _ in }
   /// 難易度ごとの例の場面（出題はしない）。Mock も Live も同梱の作り置きの一覧から出す（バックエンドは呼ばない）
   var example: (SceneDifficulty) -> String? = { ScenePool.bundled.example(of: $0) }
 
   /// ホストが選んだ難易度
   @State private var difficulty = SceneDifficulty.eiken3
-  /// 「他のルーム」のシート・確かめの状態
+  /// 「他のルーム」のシートの状態
   @State private var flow = OtherRoomFlow()
-  /// 移っている途中
-  @State private var moving = false
 
   var body: some View {
     VStack(spacing: 0) {
@@ -66,15 +64,15 @@ struct LobbyView: View {
     }
     .frame(width: 346)
     .frame(maxWidth: .infinity)
-    .disabled(moving)
-    .sheet(
-      isPresented: Binding(get: { flow.sheetOpen }, set: { if !$0 { flow.close() } }),
-      onDismiss: afterSheet
-    ) {
+    .sheet(isPresented: Binding(get: { flow.sheetOpen }, set: { if !$0 { flow.close() } })) {
       JoinRoomSheet(
         ticket: flow.ticket,
-        check: { try await session.checkMove(to: $0) },
-        onFound: { flow.found($0, ticket: $1) }
+        step: { session.step(for: $0) },
+        move: { code, ticket in
+          // いま開いているシートからだけ移る（閉じたシートの古い操作では移らない）
+          guard flow.accepts(ticket) else { return }
+          try await onMove(code)
+        }
       )
       // 開き直したシートは、前のシートの状態（打ちかけのコード・確かめの途中）を持ち越さない
       .id(flow.ticket)
@@ -82,35 +80,6 @@ struct LobbyView: View {
       .presentationDragIndicator(.visible)
       .presentationCornerRadius(32)
       .presentationBackground(Theme.background)
-    }
-    .overlay {
-      if flow.confirming != nil {
-        ConfirmDialog(
-          title: "この部屋を抜けて、\n別のルームに入りますか？",
-          message: "残った人は、このまま遊べます。",
-          action: "入る",
-          onCancel: { flow.cancel() },
-          onAction: {
-            if let code = flow.confirm() { move(to: code) }
-          })
-      }
-    }
-    .animation(.easeOut(duration: 0.15), value: flow.confirming)
-  }
-
-  /// シートを閉じたあと。確かめたコードがあれば、ほかの人がいるときだけ確かめてから移る
-  private func afterSheet() {
-    if let code = flow.sheetDismissed(hasOthers: session.hasOthers) {
-      move(to: code)
-    }
-  }
-
-  private func move(to code: String) {
-    guard !moving else { return }
-    moving = true
-    Task {
-      await onMove(code)
-      moving = false
     }
   }
 
@@ -129,7 +98,7 @@ struct LobbyView: View {
     .background(CardBackground())
   }
 
-  /// 「他のルーム」。押すと、QR を読むかコードを打つシートを開く。場面を作っている間と移っている間は押せない
+  /// 「他のルーム」。押すと、QR を読むかコードを打つシートを開く。場面を作っている間は押せない
   private var otherRoom: some View {
     Button {
       flow.open()
@@ -142,13 +111,9 @@ struct LobbyView: View {
           .font(Theme.font(19, .heavy))
           .foregroundStyle(session.isGenerating ? Theme.gray : Theme.ink)
         Spacer(minLength: 8)
-        if moving {
-          ProgressView().tint(Theme.accent)
-        } else {
-          Image(systemName: "chevron.right")
-            .font(.system(size: 15, weight: .bold))
-            .foregroundStyle(Theme.gray)
-        }
+        Image(systemName: "chevron.right")
+          .font(.system(size: 15, weight: .bold))
+          .foregroundStyle(Theme.gray)
       }
       .padding(.horizontal, 18)
       .frame(height: 60)

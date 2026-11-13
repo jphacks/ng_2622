@@ -1,6 +1,6 @@
 import SwiftUI
 
-/// 設定。自分の名前と色を変えられる。端末に残した遊んだ記録と録音を、まとめて消せる
+/// 設定。自分の名前と色を、この画面の中で変えられる（戻るときに保存する）。端末に残した遊んだ記録と録音を、まとめて消せる
 struct SettingsView: View {
   let library: RecordLibrary
   /// 自分の名前と色。変えると、次に入る部屋から使う
@@ -12,12 +12,22 @@ struct SettingsView: View {
   @State private var deleting = false
   /// 消せなかった
   @State private var failed = false
-  /// 名前と色を変える画面を開いている
-  @State private var editingProfile = false
+  /// 打っている名前と、選んでいる色。戻るときに profile に入れる
+  @State private var name: String
+  @State private var color: UInt32
+  @FocusState private var editing: Bool
+
+  init(library: RecordLibrary, profile: Binding<PlayerProfile>, onBack: @escaping () -> Void) {
+    self.library = library
+    _profile = profile
+    self.onBack = onBack
+    _name = State(initialValue: profile.wrappedValue.name)
+    _color = State(initialValue: profile.wrappedValue.color)
+  }
 
   var body: some View {
     VStack(spacing: 0) {
-      ResultSubHeader(title: "設定", onBack: onBack)
+      ResultSubHeader(title: "設定", onBack: back)
         .resultColumn()
         .padding(.top, 8)
       profileCard
@@ -69,8 +79,8 @@ struct SettingsView: View {
       .padding(.top, 16)
       Spacer()
     }
-    // 名前と色の画面を重ねている間は、下の設定を VoiceOver で触れないようにする
-    .accessibilityHidden(editingProfile)
+    .contentShape(Rectangle())
+    .onTapGesture { editing = false }
     .overlay {
       if confirming {
         ConfirmDialog(
@@ -89,16 +99,14 @@ struct SettingsView: View {
       }
     }
     .animation(.easeOut(duration: 0.15), value: confirming)
-    .overlay {
-      if editingProfile {
-        ProfileEditView(profile: $profile, onBack: { editingProfile = false })
-          .frame(maxWidth: .infinity, maxHeight: .infinity)
-          .background(Theme.background.ignoresSafeArea())
-          .transition(.opacity)
-      }
-    }
-    .animation(.easeInOut(duration: 0.25), value: editingProfile)
     .task { await library.reload() }
+  }
+
+  /// 戻る。打った名前と選んだ色を保存する（名前が空なら前の名前のまま）
+  private func back() {
+    editing = false
+    profile = profile.edited(name: name, color: color)
+    onBack()
   }
 
   /// 「すべて消しますか？」の文。消えるものに合わせ、録音が 0 本なら録音のことは書かない
@@ -113,33 +121,13 @@ struct SettingsView: View {
     return "\(what)が、\nこの iPhone から消えます。\n元にもどせません。"
   }
 
-  /// 「あなた」。押すと名前と色を変える画面を開く
+  /// 「あなた」。名前の欄と 6 色の丸を、この板の中に置く
   private var profileCard: some View {
-    VStack(alignment: .leading, spacing: 10) {
+    VStack(alignment: .leading, spacing: 12) {
       Text("あなた")
         .font(Theme.font(14, .heavy))
         .foregroundStyle(Theme.muted)
-      Button {
-        editingProfile = true
-      } label: {
-        HStack(spacing: 12) {
-          Avatar(name: profile.name, color: profile.color, size: 44)
-          Text(profile.name)
-            .font(Theme.font(20, .heavy))
-            .lineLimit(1)
-          Spacer(minLength: 8)
-          Text("名前と色を変える")
-            .font(Theme.font(14, .heavy))
-            .foregroundStyle(Theme.muted)
-          Image(systemName: "chevron.right")
-            .font(.system(size: 15, weight: .bold))
-            .foregroundStyle(Theme.gray)
-        }
-        .contentShape(Rectangle())
-      }
-      .buttonStyle(.plain)
-      .accessibilityElement(children: .combine)
-      .accessibilityAddTraits(.isButton)
+      ProfileFields(name: $name, color: $color, editing: $editing)
     }
     .padding(18)
     .frame(maxWidth: .infinity, alignment: .leading)

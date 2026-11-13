@@ -6,7 +6,7 @@ struct RoomView: View {
   /// 部屋を出てホームに戻る
   let onLeave: () -> Void
   /// 待合の「他のルーム」で、code の部屋に移る
-  var onMove: (String) async -> Void = { _ in }
+  var onMove: (String) async throws -> Void = { _ in }
 
   /// プレイ・待機の画面を出しているか。結果がそろっても、少しのあいだ待機の画面を残す
   @State private var inRound = false
@@ -35,6 +35,10 @@ struct RoomView: View {
     .animation(.easeInOut(duration: 0.35), value: session.phase == .lobby)
     .onChange(of: session.phase) { _, phase in
       if case .playing = phase { inRound = true }
+    }
+    // 別の部屋に移ったとき、入ったすぐあとにその部屋のラウンドが始まっていても、プレイの画面を出す
+    .onAppear {
+      if case .playing = session.phase { inRound = true }
     }
     // 設定から戻ってきたら、許可が変わったかを見直す
     .onChange(of: scenePhase) { _, phase in

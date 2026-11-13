@@ -96,28 +96,41 @@ final class RoomSession {
     participants.contains { !$0.isSelf }
   }
 
-  /// 別の部屋に移る前に、移る先に入れそうかを確かめる。入れないなら throw し、今の部屋はそのまま
-  func checkMove(to code: String) async throws {
-    guard code != self.code else { throw MoveError.sameRoom }
-    try await client.findRoom(code: code)
+  /// 「他のルーム」でコードがそろったときに、次にすること
+  enum MoveStep: Equatable {
+    /// いまいる部屋のコード。通信せずに「いまいる部屋です」と出す
+    case sameRoom
+    /// ほかの人がいるので、「この部屋を抜けて、別のルームに入りますか？」と確かめてから移る
+    case confirm
+    /// 自分しかいないので、確かめずに移る
+    case move
   }
 
-  /// 別の部屋に移り始めた（move を呼んだ）。以後の move は受け付けない
+  /// コードがそろったときに、次にすることを決める（通信しない）
+  func step(for code: String) -> MoveStep {
+    if code == self.code { return .sameRoom }
+    return hasOthers ? .confirm : .move
+  }
+
+  /// 別の部屋に移り始めた（move を呼んだ）。移っている間は、この部屋の場面が変わる知らせを受けない
   private(set) var isMoving = false
 
-  /// 今の部屋を抜けてから、next で code の部屋に入る。入れなければ next も抜けて throw する
-  /// （今の部屋には戻らない。ホストは部屋に残った人に替わっている）。
-  /// 2 度目からは何もせず MoveError.alreadyMoving を投げる（2 つの部屋に入らないように）
+  /// next で code の部屋に入ってから、今の部屋を抜ける。入れなければ next を後始末して投げ、今の部屋のまま
+  /// （もう一度移れる）。入れたあとの抜ける（leave）は、送れなくても進める。新しい部屋には入れているので、
+  /// 今の部屋の側は、つながりが切れた人として扱う（前の部屋の知らせは、抜けたときから受けない）。
+  /// 今いる部屋のコードは通信せずに MoveError.sameRoom、移っている途中の 2 度目は MoveError.alreadyMoving を投げる
   func move(to code: String, with next: RoomSession) async throws {
+    guard code != self.code else { throw MoveError.sameRoom }
     guard !isMoving else { throw MoveError.alreadyMoving }
     isMoving = true
-    leave()
     do {
       try await next.join(code: code)
     } catch {
       next.leave()
+      isMoving = false
       throw error
     }
+    leave()
   }
 
   /// ホストが難易度だけを選んでラウンドを始める。どの場面かはホストにも前もって伝えず、round で届く
@@ -152,6 +165,9 @@ final class RoomSession {
 
   /// できごとを受けて状態を変える（テストからも呼ぶ）
   func handle(_ event: GameEvent) {
+    // 別の部屋に入っている途中は、この部屋の場面が変わる知らせ（作り始め・開始・結果・待合に戻る）を受けない。
+    // 一瞬 2 つの部屋にいる間に、前の部屋の知らせで画面が替わらないように
+    if isMoving, event.changesPhase { return }
     switch event {
     case .room(let room):
       code = room.code
@@ -228,6 +244,16 @@ final class RoomSession {
   private func updateHost(from members: [Participant]) {
     if let me = members.first(where: \.isSelf) {
       isHost = me.isHost
+    }
+  }
+}
+
+extension GameEvent {
+  /// 部屋の場面（待合・場面を作っている・プレイ・結果）を替える知らせ。参加者やホストの知らせは替えない
+  var changesPhase: Bool {
+    switch self {
+    case .generating, .roundStarted, .results, .returnedToLobby: true
+    case .room, .participantsChanged, .hostChanged: false
     }
   }
 }

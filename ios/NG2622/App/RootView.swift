@@ -49,8 +49,6 @@ private struct AppFlow: View {
   @State private var profile = PlayerProfile.load()
   @State private var session: RoomSession?
   @State private var creating = false
-  /// ホームに出す短い知らせ（別の部屋に入れなかったとき）
-  @State private var notice: String?
 
   var body: some View {
     ZStack {
@@ -59,14 +57,12 @@ private struct AppFlow: View {
         // きろくと設定は、ホームを出したまま上に重ねる。ホームの 3D を消して出し直さないため
         // （3D の入った view を画面の切り替えと同時に出し入れすると、後から出た 3D が描き直されないことがある）
         HomeView(
-          profile: profile, recordCount: library.count, notice: notice, onName: { profile = .first(name: $0) },
-          onPlay: create, onRecords: { go(.records) }, onSettings: { go(.settings) }, isCovered: screen != .home
+          profile: profile, onName: { profile = .first(name: $0) }, onPlay: create, onRecords: { go(.records) },
+          onSettings: { go(.settings) }, isCovered: screen != .home
         )
         .disabled(creating || screen != .home)
         .accessibilityHidden(screen != .home)
         .transition(.opacity)
-        // 部屋から戻ったときに、遊んだ回を数え直す
-        .task { await library.reload() }
         .overlay {
           if screen == .records {
             RecordsView(library: library, onBack: { go(.home) })
@@ -90,8 +86,6 @@ private struct AppFlow: View {
   }
 
   private func go(_ next: Screen) {
-    // 知らせは、ホームから次へ進んだら消す
-    if next != .home { notice = nil }
     screen = next
   }
 
@@ -101,8 +95,6 @@ private struct AppFlow: View {
 
   /// 「あそぶ」。自分の部屋を作り、ホストとして待合に入る
   private func create() {
-    // 前に別の部屋に入れなかった知らせは、「あそぶ」を押したら消す（部屋を作れなくても残さない）
-    notice = nil
     let session = newSession()
     creating = true
     Task {
@@ -115,22 +107,14 @@ private struct AppFlow: View {
     }
   }
 
-  /// 待合の「他のルーム」。今の部屋を抜けてから code の部屋に入る。もう移り始めていたら何もしない（2 つの部屋に入らない）。
-  /// 確かめたあとで入れなくなっていたら（満員になった・始まった・つながらない）、今の部屋には戻らず、
-  /// ホームに理由を一言出す
-  private func move(to code: String) async {
-    guard let current = session, !current.isMoving else { return }
+  /// 待合の「他のルーム」。code の部屋に入れてから、今の部屋を抜ける（RoomSession.move）。入れたら移った先の待合に替える。
+  /// 入れなければ投げ、今の部屋のまま（シートが理由を出す）。もう移り始めていたら何もせず投げる（2 つの部屋に入らない）
+  private func move(to code: String) async throws {
+    guard let current = session else { return }
+    guard !current.isMoving else { throw RoomSession.MoveError.alreadyMoving }
     let next = newSession()
-    do {
-      try await current.move(to: code, with: next)
-      session = next
-    } catch RoomSession.MoveError.alreadyMoving {
-      return
-    } catch {
-      session = nil
-      notice = JoinRoomSheet.notice(for: error)
-      go(.home)
-    }
+    try await current.move(to: code, with: next)
+    session = next
   }
 
   private func leave() {

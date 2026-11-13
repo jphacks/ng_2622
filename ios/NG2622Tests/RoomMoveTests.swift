@@ -3,7 +3,7 @@ import Testing
 
 @testable import NG2622
 
-/// 待合の「他のルーム」で別の部屋に移る手順（確かめの出し分け・入れるかの確かめ・抜けてから入る順）と、
+/// 待合の「他のルーム」で別の部屋に移る手順（確かめの出し分け・入れてから抜ける順・入れないときに残る・抜けるのに失敗したとき）と、
 /// 初めて開いたときに名前を決める画面を出すか
 struct RoomMoveTests {
   let me = PlayerProfile(name: "たろう", color: 0x5B5BE6)
@@ -16,10 +16,14 @@ struct RoomMoveTests {
 
     let name: String
     let log: Log
-    /// この部屋は無い（findRoom・joinRoom が roomNotFound を投げる）
+    /// この部屋は無い（joinRoom が roomNotFound を投げる）
     var missing: Set<String> = []
-    /// 確かめのあとで入れなくなった部屋（joinRoom だけが roomFull を投げる）
-    var fullOnJoin: Set<String> = []
+    /// 満員の部屋（joinRoom が roomFull を投げる）
+    var full: Set<String> = []
+    /// 抜けるのに失敗する（leave を送れず、前の部屋の知らせが届き続ける）
+    var leaveFails = false
+    /// joinRoom の途中で呼ぶ（入っている途中に、前の部屋から知らせが届いたときを作る）
+    var duringJoin: () -> Void = {}
     let events: AsyncStream<GameEvent>
     private let continuation: AsyncStream<GameEvent>.Continuation
 
@@ -34,20 +38,21 @@ struct RoomMoveTests {
       return "1111"
     }
 
-    func findRoom(code: String) async throws {
-      log.calls.append("\(name).find \(code)")
-      if missing.contains(code) { throw GameError.roomNotFound }
-    }
-
     func joinRoom(code: String, as player: PlayerProfile) async throws {
       log.calls.append("\(name).join \(code)")
+      duringJoin()
       if missing.contains(code) { throw GameError.roomNotFound }
-      if fullOnJoin.contains(code) { throw GameError.roomFull }
+      if full.contains(code) { throw GameError.roomFull }
     }
 
     func leaveRoom() {
       log.calls.append("\(name).leave")
-      continuation.finish()
+      if !leaveFails { continuation.finish() }
+    }
+
+    /// 部屋から知らせが届く
+    func send(_ event: GameEvent) {
+      continuation.yield(event)
     }
 
     func startRound(sceneID: String?) async throws {}
@@ -79,36 +84,97 @@ struct RoomMoveTests {
     return (session, client)
   }
 
-  /// ほかの人がいれば確かめる（切断中の人も数える）。自分だけなら確かめない
-  @Test func confirmsOnlyWithOthers() async throws {
+  /// コードがそろったら: 今いる部屋のコードは通信せずに sameRoom、ほかの人がいれば確かめ（切断中の人も数える）、
+  /// 自分だけなら確かめずに移る
+  @Test func stepForCode() async throws {
     let log = LogClient.Log()
     let (alone, _) = try await hosting(log)
     #expect(!alone.hasOthers)
+    #expect(alone.step(for: "1111") == .sameRoom)
+    #expect(alone.step(for: "4821") == .move)
     let (withFriend, _) = try await hosting(log, others: [member("f", isSelf: false, isHost: false)])
-    #expect(withFriend.hasOthers)
+    #expect(withFriend.step(for: "4821") == .confirm)
+    #expect(withFriend.step(for: "1111") == .sameRoom)
     let (withOffline, _) = try await hosting(log, others: [member("f", isSelf: false, isHost: false, status: .offline)])
-    #expect(withOffline.hasOthers)
+    #expect(withOffline.step(for: "4821") == .confirm)
+    #expect(!log.calls.contains { $0.contains("join") })
   }
 
-  /// 移る先を確かめてから、今の部屋を抜け、それから入る
-  @Test func leavesBeforeJoining() async throws {
+  /// 移る先に入ってから、今の部屋を抜ける（先に確かめる通信はしない）
+  @Test func joinsBeforeLeaving() async throws {
     let log = LogClient.Log()
     let (session, _) = try await hosting(log)
-    try await session.checkMove(to: "4821")
     let next = RoomSession(client: LogClient("new", log: log), me: me, records: .temporary())
     try await session.move(to: "4821", with: next)
-    #expect(log.calls == ["old.create", "old.find 4821", "old.leave", "new.join 4821"])
+    #expect(log.calls == ["old.create", "new.join 4821", "old.leave"])
     #expect(next.code == "4821")
   }
 
-  /// 無い部屋・いまいる部屋のコードは、確かめで止まり、今の部屋は抜けない
-  @Test func checkKeepsCurrentRoom() async throws {
+  /// 入れないときは今の部屋のまま（抜けない）。新しい方は後始末する。もう一度移れる
+  @Test func failedJoinKeepsCurrentRoom() async throws {
     let log = LogClient.Log()
-    let (session, client) = try await hosting(log)
-    client.missing = ["0000"]
-    await #expect(throws: GameError.roomNotFound) { try await session.checkMove(to: "0000") }
-    await #expect(throws: RoomSession.MoveError.sameRoom) { try await session.checkMove(to: "1111") }
+    let (session, _) = try await hosting(log)
+    let missing = LogClient("missing", log: log)
+    missing.missing = ["0000"]
+    await #expect(throws: GameError.roomNotFound) {
+      try await session.move(to: "0000", with: RoomSession(client: missing, me: me, records: .temporary()))
+    }
+    let full = LogClient("full", log: log)
+    full.full = ["9999"]
+    await #expect(throws: GameError.roomFull) {
+      try await session.move(to: "9999", with: RoomSession(client: full, me: me, records: .temporary()))
+    }
     #expect(!log.calls.contains("old.leave"))
+    #expect(!session.isMoving)
+    #expect(session.code == "1111")
+
+    let next = RoomSession(client: LogClient("new", log: log), me: me, records: .temporary())
+    try await session.move(to: "4821", with: next)
+    #expect(
+      log.calls == [
+        "old.create", "missing.join 0000", "missing.leave", "full.join 9999", "full.leave", "new.join 4821", "old.leave",
+      ])
+  }
+
+  /// 今いる部屋のコードは、通信せずに sameRoom を投げる
+  @Test func sameRoomWithoutNetwork() async throws {
+    let log = LogClient.Log()
+    let (session, _) = try await hosting(log)
+    let next = RoomSession(client: LogClient("new", log: log), me: me, records: .temporary())
+    await #expect(throws: RoomSession.MoveError.sameRoom) { try await session.move(to: "1111", with: next) }
+    #expect(log.calls == ["old.create"])
+  }
+
+  /// 入っている途中（一瞬 2 つの部屋にいる間）に前の部屋から届いた、場面が替わる知らせは受けない。参加者の知らせは受ける
+  @Test func ignoresOldRoomPhaseWhileMoving() async throws {
+    let log = LogClient.Log()
+    let (session, _) = try await hosting(log)
+    let newClient = LogClient("new", log: log)
+    let info = RoundInfo(sceneID: "gen-abcdefghij", startsAt: Date(), room: "1111")
+    newClient.duringJoin = {
+      session.handle(.generating(RoomState(code: "1111", members: [self.member("me", isSelf: true, isHost: true)])))
+      session.handle(.roundStarted(info))
+      session.handle(.participantsChanged([self.member("me", isSelf: true, isHost: true), self.member("f", isSelf: false, isHost: false)]))
+    }
+    let next = RoomSession(client: newClient, me: me, records: .temporary())
+    try await session.move(to: "4821", with: next)
+    #expect(session.phase == .lobby)
+    #expect(!session.isGenerating)
+    #expect(session.participants.count == 2)
+  }
+
+  /// 入れたあとに今の部屋を抜けるのに失敗しても（leave を送れない）、移った先で進める。前の部屋の知らせはもう受けない
+  @Test func leaveFailureStillMoves() async throws {
+    let log = LogClient.Log()
+    let (session, oldClient) = try await hosting(log)
+    oldClient.leaveFails = true
+    let next = RoomSession(client: LogClient("new", log: log), me: me, records: .temporary())
+    try await session.move(to: "4821", with: next)
+    #expect(next.code == "4821")
+    oldClient.send(.roundStarted(RoundInfo(sceneID: "gen-abcdefghij", startsAt: Date(), room: "1111")))
+    for _ in 0..<5 { await Task.yield() }
+    #expect(session.phase == .lobby)
+    #expect(next.phase == .lobby)
   }
 
   /// 入れなかった理由。部屋が無いと分かったときだけ「部屋が見つかりません」で、通信の失敗は「つながりませんでした」
@@ -116,10 +182,9 @@ struct RoomMoveTests {
     #expect(JoinRoomSheet.message(for: GameError.roomNotFound) == "部屋が見つかりません")
     #expect(JoinRoomSheet.message(for: RoomSession.MoveError.sameRoom) == "いまいる部屋です")
     #expect(JoinRoomSheet.message(for: GameError.roomFull) == "満員で入れません")
+    #expect(JoinRoomSheet.message(for: GameError.alreadyStarted) == "ゲーム中で入れません")
     #expect(JoinRoomSheet.message(for: GameError.connectionFailed) == "つながりませんでした")
     #expect(JoinRoomSheet.message(for: URLError(.notConnectedToInternet)) == "つながりませんでした")
-    #expect(JoinRoomSheet.notice(for: GameError.roomFull) == "入れませんでした（満員）")
-    #expect(JoinRoomSheet.notice(for: URLError(.timedOut)) == "入れませんでした（つながらない）")
   }
 
   /// 移っている途中にもう一度 move を呼んでも、2 つ目の部屋には入らない（幽霊の参加者を残さない）
@@ -131,22 +196,10 @@ struct RoomMoveTests {
     async let a = succeeded { try await session.move(to: "4821", with: first) }
     async let b = succeeded { try await session.move(to: "4821", with: second) }
     let results = await [a, b]
-    #expect(session.isMoving)
     #expect(results.filter { $0 }.count == 1)
     #expect(log.calls.filter { $0.hasSuffix(".join 4821") }.count == 1)
     #expect(log.calls.filter { $0 == "old.leave" }.count == 1)
     await #expect(throws: RoomSession.MoveError.alreadyMoving) { try await session.move(to: "4821", with: second) }
-  }
-
-  /// 確かめたあとで入れなくなっていたら、新しい方も抜けて投げる（今の部屋には戻らない）
-  @Test func joinFailsAfterLeaving() async throws {
-    let log = LogClient.Log()
-    let (session, _) = try await hosting(log)
-    let nextClient = LogClient("new", log: log)
-    nextClient.fullOnJoin = ["4821"]
-    let next = RoomSession(client: nextClient, me: me, records: .temporary())
-    await #expect(throws: GameError.roomFull) { try await session.move(to: "4821", with: next) }
-    #expect(log.calls == ["old.create", "old.leave", "new.join 4821", "new.leave"])
   }
 
   /// 名前を保存していないとき（初めて開いた）と、空白だけのときは、最初の画面を出す
@@ -170,6 +223,13 @@ struct RoomMoveTests {
     }
   }
 
+  /// 設定で打ち替えた名前と色。名前は前後の空白を除き、空なら前の名前のまま
+  @Test func editedProfile() {
+    let mika = PlayerProfile(name: "Mika", color: PlayerProfile.colors[0])
+    #expect(mika.edited(name: " Ken ", color: PlayerProfile.colors[3]) == PlayerProfile(name: "Ken", color: PlayerProfile.colors[3]))
+    #expect(mika.edited(name: "   ", color: PlayerProfile.colors[2]) == PlayerProfile(name: "Mika", color: PlayerProfile.colors[2]))
+  }
+
   /// 打っている名前は、上限の 10 文字で切る
   @Test func nameIsLimited() {
     #expect(PlayerProfile.limited("abcdefghijklmn") == "abcdefghij")
@@ -177,75 +237,26 @@ struct RoomMoveTests {
   }
 }
 
-/// 「他のルーム」のシート・確かめの順番
+/// 「他のルーム」のシートの番号
 struct OtherRoomFlowTests {
-  /// 確かめている途中に下に引いて閉じると、あとで届いた確かめの結果は受け取らず、
-  /// 次に開いて何もせず閉じても移らない
-  @Test func lateFoundAfterSwipeIsIgnored() {
+  /// いま開いているシートからの「移る」だけを受け付ける
+  @Test func acceptsOnlyOpenSheet() {
     var flow = OtherRoomFlow()
+    #expect(!flow.accepts(flow.ticket))
     flow.open()
+    #expect(flow.accepts(flow.ticket))
     flow.close()
-    #expect(flow.sheetDismissed(hasOthers: false) == nil)
-    flow.found("4821", ticket: flow.ticket)
-    #expect(flow.found == nil)
-    flow.open()
-    flow.close()
-    #expect(flow.sheetDismissed(hasOthers: false) == nil)
-    #expect(flow.confirming == nil)
+    #expect(!flow.accepts(flow.ticket))
   }
 
-  /// 確かめ中に閉じてすぐ開き直したあとで、前のシートの結果が届いても受け取らない（開いたシートは閉じない）。
-  /// 今のシートの結果は受け取る
-  @Test func lateFoundAfterReopenIsIgnored() {
+  /// 閉じる → 開き直す → 前のシートの「移る」が届く、の順でも、前のシートからは移らない。今のシートからは移れる
+  @Test func oldSheetAfterReopenIsIgnored() {
     var flow = OtherRoomFlow()
     flow.open()
     let old = flow.ticket
     flow.close()
-    #expect(flow.sheetDismissed(hasOthers: false) == nil)
     flow.open()
-    flow.found("4821", ticket: old)
-    #expect(flow.sheetOpen)
-    #expect(flow.found == nil)
-    flow.close()
-    #expect(flow.sheetDismissed(hasOthers: false) == nil)
-
-    flow.open()
-    flow.found("5300", ticket: flow.ticket)
-    #expect(!flow.sheetOpen)
-    #expect(flow.sheetDismissed(hasOthers: false) == "5300")
-  }
-
-  /// 開くと、前に残っていたコードは捨てる
-  @Test func openClearsFound() {
-    var flow = OtherRoomFlow()
-    flow.open()
-    flow.found("4821", ticket: flow.ticket)
-    flow.open()
-    #expect(flow.found == nil)
-  }
-
-  /// 自分しかいなければ確かめずに移る。ほかの人がいれば確かめ、「入る」は 1 度だけ移る先を返す
-  @Test func confirmOnlyWithOthers() {
-    var alone = OtherRoomFlow()
-    alone.open()
-    alone.found("4821", ticket: alone.ticket)
-    #expect(!alone.sheetOpen)
-    #expect(alone.sheetDismissed(hasOthers: false) == "4821")
-    #expect(alone.confirming == nil)
-
-    var withOthers = OtherRoomFlow()
-    withOthers.open()
-    withOthers.found("4821", ticket: withOthers.ticket)
-    #expect(withOthers.sheetDismissed(hasOthers: true) == nil)
-    #expect(withOthers.confirming == "4821")
-    #expect(withOthers.confirm() == "4821")
-    #expect(withOthers.confirm() == nil)
-
-    var cancelled = OtherRoomFlow()
-    cancelled.open()
-    cancelled.found("4821", ticket: cancelled.ticket)
-    _ = cancelled.sheetDismissed(hasOthers: true)
-    cancelled.cancel()
-    #expect(cancelled.confirm() == nil)
+    #expect(!flow.accepts(old))
+    #expect(flow.accepts(flow.ticket))
   }
 }

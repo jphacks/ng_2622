@@ -1,14 +1,11 @@
 import SwiftUI
 
-/// ホーム。主ボタンは「あそぶ」の 1 つで、押すと自分の部屋ができて待合に入る（ほかの部屋へは待合の「他のルーム」から移る）。
-/// きろくと設定にも、ここから入る。名前がまだ無い（初めて開いた）ときは、ボタンの代わりに名前を決める欄を出す（最初の画面）。
-/// 最初の画面とホームは同じ view で、ジオラマとタイトルはそのまま下だけを替える（3D を作り直さない）
+/// ホーム。大きなジオラマの下にタイトル、下の方に「あそぶ」と「きろく」を同じ大きさで縦に並べ、右上に設定の歯車を置く。
+/// 「あそぶ」を押すと自分の部屋ができて待合に入る（ほかの部屋へは待合の「他のルーム」から移る）。
+/// 名前がまだ無い（初めて開いた）ときは、ボタンの代わりに名前を決める欄を出す（最初の画面）。
+/// 最初の画面とホームは同じ view で、ジオラマとタイトルの並びはそのまま下だけを替える（3D を作り直さない）
 struct HomeView: View {
   let profile: PlayerProfile
-  /// 端末に残した遊んだ記録の数
-  var recordCount = 0
-  /// 「あそぶ」の上に出す短い知らせ（別の部屋に入れなかったとき）
-  var notice: String?
   /// 最初の画面で名前を決めた
   var onName: (String) -> Void = { _ in }
   /// 「あそぶ」
@@ -18,20 +15,34 @@ struct HomeView: View {
   /// 上に別の画面（きろく・設定）が重なっている。重なっている間は、場面の 3D を外す
   var isCovered = false
 
+  /// 歯車の行の高さ（上の余白 8 と丸いボタン 44 と下 8）
+  private static let gearRow: CGFloat = 60
+  /// ジオラマの枠の高さ（いちばん大きいとき）。キーボードが出たときなどは縮む
+  private static let sceneHeight: CGFloat = 270
+
   @FocusState private var editing: Bool
 
   var body: some View {
     VStack(spacing: 0) {
-      SpinningScene()
+      Color.clear.frame(height: Self.gearRow)
+      // ジオラマとタイトルのまとまりは、歯車の行と下のボタンの間の空きに置き、見た目の重心を少し上にする
+      // （見た目の空きが上 2 : 下 3 ほど。docs/design/ui/screens/home.md）。場面はジオラマの枠の下寄りに描かれ、
+      // 枠の上に場面の無い所があるので、空き（Spacer）は上 1 : 下 4 で分ける
+      Spacer(minLength: 0)
+      // 枠の高さとカメラの近さで、ジオラマが画面の幅の 8 割ほどになるようにする（回って斜めになると少し広がる）
+      SpinningScene(distance: 4.2)
         .unmountedWhileCovered(isCovered)
-        .frame(maxWidth: .infinity, minHeight: 120, maxHeight: 340)
+        .frame(maxWidth: .infinity, minHeight: 120, maxHeight: Self.sceneHeight)
+        .layoutPriority(1)
         .contentShape(Rectangle())
         .onTapGesture { editing = false }
       Text("ScenEnglish")
         .font(Theme.font(38, .black))
         .foregroundStyle(Theme.accent)
-        .padding(.bottom, 22)
-      ZStack(alignment: .top) {
+        .padding(.top, 6)
+      Spacer(minLength: 16)
+      ForEach(0..<3, id: \.self) { _ in Spacer(minLength: 0) }
+      ZStack(alignment: .bottom) {
         if profile.needsName {
           FirstNameForm(editing: $editing, onStart: onName)
             .transition(.opacity)
@@ -40,10 +51,10 @@ struct HomeView: View {
             .transition(.opacity)
         }
       }
+      .frame(width: 346)
       .animation(.easeInOut(duration: 0.3), value: profile.needsName)
-      Spacer(minLength: 12)
+      .padding(.bottom, 56)
     }
-    .frame(width: 346)
     .frame(maxWidth: .infinity)
     .overlay(alignment: .topTrailing) {
       if !profile.needsName {
@@ -55,62 +66,14 @@ struct HomeView: View {
     }
   }
 
+  /// 「あそぶ」（塗り）と「きろく」（枠だけ）。同じ大きさ・同じ幅で、文字だけ
   private var menu: some View {
-    VStack(spacing: 22) {
+    VStack(spacing: 16) {
       Button("あそぶ", action: onPlay)
         .buttonStyle(BigButtonStyle(kind: .primary))
-        .padding(.top, 8)
-      recordsCard
-      // きろくの板の下に出す（下は空いているので、ボタンの位置は動かない）
-      if let notice {
-        Label(notice, systemImage: "exclamationmark.circle.fill")
-          .font(Theme.font(15, .heavy))
-          .foregroundStyle(Theme.ink)
-          .padding(.horizontal, 14)
-          .frame(height: 34)
-          .background(Theme.card, in: Capsule())
-          .shadow(color: Theme.ink.opacity(0.08), radius: 6, y: 3)
-          .transition(.opacity)
-      }
+      Button("きろく", action: onRecords)
+        .buttonStyle(BigButtonStyle(kind: .outlined))
     }
-    .animation(.easeOut(duration: 0.2), value: notice)
-    // 知らせが出たら VoiceOver で読み上げる（ホームに切り替わる動きが落ち着いてから）
-    .task(id: notice) {
-      guard let notice else { return }
-      try? await Task.sleep(for: .milliseconds(600))
-      if !Task.isCancelled { AccessibilityNotification.Announcement(notice).post() }
-    }
-  }
-
-  /// きろくへの入口。「あそぶ」より目立たせない（白い板）
-  private var recordsCard: some View {
-    Button(action: onRecords) {
-      HStack(spacing: 14) {
-        Image(systemName: "clock.arrow.circlepath")
-          .font(.system(size: 26, weight: .bold))
-          .foregroundStyle(Theme.accent)
-        VStack(alignment: .leading, spacing: 2) {
-          Text("きろく")
-            .font(Theme.font(19, .heavy))
-          Text(recordCount > 0 ? "これまでの \(recordCount) 回" : "あそぶと、ここにたまります")
-            .font(Theme.font(14, .heavy))
-            .foregroundStyle(Theme.muted)
-            .monospacedDigit()
-        }
-        Spacer(minLength: 8)
-        Image(systemName: "chevron.right")
-          .font(.system(size: 15, weight: .bold))
-          .foregroundStyle(Theme.gray)
-      }
-      .padding(.horizontal, 18)
-      .frame(height: 64)
-      .background(Theme.card, in: RoundedRectangle(cornerRadius: 22))
-      .shadow(color: Theme.ink.opacity(0.07), radius: 10, y: 6)
-      .contentShape(RoundedRectangle(cornerRadius: 22))
-    }
-    .buttonStyle(.plain)
-    .accessibilityElement(children: .combine)
-    .accessibilityAddTraits(.isButton)
   }
 }
 
@@ -187,6 +150,8 @@ private struct SpinningScene: View {
   private static let period: TimeInterval = 24
   /// 出す場面。かんたんの例が無ければ、どれか 1 つの出題の候補
   static let sceneID = ScenePool.bundled.example(of: .eiken3) ?? ScenePool.bundled.randomCandidate() ?? ""
+  /// カメラから場面の中心までの距離。小さいほど大きく映る
+  var distance: Float = 7.8
   @State private var start = Date()
 
   var body: some View {
@@ -194,7 +159,7 @@ private struct SpinningScene: View {
       let t = context.date.timeIntervalSince(start)
       DioramaView(
         sceneID: Self.sceneID, yaw: (t / Self.period * 360).truncatingRemainder(dividingBy: 360),
-        tilt: SceneOrbit.defaultTilt)
+        tilt: SceneOrbit.defaultTilt, distance: distance)
     }
     .allowsHitTesting(false)
     .accessibilityHidden(true)
