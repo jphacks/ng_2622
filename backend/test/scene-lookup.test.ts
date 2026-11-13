@@ -6,6 +6,7 @@ import {
   bundledThing,
   MAX_NEW_PARTS,
   nearestLiving,
+  notAThing,
   parseLivingId,
   resolveParts,
 } from "../src/scenes/lookup";
@@ -251,6 +252,102 @@ test("人・動物・建物を「物」として注文したら、作らずに�
       [order.id],
     );
   }
+  // 生き物を断る文は、生きている人・動物そのものを置きたいときだけ person_・animal_ に書かせる（おもちゃ・食べ物は物でよい）
+  const dog = await resolve({ ...LAMP, id: "dog_brown", words: ["brown dog"] });
+  assert.ok(
+    dog.problems[0].message.includes(
+      "生きている人・動物そのものを置きたいときだけ",
+    ),
+  );
+  assert.ok(dog.problems[0].message.includes("物として注文してよい"));
+});
+
+test("物かどうかは英語の主の名詞（words の各句の最後の語）で決める。おもちゃ・食べ物・道具・敷物は通し、生き物そのもの・建物・地面は断る", async () => {
+  type Case = {
+    id: string;
+    words: string[];
+    category?: PartOrder["category"];
+  };
+  const verdict = ({ id, words, category = "thing" }: Case) =>
+    notAThing({ id, words, category }, PARTS)?.what ?? "ok";
+  const pass: Case[] = [
+    { id: "fish_tank", words: ["fish tank"] },
+    { id: "bird_cage", words: ["bird cage"] },
+    { id: "dog_bowl", words: ["dog bowl"] },
+    { id: "student_desk", words: ["student desk"], category: "furniture" },
+    { id: "teacher_desk", words: ["teacher desk"], category: "furniture" },
+    { id: "mat_door", words: ["door mat"] },
+    { id: "window_box", words: ["window box"] },
+    { id: "chicken", words: ["chicken"], category: "food" },
+    {
+      id: "chicken_fried",
+      words: ["fried chicken", "chicken"],
+      category: "food",
+    },
+    { id: "fish", words: ["fish"], category: "food" },
+    { id: "fish_grilled", words: ["grilled fish", "fish"], category: "food" },
+    { id: "sushi", words: ["sushi", "fish"], category: "food" },
+    { id: "goat_cheese", words: ["goat cheese"], category: "food" },
+    { id: "teddy_bear", words: ["teddy bear"] },
+    { id: "bear_teddy", words: ["teddy bear", "bear"] },
+    { id: "duck_rubber", words: ["rubber duck"] },
+    { id: "duck_rubber", words: ["rubber duck", "duck"] },
+    { id: "horse_rocking", words: ["rocking horse"] },
+    { id: "puppy_toy", words: ["toy puppy"] },
+    { id: "mouse_computer", words: ["computer mouse"] },
+    { id: "baby_stroller", words: ["baby stroller"] },
+    { id: "carpet", words: ["carpet", "rug"] },
+    { id: "rug_round", words: ["round rug"] },
+    { id: "lamp_street", words: ["lamp", "street lamp"] },
+    { id: "ball_beach", words: ["beach ball"] },
+    { id: "bus", words: ["bus"], category: "vehicle" },
+    { id: "boxes", words: ["boxes"] },
+  ];
+  const refuse: [Case, string][] = [
+    [{ id: "dog_brown", words: ["brown dog"] }, "living"],
+    [{ id: "dog_brown", words: ["brown dog", "dog"] }, "living"],
+    [{ id: "cat", words: ["cat"] }, "living"],
+    [{ id: "cats", words: ["cats"] }, "living"],
+    [{ id: "horse", words: ["horse"] }, "living"],
+    [{ id: "man_old", words: ["old man"] }, "living"],
+    [{ id: "puppies", words: ["little puppies"] }, "living"],
+    [{ id: "chicken", words: ["chicken"] }, "living"],
+    [{ id: "wall_brick", words: ["brick wall"] }, "building"],
+    [{ id: "door_wooden", words: ["wooden door"] }, "building"],
+    [{ id: "window_round", words: ["round window"] }, "building"],
+    [{ id: "house", words: ["house"] }, "building"],
+    [{ id: "windows", words: ["windows"] }, "building"],
+    [{ id: "grass", words: ["grass"] }, "ground"],
+    [{ id: "grass_tuft", words: ["grass tuft", "grass"] }, "ground"],
+    [{ id: "lawn", words: ["green lawn"] }, "ground"],
+    [{ id: "floor_wood", words: ["wooden floor"] }, "ground"],
+    // words が無ければ id の先頭の語で決める
+    [{ id: "dog_brown", words: [] }, "living"],
+    [{ id: "wall_brick", words: [""] }, "building"],
+  ];
+  for (const c of pass) {
+    assert.equal(verdict(c), "ok", c.words.join("/"));
+    // 注文として通しても、部品を作る口と同じ網（refusedTerm・orderProblem）にかからない
+    const order = {
+      ...LAMP,
+      id: c.id,
+      words: c.words,
+      category: c.category ?? "thing",
+    };
+    const result = await resolveParts(
+      [{ key: "x", part: order.id, place: { relation: "ground" } }],
+      [order],
+      PARTS,
+      async () => null,
+    );
+    assert.deepEqual(result.problems, [], c.words.join("/"));
+  }
+  for (const [c, what] of refuse) {
+    assert.equal(verdict(c), what, `${c.id} ${c.words.join("/")}`);
+  }
+  // id と words が食い違えば words の主の名詞（fish_tank の words が tank なら物）
+  assert.equal(verdict({ id: "fish_tank", words: ["tank"] }), "ok");
+  assert.equal(verdict({ id: "fish", words: [] }), "living");
 });
 
 test("新しい物の数は、1 回目の指示・2 回目とコードの上限でそろえる（4 個）", () => {

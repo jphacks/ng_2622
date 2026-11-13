@@ -354,11 +354,7 @@ export const resolveParts = async (
     const why = refusedOrder(order, byId);
     if (why) {
       // 作れない物は英文にも出てくるので、1 回目（英文）から書き直させる
-      problems.push({
-        code: "bad_part_order",
-        stage: why.includes("作れない物") ? "sentences" : "items",
-        message: why,
-      });
+      problems.push({ code: "bad_part_order", ...why });
       continue;
     }
     toMake.push(order);
@@ -383,53 +379,66 @@ export const resolveParts = async (
 };
 
 /**
- * 注文を断る理由（ID の形・同梱の ID と重なる・地面・部品を作る口が断る注文）。よければ undefined。
+ * 注文を断る理由と、どこから書き直させるか（ID の形・同梱の ID と重なる・地面・人や動物・建物・部品を作る口が断る注文）。
+ * よければ undefined。作れない物は英文にも出てくるので 1 回目（sentences）から、注文の書き方の違いは 2 回目（items）から書き直させる。
  * 部品を作る口と同じ確かめ（作らない物の語は refusedTerm で id・words・label・description の全部を、形は orderProblem で）を先にして、作る前に「その物を使わない場面」に書き直させる（作る口で断られて場面ごと失敗しないため）
  */
 const refusedOrder = (
   order: PartOrder,
   byId: Map<string, Part>,
-): string | undefined => {
+): Pick<Problem, "stage" | "message"> | undefined => {
   if (!isObjectId(order.id)) {
-    return `注文 ${order.id} の id が規約の形でない（英小文字の名詞か 名詞_区別、_ で 3 語まで、${MAX_ID_LENGTH} 文字まで）`;
+    return {
+      stage: "items",
+      message: `注文 ${order.id} の id が規約の形でない（英小文字の名詞か 名詞_区別、_ で 3 語まで、${MAX_ID_LENGTH} 文字まで）`,
+    };
   }
   if (byId.has(order.id)) {
-    return `注文 ${order.id} はもう部品がある。注文せずにその id を使う`;
+    return {
+      stage: "items",
+      message: `注文 ${order.id} はもう部品がある。注文せずにその id を使う`,
+    };
   }
-  // 地面（芝生・砂・床など）そのものは作らない。refs の grass などは、地面の部品の key にする。
-  // 語の一部（street lamp の street）では断らず、注文の名前が地面の語そのものかで見る
-  // 地面の部品の words には bus・station など物の語も入っているので、地面の ID と地面の語の一覧で見る
-  const groundWords = new Set([
-    ...[...byId.values()]
-      .filter((p) => p.category === "ground")
-      .map((p) => p.id.replace(/_/g, " ")),
-    ...GROUND_WORDS,
-  ]);
-  const ground = [order.id, ...order.words].find((w) =>
-    groundWords.has(w.replace(/_/g, " ")),
-  );
-  if (ground) {
-    return `${order.id} は地面（${ground}）。地面は作らない。英文の ${ground} は、地面の部品（grass_patch・sand_beach・floor_wood など）の item の key にする`;
+  const kind = notAThing(order, [...byId.values()]);
+  if (kind?.what === "ground") {
+    // 地面（芝生・砂・床など）そのものは作らない。refs の grass などは、地面の部品の key にする
+    return {
+      stage: "items",
+      message: `${order.id} は地面（${kind.word}）。地面は作らない。英文の ${kind.word} は、地面の部品（grass_patch・sand_beach・floor_wood など）の item の key にする`,
+    };
   }
-  // 人・動物・建物は「物」として作らない（作るのは thing・furniture・food・plant・vehicle だけ）
-  const kind = notAThing(order, byId);
-  if (kind) {
-    return `${order.id} は${kind.what}（${kind.word}）なので作れない物。この物を使わない場面にする（英文からも外す。人と動物は表の person_・animal_ の ID で書く）`;
+  if (kind?.what === "building") {
+    return {
+      stage: "sentences",
+      message: `${order.id} は建物や壁（${kind.word}）なので作れない物。この物を使わない場面にする（英文からも外す。壁や窓の背景は、決まりにある wall_window・wall_cafe などの部品だけを使う）`,
+    };
+  }
+  if (kind?.what === "living") {
+    return {
+      stage: "sentences",
+      message: `${order.id} は生きている人や動物（${kind.word}）なので、物としては作れない物。注文はやめる。生きている人・動物そのものを置きたいときだけ、表の person_・animal_ の ID で書く。そうでなければ、この物を使わない場面にする（英文からも外す）。人や動物の形のおもちゃ・食べ物・道具（teddy bear・rubber duck・fried chicken・fish tank など）は物として注文してよい`,
+    };
   }
   // 作らない物の語は、部品を作る口と同じ網（id・words・label・description の全部を見る）で先に見る
   const refused = refusedTerm(order);
   if (refused) {
-    return `${order.id} は作れない物（${refused}）。この物を使わない場面にする（英文からも外す）`;
+    return {
+      stage: "sentences",
+      message: `${order.id} は作れない物（${refused}）。この物を使わない場面にする（英文からも外す）`,
+    };
   }
   const problem = orderProblem(order);
   if (problem) {
-    return `注文 ${order.id} の形が違う（${problem}）。注文を直すか、もう部品のある物にする`;
+    return {
+      stage: "items",
+      message: `注文 ${order.id} の形が違う（${problem}）。注文を直すか、もう部品のある物にする`,
+    };
   }
   return undefined;
 };
 
-// 地面の語（地面の部品の ID に足す）
-const GROUND_WORDS = [
+// 地面の主の名詞（地面の部品の ID の先頭の語に足す）。敷物（carpet・rug）は床の上に置ける物なので入れない
+const GROUND_NOUNS = [
   "grass",
   "lawn",
   "sand",
@@ -444,25 +453,45 @@ const GROUND_WORDS = [
   "pavement",
   "crosswalk",
   "platform",
-  "carpet",
+];
+
+// 建物と部屋の主の名詞（建物の部品の ID に足す）
+const BUILDING_NOUNS = [
+  "wall",
+  "door",
+  "window",
+  "room",
+  "house",
+  "home",
+  "building",
+  "roof",
+  "ceiling",
+  "stairs",
+  "stair",
 ];
 
 // 同梱の人・動物の「誰」「種類」の語（verify.ts の PERSON_NOUNS と部品の words）に足す、よく出る人と動物の語
 const MORE_LIVING = [
   "person",
-  "people",
   "baby",
+  "animal",
+  "pet",
   "cat",
   "kitten",
+  "kitty",
   "puppy",
   "horse",
+  "pony",
   "cow",
   "pig",
   "sheep",
   "goat",
   "rabbit",
+  "bunny",
   "duck",
+  "duckling",
   "chicken",
+  "chick",
   "hen",
   "fish",
   "mouse",
@@ -477,49 +506,140 @@ const MORE_LIVING = [
   "turtle",
   "hamster",
 ];
-// 建物の部品の words に足す、建物と部屋の語
-const MORE_BUILDING = [
-  "wall",
-  "door",
-  "window",
-  "floor",
-  "room",
-  "house",
-  "building",
-  "roof",
-  "ceiling",
-  "stairs",
+
+// 人・動物の前に付いても、その人・動物そのものを言う語（色・大きさ・年齢・様子）。
+// これ以外の語が前に付いた句（teddy bear・rubber duck・rocking horse・computer mouse）は、別の物の名前とみる
+const DESCRIBING = new Set([
+  "red",
+  "orange",
+  "yellow",
+  "green",
+  "blue",
+  "purple",
+  "pink",
+  "brown",
+  "black",
+  "white",
+  "gray",
+  "grey",
+  "big",
+  "small",
+  "little",
+  "large",
+  "tiny",
+  "huge",
+  "tall",
+  "short",
+  "fat",
+  "thin",
+  "long",
+  "old",
+  "young",
+  "elderly",
+  "adult",
+  "cute",
+  "fluffy",
+  "furry",
+  "spotted",
+  "striped",
+  "wild",
+  "stray",
+  "happy",
+  "sad",
+  "angry",
+  "hungry",
+  "sleepy",
+  "sleeping",
+  "lazy",
+  "friendly",
+]);
+
+// 複数形を単数に寄せる（不規則な形）
+const IRREGULAR_PLURALS: Record<string, string> = {
+  people: "person",
+  men: "man",
+  women: "woman",
+  children: "child",
+  mice: "mouse",
+  geese: "goose",
+};
+
+/** 語の形の候補（そのまま・単数に寄せた形）。複数形を単数に寄せる程度（cats → cat・boxes → box・puppies → puppy） */
+const nounForms = (word: string): string[] => [
+  word,
+  IRREGULAR_PLURALS[word] ?? word,
+  word.replace(/([^aeiou])ies$/, "$1y"),
+  word.replace(/(s|x|z|ch|sh)es$/, "$1"),
+  word.replace(/([^su])s$/, "$1"),
 ];
 
+/** 語の一覧に当たる形（無ければ undefined） */
+const formIn = (set: Set<string>, word: string) =>
+  nounForms(word).find((f) => set.has(f));
+
+/** 句を、主の名詞（最後の語）と前に付いた語に分ける（a・an・the は外す） */
+const headOf = (phrase: string) => {
+  const tokens = phrase
+    .toLowerCase()
+    .replace(/_/g, " ")
+    .split(/\s+/)
+    .filter((t) => t !== "" && !["a", "an", "the"].includes(t));
+  return { head: tokens.at(-1) ?? "", modifiers: tokens.slice(0, -1) };
+};
+
 /**
- * 注文が人・動物・建物か。注文の id（_ を空白にしたもの）か words のどれかが、その語そのものなら当たる。
- * 人と動物は id の先頭の語（名詞_区別 の名詞。dog_brown の dog）でも当てる。
- * 語の一部（street lamp・door mat の door）では当てない
+ * 注文が「物」でない（地面・建物・生きている人や動物）か。英語の主の名詞（words の各句の最後の語。複数形は単数に寄せる）で決める。
+ * words が無ければ id の先頭の語（名詞_区別 の名詞）で決める。id と words が食い違うとき（fish_tank の words が fish tank）は words を見る。
+ * - 地面・建物: どれか 1 つの句の主の名詞が地面・建物の語なら当たる（brick wall・wooden door・grass）。
+ *   主でない語（door mat の door・window box の window・street lamp の street）では当てない
+ * - 人・動物: どの句も、主の名詞が人・動物で、前に付いた語が色・大きさ・年齢・様子だけ（brown dog・old man）のときだけ当たる。
+ *   別の語が前に付いた句（teddy bear・rubber duck）や、主の名詞が物の句（fish tank の tank）が 1 つでもあれば、人や動物の形の物とみる
+ *   （rubber duck の words に短い呼び名の duck が並んでいても断らない）。食べ物（category が food）は動物の語（chicken・fish）で断らない
  */
-const notAThing = (
-  order: PartOrder,
-  byId: Map<string, Part>,
-): { what: string; word: string } | undefined => {
-  const parts = [...byId.values()];
-  const living = new Set([
-    ...Object.keys(PERSON_NOUNS),
-    ...parts.filter(isLiving).map((p) => whoOf(p)),
-    ...MORE_LIVING,
+export const notAThing = (
+  order: Pick<PartOrder, "id" | "category" | "words">,
+  parts: Part[],
+): { what: "ground" | "building" | "living"; word: string } | undefined => {
+  const words = order.words.filter((w) => w.trim() !== "");
+  const phrases = (words.length > 0 ? words : [order.id.split("_")[0]]).map(
+    headOf,
+  );
+  const ground = new Set([
+    ...parts
+      .filter((p) => p.category === "ground")
+      .map((p) => p.id.split("_")[0]),
+    ...GROUND_NOUNS,
   ]);
-  // 建物の部品は ID で見る（words には bus・menu・shelf など物の語も入っているので使わない）
+  // 建物の部品は 1 語の ID（door・wall・window）だけ足す（bus_shelter の bus は主の名詞でない。words には bus・menu など物の語も入っている）
   const building = new Set([
     ...parts
-      .filter((p) => p.category === "building")
-      .map((p) => p.id.replace(/_/g, " ")),
-    ...MORE_BUILDING,
+      .filter((p) => p.category === "building" && !p.id.includes("_"))
+      .map((p) => p.id),
+    ...BUILDING_NOUNS,
   ]);
-  const names = [order.id.replace(/_/g, " "), ...order.words];
-  const head = order.id.split("_")[0];
-  const person =
-    names.find((n) => living.has(n)) ?? (living.has(head) ? head : undefined);
-  if (person) return { what: "人や動物", word: person };
-  const built = names.find((n) => building.has(n));
-  if (built) return { what: "建物や壁", word: built };
+  for (const [what, set] of [
+    ["ground", ground],
+    ["building", building],
+  ] as const) {
+    for (const { head } of phrases) {
+      const word = formIn(set, head);
+      if (word) return { what, word };
+    }
+  }
+  if (order.category === "food") return undefined;
+  const living = new Set([
+    ...Object.keys(PERSON_NOUNS).map((n) => headOf(n).head),
+    ...parts.filter(isLiving).map((p) => headOf(whoOf(p)).head),
+    ...MORE_LIVING,
+  ]);
+  const livingWords = phrases.map(({ head, modifiers }) =>
+    modifiers.every((m) => DESCRIBING.has(m) || formIn(living, m))
+      ? formIn(living, head)
+      : undefined,
+  );
+  if (livingWords.every((w) => w !== undefined)) {
+    return { what: "living", word: livingWords[0] as string };
+  }
   return undefined;
 };
 
