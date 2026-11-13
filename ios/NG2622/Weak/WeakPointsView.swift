@@ -9,15 +9,9 @@ struct WeakPointsView: View {
   let analyzer: WeakPointAnalyzer
   let onBack: () -> Void
 
-  /// 戻るボタンの後ろの帯の濃さ（0〜1）。一番上では見出しを隠さないよう 0 にし、下にスクロールし始めたら濃くする
-  @State private var cover: CGFloat = 0
-
-  /// 帯で地の色にふさぐ高さ（安全な領域の上端から、戻るボタンの下まで。上の余白 8 ＋ ボタンの段 52）
-  static let coverHeight: CGFloat = 60
-  /// 帯の下の、地の色に溶かす所の高さ（押した点はここでは止めない）
-  static let coverFade: CGFloat = 12
-  /// この長さだけスクロールしたら、帯をふさぎ切る。見出しの次の中身（16pt 下）が帯に入る前にふさぐ
-  static let coverDistance: CGFloat = 16
+  /// 戻るボタンの後ろの帯の濃さ。スクロールのたびに変わるので、読むのは帯（CoverBand）だけにし、
+  /// この画面の本体（数える分析と日付の表）はスクロールで作り直さない
+  @State private var cover = CoverBand.Amount()
 
   var body: some View {
     // 数えるのは記録から毎回（覚えない）。数は多くても数百件で、すぐ終わる
@@ -87,24 +81,14 @@ struct WeakPointsView: View {
     // 上端は、下の帯で地の色にふさぐので、システムのぼかし（状態バーの下）は付けない
     .scrollEdgeEffectHidden(true, for: .top)
     .onScrollGeometryChange(for: CGFloat.self) { geometry in
-      min(1, max(0, (geometry.contentOffset.y + geometry.contentInsets.top) / Self.coverDistance))
-    } action: { _, value in
-      cover = value
+      min(1, max(0, (geometry.contentOffset.y + geometry.contentInsets.top) / CoverBand.distance))
+    } action: { [cover] _, value in
+      cover.value = value
     }
     // 下にスクロールしたら、画面の上端から戻るボタンの下までを地の色でふさぐ（きろくの画面と同じ）。
     // 流れていく中身が戻るボタンの横に透けず、押しても、見えていない中身には届かない（戻るボタンは、この上に重ねる）
     .overlay(alignment: .top) {
-      VStack(spacing: 0) {
-        Theme.background
-          .frame(height: Self.coverHeight)
-          .background(Theme.background.ignoresSafeArea(edges: .top))
-        LinearGradient(colors: [Theme.background, Theme.background.opacity(0)], startPoint: .top, endPoint: .bottom)
-          .frame(height: Self.coverFade)
-          .allowsHitTesting(false)
-      }
-      .opacity(cover)
-      .allowsHitTesting(cover > 0)
-      .accessibilityHidden(true)
+      CoverBand(amount: cover)
     }
     .overlay(alignment: .top) {
       HStack {
@@ -152,6 +136,39 @@ struct WeakPointsView: View {
     case .rejected: "AI の分析を作れませんでした。"
     case .failed: "AI の分析を作れませんでした。開き直すと、もう一度作ります。"
     }
+  }
+}
+
+/// 戻るボタンの後ろの帯。画面の上端から戻るボタンの下までを地の色でふさぎ、その下を少し地の色に溶かす。
+/// 濃さは下にスクロールした量で決まる（一番上では 0 で、見出しを隠さない）
+private struct CoverBand: View {
+  /// 帯の濃さ（0〜1）。スクロールのたびに変わる
+  @Observable
+  final class Amount {
+    var value: CGFloat = 0
+  }
+
+  /// ふさぐ高さ（安全な領域の上端から、戻るボタンの下まで。上の余白 8 ＋ ボタンの段 52）
+  static let height: CGFloat = 60
+  /// 帯の下の、地の色に溶かす所の高さ（押した点はここでは止めない）
+  static let fade: CGFloat = 12
+  /// この長さだけスクロールしたら、ふさぎ切る。見出しの次の中身（16pt 下）が帯に入る前にふさぐ
+  static let distance: CGFloat = 16
+
+  let amount: Amount
+
+  var body: some View {
+    VStack(spacing: 0) {
+      Theme.background
+        .frame(height: Self.height)
+        .background(Theme.background.ignoresSafeArea(edges: .top))
+      LinearGradient(colors: [Theme.background, Theme.background.opacity(0)], startPoint: .top, endPoint: .bottom)
+        .frame(height: Self.fade)
+        .allowsHitTesting(false)
+    }
+    .opacity(amount.value)
+    .allowsHitTesting(amount.value > 0)
+    .accessibilityHidden(true)
   }
 }
 
