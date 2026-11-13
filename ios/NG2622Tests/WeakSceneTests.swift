@@ -553,7 +553,7 @@ struct WeakSceneTests {
     let transport = FakeTransport(status: 200, body: Data(body.utf8))
     let returned = try await Self.live(transport).make(try Self.request())
     #expect(returned.sceneId == scene.sceneId)
-    #expect(returned.focusKind == .reason)
+    #expect(returned.focus == "reason")
     #expect(returned.createdParts == ["teapot_red@1"])
     #expect(try returned.document().layout == scene.document().layout)
     let sent = try #require(await transport.sent.data)

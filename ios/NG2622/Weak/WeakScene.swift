@@ -23,9 +23,6 @@ nonisolated struct WeakScene: Codable, Sendable, Equatable {
   func document() throws -> SceneDocument {
     try SceneDocument(data: JSONEncoder().encode(layout))
   }
-
-  /// 狙った項目の種類。知らない値なら nil
-  var focusKind: ChecklistKind? { ChecklistKind(rawValue: focus) }
 }
 
 /// 端末に覚える苦手の場面（scenenglish.weakscene/1）。作ったときの区切り（stage）と、返った場面（scene）を持つ。

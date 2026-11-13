@@ -50,16 +50,12 @@ final class WeakSceneScreens: XCTestCase {
     sleep(1)
     shot("s1-making")
 
-    let ready = element(app, "weak-scene-ready")
-    XCTAssert(ready.waitForExistence(timeout: 20))
+    let practice = app.buttons["この苦手の場面で練習する"]
+    XCTAssert(practice.waitForExistence(timeout: 20))
     XCTAssertFalse(element(app, "weak-scene-making").exists)
-    XCTAssert(ready.label.contains("苦手の場面ができました"))
     // 出てくる動きが終わるまで待つ
     sleep(1)
     shot("s2-ready")
-
-    let practice = app.buttons["この苦手の場面で練習する"]
-    XCTAssert(practice.exists)
     practice.tap()
 
     // 待合: 難易度の代わりに苦手の場面
@@ -88,7 +84,6 @@ final class WeakSceneScreens: XCTestCase {
     shot("s5-failed-notice")
     XCTAssert(notice.label.contains("苦手の場面を作れませんでした"))
     XCTAssertFalse(element(app, "weak-scene-making").exists)
-    XCTAssertFalse(element(app, "weak-scene-ready").exists)
     XCTAssertFalse(app.buttons["この苦手の場面で練習する"].exists)
     // 数秒で消え、行の無いカードが残る
     XCTAssert(notice.waitForNonExistence(timeout: 8))

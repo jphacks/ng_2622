@@ -47,7 +47,7 @@ struct WeakPointsView: View {
         let showsScene = scenePhase.showsInCard
         let next = Self.next(analysis, counts: counts)
         if next != nil || showsScene {
-          NextCard(content: next, showsScene: showsScene) {
+          NextCard(content: next, showsScene: showsScene, divided: scenePhase == .making) {
             WeakSceneSection(phase: scenePhase, onPractice: onPractice)
           }
         }
@@ -133,7 +133,7 @@ struct WeakPointsView: View {
       guard case .ready(let scene) = new else { return }
       for part in scene.createdParts { PartLibrary.shared.preload(PartRef(part)) }
       if old == .making {
-        AccessibilityNotification.Announcement("苦手の場面ができました。\(scene.name)").post()
+        AccessibilityNotification.Announcement("苦手の場面ができました").post()
       }
     }
     .task(id: analyzer.scenes?.notices ?? 0) {
@@ -234,6 +234,8 @@ private struct NextCard<Scene: View>: View {
   let content: WeakPointsView.NextContent?
   /// 苦手の場面を出すか（出さないときは区切りの線も出さない）
   let showsScene: Bool
+  /// 文と苦手の場面の間に線を引くか（作っている間だけ。できたらボタンだけなので、文のすぐ下に置く）
+  let divided: Bool
   @ViewBuilder let scene: () -> Scene
 
   var body: some View {
@@ -244,7 +246,7 @@ private struct NextCard<Scene: View>: View {
           .accessibilityIdentifier("weak-next")
       }
       if showsScene {
-        if content != nil {
+        if content != nil, divided {
           Rectangle()
             .fill(Theme.accent.opacity(0.22))
             .frame(height: 1.5)
