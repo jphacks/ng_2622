@@ -15,6 +15,9 @@ struct AppConfig {
   let mock: MockGameClient.Options
   /// Mock で、きろくの画面に初めから出す例の記録の数（0 なら出さない）。端末には書かない
   var mockSampleRecords = 0
+  /// Mock で、端末に保存した記録を読まない（例の記録だけを出す）か。UI テストで、シミュレータに前から残っている記録に
+  /// 左右されないためのもの。起動の引数 -MockIgnoresSavedRecords YES で入れる。Live では使わない
+  var mockIgnoresSavedRecords = false
 
   static let current: AppConfig = {
     let info = Bundle.main.infoDictionary ?? [:]
@@ -41,6 +44,8 @@ struct AppConfig {
     let argument = UserDefaults.standard.object(forKey: "MockSampleRecords")
     let sampleCount = (argument as? String) ?? (argument as? NSNumber)?.stringValue ?? string("MockSampleRecords")
     let samples = mode == .mock ? max(0, sampleCount.flatMap(Int.init) ?? 0) : 0
-    return AppConfig(mode: mode, backendURL: url, mock: mock, mockSampleRecords: samples)
+    let ignoresSaved = mode == .mock && UserDefaults.standard.bool(forKey: "MockIgnoresSavedRecords")
+    return AppConfig(
+      mode: mode, backendURL: url, mock: mock, mockSampleRecords: samples, mockIgnoresSavedRecords: ignoresSaved)
   }()
 }

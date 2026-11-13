@@ -80,8 +80,13 @@ final class RecordLibrary {
   /// 「すべて消す」で消すものがあるか。読める記録が 0 件でも、読めなかったファイルが残っていれば true
   private(set) var canDelete = false
 
-  /// アプリ全体で使う 1 つ。Mock では、例の記録（端末には書かない）も一緒に出す
-  static let app = RecordLibrary(samples: PlayRecord.samples(count: AppConfig.current.mockSampleRecords))
+  /// アプリ全体で使う 1 つ。Mock では、例の記録（端末には書かない）も一緒に出す。
+  /// Mock で保存した記録を読まないとき（UI テスト）は、何も書かないフォルダを読む（「すべて消す」でも端末の記録には触れない）
+  static let app = RecordLibrary(
+    store: AppConfig.current.mockIgnoresSavedRecords
+      ? PlayRecordStore(directory: URL.temporaryDirectory.appending(path: "records-ignored", directoryHint: .isDirectory))
+      : .shared,
+    samples: PlayRecord.samples(count: AppConfig.current.mockSampleRecords))
 
   private let store: PlayRecordStore
   /// 例の記録（Mock で画面を確かめるためのもの。端末には書かない）。「すべて消す」で一緒に出さなくなる
