@@ -187,19 +187,74 @@ test("2 回とも検査に落ちたら失敗として返し、R2 には置かな
   assert.equal(await bucket.head("parts/flower_vase/1.usdz"), null);
 });
 
-test("Claude が断った注文（人の名前・武器など）は失敗として返す", async () => {
+test("Claude が断った注文（人の名前など）は失敗として返す", async () => {
   const claude = fakeClaude([
-    { decision: "refuse", reason: "It is a weapon.", ops: [] },
+    { decision: "refuse", reason: "It is a real person.", ops: [] },
   ]);
   const env = { BUCKET: bucket, CLAUDE_API_KEY: "test" };
   const result = await ensureParts(
     env,
-    [order("sword", { words: ["sword"] })],
+    [order("doll_tanaka", { words: ["doll"], label: "田中さんの人形" })],
     { maxNew: 4, deps: { create: claude.create } },
   );
   assert.deepEqual(result.parts, []);
-  assert.match(result.failed[0].reason, /^refused: .*weapon/);
+  assert.match(result.failed[0].reason, /^refused: .*real person/);
   assert.equal(claude.calls.length, 1);
+});
+
+test("作らない物の語（武器・酒・たばこなど）を含む注文は、Claude を呼ばずに断る。包丁は作る", async () => {
+  const claude = fakeClaude([STAND]);
+  const env = { BUCKET: bucket, CLAUDE_API_KEY: "test" };
+  const result = await ensureParts(
+    env,
+    [
+      order("sword", { words: ["sword"] }),
+      order("bottle_green", { words: ["bottle"], label: "ビールの瓶" }),
+      order("box_small", { description: "A small box of cigarettes." }),
+      order("toy_gun", { words: ["toy"] }),
+      order("kitchen_knife", { words: ["kitchen knife"], label: "包丁" }),
+    ],
+    { maxNew: 4, deps: { create: claude.create } },
+  );
+  assert.deepEqual(
+    result.failed.map((f) => [f.id, f.reason]),
+    [
+      ["sword", "refused: 作らない物の語（sword）を含む"],
+      ["bottle_green", "refused: 作らない物の語（ビール）を含む"],
+      ["box_small", "refused: 作らない物の語（cigarettes）を含む"],
+      ["toy_gun", "refused: 作らない物の語（gun）を含む"],
+    ],
+  );
+  assert.deepEqual(
+    result.parts.map((p) => p.id),
+    ["kitchen_knife"],
+  );
+  assert.equal(claude.calls.length, 1);
+});
+
+test("注文の label・description・top の型が違えば作らない", async () => {
+  const claude = fakeClaude([STAND]);
+  const env = { BUCKET: bucket, CLAUDE_API_KEY: "test" };
+  const result = await ensureParts(
+    env,
+    [
+      order("lamp", { label: 3 }),
+      order("lamp_desk", { description: undefined }),
+      order("lamp_floor", { top: "yes" }),
+      order("lamp_wall", { label: "あ".repeat(41) }),
+    ] as never,
+    { maxNew: 4, deps: { create: claude.create } },
+  );
+  assert.deepEqual(
+    result.failed.map((f) => f.reason),
+    [
+      "label は 1〜40 文字",
+      "description は 1〜300 文字",
+      "top は true か false",
+      "label は 1〜40 文字",
+    ],
+  );
+  assert.equal(claude.calls.length, 0);
 });
 
 test("同じ ID を別の所で同時に作って版 1 が先に取られていたら、版を上げて置き、前の版は書き換えない", async () => {

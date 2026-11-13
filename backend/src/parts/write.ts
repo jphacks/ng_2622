@@ -74,7 +74,7 @@ Rules:
 - Every primitive must touch or overlap another one, so the object is one connected piece (nothing floats in the air). Parts that rest on something must sit exactly on it.
 - Use at most ${LIMITS.maxOps} primitives (usually 5-40), at most ${LIMITS.maxMaterials} materials and about ${LIMITS.maxTris} triangles in total. Prefer few, well-placed primitives with clear, readable silhouettes. Small details (buttons, holes, screens, labels) must sit slightly in front of the surface they decorate (a few millimeters), not hidden inside it: compute where that surface is from the sizes.
 - Choose materials only from this list (name and color; pick by color, the names are just labels): ${materialList}.
-- If the order is a real person or their name, a weapon (gun, sword, bomb and the like), violence or injury, or anything sexual, do not build it: set decision to "refuse", explain briefly in reason, and leave ops empty. Ordinary things (kitchen tools, sports equipment, toys, food, vehicles, furniture, plants) are fine.
+- The players are junior high and high school students. If the order is a real person or their name, a weapon (gun, sword, bomb and the like), violence or injury, anything sexual, a hate symbol, drugs, tobacco or alcohol, or anything else unsuitable for them, do not build it: set decision to "refuse", explain briefly in reason, and leave ops empty. Ordinary things (kitchen tools including kitchen knives, sports equipment, toys, food, vehicles, furniture, plants) are fine.
 - reason: one short English sentence about how you built the shape (or why you refused).`;
 
 const sizeText = (s: number[]) =>

@@ -1,6 +1,7 @@
 import type { Part } from "../scenes/types";
 import { isBundledPart, isObjectId, MAX_ID_LENGTH } from "./ids";
 import { makePart } from "./make";
+import { refusedTerm } from "./policy";
 import { readPartMeta, savePart } from "./store";
 import {
   PART_CATEGORIES,
@@ -73,14 +74,25 @@ const WORD = /^[a-z][a-z' -]{0,39}$/;
 const MIN_SIZE = 0.01;
 const MAX_SIZE = 8;
 
-/** 注文の形を確かめる。よければ null、だめなら理由 */
+const MAX_LABEL = 40;
+const MAX_DESCRIPTION = 300;
+
+/** 注文の形を確かめる。よければ null、だめなら理由（作らない物の語を含む注文も、Claude を呼ばずに断る） */
 export const orderProblem = (order: PartOrder): string | null => {
   if (typeof order.id !== "string" || !isObjectId(order.id))
     return `ID が物の規約に合わない（英小文字の名詞か名詞_区別、${MAX_ID_LENGTH} 文字まで）`;
   if (isBundledPart(order.id)) return "同梱の部品と同じ ID";
-  if (!(PART_CATEGORIES as readonly string[]).includes(order.category))
+  if (
+    typeof order.category !== "string" ||
+    !(PART_CATEGORIES as readonly string[]).includes(order.category)
+  )
     return `category は ${PART_CATEGORIES.join("・")} のどれか`;
-  if (!order.label || order.label.length > 40) return "label は 1〜40 文字";
+  if (
+    typeof order.label !== "string" ||
+    order.label.length < 1 ||
+    order.label.length > MAX_LABEL
+  )
+    return `label は 1〜${MAX_LABEL} 文字`;
   if (
     !Array.isArray(order.words) ||
     order.words.length < 1 ||
@@ -92,12 +104,26 @@ export const orderProblem = (order: PartOrder): string | null => {
     !Array.isArray(order.size) ||
     order.size.length !== 3 ||
     !order.size.every(
-      (v) => Number.isFinite(v) && v >= MIN_SIZE && v <= MAX_SIZE,
+      (v) =>
+        typeof v === "number" &&
+        Number.isFinite(v) &&
+        v >= MIN_SIZE &&
+        v <= MAX_SIZE,
     )
   )
     return `size は ${MIN_SIZE}〜${MAX_SIZE} m の数を 3 つ`;
-  if (!order.description || order.description.length > 300)
-    return "description は 1〜300 文字";
+  if (
+    typeof order.description !== "string" ||
+    order.description.length < 1 ||
+    order.description.length > MAX_DESCRIPTION
+  )
+    return `description は 1〜${MAX_DESCRIPTION} 文字`;
+  if (order.top !== undefined && typeof order.top !== "boolean")
+    return "top は true か false";
+  const refused = [order.id, ...order.words, order.label, order.description]
+    .map(refusedTerm)
+    .find((t) => t !== null);
+  if (refused) return `refused: 作らない物の語（${refused}）を含む`;
   return null;
 };
 
