@@ -1,7 +1,7 @@
 # 2026/11/13 タイトル画面の 3D は、サーバーが期間つきで決め、アプリは id で取り直して期限で消す
 
 ## Status
-- accepted
+- accepted（「出すのは次にホームを開いたときから（見ている途中では入れ替えない）」の条項のみ 2026-11-13 に [20261113-swap-title-diorama-in-place-and-label-as-pr](./20261113-swap-title-diorama-in-place-and-label-as-pr.md) で部分 supersede）
 
 ## Situation
 - Award Day（2026-11-15）の前。タイトル画面（ホーム）の 3D を、企業の 3D 広告の見本（JPHACKS が提供した場合に見立てたハッカソンの会場、`assets/title/hackathon.usdz`）に替えて見せたい。実際の提供ではないので、字は「広告の見本：JPHACKS」にする。

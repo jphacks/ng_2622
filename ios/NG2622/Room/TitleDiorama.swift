@@ -1,11 +1,11 @@
 import Foundation
 
-/// ホーム（タイトル画面）に出す 3D。HomeView ができたときと、上に重なった画面が外れたときに決める
-/// （取り直しても、見ている途中では入れ替えない。docs/design/ui/screens/home.md）
-enum HomeTitle: Equatable {
+/// ホーム（タイトル画面）に出す 3D。端末に取っておいた 3D が替わったら、HomeView が見ている途中でも入れ替える
+/// （docs/design/ui/screens/home.md）
+enum HomeTitle: Hashable {
   /// 作り置きの場面（公園）を 1 周させる
   case park
-  /// 広告の 3D（USDZ のファイル）を左右に振り、タイトルの下に caption を出す
+  /// 広告の 3D（USDZ のファイル）を左右に振り、3D の下に「PR」の札と広告主の名前（caption）を出す
   case advert(URL, caption: String)
 
   /// 今ホームに出すもの。Mock はビルド設定 TITLE_DIORAMA（同梱の 3D）、Live はサーバー（GET /title）が決めて
@@ -25,7 +25,7 @@ enum HomeTitle: Equatable {
     }
   }
 
-  /// タイトルの下に小さく出す字。公園は出さない
+  /// 広告主の名前（「PR」の札の横に出す）。公園は何も出さない
   var caption: String? {
     switch self {
     case .park: nil
@@ -63,10 +63,10 @@ enum TitleDiorama: String, CaseIterable {
   /// アプリの中の USDZ の名前（title/<name>.usdz。SceneLibrary.usdzDirectory）
   var usdzName: String { rawValue }
 
-  /// タイトルの下に小さく出す字。実際の提供ではないので、見本と分かる書き方にする（サーバーの予定の caption と同じ）
+  /// 広告主の名前（「PR」の札の横に出す。サーバーの予定の caption と同じ）
   var caption: String {
     switch self {
-    case .hackathon: "広告の見本：JPHACKS"
+    case .hackathon: "JPHACKS"
     }
   }
 

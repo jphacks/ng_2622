@@ -27,12 +27,12 @@ struct TitleDecodingTests {
 
   @Test func decodesTitle() async throws {
     let response = try await title(
-      #"{"title":{"id":"jphacks-2026-ecc5df64","caption":"広告の見本：JPHACKS","model":"https://example.workers.dev/title/hackathon.usdz?v=ecc5df64","sha256":"ecc5df6420d58288105de59ecfde931755a1d345b0789245f9dca72f09719dae","expiresAt":"2026-11-15T14:59:59Z"}}"#
+      #"{"title":{"id":"jphacks-2026-ecc5df64","caption":"JPHACKS","model":"https://example.workers.dev/title/hackathon.usdz?v=ecc5df64","sha256":"ecc5df6420d58288105de59ecfde931755a1d345b0789245f9dca72f09719dae","expiresAt":"2026-11-15T14:59:59Z"}}"#
     )
     // null を許す $ref は allOf で包まれるので、中身は value1 に入る（backend/src/openapi.ts の normalizeNullable）
     let title = try #require(response.title?.value1)
     #expect(title.id == "jphacks-2026-ecc5df64")
-    #expect(title.caption == "広告の見本：JPHACKS")
+    #expect(title.caption == "JPHACKS")
     #expect(title.model == "https://example.workers.dev/title/hackathon.usdz?v=ecc5df64")
     #expect(title.sha256.count == 64)
     // 日本時間 2026-11-15 23:59:59

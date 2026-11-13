@@ -1,6 +1,7 @@
 import BackendAPI
 import CryptoKit
 import Foundation
+import Observation
 import OpenAPIURLSession
 
 /// サーバー（GET /title）が「今出す」と言っているタイトル画面の 3D
@@ -38,11 +39,13 @@ struct StoredTitle: Codable, Equatable {
 ///
 /// - 起動時と前に戻ったときに refresh を呼ぶ（Live だけ）。毎回 GET /title で今の id を確かめ、覚えている id と違えば
 ///   3D を取り直し、sha256 が合えば置き場に置いて覚える。合わなければ捨てる。null なら覚えているものを消す。
-/// - 期限（expiresAt）を過ぎたら、サーバーにつながらなくても、current で消して nil を返す（端末の時刻で見る）。
+/// - 期限（expiresAt）を過ぎたら、current は nil を返し（端末の時刻で見る）、次の refresh で、サーバーにつながらなくても消す。
 /// - 置き場は Caches。取り直せるものなので（Apple の指針）、OS に消されても次の refresh で取り直す。部品のキャッシュ
 ///   （PartLibrary）も Caches に置いている。
-/// - ホームは、できたときと上の画面が外れたときに current を読む。取り直しても、見ている途中では入れ替えない。
+/// - 覚えているものが替わる（取り終えた・消した）たびに revision が変わる。ホームはそれを見て、見ている途中でも入れ替える
+///   （2026-11-13 に、次に開いたときから出す形から変えた。docs/adr/20261113-swap-title-diorama-in-place-and-label-as-pr.md）。
 /// - 送るものは無い（GET /title に本文もクエリも付けない）。
+@Observable
 final class TitleStore {
   static let shared = TitleStore(
     directory: URL.cachesDirectory.appending(path: "title", directoryHint: .isDirectory),
@@ -52,12 +55,15 @@ final class TitleStore {
   /// ここでは、取ったあとのファイルでも見る（同梱から写すときと、差し替えた通信のため）
   nonisolated static let maxBytes = 25 * 1024 * 1024
 
-  private let directory: URL
-  private let source: (any TitleSource)?
-  private let bundle: Bundle
-  private var refreshing: Task<Void, Never>?
+  /// 覚えているものが替わるたびに 1 つ増える（書いた・消した）。ホームはこれを見て、出す 3D を決め直す
+  private(set) var revision = 0
+
+  @ObservationIgnored private let directory: URL
+  @ObservationIgnored private let source: (any TitleSource)?
+  @ObservationIgnored private let bundle: Bundle
+  @ObservationIgnored private var refreshing: Task<Void, Never>?
   /// 同梱の 3D の sha256（ファイルの場所ごと）。同じ中身なら通信せずに写す
-  private var bundledDigests: [URL: String]?
+  @ObservationIgnored private var bundledDigests: [URL: String]?
 
   init(directory: URL, source: (any TitleSource)?, bundle: Bundle = .main) {
     self.directory = directory
@@ -67,20 +73,20 @@ final class TitleStore {
 
   private var metadataURL: URL { directory.appending(path: "current.json") }
 
-  /// 今出してよいもの。期限を過ぎていたら、つながっていなくても消して nil。ファイルが無いときも nil
+  /// 今出してよいもの。期限を過ぎている・ファイルが無いときは nil（ここでは消さない。ホームの描画の途中で呼ぶため。
+  /// 消すのは次の refresh）
   func current(now: Date = Date()) -> (title: StoredTitle, url: URL)? {
-    guard let stored = readStored() else { return nil }
+    guard let stored = readStored(), now <= stored.expiresAt else { return nil }
     let url = directory.appending(path: stored.file)
-    guard now <= stored.expiresAt else {
-      sceneLog.notice("タイトルの 3D の期限が過ぎたので消しました: \(stored.id, privacy: .public)")
-      clear()
-      return nil
-    }
-    guard FileManager.default.fileExists(atPath: url.path) else {
-      clear()
-      return nil
-    }
+    guard FileManager.default.fileExists(atPath: url.path) else { return nil }
     return (stored, url)
+  }
+
+  /// 期限の過ぎたもの・ファイルの無くなったものを消す（つながっていなくても）
+  private func removeStale(now: Date) {
+    guard let stored = readStored(), current(now: now) == nil else { return }
+    sceneLog.notice("タイトルの 3D の期限が過ぎた・ファイルが無いので消しました: \(stored.id, privacy: .public)")
+    clear()
   }
 
   /// 出していた 3D を読めなかった。消して、次の refresh で取り直す
@@ -108,7 +114,7 @@ final class TitleStore {
     // 前に取り途中で終わった（アプリが止められた）ファイルを消す。refresh は重ならないので、今取っているものは無い
     removeDownloads()
     // つながらなくても、期限の過ぎたものは消す
-    _ = current(now: now())
+    removeStale(now: now())
     let latest: RemoteTitle?
     do {
       latest = try await source.latest()
@@ -197,12 +203,15 @@ final class TitleStore {
     } catch {
       sceneLog.error("タイトルの情報を書けませんでした: \(error, privacy: .public)")
     }
+    revision += 1
   }
 
-  /// 覚えているものを消す（取り途中のファイルは残す）
+  /// 覚えているものを消す（取り途中のファイルは残す）。覚えているものがあったときだけ、替わったと知らせる
   private func clear() {
+    let had = FileManager.default.fileExists(atPath: metadataURL.path)
     try? FileManager.default.removeItem(at: metadataURL)
     removeFiles(except: nil)
+    if had { revision += 1 }
   }
 
   /// 取り途中のファイル（download-*）を消す

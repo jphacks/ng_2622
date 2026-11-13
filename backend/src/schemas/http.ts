@@ -208,8 +208,9 @@ export const Title = z
       example: "jphacks-2026-ecc5df64",
     }),
     caption: z.string().meta({
-      description: "タイトルの下に小さく出す字",
-      example: "広告の見本：JPHACKS",
+      description:
+        "広告主の名前。アプリは、アプリに固定の「PR」の札（サーバーからは変えられない）の横に出す",
+      example: "JPHACKS",
     }),
     model: z.string().meta({
       description:
