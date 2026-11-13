@@ -96,12 +96,11 @@ const makeInDurableObject = async (
       env.WEAK_SCENE_MAKER.newUniqueId(),
     ).make(input);
   } catch (e) {
-    // Durable Object が落ちた（CPU の上限・思わぬ例外など）。中身は出さず、502 にする
+    // Durable Object が落ちた（CPU の上限・思わぬ例外など）。例外の文は出さず（中に英文が入りうる）、種類だけ出して 502 にする
     console.error(
       JSON.stringify({
         event: "weak_scene_maker_failed",
         name: e instanceof Error ? e.name : "Error",
-        message: e instanceof Error ? e.message.slice(0, 200) : "",
       }),
     );
     return {
