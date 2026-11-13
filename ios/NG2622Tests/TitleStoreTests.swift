@@ -273,6 +273,16 @@ struct TitleStoreTests {
     #expect(HomeTitle.current(config: live, store: store, now: now + 7200) == .park)
   }
 
+  /// 読めなかった 3D が今出しているものかを見分ける（前の 3D の読み込みの失敗で、新しい 3D を消さない）
+  @Test func isShowingOnlyCurrentAdvert() {
+    let current = URL(filePath: "/tmp/title/jphacks-2026-bbbbbbbb.usdz")
+    let title = HomeTitle.advert(current, caption: "広告の見本：JPHACKS")
+    #expect(title.isShowing(current))
+    #expect(title.isShowing(URL(filePath: "/tmp/title/./jphacks-2026-bbbbbbbb.usdz")))
+    #expect(!title.isShowing(URL(filePath: "/tmp/title/jphacks-2026-aaaaaaaa.usdz")))
+    #expect(!HomeTitle.park.isShowing(current))
+  }
+
   /// Mock は TITLE_DIORAMA の同梱の 3D を出す（サーバーには聞かない）
   @Test func mockUsesBuildSetting() throws {
     let mock = AppConfig(mode: .mock, backendURL: nil, mock: .init(), titleDiorama: .hackathon)
@@ -339,19 +349,49 @@ struct LiveTitleSourceTests {
     let live = source([:])
     let destination = URL.temporaryDirectory.appending(path: "live-\(UUID().uuidString).usdz")
     defer { try? FileManager.default.removeItem(at: destination) }
-    await #expect(throws: (any Error).self) {
+    await #expect(throws: TitleStoreError.self) {
       try await live.download(base.appending(path: "title/missing.usdz"), to: destination)
     }
+  }
+
+  /// 大きさの上限を超える 3D は、知らせられた大きさでも、大きさを小さく偽って送られても、受け取る途中で止める
+  @Test func stopsTooLargeDownload() async throws {
+    let session: URLSession = {
+      let configuration = URLSessionConfiguration.ephemeral
+      configuration.protocolClasses = [StubURLProtocol.self]
+      return URLSession(configuration: configuration)
+    }()
+    let big = Data(repeating: 7, count: 1_000)
+    let host = base.host()!
+    StubURLProtocol.set(host + "/title/announced.usdz", (200, big))
+    StubURLProtocol.set(host + "/title/disguised.usdz", (200, big), contentLength: 10)
+    StubURLProtocol.set(host + "/title/fits.usdz", (200, Data(repeating: 7, count: 100)))
+    let destination = URL.temporaryDirectory.appending(path: "live-\(UUID().uuidString).usdz")
+    defer { try? FileManager.default.removeItem(at: destination) }
+    for name in ["announced", "disguised"] {
+      await #expect(throws: TitleStoreError.self, "\(name)") {
+        try await LiveTitleSource.fetch(
+          base.appending(path: "title/\(name).usdz"), to: destination, session: session, maxBytes: 100)
+      }
+    }
+    // 上限ちょうどは取る
+    try await LiveTitleSource.fetch(base.appending(path: "title/fits.usdz"), to: destination, session: session, maxBytes: 100)
+    #expect(try Data(contentsOf: destination).count == 100)
   }
 }
 
 /// 決めた状態と本文を返す通信の代わり。routes のキーはホストとパス（テストごとにホストを変えて、並べて流してもぶつからない）
 nonisolated final class StubURLProtocol: URLProtocol {
   nonisolated(unsafe) private static var routes: [String: (Int, Data)] = [:]
+  /// Content-Length を本文の大きさと違う値で知らせる（大きさを偽ったときの確かめ）
+  nonisolated(unsafe) private static var lengths: [String: Int] = [:]
   private static let lock = NSLock()
 
-  static func set(_ key: String, _ response: (Int, Data)) {
-    lock.withLock { routes[key] = response }
+  static func set(_ key: String, _ response: (Int, Data), contentLength: Int? = nil) {
+    lock.withLock {
+      routes[key] = response
+      lengths[key] = contentLength
+    }
   }
 
   override class func canInit(with request: URLRequest) -> Bool { true }
@@ -361,10 +401,11 @@ nonisolated final class StubURLProtocol: URLProtocol {
     let url = request.url!
     let key = (url.host() ?? "") + url.path()
     let (status, body) = Self.lock.withLock { Self.routes[key] } ?? (404, Data())
+    let length = Self.lock.withLock { Self.lengths[key] } ?? body.count
     let response = HTTPURLResponse(
       url: url, statusCode: status, httpVersion: "HTTP/1.1",
       headerFields: ["Content-Type": status == 200 && url.pathExtension != "usdz" ? "application/json" : "text/plain",
-                     "Content-Length": "\(body.count)"])!
+                     "Content-Length": "\(length)"])!
     client?.urlProtocol(self, didReceive: response, cacheStoragePolicy: .notAllowed)
     client?.urlProtocol(self, didLoad: body)
     client?.urlProtocolDidFinishLoading(self)

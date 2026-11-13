@@ -291,12 +291,18 @@ struct LiveTitleSource: TitleSource {
     try await Self.fetch(url, to: destination, session: session)
   }
 
-  /// 受け取りと書き込みは main の外で行う
-  @concurrent nonisolated private static func fetch(_ url: URL, to destination: URL, session: URLSession) async throws {
+  /// 受け取りと書き込み（main の外で行う）。maxBytes を超えると知らせられた・受け取った時点で止め、通信も止める。
+  /// 受け取りは 1 バイトずつ回すが、AsyncBytes は中でまとめて読んでいて、2.4 MB でも main の外で短く済む
+  @concurrent nonisolated static func fetch(
+    _ url: URL, to destination: URL, session: URLSession, maxBytes: Int = TitleStore.maxBytes
+  ) async throws {
     let (bytes, response) = try await session.bytes(from: url)
+    // 途中で抜けるとき（200 でない・大きすぎる・書けない）は、残りを受け取らないよう通信を止める
+    var finished = false
+    defer { if !finished { bytes.task.cancel() } }
     let status = (response as? HTTPURLResponse)?.statusCode ?? 0
     guard status == 200 else { throw TitleStoreError.badStatus(status) }
-    guard response.expectedContentLength <= Int64(TitleStore.maxBytes) else {
+    guard response.expectedContentLength <= Int64(maxBytes) else {
       throw TitleStoreError.tooLarge(Int(response.expectedContentLength))
     }
     guard FileManager.default.createFile(atPath: destination.path, contents: nil) else {
@@ -310,12 +316,13 @@ struct LiveTitleSource: TitleSource {
     for try await byte in bytes {
       buffer.append(byte)
       total += 1
-      guard total <= TitleStore.maxBytes else { throw TitleStoreError.tooLarge(total) }
+      guard total <= maxBytes else { throw TitleStoreError.tooLarge(total) }
       if buffer.count >= 1 << 16 {
         try handle.write(contentsOf: buffer)
         buffer.removeAll(keepingCapacity: true)
       }
     }
     try handle.write(contentsOf: buffer)
+    finished = true
   }
 }

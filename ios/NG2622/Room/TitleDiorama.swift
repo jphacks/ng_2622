@@ -39,6 +39,13 @@ enum HomeTitle: Equatable {
     case .advert: .advert
     }
   }
+
+  /// url の 3D を出しているか。読めなかった 3D が今出しているものかを見分けるのに使う
+  /// （前に出していた 3D の読み込みが後から失敗しても、新しい 3D を消さない）
+  func isShowing(_ url: URL) -> Bool {
+    guard case .advert(let current, _) = self else { return false }
+    return current.standardizedFileURL == url.standardizedFileURL
+  }
 }
 
 /// ホームに、作り置きの場面の代わりに同梱の 3D を出すビルド設定 TITLE_DIORAMA の値（既定は空で、作り置きの場面）。

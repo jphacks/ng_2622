@@ -114,11 +114,10 @@ struct HomeView: View {
   /// 広告の 3D（url）を読めなかった。今出している 3D のときだけ、公園に戻して字も消し、端末に取っておいたものなら消して
   /// 次に取り直す（前に出していた 3D の読み込みが後から失敗しても、新しい 3D を消さない）
   private func fallBackToPark(_ url: URL) {
-    guard case .advert(let current, _) = title, current.standardizedFileURL == url.standardizedFileURL else { return }
+    guard title.isShowing(url) else { return }
     TitleStore.shared.discard(url)
     title = .park
   }
-
 
   /// 「あそぶ」（塗り）と「きろく」（枠だけ）。同じ大きさ・同じ幅で、文字だけ
   private var menu: some View {
