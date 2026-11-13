@@ -34,11 +34,8 @@ struct WeakPointsView: View {
         .frame(height: 52)
         .padding(.top, 8)
 
-        // 次はここ: AI の次に試すこと。無ければ（作っている間・失敗・確かめで落ちた）数えた結果の代わり
-        if let next = analysis?.result.nextTry {
-          NextCard(title: next.text)
-        } else if let hint = counts.nextHint {
-          NextCard(title: hint.title, detail: hint.detail, note: hint.rate)
+        if let next = Self.next(analysis, counts: counts) {
+          NextCard(content: next)
         }
 
         if counts.recent.count >= WeakPointCounts.minimumRecords {
@@ -75,8 +72,9 @@ struct WeakPointsView: View {
       .resultColumn()
       .padding(.bottom, 40)
     }
-    .task {
-      // 開くたびに確かめる（記録が増えた・元の記録が消えたら作り直す。失敗しても、開き直すとまた頼む）
+    .onAppear {
+      // 開くたびに確かめる（記録が増えた・元の記録が消えたら作り直す。失敗しても、開き直すとまた頼む）。
+      // 待たない処理なので、最初の 1 フレームから様子（作っている間・前回の分析）がそろうよう、出る前に呼ぶ
       analyzer.open(records: library.records, existing: { [library] in Set(library.records.map(\.id)) })
     }
     // 上端は、下の帯で地の色に溶かすので、システムのぼかし（状態バーの下）は付けない
@@ -114,6 +112,22 @@ struct WeakPointsView: View {
     }
   }
 
+  /// 「次はここ」に出す中身
+  struct NextContent: Equatable {
+    /// 大きく出す文
+    let title: String
+    /// 下の一言（無ければ出さない）
+    var detail: String? = nil
+    /// 右上の小さな数（例: 理由 41%。無ければ出さない）
+    var note: String? = nil
+  }
+
+  /// 次はここ: AI の次に試すこと。無ければ（作っている間・失敗・確かめで落ちた・返った分析に無い）数えた結果の代わり
+  static func next(_ analysis: WeakPointAnalysis?, counts: WeakPointCounts) -> NextContent? {
+    if let next = analysis?.result.nextTry { return NextContent(title: next.text) }
+    return counts.nextHint.map { NextContent(title: $0.title, detail: $0.detail, note: $0.rate) }
+  }
+
   /// 癖の欄の上に出す短い 1 行。前回の分析を出しているときは、そのことも添える
   static func note(_ phase: WeakPointAnalyzer.Phase, previous: Bool) -> String? {
     switch phase {
@@ -148,14 +162,10 @@ private func dayText(_ date: Date?) -> String? {
 /// 次はここ。薄い紫の地（振り返りの「次の一つ」と同じ見た目）。AI の次に試すこと（文 1 つ）と、
 /// 数えた結果の代わり（大きな一行・下の一言・右上の種類と割合）の両方を出す。押せない
 private struct NextCard: View {
-  /// 大きく出す文
-  let title: String
-  /// 下の一言（無ければ出さない）
-  var detail: String? = nil
-  /// 右上の小さな数（例: 理由 41%。無ければ出さない）
-  var note: String? = nil
+  let content: WeakPointsView.NextContent
 
   var body: some View {
+    let (title, detail, note) = (content.title, content.detail, content.note)
     VStack(alignment: .leading, spacing: 8) {
       HStack(alignment: .firstTextBaseline) {
         Text("次はここ")
@@ -304,6 +314,7 @@ private struct ImprovementCard: View {
             .font(Theme.font(14, .heavy))
             .foregroundStyle(Theme.muted)
             .monospacedDigit()
+            .fixedSize()
         }
       }
     }

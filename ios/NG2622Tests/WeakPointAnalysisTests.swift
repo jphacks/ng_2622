@@ -179,7 +179,7 @@ struct WeakPointAnalysisTests {
   // MARK: - 返った分析を覚える形
 
   static func response(
-    habits: [(Int, Int)] = [(10, 8)], improvement: Int? = 10
+    habits: [(Int, Int)] = [(10, 8)], improvement: Int? = 10, nextTry: Bool = true
   ) -> Components.Schemas.WeakPointResponse {
     .init(
       habits: habits.map { a, b in
@@ -191,7 +191,7 @@ struct WeakPointAnalysisTests {
       improvement: improvement.map {
         .init(value1: .init(viewpoint: .expression, text: "文をつなげた。", example: .init(n: $0, quote: "A boy is running.")))
       },
-      nextTry: .init(value1: .init(viewpoint: .content, text: "because を足してみよう。")), retries: 0)
+      nextTry: nextTry ? .init(value1: .init(viewpoint: .content, text: "because を足してみよう。")) : nil, retries: 0)
   }
 
   /// 実例と良くなった点の回の番号を、記録の ID に置き換える。範囲の外の番号は捨てる
@@ -431,6 +431,21 @@ struct WeakPointAnalysisTests {
         return 1
       }
     }
+  }
+
+  /// 次はここ: 返った分析に次に試すことが無ければ（null）、数えた結果の代わりを出す
+  @Test func nextFallsBackToCountsWhenNextTryIsNull() throws {
+    let records = Self.records(10)
+    let counts = WeakPointCounts(records: records)
+    let hint = try #require(counts.nextHint)
+    let counted = WeakPointsView.NextContent(title: hint.title, detail: hint.detail, note: hint.rate)
+    let ids = WeakPointCounts.recent(records).reversed().map(\.id)
+    let withoutNext = WeakPointAnalysis(Self.response(nextTry: false), basedOn: ids, createdAt: Date())
+    #expect(withoutNext.result.nextTry == nil)
+    #expect(WeakPointsView.next(withoutNext, counts: counts) == counted)
+    #expect(WeakPointsView.next(nil, counts: counts) == counted)
+    let withNext = WeakPointAnalysis(Self.response(), basedOn: ids, createdAt: Date())
+    #expect(WeakPointsView.next(withNext, counts: counts) == .init(title: "because を足してみよう。"))
   }
 
   /// 自分の文: 別の回の同じ文は 1 行にまとめ、回の数と一番新しい日時を持つ。並びは初めて出た順
