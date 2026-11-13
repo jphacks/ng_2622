@@ -4,7 +4,8 @@
 // scene と result）から、アプリが POST /weak-points に送る本文（rounds と counts）を作って
 // test/fixtures/weak-points/<人>.json に書く。数え方は docs/design/weak-point-analysis.md の 4（端末で数えるものと同じ式）。
 // 音声は使わず、話し方の点は送らない（分析には送らないので影響しない）。Claude を実際に呼ぶので費用がかかる（30 回で約 0.5 USD）。
-//   CLAUDE_API_KEY=... pnpm tsx scripts/make-weak-point-fixtures.ts [費用の上限ドル（既定 1）] [--url http://localhost:8787]
+//   CLAUDE_API_KEY=... pnpm tsx scripts/make-weak-point-fixtures.ts [費用の上限ドル（既定 1）] [--only person-2] [--url http://localhost:8787]
+// --only を付けると、その人の記録の組だけを作り直す（ほかの person-*.json は書き換えない）
 // --url を付けないときは、POST /score の口（src/routes/score.ts）をこのプロセスの中で呼ぶ（wrangler dev は要らない。
 // 費用は Claude の応答の usage から数える）。--url を付けると、手元の wrangler dev（pnpm dev）の POST /score を呼ぶ
 // （費用は 1 回 0.02 USD と見積もる）
@@ -72,10 +73,14 @@ type ScoreBody = {
 };
 
 const args = process.argv.slice(2);
-const urlAt = args.indexOf("--url");
-const url = urlAt >= 0 ? args[urlAt + 1] : undefined;
+const option = (name: string) => {
+  const at = args.indexOf(name);
+  return at >= 0 ? args[at + 1] : undefined;
+};
+const url = option("--url");
+const only = option("--only");
 const rest = args.filter(
-  (_, i) => urlAt < 0 || (i !== urlAt && i !== urlAt + 1),
+  (a, i) => !a.startsWith("--") && !args[i - 1]?.startsWith("--"),
 );
 const cap = Number(rest[0] ?? 1);
 if (!url && !process.env.CLAUDE_API_KEY) {
@@ -158,7 +163,9 @@ const source = JSON.parse(
   persons: Person[];
 };
 
-for (const person of source.persons) {
+const persons = source.persons.filter((p) => !only || p.id === only);
+if (persons.length === 0) throw new Error(`記録の組が無い: ${only}`);
+for (const person of persons) {
   if (person.rounds.length > WEAK_POINT_MAX_ROUNDS)
     throw new Error(`${person.id} の回が多すぎる`);
   const rounds = [];

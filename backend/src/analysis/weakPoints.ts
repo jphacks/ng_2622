@@ -70,7 +70,7 @@ Do not write about pronunciation, fluency or intonation.
 - viewpoint: "content" or "expression".
 - title: a short Japanese heading (e.g. 理由をつけずに終わる).
 - what: one or two Japanese sentences on what is happening.
-- examples: two or three examples from different rounds where the habit shows. n is the round number. quote is one continuous run of words copied exactly from the transcript of that round: do not fix, reorder, shorten with "..." or join words. Pick the words that show the habit (for a missing reason, the sentence that ends without one).
+- examples: two or three examples from different rounds where the habit shows. n is the round number. quote is one continuous run of words copied exactly from the transcript of that round: do not fix, reorder, shorten with "..." or join words. Pick the words that show the habit (for a missing reason, the sentence that ends without one). Each example must contain the error of this habit itself; do not use a sentence that shows a different kind of mistake (or a mistake that happened only once) as an example.
 - fix: one Japanese sentence on how to fix it, with a short English example.
 - The transcripts are automatic, so words that look like recognition errors (odd or meaningless words, very short fragments) are not the player's mistakes.
 

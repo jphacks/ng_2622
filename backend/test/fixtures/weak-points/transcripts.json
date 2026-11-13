@@ -69,7 +69,7 @@
     },
     {
       "id": "person-2",
-      "label": "3級 10 回。三単現の s を忘れる（6 回）。良くなった点は仕込まない（横ばい）。1 回だけの誤り（場面に無い猫）を混ぜる",
+      "label": "3級 10 回。三単現の s を忘れる（6 回。have・like・want・need など、進行形では直せない状態の動詞で）。良くなった点は仕込まない（横ばい）。1 回だけの誤り（場面に無い猫）を混ぜる",
       "planted": [
         {
           "key": "third-person-s",
@@ -88,7 +88,7 @@
       "rounds": [
         {
           "scene": "gen-v2-eiken3-park-01",
-          "transcript": "A dog sit on the grass. A boy run in the park. There is a bench next to the tree."
+          "transcript": "A dog is sitting on the grass. A boy is running in the park. The boy like the dog. There is a bench next to the tree."
         },
         {
           "scene": "gen-v2-eiken3-beach-09",
@@ -96,11 +96,11 @@
         },
         {
           "scene": "gen-v2-eiken3-bus-stop-11",
-          "transcript": "A woman wait at the bus stop. A boy sit on the bench. He look happy."
+          "transcript": "A woman is waiting at the bus stop. She have a big bag. A boy is sitting on the bench. He want to go home."
         },
         {
           "scene": "gen-v2-eiken3-cafe-02",
-          "transcript": "A woman drink from a cup. A man read a book. There is a table in the cafe."
+          "transcript": "A woman is drinking from a cup. She like coffee. A man is reading a book. There is a table in the cafe."
         },
         {
           "scene": "gen-v2-eiken3-classroom-06",
@@ -108,7 +108,7 @@
         },
         {
           "scene": "gen-v2-eiken3-kitchen-05",
-          "transcript": "A woman cook in the kitchen. A boy carry a box. There is a table in the kitchen."
+          "transcript": "A woman is cooking in the kitchen. A boy is carrying a box. He need help. There is a table in the kitchen."
         },
         {
           "scene": "gen-v2-eiken3-library-08",
@@ -116,7 +116,7 @@
         },
         {
           "scene": "gen-v2-eiken3-playground-12",
-          "transcript": "A boy play with a ball. A girl look far away. There is a tree."
+          "transcript": "A boy is playing with a ball. He like soccer. A girl is looking far away. There is a tree."
         },
         {
           "scene": "gen-v2-eiken3-street-10",
@@ -124,7 +124,7 @@
         },
         {
           "scene": "gen-v2-eiken3-train-station-04",
-          "transcript": "A man look at his smartphone. A woman walk on the platform."
+          "transcript": "A man is looking at a smartphone. He have a bag. A woman is walking on the platform. She want to take the train."
         }
       ]
     },
