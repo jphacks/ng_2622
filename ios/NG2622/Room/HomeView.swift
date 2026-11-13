@@ -17,22 +17,29 @@ struct HomeView: View {
 
   /// 歯車の行の高さ（上の余白 8 と丸いボタン 44 と下 8）
   private static let gearRow: CGFloat = 60
-  /// ジオラマの枠の高さ（いちばん大きいとき）。キーボードが出たときなどは縮む
-  private static let sceneHeight: CGFloat = 270
+  /// ジオラマの枠の高さ（いちばん大きいとき）。キーボードが出たときなどは縮む。
+  /// 場面は枠の下寄りに描かれ、回って斜めになると手前の角が下に伸びるので、角が枠の下で切れないだけの余裕を取る
+  /// （枠の外は描かれないため）。下の余裕は、そのままタイトルとの間の余白にもなる
+  private static let sceneHeight: CGFloat = 340
+  /// カメラから場面の中心までの距離。縦の画角が決まっているので、場面の大きさは「枠の高さ / 距離」で決まる。
+  /// 枠を高くしたぶん離して、場面を画面の幅の 8 割ほどに保つ（枠が縮むと、場面も同じ比で縮むので切れない）
+  private static let sceneDistance: Float = 5.3
 
   @FocusState private var editing: Bool
 
   var body: some View {
     VStack(spacing: 0) {
-      Color.clear.frame(height: Self.gearRow)
+      // 名前を打っている間（キーボードが出ている間）は、歯車の行と下の余白を詰め、ジオラマをさらに縮めて、
+      // 小さい画面でも「はじめる」がキーボードに隠れないようにする（最初の画面には歯車を出さない）
+      Color.clear.frame(height: editing ? 0 : Self.gearRow)
       // ジオラマとタイトルのまとまりは、歯車の行と下のボタンの間の空きに置き、見た目の重心を少し上にする
       // （見た目の空きが上 2 : 下 3 ほど。docs/design/ui/screens/home.md）。場面はジオラマの枠の下寄りに描かれ、
       // 枠の上に場面の無い所があるので、空き（Spacer）は上 1 : 下 4 で分ける
       Spacer(minLength: 0)
-      // 枠の高さとカメラの近さで、ジオラマが画面の幅の 8 割ほどになるようにする（回って斜めになると少し広がる）
-      SpinningScene(distance: 4.2)
+      // 枠の高さとカメラの距離で、ジオラマが画面の幅の 8 割ほどになるようにする（回って斜めになると少し広がる）
+      SpinningScene(distance: Self.sceneDistance)
         .unmountedWhileCovered(isCovered)
-        .frame(maxWidth: .infinity, minHeight: 120, maxHeight: Self.sceneHeight)
+        .frame(maxWidth: .infinity, minHeight: editing ? 64 : 120, maxHeight: Self.sceneHeight)
         .layoutPriority(1)
         .contentShape(Rectangle())
         .onTapGesture { editing = false }
@@ -40,7 +47,8 @@ struct HomeView: View {
         .font(Theme.font(38, .black))
         .foregroundStyle(Theme.accent)
         .padding(.top, 6)
-      Spacer(minLength: 16)
+      // タイトルと下のボタンの間は、小さい画面でも詰まりすぎないよう、少しは空ける
+      Spacer(minLength: editing ? 8 : 28)
       ForEach(0..<3, id: \.self) { _ in Spacer(minLength: 0) }
       ZStack(alignment: .bottom) {
         if profile.needsName {
@@ -53,7 +61,7 @@ struct HomeView: View {
       }
       .frame(width: 346)
       .animation(.easeInOut(duration: 0.3), value: profile.needsName)
-      .padding(.bottom, 56)
+      .padding(.bottom, editing ? 8 : 56)
     }
     .frame(maxWidth: .infinity)
     .overlay(alignment: .topTrailing) {
