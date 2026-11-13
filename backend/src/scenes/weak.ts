@@ -35,7 +35,7 @@ export const pickFocus = (
 // 種類ごとの、目立たせ方
 const FOCUS_HINTS: Record<ChecklistKind, string> = {
   center:
-    "center: every person and animal does one clearly different, easy-to-see action, so that the player can say who is doing what with a verb of the grade. Put the people in the center and the front.",
+    "center: every person and animal does one clearly different, easy-to-see action, so that the player can say who is doing what with a verb of the grade. Keep exactly the number of people of the grade (do not add a person for the practice).",
   reason:
     'reason: the visible cause of the reason is big and obvious in the scene (its own thing, the weather, or another person\'s clear action), close to the person who acts, so that the player can say "... because ...".',
   link: 'link: the cause, the action and the purpose or result are all visible as one chain, so that the player can say "..., so ..." or "... to ...".',
@@ -78,6 +78,6 @@ This scene is for one player to practice a weak point. The player often misses t
 ${habits.join("\n")}`
       : ""
   }${next}
-- For this scene only, you may also use up to ${WEAK_NEW_THINGS} concrete everyday things that are not in the list of things (a teapot, a lamp, a kite, a watering can), if they help the practice. Each must be one simple object that stands, lies or sits on its own, and is easy to name in English at the grade. People, animals, actions, grounds and walls still come only from the lists. Never use weapons, violence, sexual things, brand names, or names of real people.
+- For this scene only, you may also use up to ${WEAK_NEW_THINGS} concrete everyday things that are not in the list of things (a teapot, a lamp, a kite, a watering can); a 3D part is made for each. Prefer one such new thing when it fits the theme and helps the practice (a thing to point at, a cause, a detail), so that the practice scene feels new. Each must be one simple object that stands, lies or sits on its own, and is easy to name in English at the grade. People, animals, actions, grounds and walls still come only from the lists. Never use weapons, violence, sexual things, brand names, or names of real people.
 - Also write "pitch": one short Japanese sentence to the player that says what this scene helps them practice (例:「because で理由を言いやすい場面です」). No numbers or scores.`;
 };
