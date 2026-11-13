@@ -2,7 +2,8 @@
 // 合格は、同じ答えを 5 回採点した内容の点の幅（最大 − 最小）が、どの答えでも 5 点以内
 // （ADR 20261110-score-content-with-checklist-f1 の安定の条件）。
 // 表現の点の幅と、表現が 0 点になった回数・0 点で呼び直した回数も出すが、参考で合否には入れない。
-// 手書きの文字起こしを渡す。Azure は呼ばず、話し方の 3 つの点は 75 に固定する。Claude を実際に呼ぶので費用がかかる。
+// 手書きの文字起こしを渡す。Azure は呼ばない。本番と同じく、Claude に話し方の点は渡さない（2026-11-14 から。Azure と同時に呼ぶため）。
+// Claude を実際に呼ぶので費用がかかる。
 //   CLAUDE_API_KEY=... pnpm tsx scripts/measure-scoring-baseline.ts <結果の JSON> [1 答えあたりの回数（既定 5）] [費用の上限ドル（既定 2.5）]
 import { writeFile } from "node:fs/promises";
 import Anthropic from "@anthropic-ai/sdk";
@@ -292,7 +293,6 @@ await Promise.all(
             // 級の文法の一覧は、本番の採点と同じく生成の定数 GRADES から作る（下の級の分も含む）
             ...grammarFor(scene.difficulty),
             transcript: c.text,
-            speech: { accuracy: 75, fluency: 75, prosody: 75 },
           },
           { create },
         );
