@@ -10,7 +10,7 @@ import {
 } from "./checklist";
 import { gradeWithChecklist } from "./checklistGrade";
 import { checkedRewrite, speechTip } from "./feedback";
-import { describeLayoutWithRelations } from "./layout";
+import { describeLayoutWithRelations, type PartMeta } from "./layout";
 import type {
   NextStep,
   Rewrite,
@@ -135,6 +135,8 @@ export async function score(
   sceneId: string,
   deviceTranscript?: string,
   layout?: PoolScene,
+  /** 配置が使う、同梱に無い部品（苦手の場面で作った部品）のメタデータ。部屋が配置と一緒に置いたもの */
+  extraParts?: readonly PartMeta[],
 ): Promise<ScoreResult> {
   const started = Date.now();
   const scene =
@@ -231,7 +233,7 @@ export async function score(
         message: "英語の発話を聞き取れなかった",
       };
     }
-    const sceneData = describeLayoutWithRelations(scene.items);
+    const sceneData = describeLayoutWithRelations(scene.items, extraParts);
     if (!sceneData) {
       return {
         ok: false,

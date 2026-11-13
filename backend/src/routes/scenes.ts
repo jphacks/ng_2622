@@ -4,6 +4,10 @@ import { describeRoute, validator } from "hono-openapi";
 import { isSceneId } from "../domain/scenes";
 import { createRoomRepository } from "../repositories/roomRepository";
 import { createSceneReviewRepository } from "../repositories/sceneReviewRepository";
+import {
+  createWeakSceneRepository,
+  isWeakSceneId,
+} from "../repositories/weakSceneRepository";
 import { SceneGenerationError } from "../scenes/generate";
 import { findPoolScene } from "../scenes/pool";
 import {
@@ -126,7 +130,7 @@ export const sceneRoutes = new Hono<AppEnv>()
       tags: ["scenes"],
       summary: "場面の配置の JSON",
       description:
-        "作り置きの場面か、部屋が AI で作った場面の配置の JSON をそのまま返す。round で届いた sceneId の場面を組み立てるのに使う。作り置きに無い場面は room（部屋のコード）を付けると、その部屋が作って置いた配置を返す（部屋が消えると無くなる）",
+        "作り置きの場面か、部屋が AI で作った場面の配置の JSON をそのまま返す。round で届いた sceneId の場面を組み立てるのに使う。作り置きに無い場面は room（部屋のコード）を付けると、その部屋が作って置いた配置を返す（部屋が消えると無くなる）。苦手の場面（weak- で始まる sceneId。POST /weak-scenes が作る）は、room を付ければ部屋が写した配置を、付けなくても置き場の配置を返す",
       responses: {
         200: { description: "配置の JSON", content: jsonContent(SceneLayout) },
         400: errorResponse("room の形が違う（invalid_message）"),
@@ -153,6 +157,11 @@ export const sceneRoutes = new Hono<AppEnv>()
               room,
               sceneId,
             )
+          : null) ??
+        // 苦手の場面（weak-）は、部屋が写す前でも置き場（R2）から読める
+        (isWeakSceneId(sceneId) && c.env.BUCKET
+          ? ((await createWeakSceneRepository(c.env.BUCKET).find(sceneId))
+              ?.layout ?? null)
           : null);
       if (!scene) {
         return c.json(errorBody("unknown_scene", "場面が無い"), 404);

@@ -17,7 +17,11 @@ import {
   sentBasis,
   withGain,
 } from "./index";
-import { describeLayoutWithRelations, type RelationItem } from "./layout";
+import {
+  describeLayoutWithRelations,
+  type PartMeta,
+  type RelationItem,
+} from "./layout";
 import type { NextStep, Rewrite, ScoringEnv, SpeechAspects } from "./types";
 
 // 配置の JSON（scenenglish.scene/2 のうち採点に使う項目）と文字起こしから、部屋を通さずに内容と表現を採点する（POST /score）。
@@ -54,10 +58,14 @@ export type LayoutScoreResult =
     }
   | Failure;
 
-/** 1 人分を採点する。例外は投げず、失敗は ok: false で返す */
+/**
+ * 1 人分を採点する。例外は投げず、失敗は ok: false で返す。
+ * extraParts は同梱に無い部品（配置の id@版 の部品。苦手の場面で作った部品）のメタデータ
+ */
 export async function scoreLayout(
   env: ScoringEnv,
   input: { layout: Layout; transcript: string; speech?: SpeechAspects },
+  extraParts: readonly PartMeta[] = [],
 ): Promise<LayoutScoreResult> {
   const started = Date.now();
   const transcript = input.transcript.trim();
@@ -114,7 +122,7 @@ export async function scoreLayout(
     );
   }
 
-  const sceneData = describeLayoutWithRelations(layout.items);
+  const sceneData = describeLayoutWithRelations(layout.items, extraParts);
   if (!sceneData) {
     return {
       ok: false,
