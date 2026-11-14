@@ -66,7 +66,7 @@ private struct AppFlow: View {
         // きろくと設定は、ホームを出したまま上に重ねる。ホームの 3D を消して出し直さないため
         // （3D の入った view を画面の切り替えと同時に出し入れすると、後から出た 3D が描き直されないことがある）
         HomeView(
-          profile: profile, onName: { profile = .first(name: $0) }, onPlay: create, onRecords: { go(.records) },
+          profile: profile, onName: { profile = .first(name: $0) }, onPlay: { create() }, onRecords: { go(.records) },
           onSettings: { go(.settings) }, isCovered: screen != .home
         )
         .disabled(creating || screen != .home)
@@ -84,8 +84,12 @@ private struct AppFlow: View {
             .cover()
             .overlay {
               if screen == .weak {
-                WeakPointsView(library: library, analyzer: .app, onBack: { go(.records) })
-                  .cover()
+                // 「この苦手の場面で練習する」で、その場面で練習する部屋を作る
+                WeakPointsView(
+                  library: library, analyzer: .app, onBack: { go(.records) }, onPractice: { create(practice: $0) }
+                )
+                .disabled(creating)
+                .cover()
               }
             }
           } else if screen == .settings {
@@ -110,13 +114,20 @@ private struct AppFlow: View {
     screen = next
   }
 
-  private func newSession() -> RoomSession {
-    RoomSession(client: makeClient(), me: profile)
+  private func newSession(practice: WeakScene? = nil) -> RoomSession {
+    RoomSession(
+      client: makeClient(), me: profile, practice: practice,
+      weakScenes: practice == nil ? nil : WeakPointAnalyzer.app.scenes)
   }
 
-  /// 「あそぶ」。自分の部屋を作り、ホストとして待合に入る
-  private func create() {
-    let session = newSession()
+  /// 「あそぶ」。自分の部屋を作り、ホストとして待合に入る。practice（苦手の場面）があれば、その場面で練習する部屋にする
+  private func create(practice: WeakScene? = nil) {
+    guard !creating else { return }
+    let session = newSession(practice: practice)
+    // 苦手の場面は、待合にいる間に組んでおく（その場で作った部品も、ここで取りに行く）。配置は session が覚えた
+    if let id = session.practice?.sceneId {
+      SceneLibrary.shared.preload([id])
+    }
     creating = true
     Task {
       defer { creating = false }

@@ -1,3 +1,4 @@
+import BackendAPI
 import Foundation
 import Observation
 
@@ -26,6 +27,17 @@ final class RoomSession {
   private(set) var participants: [Participant] = []
   /// 自分の声の録音。ラウンドが始まると用意し、録音中の画面で録り始める
   let recorder = VoiceRecorder()
+  /// 苦手の場面で練習する部屋（苦手の画面の「この苦手の場面で練習する」で作った）なら、その場面。
+  /// ホストは難易度の代わりにこの場面でスタートする（startPractice）。ホストが替わった先の人は持たない。
+  /// スタートを部屋に断られたら（置き場に場面が無いなど）外し、難易度を選ぶふつうの待合に戻す
+  private(set) var practice: WeakScene?
+  /// 苦手の場面のスタートを断られたときに、待合でホストに出す一言。次にスタートするまで出す
+  private(set) var practiceNotice: String?
+  /// 苦手の場面でスタートを送り、まだ始まっていない（断られたかを見分ける）
+  private var startingPractice = false
+
+  /// 苦手の場面のスタートを断られたときの一言
+  static let practiceRejectedText = "苦手の場面を始められませんでした。難易度を選んでスタートできます"
 
   var isRoundOver: Bool {
     if case .results = phase { true } else { false }
@@ -42,6 +54,8 @@ final class RoomSession {
   private var roundRecord: RoundRecord?
   /// 記録の保存（テストが終わりを待つ）
   private(set) var recordSaving: Task<Void, Never>?
+  /// 苦手の場面を覚えている所。練習する場面が置き場に無いと断られたら（unknown_scene）、覚えた場面を忘れさせる
+  private let weakScenes: WeakSceneMaker?
 
   enum MoveError: Error, Equatable {
     /// いまいる部屋のコードを打った
@@ -58,14 +72,21 @@ final class RoomSession {
     var saved = false
   }
 
+  /// practice は苦手の場面。配置は受け取ってあるので覚えておき、ラウンド・3D・記録で取りに行かない。
+  /// 配置が読めなければ、ふつうの部屋（難易度を選ぶ）にする。weakScenes は、その場面を覚えている所
   init(
     client: any GameClient, me: PlayerProfile, records: PlayRecordStore = .shared,
-    scenes: SceneLayoutStore = SceneLayouts.store
+    scenes: SceneLayoutStore = SceneLayouts.store, practice: WeakScene? = nil, weakScenes: WeakSceneMaker? = nil
   ) {
     self.client = client
     self.me = me
     self.records = records
     self.scenes = scenes
+    self.weakScenes = weakScenes
+    if let practice, let document = try? practice.document() {
+      scenes.remember(document, for: practice.sceneId)
+      self.practice = practice
+    }
   }
 
   /// 部屋を作り、ホストとして入る
@@ -138,7 +159,17 @@ final class RoomSession {
   /// ホストが難易度だけを選んでラウンドを始める。どの場面かはホストにも前もって伝えず、round で届く
   func start(difficulty: SceneDifficulty) {
     guard isHost, phase == .lobby, !isGenerating else { return }
+    practiceNotice = nil
     Task { try? await client.startRound(difficulty: difficulty) }
+  }
+
+  /// ホストが苦手の場面でラウンドを始める（start の sceneId に苦手の場面の ID を入れる）
+  func startPractice() {
+    guard isHost, phase == .lobby, !isGenerating, let practice else { return }
+    let sceneID = practice.sceneId
+    practiceNotice = nil
+    startingPractice = true
+    Task { try? await client.startRound(sceneID: sceneID) }
   }
 
   /// 「話し終えた」か、20 秒たった
@@ -181,10 +212,12 @@ final class RoomSession {
       participants = room.members
       updateHost(from: room.members)
       isGenerating = true
+      startingPractice = false
     case .roundStarted(let info):
       // 前のラウンドの録音は消す
       recorder.prepare()
       isGenerating = false
+      startingPractice = false
       roundRecord = RoundRecord(info: info)
       phase = .playing(info)
     case .participantsChanged(let list):
@@ -201,6 +234,19 @@ final class RoomSession {
       phase = .lobby
     case .hostChanged(let isSelf):
       isHost = isSelf
+    case .rejected(let code, _):
+      // 苦手の場面のスタートを断られた（置き場に場面が無い unknown_scene など）。苦手の場面を外し、
+      // 難易度を選ぶふつうの待合に戻して、ホストに一言で知らせる。ほかの操作の断りは、画面をそのままにする
+      guard startingPractice else { return }
+      startingPractice = false
+      weakPointLog.notice("苦手の場面のスタートを断られました: \(code, privacy: .public)")
+      // 置き場に無い場面は、次も断られる。端末に覚えた場面も忘れ、苦手の画面を開き直したら作り直す。
+      // ほかの断り（not_in_lobby など）は場面のせいではないので、覚えたままにする
+      if code == Components.Schemas.ErrorCode.unknownScene.rawValue, let practice {
+        weakScenes?.discard(sceneId: practice.sceneId)
+      }
+      practice = nil
+      practiceNotice = Self.practiceRejectedText
     }
   }
 
@@ -255,7 +301,7 @@ extension GameEvent {
   var changesPhase: Bool {
     switch self {
     case .generating, .roundStarted, .results, .returnedToLobby: true
-    case .room, .participantsChanged, .hostChanged: false
+    case .room, .participantsChanged, .hostChanged, .rejected: false
     }
   }
 }

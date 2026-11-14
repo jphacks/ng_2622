@@ -1,17 +1,23 @@
 import SwiftUI
 
 /// 苦手。上に「次はここ」を大きく 1 つ、その下に AI の分析（くり返す癖・良くなった点）、
-/// その下の「くわしく」に、端末で数えた点の推移・どれだけ言えたか・間違いの種類。押す所は無い（「次はここ」と実例も押せない）。
+/// その下の「くわしく」に、端末で数えた点の推移・どれだけ言えたか・間違いの種類。
+/// 「次はここ」のカードの中に、分析から作る苦手の場面（作っている間・できた）を出し、できたら「この苦手の場面で練習する」で、
+/// その場面の部屋を作る。作れなかったら、カードには出さず、画面の上に数秒のバナーで知らせる（案 A。docs/design/part-generation.md）。
 /// 数える分析は記録からすぐ出し、AI の分析は作っている間・失敗したときも画面を止めない
 /// （docs/design/weak-point-analysis.md。見せ方は画面設計書 v2 の weak.md）
 struct WeakPointsView: View {
   let library: RecordLibrary
   let analyzer: WeakPointAnalyzer
   let onBack: () -> Void
+  /// 「この苦手の場面で練習する」。その場面で練習する部屋を作る
+  var onPractice: (WeakScene) -> Void = { _ in }
 
   /// 戻るボタンの後ろの帯の濃さ。スクロールのたびに変わるので、読むのは帯（CoverBand）だけにし、
   /// この画面の本体（数える分析と日付の表）はスクロールで作り直さない
   @State private var cover = CoverBand.Amount()
+  /// 苦手の場面を作れなかったことを知らせるバナーを出しているか
+  @State private var showsNotice = false
 
   var body: some View {
     // 数えるのは記録から毎回（覚えない）。数は多くても数百件で、すぐ終わる
@@ -19,6 +25,9 @@ struct WeakPointsView: View {
     let analysis = analyzer.analysis
     // 記録の ID から遊んだ日（実例の日付）
     let dates = Dictionary(library.records.map { ($0.id, $0.playedAt) }, uniquingKeysWith: { first, _ in first })
+    // 苦手の場面（記録が足りないときは出さない）
+    let enough = counts.recent.count >= WeakPointCounts.minimumRecords
+    let scenePhase = enough ? analyzer.scenes?.phase ?? .idle : .idle
     ScrollView {
       VStack(alignment: .leading, spacing: 16) {
         // 戻るボタンは上に浮かせて残すので、ここは見出しだけ（スクロールで流れて消える）
@@ -35,8 +44,12 @@ struct WeakPointsView: View {
         .frame(height: 52)
         .padding(.top, 8)
 
-        if let next = Self.next(analysis, counts: counts) {
-          NextCard(content: next)
+        let showsScene = scenePhase.showsInCard
+        let next = Self.next(analysis, counts: counts)
+        if next != nil || showsScene {
+          NextCard(content: next, showsScene: showsScene, divided: scenePhase == .making) {
+            WeakSceneSection(phase: scenePhase, onPractice: onPractice)
+          }
         }
 
         if counts.recent.count >= WeakPointCounts.minimumRecords {
@@ -72,9 +85,12 @@ struct WeakPointsView: View {
       }
       .resultColumn()
       .padding(.bottom, 40)
+      // 苦手の場面の行が出入りするときは、カードの下の中身も一緒に動かす（カードだけが縮んで下の中身と重ならないように）
+      .animation(.easeInOut(duration: 0.3), value: scenePhase)
     }
     .onAppear {
-      // 開くたびに確かめる（記録が増えた・元の記録が消えたら作り直す。失敗しても、開き直すとまた頼む）。
+      // 開くたびに確かめる（記録が 5 件ずつ増えた・元の記録が消えたら作り直す。失敗しても、開き直すとまた頼む。
+      // 苦手の場面も同じ）。
       // 待たない処理なので、最初の 1 フレームから様子（作っている間・前回の分析）がそろうよう、出る前に呼ぶ
       analyzer.open(records: library.records, existing: { [library] in Set(library.records.map(\.id)) })
     }
@@ -98,6 +114,35 @@ struct WeakPointsView: View {
       .frame(height: 52)
       .resultColumn()
       .padding(.top, 8)
+    }
+    // 苦手の場面を作れなかったら、画面の上に数秒だけバナーを出す（閉じている間に作れなかったときは、開いたときに出す）。
+    // VoiceOver にも読み上げで知らせる
+    .overlay(alignment: .top) {
+      if showsNotice {
+        WeakSceneNotice()
+          .padding(.horizontal, 16)
+          .frame(maxWidth: 378)
+          .padding(.top, 4)
+          .transition(.move(edge: .top).combined(with: .opacity))
+      }
+    }
+    .animation(.spring(duration: 0.4), value: showsNotice)
+    // できたら、その場で作った部品を先に取っておく（3D は出さず、部品を読むだけ）。
+    // 作っている → できた に替わったら、VoiceOver に読み上げで知らせる
+    .onChange(of: scenePhase, initial: true) { old, new in
+      guard case .ready(let scene) = new else { return }
+      for part in scene.createdParts { PartLibrary.shared.preload(PartRef(part)) }
+      if old == .making {
+        AccessibilityNotification.Announcement("苦手の場面ができました").post()
+      }
+    }
+    .task(id: analyzer.scenes?.notices ?? 0) {
+      guard let scenes = analyzer.scenes, scenes.notices > scenes.noticed else { return }
+      scenes.markNoticed()
+      showsNotice = true
+      AccessibilityNotification.Announcement(WeakSceneNotice.text).post()
+      try? await Task.sleep(for: WeakSceneNotice.duration)
+      showsNotice = false
     }
   }
 
@@ -182,34 +227,31 @@ private func dayText(_ date: Date?) -> String? {
 // MARK: - 次はここ
 
 /// 次はここ。薄い紫の地（振り返りの「次の一つ」と同じ見た目）。AI の次に試すこと（文 1 つ）と、
-/// 数えた結果の代わり（大きな一行・下の一言・右上の種類と割合）の両方を出す。押せない
-private struct NextCard: View {
-  let content: WeakPointsView.NextContent
+/// 数えた結果の代わり（大きな一行・下の一言・右上の種類と割合）の両方を出す。文は押せない。
+/// その下に、線で区切って苦手の場面（scene）を出す
+private struct NextCard<Scene: View>: View {
+  /// 文。無い（数えられる種類が無い）ときは、苦手の場面だけを出す
+  let content: WeakPointsView.NextContent?
+  /// 苦手の場面を出すか（出さないときは区切りの線も出さない）
+  let showsScene: Bool
+  /// 文と苦手の場面の間に線を引くか（作っている間だけ。できたらボタンだけなので、文のすぐ下に置く）
+  let divided: Bool
+  @ViewBuilder let scene: () -> Scene
 
   var body: some View {
-    let (title, detail, note) = (content.title, content.detail, content.note)
-    VStack(alignment: .leading, spacing: 8) {
-      HStack(alignment: .firstTextBaseline) {
-        Text("次はここ")
-          .font(Theme.font(15, .heavy))
-          .foregroundStyle(Theme.muted)
-        Spacer()
-        if let note {
-          Text(note)
-            .font(Theme.font(15, .heavy))
-            .foregroundStyle(Theme.muted)
-            .monospacedDigit()
-        }
+    VStack(alignment: .leading, spacing: 16) {
+      if let content {
+        text(content)
+          .accessibilityElement(children: .combine)
+          .accessibilityIdentifier("weak-next")
       }
-      Text(title)
-        .font(Theme.font(26, .black))
-        .lineSpacing(3)
-        .fixedSize(horizontal: false, vertical: true)
-      if let detail {
-        Text(detail)
-          .font(Theme.font(18, .heavy))
-          .lineSpacing(3)
-          .fixedSize(horizontal: false, vertical: true)
+      if showsScene {
+        if content != nil, divided {
+          Rectangle()
+            .fill(Theme.accent.opacity(0.22))
+            .frame(height: 1.5)
+        }
+        scene()
       }
     }
     .padding(20)
@@ -219,8 +261,34 @@ private struct NextCard: View {
       RoundedRectangle(cornerRadius: 22).strokeBorder(Theme.accent.opacity(0.18), lineWidth: 1.5)
     }
     .shadow(color: Theme.ink.opacity(0.07), radius: 10, y: 6)
-    .accessibilityElement(children: .combine)
-    .accessibilityIdentifier("weak-next")
+  }
+
+  private func text(_ content: WeakPointsView.NextContent) -> some View {
+    VStack(alignment: .leading, spacing: 8) {
+      HStack(alignment: .firstTextBaseline) {
+        Text("次はここ")
+          .font(Theme.font(15, .heavy))
+          .foregroundStyle(Theme.muted)
+        Spacer()
+        if let note = content.note {
+          Text(note)
+            .font(Theme.font(15, .heavy))
+            .foregroundStyle(Theme.muted)
+            .monospacedDigit()
+        }
+      }
+      Text(content.title)
+        .font(Theme.font(26, .black))
+        .lineSpacing(3)
+        .fixedSize(horizontal: false, vertical: true)
+      if let detail = content.detail {
+        Text(detail)
+          .font(Theme.font(18, .heavy))
+          .lineSpacing(3)
+          .fixedSize(horizontal: false, vertical: true)
+      }
+    }
+    .frame(maxWidth: .infinity, alignment: .leading)
   }
 }
 

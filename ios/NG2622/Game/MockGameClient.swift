@@ -23,6 +23,8 @@ final class MockGameClient: GameClient {
   static let missingRoomCode = "0000"
   /// このコードは、満員で入れない
   static let fullOnJoinCode = "9999"
+  /// この場面でスタートすると、部屋が断る（置き場に無い苦手の場面。MockWeakSceneClient の missing）
+  static let missingSceneID = "weak-00000000-0000-0000-0000-000000000000"
 
   let events: AsyncStream<GameEvent>
   private let continuation: AsyncStream<GameEvent>.Continuation
@@ -128,6 +130,12 @@ final class MockGameClient: GameClient {
 
   func startRound(sceneID: String?) async throws {
     guard isHost else { return }
+    // 本物の部屋は、置き場に無い場面を unknown_scene で断る
+    if sceneID == Self.missingSceneID {
+      try await Task.sleep(for: .milliseconds(300))
+      continuation.yield(.rejected(code: "unknown_scene", message: "シーンがありません"))
+      return
+    }
     try await beginRound(sceneID: sceneID)
   }
 
