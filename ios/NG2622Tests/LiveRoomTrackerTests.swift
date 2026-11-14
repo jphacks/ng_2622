@@ -318,6 +318,8 @@ struct LiveRoomTrackerTranscriptTests {
           #expect(results.myReview?.nextStep.text == "もう少し長く話してみよう。")
         case .event(.returnedToLobby): kinds.append("lobby")
         case .event(.hostChanged(let isSelf)): kinds.append("host:\(isSelf)")
+        // 部屋の断り（error）は tracker が .error で返し、LiveGameClient が rejected に直す。tracker からは来ない
+        case .event(.rejected(let code, _)): kinds.append("rejected:\(code)")
         }
       }
     }

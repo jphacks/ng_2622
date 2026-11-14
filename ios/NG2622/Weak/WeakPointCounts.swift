@@ -33,6 +33,11 @@ nonisolated struct WeakPointCounts: Equatable, Sendable {
     Array(records.filter { $0.result.content != nil }.sorted { olderFirst($1, $0) }.prefix(recentLimit))
   }
 
+  /// 内容の内訳のある記録の数（AI の分析を作り直す区切りに使う）
+  static func countable(_ records: [PlayRecord]) -> Int {
+    records.lazy.filter { $0.result.content != nil }.count
+  }
+
   /// 苦手の画面に入れるか（R が 5 件以上）
   static func canOpen(_ records: [PlayRecord]) -> Bool {
     records.lazy.filter { $0.result.content != nil }.prefix(minimumRecords).count >= minimumRecords

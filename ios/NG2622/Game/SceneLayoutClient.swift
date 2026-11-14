@@ -58,6 +58,8 @@ final class SceneLayoutStore {
   private var loads: [String: Task<SceneDocument, any Error>] = [:]
   private var names: [String: String] = [:]
   private var descriptions: [String: String] = [:]
+  /// 取り終えた（か、手元から覚えた）配置
+  private var layouts: [String: SceneLayout] = [:]
 
   init(client: any SceneLayoutClient) {
     self.client = client
@@ -82,12 +84,27 @@ final class SceneLayoutStore {
       let document = try await task.value
       names[sceneID] = document.layout.name
       descriptions[sceneID] = document.layout.description
+      layouts[sceneID] = document.layout
       return document
     } catch {
       // 取れなかったものは覚えず、次にまた取りに行く
       if loads[sceneID] == task { loads[sceneID] = nil }
       throw error
     }
+  }
+
+  /// 手元にある配置を覚える。苦手の場面は POST /weak-scenes で配置まで受け取っているので、取りに行かない
+  /// （部屋で遊ぶ・3D を組む・記録に残すときに、この配置を使う）
+  func remember(_ document: SceneDocument, for sceneID: String) {
+    loads[sceneID] = Task<SceneDocument, any Error> { document }
+    names[sceneID] = document.layout.name
+    descriptions[sceneID] = document.layout.description
+    layouts[sceneID] = document.layout
+  }
+
+  /// 取り終えた（か、覚えた）配置。待たない
+  func remembered(_ sceneID: String) -> SceneLayout? {
+    layouts[sceneID]
   }
 
   /// 取ったことのある場面の名前

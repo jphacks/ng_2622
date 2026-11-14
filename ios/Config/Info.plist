@@ -20,6 +20,8 @@
 	<string>$(MOCK_SAMPLE_RECORDS)</string>
 	<key>MockWeakPoints</key>
 	<string>$(MOCK_WEAK_POINTS)</string>
+	<key>MockWeakScene</key>
+	<string>$(MOCK_WEAK_SCENE)</string>
 	<!-- ホームの 3D（Config/Shared.xcconfig の TITLE_DIORAMA）。空なら作り置きの場面 -->
 	<key>TitleDiorama</key>
 	<string>$(TITLE_DIORAMA)</string>

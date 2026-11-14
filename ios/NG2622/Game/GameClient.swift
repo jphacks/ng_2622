@@ -13,8 +13,8 @@ protocol GameClient: AnyObject {
   /// 部屋から抜ける。以後 events は届かない
   func leaveRoom()
 
-  /// ホストが作り置きの場面を指してラウンドを始める（start の sceneId）。nil なら「おまかせ」で、部屋の側がランダムに選ぶ。
-  /// 画面からは使わない（待合は難易度だけを選ぶ）。結合テストが使う
+  /// ホストが場面を指してラウンドを始める（start の sceneId）。nil なら「おまかせ」で、部屋の側がランダムに選ぶ。
+  /// 画面からは、苦手の場面で練習する部屋だけが使う（weak- の ID。部屋が置き場から配置を読む）。結合テストも使う
   func startRound(sceneID: String?) async throws
   /// ホストが難易度だけを選んでラウンドを始める。場面は、その部屋でまだ出ていない
   /// 作り置きの場面からランダムに選ぶ（ScenePool）。Mock はアプリの中で選び、Live は start で難易度を送って部屋が選ぶ
@@ -43,6 +43,9 @@ enum GameEvent: Sendable, Equatable {
   /// ラウンド中か結果発表のときに、ホストが替わった（前のホストが抜けた）。isSelf なら自分が新しいホスト。
   /// 待合では room の members の isHost で分かるので送らない
   case hostChanged(isSelf: Bool)
+  /// 押した操作（スタートなど）を部屋が受け付けなかった（WebSocket の error。join の返事は除く）。code は ErrorCode の値。
+  /// 例: 苦手の場面が置き場に無くて unknown_scene
+  case rejected(code: String, message: String)
 }
 
 enum GameError: Error, Equatable {

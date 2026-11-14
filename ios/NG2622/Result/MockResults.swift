@@ -11,7 +11,8 @@ extension RoundResults {
     layout: SceneLayout? = nil,
     selfVariant: MockVariant = .rich
   ) -> RoundResults {
-    let layout = layout ?? (try? MockSceneLayoutClient.read(sceneID))
+    // 苦手の場面（同梱に無い）は、覚えた配置から
+    let layout = layout ?? SceneLayouts.store.remembered(sceneID) ?? (try? MockSceneLayoutClient.read(sceneID))
     let checklist = layout?.checklist ?? []
     var graded: [PlayerResult] = []
     var ungraded: [PlayerResult] = []

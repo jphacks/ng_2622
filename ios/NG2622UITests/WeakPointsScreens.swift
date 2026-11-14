@@ -22,7 +22,7 @@ final class WeakPointsScreens: XCTestCase {
     if let samples { app.launchArguments += ["-MockSampleRecords", "\(samples)"] }
     app.launchArguments += extra
     app.launch()
-    XCTAssert(app.buttons["部屋を作る"].waitForExistence(timeout: 20))
+    XCTAssert(app.buttons["あそぶ"].waitForExistence(timeout: 20))
     return app
   }
 
