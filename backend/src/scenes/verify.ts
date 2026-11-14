@@ -18,6 +18,7 @@ import {
   type GradeId,
   type Part,
   type PlanItem,
+  type SceneLayoutV2,
   type SceneSentences,
   type Vec3,
 } from "./types";
@@ -58,6 +59,10 @@ export type Problem = {
     | "rain_indoors"
     | "duplicate_key"
     | "unknown_part"
+    /** ID の規約で引く道: 作る物の注文が規約の形でない・作れない物 */
+    | "bad_part_order"
+    /** ID の規約で引く道: 部品の無い物が 1 場面の上限を超えた */
+    | "too_many_new_parts"
     | "ref_not_in_items"
     | "people_count"
     | "center_without_actor"
@@ -727,13 +732,23 @@ export const verifyPlaces = (
   gradeId: GradeId,
   plan: SceneSentences & { items: PlanItem[] },
   partList: Part[],
-): Problem[] => {
+): Problem[] => verifyPlacesWithLayout(gradeId, plan, partList).problems;
+
+/**
+ * verifyPlaces と同じ。確かめるのに座標に直した配置（id は "check"）も返す（座標に直せなければ undefined）。
+ * 座標の計算（compose.ts）は CPU を多く使うので、通った場面はこの配置の id を替えて使い、もう一度計算しない
+ */
+export const verifyPlacesWithLayout = (
+  gradeId: GradeId,
+  plan: SceneSentences & { items: PlanItem[] },
+  partList: Part[],
+): { problems: Problem[]; layout?: SceneLayoutV2 } => {
   const parts = new Map(partList.map((p) => [p.id, p]));
   let layout: ReturnType<typeof composeLayoutV2>;
   try {
     layout = composeLayoutV2(plan, partList, { id: "check", grade: gradeId });
   } catch {
-    return [];
+    return { problems: [] };
   }
   const placed = new Map(layout.items.map((i) => [i.key, i]));
   const grounds = layout.items.filter(
@@ -779,7 +794,7 @@ export const verifyPlaces = (
   }
   problems.push(...verifyView(plan, layout.items, partList));
   problems.push(...verifyHeld(plan, layout.items, partList));
-  return problems;
+  return { problems, layout };
 };
 
 // ---------- 絵で見えるか（座標に直した場面を、絵と同じカメラから見る） ----------

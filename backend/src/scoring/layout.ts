@@ -40,7 +40,8 @@ export type RelationItem = Omit<LayoutItem, "motion"> & {
   };
 };
 
-type PartMeta = {
+/** 部品のメタデータのうち、採点で読む欄。作った部品（R2 のメタデータ）もこの形で渡す */
+export type PartMeta = {
   id: string;
   category: string;
   words: { word: string; pos: string }[];
@@ -125,13 +126,21 @@ const RELATIONS = `Relations: place, facing and "moves toward" are how the scene
 
 /**
  * 場面の情報を英語の箇条書きにする。座標の行に、生成で書いた関係（place・facing・動きの行き先）を書き足す。
- * 関係の無い item は座標の行だけになる。地面のほかに部品が 1 つも分からなければ null
+ * 関係の無い item は座標の行だけになる。地面のほかに部品が 1 つも分からなければ null。
+ * extraParts は同梱の一覧（assets/parts/index.json）に無い部品（苦手の場面でその場で作った部品）のメタデータ。
+ * 同梱の部品が先（同じ ID は同梱のものを使う）
  */
 export const describeLayoutWithRelations = (
   items: RelationItem[],
+  extraParts: readonly PartMeta[] = [],
 ): string | null => {
+  const extra = new Map(extraParts.map((p) => [p.id, p]));
+  const metaOf = (part: string) => {
+    const id = part.split("@")[0];
+    return catalog.get(id) ?? extra.get(id);
+  };
   const known = items
-    .map((item) => ({ item, meta: catalog.get(item.part.split("@")[0]) }))
+    .map((item) => ({ item, meta: metaOf(item.part) }))
     .filter((k): k is { item: RelationItem; meta: PartMeta } => !!k.meta);
   if (known.every(({ meta }) => meta.category === "ground")) return null;
   return [

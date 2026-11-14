@@ -832,7 +832,7 @@
           "analysis_failed",
           "analysis_unavailable"
         ],
-        "description": "room_not_found: 部屋が無い\nroom_full: 満員\ninvalid_message: メッセージの形が違う\nunauthorized: 参加者の ID と合言葉が合わない（POST /scenes/generate では SCENE_WRITE_TOKEN が違う）\nnot_host: ホストだけができる操作\nnot_in_lobby: 待合でしかできない操作\nunknown_scene: シーンの ID が無い\nserver_busy: 空いている部屋のコードが無い\nnot_playing: ラウンド中でない、ラウンドの番号が違う、またはそのラウンドに参加していない\nalready_submitted: このラウンドの音声はもう受け取った\ndeadline_passed: このラウンドの音声の締め切り（録音が終わるはずの時刻から 15 秒）を過ぎた。その人は採点できなかった扱いになっている\ninvalid_audio: 音声が 1 MB までの WAV でない\nnot_in_results: 結果発表のときにしかできない操作\nscoring_failed: 採点の途中で失敗した（Claude の呼び出しなど）\ngeneration_refused: Claude が断った\ngeneration_failed: Claude の応答が途中で止まった・形が違った・作り直しても裏取りを通らなかった\ngeneration_unavailable: Claude を呼べない（タイムアウト・API の失敗・止めてある）\nrate_limited: 苦手の分析の回数の上限（IP ごとの 1 時間か、全体の 1 日）に達した\nanalysis_failed: 苦手の分析で Claude が失敗した（API の失敗・途中で止まった・JSON が読めない・時間切れ）\nanalysis_unavailable: 苦手の分析ができない（WEAK_POINT_ANALYSIS が on でない・PR のプレビュー・Claude のキーが無い・回数を数える場所が失敗した）"
+        "description": "room_not_found: 部屋が無い\nroom_full: 満員\ninvalid_message: メッセージの形が違う\nunauthorized: 参加者の ID と合言葉が合わない（POST /scenes/generate では SCENE_WRITE_TOKEN が違う）\nnot_host: ホストだけができる操作\nnot_in_lobby: 待合でしかできない操作\nunknown_scene: シーンの ID が無い\nserver_busy: 空いている部屋のコードが無い\nnot_playing: ラウンド中でない、ラウンドの番号が違う、またはそのラウンドに参加していない\nalready_submitted: このラウンドの音声はもう受け取った\ndeadline_passed: このラウンドの音声の締め切り（録音が終わるはずの時刻から 15 秒）を過ぎた。その人は採点できなかった扱いになっている\ninvalid_audio: 音声が 1 MB までの WAV でない\nnot_in_results: 結果発表のときにしかできない操作\nscoring_failed: 採点の途中で失敗した（Claude の呼び出しなど）\ngeneration_refused: Claude が断った（POST /weak-scenes では 502）\ngeneration_failed: Claude の応答が途中で止まった・形が違った・作り直しても裏取りを通らなかった（POST /weak-scenes では、Claude の失敗・時間切れ・部品を作れなかったも含めて 502）\ngeneration_unavailable: Claude を呼べない（タイムアウト・API の失敗・止めてある。POST /weak-scenes では WEAK_SCENE_GENERATION が on でない・置き場が無い・回数を数える場所が失敗した）\nrate_limited: 苦手の分析・苦手の場面の回数の上限（IP ごとの 1 時間か、全体の 1 日）に達した\nanalysis_failed: 苦手の分析で Claude が失敗した（API の失敗・途中で止まった・JSON が読めない・時間切れ）\nanalysis_unavailable: 苦手の分析ができない（WEAK_POINT_ANALYSIS が on でない・PR のプレビュー・Claude のキーが無い・回数を数える場所が失敗した）"
       },
       "ErrorMessage": {
         "type": "object",
@@ -1889,14 +1889,6 @@
         ],
         "additionalProperties": false
       },
-      "WeakPointViewpoint": {
-        "type": "string",
-        "enum": [
-          "content",
-          "expression"
-        ],
-        "description": "英検の二次試験の評価の観点。content: 内容（応答内容・情報量）・expression: 表現（語い・文法・語法）"
-      },
       "WeakPointQuote": {
         "type": "object",
         "properties": {
@@ -2403,6 +2395,145 @@
         ],
         "description": "苦手の分析に送る、直近の記録の文字と端末で数えた値。録音・名前・端末や記録の ID・遊んだ日時・場面の ID は送らない。サーバーは保存しない"
       },
+      "WeakSceneResponse": {
+        "type": "object",
+        "properties": {
+          "sceneId": {
+            "type": "string",
+            "pattern": "^weak-[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
+            "description": "作った場面の ID（weak- ＋ uuid）。部屋の start の sceneId に送ると、この場面でラウンドが始まる",
+            "example": "weak-0f8fad5b-d9cb-469f-a165-70867728950e"
+          },
+          "name": {
+            "type": "string",
+            "maxLength": 30,
+            "description": "場面の名前（日本語、30 文字まで。layout.name と同じ）",
+            "example": "雨の公園"
+          },
+          "difficulty": {
+            "$ref": "#/components/schemas/Difficulty"
+          },
+          "focus": {
+            "$ref": "#/components/schemas/ChecklistKind"
+          },
+          "pitch": {
+            "type": "string",
+            "maxLength": 60,
+            "description": "場面の一言（日本語、60 文字まで。長ければサーバーが切る）",
+            "example": "because で理由を言いやすい場面です"
+          },
+          "layout": {
+            "$ref": "#/components/schemas/SceneLayout"
+          },
+          "createdParts": {
+            "maxItems": 4,
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "配置が使う、アプリに同梱していない部品の id@版（0〜4 個）。この場面でその場で作った部品と、前の場面で作った部品（置き場にあったもの）の両方が入る。GET /parts/{id}/{version}.usdz で取り、先に取っておける",
+            "example": [
+              "teapot_red@1"
+            ]
+          }
+        },
+        "required": [
+          "sceneId",
+          "name",
+          "difficulty",
+          "focus",
+          "pitch",
+          "layout",
+          "createdParts"
+        ],
+        "additionalProperties": false,
+        "description": "作った苦手の場面。サーバーの置き場（R2）にも置いてあり、部屋が sceneId で読む。focus は実際に狙った項目の種類（kinds のうち、その級に有る最初の種類）。layout は配置の JSON（scenenglish.scene/2。部屋で遊ぶ場面と同じ形）で、その場で作った部品は part が id@版（小さな絵を出す・部品を先に取っておくのに使う）"
+      },
+      "WeakPointViewpoint": {
+        "type": "string",
+        "enum": [
+          "content",
+          "expression"
+        ],
+        "description": "英検の二次試験の評価の観点。content: 内容（応答内容・情報量）・expression: 表現（語い・文法・語法）"
+      },
+      "WeakSceneHabit": {
+        "type": "object",
+        "properties": {
+          "viewpoint": {
+            "$ref": "#/components/schemas/WeakPointViewpoint"
+          },
+          "title": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 80,
+            "description": "癖の見出し（分析の habits[].title）"
+          },
+          "fix": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 200,
+            "description": "直し方（分析の habits[].fix）"
+          }
+        },
+        "required": [
+          "viewpoint",
+          "title",
+          "fix"
+        ],
+        "description": "苦手の分析の癖のうち、題と直し方だけ。実例の引用（examples）と what は送らない"
+      },
+      "WeakSceneNextTry": {
+        "type": "object",
+        "properties": {
+          "viewpoint": {
+            "$ref": "#/components/schemas/WeakPointViewpoint"
+          },
+          "text": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 200,
+            "description": "次の 1 回で試すこと（分析の nextTry.text）"
+          }
+        },
+        "required": [
+          "viewpoint",
+          "text"
+        ]
+      },
+      "WeakSceneRequest": {
+        "type": "object",
+        "properties": {
+          "difficulty": {
+            "$ref": "#/components/schemas/Difficulty"
+          },
+          "kinds": {
+            "minItems": 1,
+            "maxItems": 4,
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ChecklistKind"
+            },
+            "description": "項目の種類を、端末が数えた言えた割合の低い順に（分母 0 の種類は除く）。サーバーはその級に有る最初の種類を狙う（eiken-3 に reason・link、eiken-pre2 に link は無い）。どれも級に無ければ center にする。重なった種類は 1 つとみる"
+          },
+          "habits": {
+            "description": "AI の分析の癖（0〜3 個）。表現の癖は使わせる文法に、内容の癖は描く物に効かせる",
+            "maxItems": 3,
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/WeakSceneHabit"
+            }
+          },
+          "nextTry": {
+            "$ref": "#/components/schemas/WeakSceneNextTry"
+          }
+        },
+        "required": [
+          "difficulty",
+          "kinds"
+        ],
+        "description": "苦手の場面を作るのに送る、級と苦手。difficulty はその人の直近の記録の級（場面はこの級で作る）、nextTry は AI の分析の次に試すこと（任意）。本人の英文の引用・録音・名前・端末の ID は送らない。サーバーは本文を保存しない（作った場面だけを置く）"
+      },
       "Title": {
         "type": "object",
         "properties": {
@@ -2847,7 +2978,7 @@
           "scenes"
         ],
         "summary": "場面の配置の JSON",
-        "description": "作り置きの場面か、部屋が AI で作った場面の配置の JSON をそのまま返す。round で届いた sceneId の場面を組み立てるのに使う。作り置きに無い場面は room（部屋のコード）を付けると、その部屋が作って置いた配置を返す（部屋が消えると無くなる）",
+        "description": "作り置きの場面か、部屋が AI で作った場面の配置の JSON をそのまま返す。round で届いた sceneId の場面を組み立てるのに使う。作り置きに無い場面は room（部屋のコード）を付けると、その部屋が作って置いた配置を返す（部屋が消えると無くなる）。苦手の場面（weak- で始まる sceneId。POST /weak-scenes が作る）は、room を付ければ部屋が写した配置を、付けなくても置き場の配置を返す",
         "responses": {
           "200": {
             "description": "配置の JSON",
@@ -3227,6 +3358,88 @@
             "application/json": {
               "schema": {
                 "$ref": "#/components/schemas/WeakPointRequest"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/weak-scenes": {
+      "post": {
+        "operationId": "generateWeakScene",
+        "tags": [
+          "scenes"
+        ],
+        "summary": "苦手を練習する場面を作る",
+        "description": "級と苦手（言えた割合の低い項目の種類・AI の分析の癖の題と直し方・次に試すこと）を送ると、その苦手を練習する場面を AI で作り、サーバーの置き場（R2 の weak-scenes/<sceneId>.json）に置いて返す。苦手の種類の項目を目立たせ、表現の癖に合う文法を使わせる（項目の種類の数は級のまま）。手持ちの部品に無い物は、その場で 3D の部品を作る（1 場面 4 個まで）。部屋の start にこの sceneId を送ると、この場面でラウンドが始まる。本人の英文の引用は送らない。認証は無く、IP ごとの 1 時間の回数・全体の 1 日の回数の上限と、止めるスイッチ（WEAK_SCENE_GENERATION）で守る。時間は 90 秒まで。",
+        "responses": {
+          "200": {
+            "description": "作った場面",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WeakSceneResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "本文の形が違う（invalid_message）。級・種類の値の外、kinds が 0 個か 5 個以上、habits が 4 個以上、文字の長さの外",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "本文が大きすぎる（invalid_message）",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "回数の上限に達した（rate_limited）。IP ごとの 1 時間の回数か、全体の 1 日の回数",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "502": {
+            "description": "作れなかった（generation_failed・generation_refused）。Claude の失敗・断った・時間切れ、部品を作れなかった、作り直しても裏取りを通らなかった",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "作れない（generation_unavailable）。WEAK_SCENE_GENERATION が on でない（PR のプレビュー）、Claude のキーや置き場が無い、または回数を数える場所（UsageCounter）が失敗した",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/WeakSceneRequest"
               }
             }
           }

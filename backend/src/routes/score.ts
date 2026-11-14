@@ -1,5 +1,7 @@
 import { Hono } from "hono";
 import { describeRoute, validator } from "hono-openapi";
+import { parsePartRef } from "../parts/ids";
+import { lookupPart } from "../parts/workshop";
 import { ErrorResponse, ScoreRequest, ScoreResponse } from "../schemas/http";
 import { scoreLayout } from "../scoring/fromLayout";
 import { type AppEnv, devOnly, errorBody, jsonContent } from "./shared";
@@ -38,7 +40,24 @@ export const scoreRoutes = new Hono<AppEnv>().post(
     }
   }),
   async (c) => {
-    const result = await scoreLayout(c.env, c.req.valid("json"));
+    const request = c.req.valid("json");
+    // 同梱に無い部品（id@版）は、作った部品の置き場（R2）からメタデータを引く
+    const versioned = [
+      ...new Set(
+        request.layout.items.map((i) => i.part).filter((p) => p.includes("@")),
+      ),
+    ];
+    const extra = (
+      await Promise.all(
+        versioned.map((p) => {
+          const ref = parsePartRef(p);
+          return ref
+            ? lookupPart(c.env, ref.id, ref.version).catch(() => null)
+            : null;
+        }),
+      )
+    ).filter((p) => p !== null);
+    const result = await scoreLayout(c.env, request, extra);
     if (!result.ok) {
       return result.reason === "unknown_parts"
         ? c.json(errorBody("invalid_message", result.message), 400)

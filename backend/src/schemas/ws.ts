@@ -40,7 +40,7 @@ export const StartMessage = z
     type: z.literal("start"),
     sceneId: SceneId.optional().meta({
       description:
-        "作り置きの場面の ID を指定して始める（手元で試すとき用）。sceneId も difficulty も省くと「おまかせ」で、部屋が全部の級の作り置きの場面からランダムに選ぶ。difficulty と一緒には送れない",
+        "場面の ID を指定して始める。作り置きの場面の ID（手元で試すとき用）か、POST /weak-scenes が作った苦手の場面の ID（weak- ＋ uuid）。weak- の場面は、部屋がサーバーの置き場から読んで始める（無ければ unknown_scene）。参加者は round の sceneId で GET /scenes/{sceneId}/layout?room=<部屋のコード> から配置を取る。sceneId も difficulty も省くと「おまかせ」で、部屋が全部の級の作り置きの場面からランダムに選ぶ。difficulty と一緒には送れない",
     }),
     difficulty: Difficulty.optional().meta({
       description:

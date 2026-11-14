@@ -158,6 +158,31 @@ export const startRound = (
   );
 };
 
+/**
+ * 置き場から読んだ場面（苦手の場面。sceneId が weak- で始まる）でラウンドを始める。確かめることは startRound と同じだが、
+ * 場面は作り置きの一覧に無いので、呼ぶ側が読めた場面を渡す（読めなければ unknown_scene を返すのは呼ぶ側）
+ */
+export const startLoadedRound = (
+  state: RoomState,
+  input: {
+    playerId: string;
+    scene: GeneratedScene;
+    now: number;
+    connectedIds: ReadonlySet<string>;
+  },
+): Result<{ state: RoomState; round: Round }> => {
+  const checked = checkStart(state, { playerId: input.playerId });
+  if (!checked.ok) return checked;
+  return ok(
+    withRound(state, {
+      sceneId: input.scene.sceneId,
+      sceneName: input.scene.name,
+      now: input.now,
+      connectedIds: input.connectedIds,
+    }),
+  );
+};
+
 /** この部屋でまだ AI に作らせてよいか。スイッチが on で、試した回数が上限に届いていないこと */
 export const canGenerate = (state: RoomState, enabled: boolean) =>
   enabled && (state.generationCount ?? 0) < MAX_GENERATIONS;

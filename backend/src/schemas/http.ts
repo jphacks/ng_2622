@@ -707,3 +707,110 @@ export const WeakPointResponse = z
     description:
       "確かめを通った苦手の分析。サーバーは保存しない。文に割合や点の数字は入らない（数字はアプリが数えた値を出す）",
   });
+
+// 苦手の場面の口（POST /weak-scenes）。設計は docs/design/part-generation.md。
+// 本文は級・苦手の種類・AI の分析の癖の題と直し方・次に試すことだけ。本人の英文の引用・名前・端末の ID は受け取らない（知らない欄は捨てる）
+
+/** 苦手の場面の ID の形（"weak-" ＋ uuid）。部屋の start の sceneId にそのまま使う */
+export const WEAK_SCENE_ID =
+  /^weak-[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
+
+/** 苦手の場面の名前と一言の長さの上限（文字）。Claude が長く書いたらサーバーが切る */
+export const WEAK_SCENE_NAME_MAX = 30;
+export const WEAK_SCENE_PITCH_MAX = 60;
+
+/** 1 つの場面でその場で作る部品の数の上限（費用のヒューズ） */
+export const WEAK_SCENE_MAX_NEW_PARTS = 4;
+
+export const WeakSceneHabit = z
+  .object({
+    viewpoint: WeakPointViewpoint,
+    title: z
+      .string()
+      .trim()
+      .min(1)
+      .max(80)
+      .meta({ description: "癖の見出し（分析の habits[].title）" }),
+    fix: z
+      .string()
+      .trim()
+      .min(1)
+      .max(200)
+      .meta({ description: "直し方（分析の habits[].fix）" }),
+  })
+  .meta({
+    ref: "WeakSceneHabit",
+    description:
+      "苦手の分析の癖のうち、題と直し方だけ。実例の引用（examples）と what は送らない",
+  });
+
+export const WeakSceneNextTry = z
+  .object({
+    viewpoint: WeakPointViewpoint,
+    text: z
+      .string()
+      .trim()
+      .min(1)
+      .max(200)
+      .meta({ description: "次の 1 回で試すこと（分析の nextTry.text）" }),
+  })
+  .meta({ ref: "WeakSceneNextTry" });
+
+export const WeakSceneRequest = z
+  .object({
+    // ref 付きの型に .meta で説明を足すと、元の型の説明が書き換わり、入力用と出力用にも分かれるので、説明は外に書く
+    difficulty: Difficulty,
+    kinds: z.array(ChecklistKind).min(1).max(4).meta({
+      description:
+        "項目の種類を、端末が数えた言えた割合の低い順に（分母 0 の種類は除く）。サーバーはその級に有る最初の種類を狙う（eiken-3 に reason・link、eiken-pre2 に link は無い）。どれも級に無ければ center にする。重なった種類は 1 つとみる",
+    }),
+    habits: z.array(WeakSceneHabit).max(3).optional().meta({
+      description:
+        "AI の分析の癖（0〜3 個）。表現の癖は使わせる文法に、内容の癖は描く物に効かせる",
+    }),
+    nextTry: WeakSceneNextTry.optional(),
+  })
+  .meta({
+    ref: "WeakSceneRequest",
+    description:
+      "苦手の場面を作るのに送る、級と苦手。difficulty はその人の直近の記録の級（場面はこの級で作る）、nextTry は AI の分析の次に試すこと（任意）。本人の英文の引用・録音・名前・端末の ID は送らない。サーバーは本文を保存しない（作った場面だけを置く）",
+  });
+
+export const WeakSceneResponse = z
+  .object({
+    sceneId: z.string().regex(WEAK_SCENE_ID).meta({
+      description:
+        "作った場面の ID（weak- ＋ uuid）。部屋の start の sceneId に送ると、この場面でラウンドが始まる",
+      example: "weak-0f8fad5b-d9cb-469f-a165-70867728950e",
+    }),
+    name: z
+      .string()
+      .max(WEAK_SCENE_NAME_MAX)
+      .meta({
+        description: `場面の名前（日本語、${WEAK_SCENE_NAME_MAX} 文字まで。layout.name と同じ）`,
+        example: "雨の公園",
+      }),
+    difficulty: Difficulty,
+    focus: ChecklistKind,
+    pitch: z
+      .string()
+      .max(WEAK_SCENE_PITCH_MAX)
+      .meta({
+        description: `場面の一言（日本語、${WEAK_SCENE_PITCH_MAX} 文字まで。長ければサーバーが切る）`,
+        example: "because で理由を言いやすい場面です",
+      }),
+    layout: SceneLayout,
+    createdParts: z
+      .array(z.string())
+      .max(WEAK_SCENE_MAX_NEW_PARTS)
+      .meta({
+        description:
+          "配置が使う、アプリに同梱していない部品の id@版（0〜4 個）。この場面でその場で作った部品と、前の場面で作った部品（置き場にあったもの）の両方が入る。GET /parts/{id}/{version}.usdz で取り、先に取っておける",
+        example: ["teapot_red@1"],
+      }),
+  })
+  .meta({
+    ref: "WeakSceneResponse",
+    description:
+      "作った苦手の場面。サーバーの置き場（R2）にも置いてあり、部屋が sceneId で読む。focus は実際に狙った項目の種類（kinds のうち、その級に有る最初の種類）。layout は配置の JSON（scenenglish.scene/2。部屋で遊ぶ場面と同じ形）で、その場で作った部品は part が id@版（小さな絵を出す・部品を先に取っておくのに使う）",
+  });

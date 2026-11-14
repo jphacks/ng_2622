@@ -14,6 +14,7 @@ import {
   playAgain,
   type RoomState,
   replaceAwayHost,
+  startLoadedRound,
   startRound,
   summarize,
   visiblePlayers,
@@ -29,12 +30,13 @@ import {
   roundResults,
   skipAudio,
 } from "../domain/round";
+import { createWeakSceneRepository } from "../repositories/weakSceneRepository";
 import { findPoolScene } from "../scenes/pool";
-import type { GradeId, SceneLayoutV2 } from "../scenes/types";
+import type { GradeId, Part, SceneLayoutV2 } from "../scenes/types";
 import { MAX_PLAYERS } from "../schemas/common";
 import { ClientMessage, type ServerMessage } from "../schemas/ws";
 import {
-  generateScene,
+  generateSceneWithParts,
   type SceneGenerationEnv,
   sceneGenerationEnabled,
 } from "../usecases/scenes";
@@ -54,6 +56,10 @@ const CLOSE_LEFT = 1000;
 const GENERATION_TIMEOUT_MS = 10 * 1000;
 /** AI で作った場面の配置を置くキー。部屋が消えるとき（alarm の deleteAll）に一緒に消える */
 const layoutKey = (sceneId: string) => `layout:${sceneId}`;
+/** その場面の配置が使う、同梱に無い部品（作った部品）のメタデータを置くキー。採点に渡す */
+const partsKey = (sceneId: string) => `parts:${sceneId}`;
+/** 置き場（R2）から読む苦手の場面の ID の始まり（POST /weak-scenes が作る） */
+const WEAK_PREFIX = "weak-";
 
 export class Room extends DurableObject<CloudflareBindings> {
   /** undefined: まだ読んでいない、null: 部屋が無い */
@@ -89,7 +95,9 @@ export class Room extends DurableObject<CloudflareBindings> {
     playerId: string;
     token: string;
     round: number;
-  }): Promise<Result<{ sceneId: string; layout?: SceneLayoutV2 }>> {
+  }): Promise<
+    Result<{ sceneId: string; layout?: SceneLayoutV2; parts?: Part[] }>
+  > {
     const loaded = await this.load();
     if (!loaded) return fail("room_not_found", "部屋が無い");
     // 音声の締め切りを過ぎて届いた音声は受け取らない（その人はもう採点できなかった扱い）
@@ -102,7 +110,9 @@ export class Room extends DurableObject<CloudflareBindings> {
     await this.update(state, result.value.state);
     const { sceneId } = result.value;
     const layout = await this.sceneLayout(sceneId);
-    return ok(layout ? { sceneId, layout } : { sceneId });
+    if (!layout) return ok({ sceneId });
+    const parts = await this.ctx.storage.get<Part[]>(partsKey(sceneId));
+    return ok(parts?.length ? { sceneId, layout, parts } : { sceneId, layout });
   }
 
   /** この部屋で AI が作った場面の配置。無ければ null（作り置きの場面は置かない） */
@@ -283,6 +293,12 @@ export class Room extends DurableObject<CloudflareBindings> {
   ) {
     const env = this.env as CloudflareBindings & SceneGenerationEnv;
     if (
+      input.sceneId?.startsWith(WEAK_PREFIX) &&
+      input.difficulty === undefined
+    ) {
+      return this.startWeak(ws, state, playerId, input.sceneId);
+    }
+    if (
       input.difficulty !== undefined &&
       input.sceneId === undefined &&
       canGenerate(state, sceneGenerationEnabled(env))
@@ -293,6 +309,59 @@ export class Room extends DurableObject<CloudflareBindings> {
       playerId,
       sceneId: input.sceneId,
       difficulty: input.difficulty,
+      now: this.clock(),
+      connectedIds: this.connectedPlayerIds(),
+    });
+    if (!result.ok) return this.sendError(ws, result.error);
+    await this.beginRound(result.value.state, result.value.round);
+  }
+
+  /**
+   * 苦手の場面（POST /weak-scenes が置き場の R2 に置いたもの）でラウンドを始める。
+   * 配置と作った部品のメタデータを部屋に写して置き（配置の取得と採点はそこから読む）、ラウンドを始める。
+   * 置き場に無ければ unknown_scene。読む間に別のメッセージで状態が変わることがあるので、読んだ後に確かめ直す
+   */
+  private async startWeak(
+    ws: WebSocket,
+    state: RoomState,
+    playerId: string,
+    sceneId: string,
+  ) {
+    const probe = startLoadedRound(state, {
+      playerId,
+      scene: { sceneId, name: "" },
+      now: this.clock(),
+      connectedIds: this.connectedPlayerIds(),
+    });
+    if (!probe.ok) return this.sendError(ws, probe.error);
+    let layout = await this.sceneLayout(sceneId);
+    if (!layout) {
+      let record: Awaited<
+        ReturnType<ReturnType<typeof createWeakSceneRepository>["find"]>
+      > = null;
+      try {
+        record = this.env.BUCKET
+          ? await createWeakSceneRepository(this.env.BUCKET).find(sceneId)
+          : null;
+      } catch (e) {
+        console.error("苦手の場面を置き場から読めなかった", e);
+      }
+      if (!record || record.layout.id !== sceneId) {
+        return this.sendError(ws, {
+          code: "unknown_scene",
+          message: `シーン ${sceneId} は無い`,
+        });
+      }
+      layout = record.layout as SceneLayoutV2;
+      // round が届いてすぐ配置を取りに来るので、配る前に置く
+      await this.ctx.storage.put(layoutKey(sceneId), layout);
+      await this.ctx.storage.put(partsKey(sceneId), record.parts ?? []);
+    }
+    const current = await this.load();
+    if (!current) return;
+    const result = startLoadedRound(current, {
+      playerId,
+      scene: { sceneId, name: layout.name },
       now: this.clock(),
       connectedIds: this.connectedPlayerIds(),
     });
@@ -325,8 +394,9 @@ export class Room extends DurableObject<CloudflareBindings> {
     try {
       let scene: GeneratedScene | null = null;
       let layout: SceneLayoutV2 | null = null;
+      let parts: Part[] = [];
       try {
-        layout = await generateScene(
+        const made = await generateSceneWithParts(
           this.env as CloudflareBindings & SceneGenerationEnv,
           { grade: difficulty },
           {
@@ -339,6 +409,8 @@ export class Room extends DurableObject<CloudflareBindings> {
             ]),
           },
         );
+        layout = made.layout;
+        parts = made.parts;
         scene = { sceneId: layout.id, name: layout.name };
       } catch (e) {
         console.error("部屋での場面の生成に失敗。作り置きの場面にする", e);
@@ -357,6 +429,9 @@ export class Room extends DurableObject<CloudflareBindings> {
       // round が届いてすぐ配置を取りに来るので、配る前に置く
       if (layout && finished.round?.sceneId === layout.id) {
         await this.ctx.storage.put(layoutKey(layout.id), layout);
+        if (parts.length > 0) {
+          await this.ctx.storage.put(partsKey(layout.id), parts);
+        }
       }
       await this.beginRound(finished.state, finished.round);
     } finally {

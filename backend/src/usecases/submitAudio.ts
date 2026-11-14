@@ -1,7 +1,7 @@
 import { fail, ok } from "../domain/result";
 import type { Grade } from "../domain/round";
 import type { RoomRepository } from "../repositories/roomRepository";
-import type { SceneLayoutV2 } from "../scenes/types";
+import type { Part, SceneLayoutV2 } from "../scenes/types";
 import { type ScoreResult, type ScoringEnv, score } from "../scoring";
 
 /** 16 kHz・16 bit・モノラルで 20 秒 ≈ 0.64 MB。採点（scoring/）と同じく 1 MB まで */
@@ -63,6 +63,8 @@ export const submitAudio = async (
       input.transcript,
       // DO の RPC を通ると型の上で座標の組（Vec3）が number[] になるので戻す。中身は部屋が置いた配置そのもの
       begun.value.layout as SceneLayoutV2 | undefined,
+      // 苦手の場面で作った部品のメタデータ（部屋が配置と一緒に置いたもの）
+      begun.value.parts as Part[] | undefined,
     ).catch(() => null);
     await repository.recordGrade(roomId, {
       round,

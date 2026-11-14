@@ -217,6 +217,49 @@ CLAUDE_API_KEY=... pnpm tsx scripts/make-pool-v2.ts ~/pool-v2 --grade eiken-2 --
 
 2026-11-14 の実測（`claude-sonnet-5-5` の `low`、16 個を 4 個ずつ並べて）: 1 個 3.6〜16.0 秒（中央値 6.1 秒。Claude 1 回は 3.6〜9.9 秒で、書き直した 4 個は 11.4〜16.0 秒）、4 個並べて 8.6〜16.0 秒。1 個 0.006〜0.049 USD、平均 0.026 USD（system の約 8,300 トークンのキャッシュに当たれば 1 回約 0.01 USD。並べた 1 回目は 4 個ともキャッシュを書くので 1 回約 0.03 USD）。16 個のうち書き直しは 4 個（浮いた基本形 2・幅か奥行きの取り違え 2）で、4 個とも書き直しで通った。武器と人の名前の注文は断った（包丁は料理の道具として作った）。作った USDZ はすべて `usdchecker --arkit` を通った。
 
+## 苦手の場面（`POST /weak-scenes`、`src/usecases/weakScenes.ts`）
+
+苦手の画面で AI の分析が返ったら、アプリが級と苦手（言えた割合の低い項目の種類・癖の題と直し方・次に試すこと）を送り、サーバーがその苦手を練習する場面を作って返す。手持ちに無い物は、上の「部品をその場で作る」でその場で 3D の部品を作る。決めたことの正本は [`docs/design/part-generation.md`](../docs/design/part-generation.md)。
+
+- 流れ: 狙う種類を選ぶ（`kinds` のうちその級に有る最初の種類。どれも無ければ center）→ 1 回目（英文）の user の文に苦手を足す（system は変えないので cache は崩れない。一覧に無い身近な物を 4 個まで許し、一言 `pitch` も書かせる）→ 2 回目は ID の規約で引く（下）→ 裏取り（作る前の仮のメタデータで）→ 足りない部品を作る → 座標（裏取りで直した配置を使い回す）→ R2 の `weak-scenes/<sceneId>.json` に置いて返す。裏取りに落ちたら 3 回まで作り直す。部品を作れなければ作り直さずに 502。
+- 中身: `src/scenes/weak.ts`（狙う種類・苦手の指示）、`src/scenes/lookup.ts`（ID の規約で引く）、`src/scenes/generate-v2.ts`（`generateVerifiedScene` の `lookup`）、`src/usecases/weakScenes.ts`（スイッチ・上限・置き場・ログ）、`src/durable-objects/weakSceneMaker.ts`（作る所。裏取りと座標の計算の CPU が 1 回 5〜70 ms あり Worker で動かさないため、1 回ごとに新しい Durable Object で作る）、`src/repositories/weakSceneRepository.ts`（置き場）、`src/routes/weakScenes.ts`（口）。
+- ID の規約で引く 2 回目: 部品の一覧を prompt に出さず、規約（`src/parts/ids.ts`）と、人と動物の動作の表（ポーズごとに「動作・言える動詞・できる誰」）と、もう部品のある物の名詞だけを渡す。Claude は人を `person_<動作>_<誰>_a`（誰は 1 語。old man は `oldman`）、物を `名詞` か `名詞_区別` で書き、同梱に無い物には注文（`newParts`）も書く。コードは、同梱に有ればそのまま、人と動物は誰と動作が最も近い同梱の部品に寄せ、物は同梱の名前（id と words。`ball` → `ball_red`）、前に作った部品（R2）の順に引き、無ければ注文で作る（1 場面 4 個まで）。注文は、部品を作る口と同じ確かめ（`refusedTerm`・`orderProblem`）と、人・動物・建物・地面でないことを先に見て、だめなら作らずに作り直させる。人・動物・建物・地面かは、英語の主の名詞（words の各句の最後の語。「X of Y」は X。複数形は単数に寄せる。words が無ければ id の先頭の語）で決める（`lookup.ts` の `notAThing`）。brick wall・wooden door・living room・grass は断り、fish tank・door mat・window box・bucket of sand・carpet は通す。人・動物と家（house・home）は、どの句も「様子の語＋人・動物」（brown dog・old man）や「様子・材質の語＋家」（big house・brick house）のときだけ断り、別の語が前に付いた句（teddy bear・rubber duck・computer mouse・bird house・doll house）や食べ物（category が food の chicken・fish）は物として通す。物でも、区別の語の無い 1 語の id が人・動物・建物・地面の名詞（duck・chicken・house）なら作らず、`duck_rubber` のような `名詞_区別` に書き直させる（素の id が共有の置き場に残ると、のちに別の場面が書いた素の duck にそのおもちゃが引かれるため）。作った部品は配置で `id@版` にし、返す `createdParts` に入れる（前に作った部品も入る）。
+- `SCENE_PART_LOOKUP`（部屋のスタート・作り置きの生成の 2 回目の引き方）: 既定は `list`（今の、部品の一覧を出す道）。`convention` なら規約で引くが、ここでは部品を作らず、R2 も引かない（同梱に無い物は裏取りで落とす）。部品をその場で作るのは苦手の場面だけ。
+- 部屋: start の `sceneId` が `weak-` で始まれば、部屋が R2 から配置と作った部品のメタデータを読んで写し、ラウンドを始める（無ければ `unknown_scene`）。参加者は `GET /scenes/{id}/layout?room=` で取る（room が無くても `weak-` は R2 から返す）。採点の場面の情報は、同梱に無い部品を部屋が写したメタデータで数える。サーバーからアプリへ送るメッセージには欄を足していない。
+- ログ: 級・狙った種類・癖の数・作り直しの回数と落ちた理由の code・作った部品の ID・時間・トークンと費用だけ。癖・直し方・次に試すことと、Claude が書いた英文（裏取りの理由の文、部品の理由）は、成功でも失敗でも出さない（テストで確かめる）。
+
+| 守り | 値（`wrangler.jsonc` の `vars`。普段） | 超えたとき |
+| --- | --- | --- |
+| 止めるスイッチ `WEAK_SCENE_GENERATION` | `on`（PR のプレビューは `off`） | 503 `generation_unavailable`（本文を読む前に断る） |
+| Claude のキー・置き場（`BUCKET`） | 要る | 503 `generation_unavailable`（数える前に断る） |
+| 本文の大きさ | 8 KB | 413 `invalid_message` |
+| IP ごとの 1 時間の回数 `WEAK_SCENE_IP_PER_HOUR` | 5 回 | 429 `rate_limited` |
+| 全体の 1 日（日本時間）の回数 `WEAK_SCENE_DAILY_LIMIT` | 40 回（受け付けた 1 回で 1 つ。作り直しや部品は数えない） | 429 `rate_limited` |
+| 時間 | 生成は 84 秒で締め切る（Claude の 1 回は 45 秒まで、残りが 12 秒を切ったら呼ばない。部品の 1 回は残りの時間で 35 秒まで、残りが 10 秒を切ったら作らない）。Worker は作る所を 90 秒まで待つ | 502 `generation_failed` |
+
+数える場所は苦手の分析と同じ `UsageCounter` の、別のインスタンス（`weak-scenes`）。
+
+### 手元で苦手の場面を作ってみる
+
+`backend/.dev.vars` に `CLAUDE_API_KEY` を書いて `pnpm dev` を起こす（手元の R2 と Durable Object を使う）。
+
+```sh
+curl -s -X POST http://localhost:8787/weak-scenes -H 'content-type: application/json' \
+  -d '{"difficulty":"eiken-pre2","kinds":["reason","detail"],"habits":[{"viewpoint":"content","title":"理由をつけずに終わる","fix":"because で理由を足す。"}]}' | jq .
+```
+
+返った `layout` は `blender --background --factory-startup --python ../scripts/scene/render_layout.py -- <配置>.json --out <dir> --parts <dir>` で画像にできる（作った部品は `GET /parts/<id>/<版>.usdz` で取り、同梱の部品と一緒のフォルダに置いて `--parts` に渡す）。
+
+### 苦手の場面を測る（`scripts/measure-weak-scenes.ts`）
+
+本物の Claude と `ensureParts` で場面を 1 回ずつ作り（R2 はメモリの偽物）、時間・費用・作った部品を測る。続けて、その回の Claude の応答を記録したものでなぞり、1 回の要求の CPU（裏取り・座標・部品の組み立て。Claude を待つ時間は入らない）を測る。上限（UsageCounter）は通さない。
+
+```sh
+CLAUDE_API_KEY=... pnpm tsx scripts/measure-weak-scenes.ts <結果の JSON> [場面の数（既定 4）] [費用の上限ドル（既定 2）]
+```
+
+2026-11-14 の実測（`claude-sonnet-5-5` の `low`）: 手元の wrangler dev で 3 つの級と 6 通りの苦手を通し、直しを入れた後の 6 回で 5 回成功（4.8〜29 秒、失敗の 1 回は 30.8 秒）。1 回の費用は部品なしで 0.008〜0.075 USD、平均 約 0.035 USD で、部品を 1 個作ると約 0.026 USD 増える。新しい部品（凧・急須など）を使ったのは 3 回に 1 回ほど。測定のスクリプトでは 7 回中 7 回成功（4.3〜20 秒）。CPU は 1 回 5.6〜70 ms（ほとんどが座標の計算）、部品の組み立ては 1 個 1〜15 ms。失敗はどれも eiken-2 で、風船が絵の外に出る・持っている物を refs にする、が 3 回の作り直しでも直らなかった。
+
 ## タイトル画面の 3D（`GET /title`、`src/title/`）
 
 タイトル画面（ホーム）に、既定の場面（公園）の代わりに期間つきで出す 3D（企業の 3D 広告。今は JPHACKS が提供した場合の見本）。決め方は [ADR](../docs/adr/20261113-decide-title-diorama-on-server-with-expiry.md)。

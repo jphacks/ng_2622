@@ -271,7 +271,8 @@ test("wrangler.jsonc は本番で分析を on、プレビューで off にし、
     );
   }
   const tags = config.migrations.map((m: { tag: string }) => m.tag);
-  assert.deepEqual(tags, ["v1", "v2", "v3", "v4", "v5"]);
+  // v5 で足した UsageCounter はそのまま（後の tag は別の Durable Object を足す）
+  assert.deepEqual(tags.slice(0, 5), ["v1", "v2", "v3", "v4", "v5"]);
   assert.deepEqual(config.migrations[4].new_sqlite_classes, ["UsageCounter"]);
 });
 
