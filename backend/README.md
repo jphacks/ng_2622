@@ -94,16 +94,16 @@ jq .request test/fixtures/weak-points/person-1.json \
   | curl -s -X POST http://localhost:8787/weak-points -H 'content-type: application/json' -d @- | jq .
 ```
 
-### 苦手の分析の上限を当日の値にする（Award Day、11/15）
+### 苦手の分析・苦手の場面の上限を当日の値にする（Award Day、11/15）
 
 `vars` を変えるのも PR と approve が要るので、当日の値の PR は 11/14 に approve をもらい、11/15 の朝に merge する（merge すると本番にデプロイされる）。
 
-1. 当日の分（分析 500 回 ≈ 25 USD と採点の分）が、Claude のクレジットの残りと月の支出上限に収まるかを Console で確かめる。
-2. `origin/main` からブランチを切り、`wrangler.jsonc` の `vars` の `WEAK_POINT_IP_PER_HOUR` を `"60"`、`WEAK_POINT_DAILY_LIMIT` を `"500"` にする（`previews` は `off` のまま）。
+1. 当日の分（分析 500 回 ≈ 25 USD、苦手の場面 200 回で多くても約 30 USD、と採点の分）が、Claude のクレジットの残りと月の支出上限に収まるかを Console で確かめる。
+2. `origin/main` からブランチを切り、`wrangler.jsonc` の `vars` の `WEAK_POINT_IP_PER_HOUR` を `"60"`、`WEAK_POINT_DAILY_LIMIT` を `"500"`、`WEAK_SCENE_IP_PER_HOUR` を `"60"`、`WEAK_SCENE_DAILY_LIMIT` を `"200"` にする（`previews` は `off` のまま）。タイトル画面の JPHACKS の場面を本番でも出すなら `TITLE_CAMPAIGN` を `"jphacks-2026"` にする。
 3. `pnpm cf-typegen` で `worker-configuration.d.ts` を作り直す（`vars` の値が型に入るので、作り直さないと backend-checks の `pnpm cf-typegen:check` が落ちる）。変えるのは `wrangler.jsonc` と `worker-configuration.d.ts` の 2 つだけでよい（テストは値そのものでなく、正の整数の文字列かだけを見る）。
-4. PR を出して 11/14 に approve をもらい、11/15 の朝に merge する。デプロイの後、Observability で `weak_points_analyzed`・`weak_points_limited` の出方を見る。
-5. 当日が終わったら、同じ手順で普段の値（10・200）に戻す PR を出す。
-6. 急いで止めるときは `WEAK_POINT_ANALYSIS` を `"off"` にする（アプリは数える分析だけを出す）。
+4. PR を出して 11/14 に approve をもらい、11/15 の朝に merge する。デプロイの後、Observability で `weak_points_analyzed`・`weak_points_limited` と、苦手の場面の `weak_scene_generated`・`weak_scene_failed`・`weak_scene_limited` の出方を見る。
+5. 当日が終わったら、同じ手順で普段の値（分析 10・200、苦手の場面 5・40、`TITLE_CAMPAIGN` は空）に戻す PR を出す。
+6. 急いで止めるときは `WEAK_POINT_ANALYSIS` を `"off"` にする（アプリは数える分析だけを出す）。苦手の場面は `WEAK_SCENE_GENERATION` を `"off"` にする（アプリは「作れませんでした」を出す）。
 
 ### 分析を測る（`scripts/make-weak-point-fixtures.ts`・`scripts/measure-weak-points.ts`）
 
