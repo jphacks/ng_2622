@@ -1,0 +1,105 @@
+{
+  "protocol": "scenenglish.scene/2",
+  "id": "gen-v2-eiken3-cafe-38",
+  "name": "カフェでコーヒー",
+  "difficulty": "eiken-3",
+  "description": "A woman is drinking from a cup. A boy is writing at a desk. There is a plant next to the window.",
+  "checklist": [
+    {
+      "id": "woman_drink",
+      "kind": "center",
+      "label": "女の人がカップで飲んでいる",
+      "accept": "a woman is drinking from a cup",
+      "refs": ["woman"]
+    },
+    {
+      "id": "boy_write",
+      "kind": "center",
+      "label": "男の子が机で書いている",
+      "accept": "a boy is writing at a desk",
+      "refs": ["boy"]
+    },
+    {
+      "id": "plant_window",
+      "kind": "detail",
+      "label": "窓の隣に植物がある",
+      "accept": "there is a plant next to the window",
+      "refs": ["plant", "window"]
+    }
+  ],
+  "items": [
+    {
+      "key": "ground",
+      "part": "floor_wood",
+      "place": {
+        "relation": "ground"
+      },
+      "position": [0, 0, 0]
+    },
+    {
+      "key": "back_wall",
+      "part": "wall_cafe",
+      "place": {
+        "relation": "ground"
+      },
+      "position": [0, 0, -3.57]
+    },
+    {
+      "key": "window",
+      "part": "window",
+      "place": {
+        "relation": "ground",
+        "zone": "back_right"
+      },
+      "position": [2.75, 0, -2.75]
+    },
+    {
+      "key": "plant",
+      "part": "plant_pot",
+      "place": {
+        "relation": "next_to",
+        "target": "window",
+        "side": "left"
+      },
+      "position": [3.484, 0, -1.804]
+    },
+    {
+      "key": "woman",
+      "part": "person_drink_woman_a",
+      "place": {
+        "relation": "ground",
+        "zone": "left"
+      },
+      "facing": "camera",
+      "position": [-2.75, 0, 0]
+    },
+    {
+      "key": "desk",
+      "part": "table_small",
+      "place": {
+        "relation": "ground",
+        "zone": "center"
+      },
+      "position": [0, 0, 0]
+    },
+    {
+      "key": "chair1",
+      "part": "chair",
+      "place": {
+        "relation": "seat_at",
+        "target": "desk"
+      },
+      "facing": "desk",
+      "position": [0, 0, -0.595]
+    },
+    {
+      "key": "boy",
+      "part": "person_write_boy_a",
+      "place": {
+        "relation": "sit_on",
+        "target": "chair1"
+      },
+      "position": [-0.001, 0.1, -0.445]
+    }
+  ]
+}

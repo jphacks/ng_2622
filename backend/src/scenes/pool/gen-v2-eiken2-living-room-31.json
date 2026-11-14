@@ -1,0 +1,215 @@
+{
+  "protocol": "scenenglish.scene/2",
+  "id": "gen-v2-eiken2-living-room-31",
+  "name": "リビングでの誕生日",
+  "difficulty": "eiken-2",
+  "description": "A woman is cutting a cake. A girl is blowing out the candles. A man is cheering on the sofa because the girl is blowing out the candles. A boy is putting plates on the table so that they can eat the cake. There is a plant next to the sofa. There is a bag on the chair.",
+  "checklist": [
+    {
+      "id": "woman_cut",
+      "kind": "center",
+      "label": "女の人がケーキを切っている",
+      "accept": "a woman is cutting a cake",
+      "refs": ["woman", "cake"]
+    },
+    {
+      "id": "girl_blow",
+      "kind": "center",
+      "label": "女の子がろうそくを吹き消している",
+      "accept": "a girl is blowing out the candles",
+      "refs": ["girl", "candle"]
+    },
+    {
+      "id": "man_cheer",
+      "kind": "center",
+      "label": "男の人が喜んで声をあげている",
+      "accept": "a man is cheering",
+      "refs": ["man", "sofa"]
+    },
+    {
+      "id": "boy_plates",
+      "kind": "center",
+      "label": "男の子がお皿をテーブルに置いている",
+      "accept": "a boy is putting plates on the table",
+      "refs": ["boy", "plate", "table"]
+    },
+    {
+      "id": "why_cheer",
+      "kind": "reason",
+      "label": "男の人が喜んでいる理由",
+      "accept": "a man is cheering on the sofa because the girl is blowing out the candles",
+      "refs": ["man", "girl", "candle"]
+    },
+    {
+      "id": "link_plates",
+      "kind": "link",
+      "label": "お皿を置く目的",
+      "accept": "a boy is putting plates on the table so that they can eat the cake",
+      "refs": ["boy", "plate", "cake"]
+    },
+    {
+      "id": "plant_sofa",
+      "kind": "detail",
+      "label": "ソファの隣に鉢植えがある",
+      "accept": "there is a plant next to the sofa",
+      "refs": ["plant", "sofa"]
+    },
+    {
+      "id": "bag_chair",
+      "kind": "detail",
+      "label": "椅子の上にかばんがある",
+      "accept": "there is a bag on the chair",
+      "refs": ["bag", "chair"]
+    }
+  ],
+  "items": [
+    {
+      "key": "ground",
+      "part": "floor_wood",
+      "place": {
+        "relation": "ground"
+      },
+      "position": [0, 0, 0]
+    },
+    {
+      "key": "wall",
+      "part": "wall_window",
+      "place": {
+        "relation": "ground"
+      },
+      "position": [0, 0, -3.86]
+    },
+    {
+      "key": "table",
+      "part": "table_small",
+      "place": {
+        "relation": "ground",
+        "zone": "center"
+      },
+      "position": [-0.05, 0, 1.612]
+    },
+    {
+      "key": "cake",
+      "part": "cake",
+      "place": {
+        "relation": "on",
+        "target": "table"
+      },
+      "position": [-0.05, 0.72, 1.612]
+    },
+    {
+      "key": "candle",
+      "part": "candles",
+      "place": {
+        "relation": "on",
+        "target": "cake"
+      },
+      "position": [-0.05, 0.832, 1.612]
+    },
+    {
+      "key": "chair_girl",
+      "part": "chair",
+      "place": {
+        "relation": "seat_at",
+        "target": "table"
+      },
+      "facing": "table",
+      "position": [-0.05, 0, 1.017]
+    },
+    {
+      "key": "girl",
+      "part": "person_blow_girl_a",
+      "place": {
+        "relation": "sit_on",
+        "target": "chair_girl"
+      },
+      "position": [-0.05, 0.1, 1.148]
+    },
+    {
+      "key": "woman",
+      "part": "person_cut_mother_a",
+      "place": {
+        "relation": "relate",
+        "target": "table",
+        "link": "hand",
+        "side": "right",
+        "distance": "touch",
+        "turn": "toward"
+      },
+      "position": [0.315, 0, 1.491],
+      "yaw": -90
+    },
+    {
+      "key": "plate",
+      "part": "plate",
+      "place": {
+        "relation": "on",
+        "target": "table"
+      },
+      "position": [-0.05, 0.72, 1.612]
+    },
+    {
+      "key": "boy",
+      "part": "person_put_boy_a",
+      "place": {
+        "relation": "relate",
+        "target": "table",
+        "link": "hand",
+        "side": "left",
+        "distance": "touch",
+        "turn": "toward"
+      },
+      "position": [-0.546, 0, 1.739],
+      "yaw": 90
+    },
+    {
+      "key": "chair",
+      "part": "chair",
+      "place": {
+        "relation": "ground",
+        "zone": "back_left"
+      },
+      "position": [-2.8, 0, -1.138],
+      "yaw": 90
+    },
+    {
+      "key": "bag",
+      "part": "bag",
+      "place": {
+        "relation": "on",
+        "target": "chair"
+      },
+      "position": [-2.8, 0.46, -1.138]
+    },
+    {
+      "key": "sofa",
+      "part": "sofa",
+      "place": {
+        "relation": "ground",
+        "zone": "right"
+      },
+      "facing": "camera",
+      "position": [2.7, 0, 1.612],
+      "yaw": 90
+    },
+    {
+      "key": "man",
+      "part": "person_clap_adult_a",
+      "place": {
+        "relation": "sit_on",
+        "target": "sofa"
+      },
+      "position": [3, -0.02, 1.611],
+      "yaw": 90
+    },
+    {
+      "key": "plant",
+      "part": "plant_pot",
+      "place": {
+        "relation": "next_to",
+        "target": "sofa"
+      },
+      "position": [1.644, 0, 1.612]
+    }
+  ]
+}

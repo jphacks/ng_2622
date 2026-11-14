@@ -1,0 +1,85 @@
+{
+  "protocol": "scenenglish.scene/2",
+  "id": "gen-v2-eiken3-living-room-31",
+  "name": "部屋で本を読む",
+  "difficulty": "eiken-3",
+  "description": "A man is reading a book. A girl is sitting on the sofa. There is a plant next to the sofa.",
+  "checklist": [
+    {
+      "id": "man_read",
+      "kind": "center",
+      "label": "男の人が本を読んでいる",
+      "accept": "a man is reading a book",
+      "refs": ["man"]
+    },
+    {
+      "id": "girl_sit",
+      "kind": "center",
+      "label": "女の子が座っている",
+      "accept": "a girl is sitting on the sofa",
+      "refs": ["girl", "sofa"]
+    },
+    {
+      "id": "plant_sofa",
+      "kind": "detail",
+      "label": "ソファの隣に鉢植えがある",
+      "accept": "there is a plant next to the sofa",
+      "refs": ["plant", "sofa"]
+    }
+  ],
+  "items": [
+    {
+      "key": "ground",
+      "part": "floor_wood",
+      "place": {
+        "relation": "ground"
+      },
+      "position": [0, 0, 0]
+    },
+    {
+      "key": "wall",
+      "part": "wall_window",
+      "place": {
+        "relation": "ground"
+      },
+      "position": [0, 0, -3.86]
+    },
+    {
+      "key": "sofa",
+      "part": "sofa",
+      "place": {
+        "relation": "ground",
+        "zone": "center"
+      },
+      "position": [0, 0, 0]
+    },
+    {
+      "key": "girl",
+      "part": "person_sit_girl_a",
+      "place": {
+        "relation": "sit_on",
+        "target": "sofa"
+      },
+      "position": [0, 0.1, 0.231]
+    },
+    {
+      "key": "plant",
+      "part": "plant_pot",
+      "place": {
+        "relation": "next_to",
+        "target": "sofa",
+        "side": "right"
+      },
+      "position": [1.516, 0, 0]
+    },
+    {
+      "key": "man",
+      "part": "person_read_adult_a",
+      "place": {
+        "relation": "ground",
+        "zone": "front_left"
+      },
+      "position": [-2.75, 0, 2.75]
+    }
+  ]
+}
