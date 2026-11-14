@@ -9,9 +9,10 @@ enum APIClient {
     config.backendURL.map { make(url: $0) }
   }
 
-  /// url につなぐ Client。音声を送るときは middlewares に BearerToken（合言葉）を入れる
-  static func make(url: URL, middlewares: [any ClientMiddleware] = []) -> Client {
-    Client(serverURL: url, transport: URLSessionTransport(), middlewares: middlewares)
+  /// url につなぐ Client。音声を送るときは middlewares に BearerToken（合言葉）を入れ、session で時間切れを短くする
+  static func make(url: URL, session: URLSession = .shared, middlewares: [any ClientMiddleware] = []) -> Client {
+    Client(
+      serverURL: url, transport: URLSessionTransport(configuration: .init(session: session)), middlewares: middlewares)
   }
 
   /// バックエンドが動いているか（GET /health が 200 を返すか）
