@@ -3,7 +3,7 @@
   "id": "gen-v2-eiken2-bus-stop-35",
   "name": "バス停で話す人とボール遊び",
   "difficulty": "eiken-2",
-  "description": "A woman is talking to a man. The man is listening because the woman is talking to him. A boy is throwing a ball. The boy is throwing a ball, so a tall boy is waiting to catch it. There is a trash can next to the bus stop. The bench is in the bus stop.",
+  "description": "A woman is talking to a man. The man is listening because the woman is talking to him. A boy is throwing a ball. The boy is throwing a ball, so a tall boy is waiting to catch it. There is a trash can next to the bus stop. The bench is at the bus stop.",
   "checklist": [
     {
       "id": "woman_talk",
@@ -58,7 +58,7 @@
       "id": "bench",
       "kind": "detail",
       "label": "ベンチがバス停の中にある",
-      "accept": "the bench is in the bus stop",
+      "accept": "the bench is at the bus stop",
       "refs": ["bench", "bus_stop"]
     }
   ],

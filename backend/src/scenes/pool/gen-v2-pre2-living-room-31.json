@@ -16,7 +16,7 @@
       "id": "woman_call",
       "kind": "center",
       "label": "女の人が男の子を呼んでいる",
-      "accept": "a woman is calling the boy",
+      "accept": "a woman is calling the boy / a woman is waking the boy up",
       "refs": ["woman", "boy"]
     },
     {
@@ -30,7 +30,7 @@
       "id": "why_call",
       "kind": "reason",
       "label": "女の人が男の子を呼んでいる理由",
-      "accept": "a woman is calling the boy because he is sleeping",
+      "accept": "a woman is calling the boy because he is sleeping / a woman is waking the boy up because he is sleeping",
       "refs": ["woman", "boy"]
     },
     {

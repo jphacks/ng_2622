@@ -3,7 +3,7 @@
   "id": "gen-v2-eiken2-street-34",
   "name": "雨の道で転んだ女の人",
   "difficulty": "eiken-2",
-  "description": "A woman has fallen down on the road. A man is helping the woman get up because she has fallen down. A boy is running to the bus stop because rain is falling, so he does not get wet. A girl is looking far away. There is a car on the road. The trash can is next to the bus stop.",
+  "description": "A woman has fallen down on the road. A man is helping the woman get up because she has fallen down. A boy is running to the bus stop because it is raining, so that he does not get wet. A girl is looking far away. There is a car on the road. The trash can is next to the bus stop.",
   "checklist": [
     {
       "id": "woman_fallen",
@@ -44,7 +44,7 @@
       "id": "link_run",
       "kind": "link",
       "label": "雨なので男の子がバス停へ走っている",
-      "accept": "a boy is running to the bus stop because rain is falling, so he does not get wet",
+      "accept": "a boy is running to the bus stop because it is raining, so that he does not get wet",
       "refs": ["boy", "rain", "bus_stop"]
     },
     {
