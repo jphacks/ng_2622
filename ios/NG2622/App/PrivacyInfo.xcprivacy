@@ -10,7 +10,7 @@
 	<false/>
 	<key>NSPrivacyTrackingDomains</key>
 	<array/>
-	<!-- 外に送るもの。どれも遊ぶため（採点・苦手の分析）だけに使い、本人とは結び付けない -->
+	<!-- 外に送るもの。どれもアプリの機能（採点・苦手の分析・障害の調べ）だけに使い、本人とは結び付けない -->
 	<key>NSPrivacyCollectedDataTypes</key>
 	<array>
 		<!-- 話した声の録音（採点のためにバックエンドへ送り、Azure と Claude で採点する。サーバーには保存しない。
@@ -27,10 +27,24 @@
 				<string>NSPrivacyCollectedDataTypePurposeAppFunctionality</string>
 			</array>
 		</dict>
-		<!-- 表示名と、文字にした英文。場面の評価の ★ とコメントは、2026-11-13 に結果の画面から評価を外したので送らない -->
+		<!-- 表示名と、文字にした英文（採点のときに Azure が文字にした英文が、サーバーのログに最大 7 日残る分も含む）。
+		     場面の評価の ★ とコメントは、2026-11-13 に結果の画面から評価を外したので送らない -->
 		<dict>
 			<key>NSPrivacyCollectedDataType</key>
 			<string>NSPrivacyCollectedDataTypeOtherUserContent</string>
+			<key>NSPrivacyCollectedDataTypeLinked</key>
+			<false/>
+			<key>NSPrivacyCollectedDataTypeTracking</key>
+			<false/>
+			<key>NSPrivacyCollectedDataTypePurposes</key>
+			<array>
+				<string>NSPrivacyCollectedDataTypePurposeAppFunctionality</string>
+			</array>
+		</dict>
+		<!-- サーバー（Cloudflare）の動作の記録（ログ）に残る接続元の IP アドレスなど。最大 7 日で消え、障害と使い過ぎを調べるためだけに使う（2026-11-14 に足した） -->
+		<dict>
+			<key>NSPrivacyCollectedDataType</key>
+			<string>NSPrivacyCollectedDataTypeOtherDiagnosticData</string>
 			<key>NSPrivacyCollectedDataTypeLinked</key>
 			<false/>
 			<key>NSPrivacyCollectedDataTypeTracking</key>
