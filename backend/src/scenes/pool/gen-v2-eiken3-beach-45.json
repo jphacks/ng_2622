@@ -1,0 +1,77 @@
+{
+  "protocol": "scenenglish.scene/2",
+  "id": "gen-v2-eiken3-beach-45",
+  "name": "砂浜のベンチと犬",
+  "difficulty": "eiken-3",
+  "description": "A dog is running on the beach. A man is eating an apple. There is a red ball next to the man.",
+  "checklist": [
+    {
+      "id": "dog_run",
+      "kind": "center",
+      "label": "犬が走っている",
+      "accept": "a dog is running",
+      "refs": ["dog"]
+    },
+    {
+      "id": "man_eat",
+      "kind": "center",
+      "label": "男の人がリンゴを食べている",
+      "accept": "a man is eating an apple",
+      "refs": ["man"]
+    },
+    {
+      "id": "ball_next",
+      "kind": "detail",
+      "label": "男の人の隣に赤いボールがある",
+      "accept": "there is a red ball next to the man",
+      "refs": ["ball", "man"]
+    }
+  ],
+  "items": [
+    {
+      "key": "ground",
+      "part": "sand_beach",
+      "place": {
+        "relation": "ground"
+      },
+      "position": [0, 0, 0]
+    },
+    {
+      "key": "man",
+      "part": "person_eat_adult_a",
+      "place": {
+        "relation": "ground",
+        "zone": "center"
+      },
+      "facing": "camera",
+      "position": [0, 0, 0]
+    },
+    {
+      "key": "ball",
+      "part": "ball_red",
+      "place": {
+        "relation": "next_to",
+        "target": "man",
+        "side": "right"
+      },
+      "position": [0.514, 0, 0]
+    },
+    {
+      "key": "dog",
+      "part": "animal_run_dog_a",
+      "place": {
+        "relation": "ground",
+        "zone": "front_left"
+      },
+      "facing": "right",
+      "position": [-2.75, 0, 2.75],
+      "yaw": 116.9,
+      "motion": {
+        "type": "move",
+        "to": [2.667, 0, 0],
+        "duration": 5,
+        "toward": "right"
+      }
+    }
+  ]
+}

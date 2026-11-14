@@ -1,0 +1,99 @@
+{
+  "protocol": "scenenglish.scene/2",
+  "id": "gen-v2-eiken3-classroom-42",
+  "name": "教室の黒板",
+  "difficulty": "eiken-3",
+  "description": "A woman is writing on the blackboard. A girl is writing at a desk. There is a book on the desk.",
+  "checklist": [
+    {
+      "id": "woman_write",
+      "kind": "center",
+      "label": "女の人が黒板に書いている",
+      "accept": "a woman is writing",
+      "refs": ["woman", "blackboard"]
+    },
+    {
+      "id": "girl_write",
+      "kind": "center",
+      "label": "女の子が机で書いている",
+      "accept": "a girl is writing",
+      "refs": ["girl", "desk"]
+    },
+    {
+      "id": "book_desk",
+      "kind": "detail",
+      "label": "机の上に本がある",
+      "accept": "there is a book on the desk",
+      "refs": ["book", "desk"]
+    }
+  ],
+  "items": [
+    {
+      "key": "ground",
+      "part": "floor_classroom",
+      "place": {
+        "relation": "ground"
+      },
+      "position": [0, 0, 0]
+    },
+    {
+      "key": "blackboard",
+      "part": "wall_blackboard",
+      "place": {
+        "relation": "ground"
+      },
+      "position": [0, 0, -3.88]
+    },
+    {
+      "key": "woman",
+      "part": "person_blackboard_woman_a",
+      "place": {
+        "relation": "relate",
+        "target": "blackboard",
+        "link": "hand",
+        "side": "front",
+        "distance": "touch",
+        "turn": "toward"
+      },
+      "position": [-0.723, 0, -3.501],
+      "yaw": 180
+    },
+    {
+      "key": "desk",
+      "part": "table_small",
+      "place": {
+        "relation": "ground",
+        "zone": "front_right"
+      },
+      "position": [2.75, 0, 2.75]
+    },
+    {
+      "key": "chair",
+      "part": "chair",
+      "place": {
+        "relation": "seat_at",
+        "target": "desk"
+      },
+      "facing": "desk",
+      "position": [2.75, 0, 2.155]
+    },
+    {
+      "key": "girl",
+      "part": "person_write_girl_a",
+      "place": {
+        "relation": "sit_on",
+        "target": "chair"
+      },
+      "position": [2.749, 0.1, 2.286]
+    },
+    {
+      "key": "book",
+      "part": "book",
+      "place": {
+        "relation": "on",
+        "target": "desk"
+      },
+      "position": [2.75, 0.72, 2.75]
+    }
+  ]
+}
