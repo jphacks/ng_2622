@@ -15,6 +15,20 @@ final class LiveGameClient: GameClient {
 
   /// join の返事（welcome か error）を待つ時間
   static let joinTimeout: Duration = .seconds(10)
+  /// 音声を送る通信を打ち切るまでの時間（秒）。サーバーは録音の終わりから RoundTiming.audioGrace（15 秒）しか
+  /// 音声を待たず、その後に届いた音声は deadline_passed で断る。URLSession の既定（データが途切れて 60 秒・
+  /// 全体は 7 日）では、締め切りを過ぎても送り続けてしまう。送り始めるのは録音が始まった後なので、
+  /// 録音の最長と猶予を足した長さ（35 秒）たてば必ず締め切りを過ぎていて、待っても採点されない。
+  /// 猶予の 15 秒だけにすると、早く話し終えた人の、締め切りに間に合う音声まで打ち切りうる。打ち切ったら skip を送る。
+  /// 打ち切る前でも、待つ画面はサーバーが締め切って送る結果で終わる（ずっと待つことはない）
+  static let uploadTimeout: TimeInterval = RoundTiming.recording + RoundTiming.audioGrace
+  /// 音声を送る URLSession（uploadTimeout で打ち切る）
+  private static let uploadSession: URLSession = {
+    let configuration = URLSessionConfiguration.default
+    configuration.timeoutIntervalForRequest = uploadTimeout
+    configuration.timeoutIntervalForResource = uploadTimeout
+    return URLSession(configuration: configuration)
+  }()
   /// つなぎ直す回数の上限。待つ時間は 0.5 秒から倍にしていき、8 秒で止める（合わせて 1 分ほど）
   static let maxReconnects = 10
 
@@ -163,7 +177,9 @@ final class LiveGameClient: GameClient {
       try await send(skip)
       return
     }
-    // 端末での文字起こしも一緒に送る。できなければ nil で、バックエンドが Azure の文字起こしを使う
+    // 端末での文字起こしも一緒に送る。できなければ nil で、バックエンドが Azure の文字起こしを使う。
+    // 文字起こしが終わらなくても DeviceTranscriber.timeout（5 秒）で戻るので、サーバーの音声の締め切り
+    // （録音の終わりから RoundTiming.audioGrace）より前に送り始められる
     let transcript = await DeviceTranscriber.transcribe(audio.url)
     do {
       try await upload(data, transcript: transcript, round: round)
@@ -182,7 +198,7 @@ final class LiveGameClient: GameClient {
   /// 文字起こしは X-Transcript に載せる（作った Client が URL エンコードする）
   private func upload(_ data: Data, transcript: String?, round: Int) async throws {
     guard let roomID, let credentials else { throw GameError.connectionFailed }
-    let client = APIClient.make(url: baseURL, middlewares: [BearerToken(credentials.token)])
+    let client = APIClient.make(url: baseURL, session: Self.uploadSession, middlewares: [BearerToken(credentials.token)])
     let output = try await client.submitAudio(
       path: .init(roomId: roomID, round: String(round)),
       headers: .init(xPlayerId: credentials.playerID, xTranscript: transcript),
