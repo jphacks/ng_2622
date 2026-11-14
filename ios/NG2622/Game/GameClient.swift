@@ -110,6 +110,9 @@ enum RoundTiming {
   static let intro: TimeInterval = 3
   /// 録音の最長
   static let recording: TimeInterval = 20
+  /// 録音が終わるはずの時刻から、サーバーが音声を待つ長さ。過ぎて届いた音声は断られる
+  /// （backend/src/domain/round.ts の AUDIO_GRACE_MS と同じにする）
+  static let audioGrace: TimeInterval = 15
   /// 待機の画面で、正答例を少しずつ出して出し切るまでの時間（文の長さによらない）
   static let answerReveal: TimeInterval = 3
 }
