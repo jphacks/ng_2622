@@ -187,8 +187,27 @@ const orCreate: CreateMessage = async (params, options) => {
       throw new Anthropic.APIConnectionTimeoutError();
     throw new Anthropic.APIConnectionError({ cause: e as Error });
   }
+  // OpenRouter は本文より先に 200 とヘッダーを返すので、時間切れはたいてい本文を読む途中で起きる。
+  // 握りつぶすと「空の成功」になるので、時間切れは Claude と同じ時間切れの例外にする
+  //（止めた呼び出しも OpenRouter は最後まで処理して請求するので、費用はキーの利用額で確かめる）
   // biome-ignore lint/suspicious/noExplicitAny: OpenRouter の応答の形は緩く読む
-  const json: any = await res.json().catch(() => ({}));
+  let json: any;
+  try {
+    json = await res.json();
+  } catch (e) {
+    const name = e instanceof Error ? e.name : "";
+    if (name === "TimeoutError" || name === "AbortError") {
+      record({ error: "timeout（本文を読む途中）" });
+      throw new Anthropic.APIConnectionTimeoutError();
+    }
+    record({ error: `本文が JSON でない: ${String(e)}` });
+    throw Anthropic.APIError.generate(
+      502,
+      undefined,
+      "本文が JSON でない",
+      res.headers,
+    );
+  }
   if (!res.ok || json.error) {
     const status = res.ok ? Number(json.error?.code) || 502 : res.status;
     record({ error: `${status}: ${json.error?.message ?? res.statusText}` });
