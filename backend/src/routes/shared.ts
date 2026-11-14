@@ -17,6 +17,9 @@ export type AppEnv = {
       // POST /weak-points（苦手の分析）のモデルと effort（既定 claude-sonnet-5-5 の low）
       CLAUDE_ANALYSIS_MODEL?: string;
       CLAUDE_ANALYSIS_EFFORT?: string;
+      // その場で部品を作る（src/parts/write.ts）のモデルと effort（既定は CLAUDE_SCENE_* と同じ）
+      CLAUDE_PART_MODEL?: string;
+      CLAUDE_PART_EFFORT?: string;
     };
 };
 

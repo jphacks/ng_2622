@@ -1,0 +1,1986 @@
+{
+  "grass": {
+    "hex": "#6dbb45",
+    "base": [0.15293, 0.49693, 0.05951],
+    "rough": 0.9,
+    "metal": 0.0,
+    "emit": 0.0,
+    "alpha": 1.0
+  },
+  "grass_dark": {
+    "hex": "#4a9530",
+    "base": [0.06848, 0.30054, 0.02956],
+    "rough": 0.9,
+    "metal": 0.0,
+    "emit": 0.0,
+    "alpha": 1.0
+  },
+  "grass_light": {
+    "hex": "#93d35c",
+    "base": [0.29177, 0.65141, 0.10702],
+    "rough": 0.9,
+    "metal": 0.0,
+    "emit": 0.0,
+    "alpha": 1.0
+  },
+  "bark": {
+    "hex": "#6b4428",
+    "base": [0.14703, 0.05781, 0.02122],
+    "rough": 0.9,
+    "metal": 0.0,
+    "emit": 0.0,
+    "alpha": 1.0
+  },
+  "leaf": {
+    "hex": "#3f9a3a",
+    "base": [0.04971, 0.32314, 0.04231],
+    "rough": 0.7,
+    "metal": 0.0,
+    "emit": 0.0,
+    "alpha": 1.0
+  },
+  "leaf2": {
+    "hex": "#5cb848",
+    "base": [0.10702, 0.47932, 0.0648],
+    "rough": 0.7,
+    "metal": 0.0,
+    "emit": 0.0,
+    "alpha": 1.0
+  },
+  "leaf3": {
+    "hex": "#2f7d33",
+    "base": [0.02843, 0.20508, 0.0331],
+    "rough": 0.7,
+    "metal": 0.0,
+    "emit": 0.0,
+    "alpha": 1.0
+  },
+  "stem": {
+    "hex": "#4e9a33",
+    "base": [0.07619, 0.32314, 0.0331],
+    "rough": 0.7,
+    "metal": 0.0,
+    "emit": 0.0,
+    "alpha": 1.0
+  },
+  "flower_pink": {
+    "hex": "#ff8fb3",
+    "base": [1.0, 0.27468, 0.45079],
+    "rough": 0.6,
+    "metal": 0.0,
+    "emit": 0.0,
+    "alpha": 1.0
+  },
+  "flower_yellow": {
+    "hex": "#ffd84a",
+    "base": [1.0, 0.68669, 0.06848],
+    "rough": 0.6,
+    "metal": 0.0,
+    "emit": 0.0,
+    "alpha": 1.0
+  },
+  "flower_white": {
+    "hex": "#fffaf0",
+    "base": [1.0, 0.95597, 0.87137],
+    "rough": 0.6,
+    "metal": 0.0,
+    "emit": 0.0,
+    "alpha": 1.0
+  },
+  "flower_purple": {
+    "hex": "#b48cff",
+    "base": [0.45641, 0.26225, 1.0],
+    "rough": 0.6,
+    "metal": 0.0,
+    "emit": 0.0,
+    "alpha": 1.0
+  },
+  "asphalt": {
+    "hex": "#4a4c52",
+    "base": [0.06848, 0.07227, 0.08438],
+    "rough": 0.9,
+    "metal": 0.0,
+    "emit": 0.0,
+    "alpha": 1.0
+  },
+  "stripe": {
+    "hex": "#f4f4f0",
+    "base": [0.90466, 0.90466, 0.87137],
+    "rough": 0.7,
+    "metal": 0.0,
+    "emit": 0.0,
+    "alpha": 1.0
+  },
+  "curb": {
+    "hex": "#bdbab4",
+    "base": [0.50888, 0.49102, 0.45641],
+    "rough": 0.8,
+    "metal": 0.0,
+    "emit": 0.0,
+    "alpha": 1.0
+  },
+  "wood": {
+    "hex": "#a8683a",
+    "base": [0.39157, 0.13843, 0.04231],
+    "rough": 0.55,
+    "metal": 0.0,
+    "emit": 0.0,
+    "alpha": 1.0
+  },
+  "dog": {
+    "hex": "#e0893a",
+    "base": [0.7454, 0.25016, 0.04231],
+    "rough": 0.7,
+    "metal": 0.0,
+    "emit": 0.0,
+    "alpha": 1.0
+  },
+  "dog_white": {
+    "hex": "#f6efe4",
+    "base": [0.92158, 0.86316, 0.77582],
+    "rough": 0.7,
+    "metal": 0.0,
+    "emit": 0.0,
+    "alpha": 1.0
+  },
+  "dog_dark": {
+    "hex": "#2a211c",
+    "base": [0.02315, 0.01521, 0.01161],
+    "rough": 0.3,
+    "metal": 0.0,
+    "emit": 0.0,
+    "alpha": 1.0
+  },
+  "white": {
+    "hex": "#ffffff",
+    "base": [1.0, 1.0, 1.0],
+    "rough": 0.6,
+    "metal": 0.0,
+    "emit": 0.0,
+    "alpha": 1.0
+  },
+  "tire": {
+    "hex": "#1e1e22",
+    "base": [0.01298, 0.01298, 0.016],
+    "rough": 0.8,
+    "metal": 0.0,
+    "emit": 0.0,
+    "alpha": 1.0
+  },
+  "metal": {
+    "hex": "#8e959e",
+    "base": [0.2705, 0.30054, 0.34191],
+    "rough": 0.4,
+    "metal": 0.0,
+    "emit": 0.0,
+    "alpha": 1.0
+  },
+  "frame": {
+    "hex": "#3a3f4a",
+    "base": [0.04231, 0.04971, 0.06848],
+    "rough": 0.4,
+    "metal": 0.0,
+    "emit": 0.0,
+    "alpha": 1.0
+  },
+  "dark": {
+    "hex": "#2a2a30",
+    "base": [0.02315, 0.02315, 0.02956],
+    "rough": 0.4,
+    "metal": 0.0,
+    "emit": 0.0,
+    "alpha": 1.0
+  },
+  "bike": {
+    "hex": "#3a7bd5",
+    "base": [0.04231, 0.19807, 0.66539],
+    "rough": 0.4,
+    "metal": 0.0,
+    "emit": 0.0,
+    "alpha": 1.0
+  },
+  "car_glass": {
+    "hex": "#26344a",
+    "base": [0.01938, 0.03434, 0.06848],
+    "rough": 0.08,
+    "metal": 0.0,
+    "emit": 0.0,
+    "alpha": 1.0
+  },
+  "plate": {
+    "hex": "#f4f4ef",
+    "base": [0.90466, 0.90466, 0.86316],
+    "rough": 0.5,
+    "metal": 0.0,
+    "emit": 0.0,
+    "alpha": 1.0
+  },
+  "vending": {
+    "hex": "#d9352b",
+    "base": [0.69387, 0.0356, 0.02416],
+    "rough": 0.4,
+    "metal": 0.0,
+    "emit": 0.0,
+    "alpha": 1.0
+  },
+  "can_a": {
+    "hex": "#4f7fd9",
+    "base": [0.07819, 0.21223, 0.69387],
+    "rough": 0.5,
+    "metal": 0.0,
+    "emit": 0.0,
+    "alpha": 1.0
+  },
+  "can_b": {
+    "hex": "#f2c04a",
+    "base": [0.88792, 0.52712, 0.06848],
+    "rough": 0.5,
+    "metal": 0.0,
+    "emit": 0.0,
+    "alpha": 1.0
+  },
+  "can_c": {
+    "hex": "#4fb36a",
+    "base": [0.07819, 0.45079, 0.14413],
+    "rough": 0.5,
+    "metal": 0.0,
+    "emit": 0.0,
+    "alpha": 1.0
+  },
+  "bin": {
+    "hex": "#6f8fa8",
+    "base": [0.15896, 0.27468, 0.39157],
+    "rough": 0.5,
+    "metal": 0.0,
+    "emit": 0.0,
+    "alpha": 1.0
+  },
+  "bin_inside": {
+    "hex": "#3d4f5e",
+    "base": [0.04667, 0.07819, 0.11193],
+    "rough": 0.7,
+    "metal": 0.0,
+    "emit": 0.0,
+    "alpha": 1.0
+  },
+  "table": {
+    "hex": "#9a6a42",
+    "base": [0.32314, 0.14413, 0.05448],
+    "rough": 0.4,
+    "metal": 0.0,
+    "emit": 0.0,
+    "alpha": 1.0
+  },
+  "table_leg": {
+    "hex": "#5a3a24",
+    "base": [0.10224, 0.04231, 0.01764],
+    "rough": 0.5,
+    "metal": 0.0,
+    "emit": 0.0,
+    "alpha": 1.0
+  },
+  "chair": {
+    "hex": "#c48a55",
+    "base": [0.55201, 0.25415, 0.09084],
+    "rough": 0.5,
+    "metal": 0.0,
+    "emit": 0.0,
+    "alpha": 1.0
+  },
+  "cushion": {
+    "hex": "#4f7d5a",
+    "base": [0.07819, 0.20508, 0.10224],
+    "rough": 0.8,
+    "metal": 0.0,
+    "emit": 0.0,
+    "alpha": 1.0
+  },
+  "sofa": {
+    "hex": "#5a86b8",
+    "base": [0.10224, 0.2384, 0.47932],
+    "rough": 0.85,
+    "metal": 0.0,
+    "emit": 0.0,
+    "alpha": 1.0
+  },
+  "sofa_cushion": {
+    "hex": "#6f9bcc",
+    "base": [0.15896, 0.32778, 0.60383],
+    "rough": 0.85,
+    "metal": 0.0,
+    "emit": 0.0,
+    "alpha": 1.0
+  },
+  "sofa_leg": {
+    "hex": "#5a3a24",
+    "base": [0.10224, 0.04231, 0.01764],
+    "rough": 0.5,
+    "metal": 0.0,
+    "emit": 0.0,
+    "alpha": 1.0
+  },
+  "cardboard": {
+    "hex": "#c8955a",
+    "base": [0.57758, 0.30054, 0.10224],
+    "rough": 0.85,
+    "metal": 0.0,
+    "emit": 0.0,
+    "alpha": 1.0
+  },
+  "tape": {
+    "hex": "#a8743f",
+    "base": [0.39157, 0.17465, 0.04971],
+    "rough": 0.6,
+    "metal": 0.0,
+    "emit": 0.0,
+    "alpha": 1.0
+  },
+  "apple": {
+    "hex": "#d9352b",
+    "base": [0.69387, 0.0356, 0.02416],
+    "rough": 0.4,
+    "metal": 0.0,
+    "emit": 0.0,
+    "alpha": 1.0
+  },
+  "apple_stem": {
+    "hex": "#5a3a22",
+    "base": [0.10224, 0.04231, 0.016],
+    "rough": 0.8,
+    "metal": 0.0,
+    "emit": 0.0,
+    "alpha": 1.0
+  },
+  "bag": {
+    "hex": "#b0563a",
+    "base": [0.43415, 0.09306, 0.04231],
+    "rough": 0.5,
+    "metal": 0.0,
+    "emit": 0.0,
+    "alpha": 1.0
+  },
+  "bag_strap": {
+    "hex": "#6b3424",
+    "base": [0.14703, 0.03434, 0.01764],
+    "rough": 0.5,
+    "metal": 0.0,
+    "emit": 0.0,
+    "alpha": 1.0
+  },
+  "book_cover": {
+    "hex": "#3f6fc8",
+    "base": [0.04971, 0.15896, 0.57758],
+    "rough": 0.6,
+    "metal": 0.0,
+    "emit": 0.0,
+    "alpha": 1.0
+  },
+  "book_red": {
+    "hex": "#e05a4f",
+    "base": [0.7454, 0.10224, 0.07819],
+    "rough": 0.6,
+    "metal": 0.0,
+    "emit": 0.0,
+    "alpha": 1.0
+  },
+  "page": {
+    "hex": "#f7f3e8",
+    "base": [0.93011, 0.89627, 0.80695],
+    "rough": 0.8,
+    "metal": 0.0,
+    "emit": 0.0,
+    "alpha": 1.0
+  },
+  "bottle": {
+    "hex": "#cfe8f5",
+    "base": [0.62396, 0.80695, 0.9131],
+    "rough": 0.1,
+    "metal": 0.0,
+    "emit": 0.0,
+    "alpha": 1.0
+  },
+  "bottle_cap": {
+    "hex": "#2f6fd0",
+    "base": [0.02843, 0.15896, 0.63076],
+    "rough": 0.4,
+    "metal": 0.0,
+    "emit": 0.0,
+    "alpha": 1.0
+  },
+  "bottle_label": {
+    "hex": "#4fb3e8",
+    "base": [0.07819, 0.45079, 0.80695],
+    "rough": 0.5,
+    "metal": 0.0,
+    "emit": 0.0,
+    "alpha": 1.0
+  },
+  "cup": {
+    "hex": "#ffffff",
+    "base": [1.0, 1.0, 1.0],
+    "rough": 0.3,
+    "metal": 0.0,
+    "emit": 0.0,
+    "alpha": 1.0
+  },
+  "coffee": {
+    "hex": "#4a2a17",
+    "base": [0.06848, 0.02315, 0.00857],
+    "rough": 0.15,
+    "metal": 0.0,
+    "emit": 0.0,
+    "alpha": 1.0
+  },
+  "skin": {
+    "hex": "#f6caa6",
+    "base": [0.92158, 0.59062, 0.38133],
+    "rough": 0.55,
+    "metal": 0.0,
+    "emit": 0.0,
+    "alpha": 1.0
+  },
+  "eye": {
+    "hex": "#2a211c",
+    "base": [0.02315, 0.01521, 0.01161],
+    "rough": 0.3,
+    "metal": 0.0,
+    "emit": 0.0,
+    "alpha": 1.0
+  },
+  "cheek": {
+    "hex": "#f59a9a",
+    "base": [0.9131, 0.32314, 0.32314],
+    "rough": 0.7,
+    "metal": 0.0,
+    "emit": 0.0,
+    "alpha": 1.0
+  },
+  "mouth": {
+    "hex": "#a8463d",
+    "base": [0.39157, 0.06125, 0.04667],
+    "rough": 0.5,
+    "metal": 0.0,
+    "emit": 0.0,
+    "alpha": 1.0
+  },
+  "hair_black": {
+    "hex": "#2a1f1a",
+    "base": [0.02315, 0.0137, 0.01033],
+    "rough": 0.6,
+    "metal": 0.0,
+    "emit": 0.0,
+    "alpha": 1.0
+  },
+  "hair_brown": {
+    "hex": "#5a3a22",
+    "base": [0.10224, 0.04231, 0.016],
+    "rough": 0.6,
+    "metal": 0.0,
+    "emit": 0.0,
+    "alpha": 1.0
+  },
+  "hair_gray": {
+    "hex": "#c4c4c4",
+    "base": [0.55201, 0.55201, 0.55201],
+    "rough": 0.6,
+    "metal": 0.0,
+    "emit": 0.0,
+    "alpha": 1.0
+  },
+  "knit_brown": {
+    "hex": "#8a6a4a",
+    "base": [0.25415, 0.14413, 0.06848],
+    "rough": 0.75,
+    "metal": 0.0,
+    "emit": 0.0,
+    "alpha": 1.0
+  },
+  "juice": {
+    "hex": "#f29a2e",
+    "base": [0.88792, 0.32314, 0.02732],
+    "rough": 0.2,
+    "metal": 0.0,
+    "emit": 0.0,
+    "alpha": 1.0
+  },
+  "cloth": {
+    "hex": "#f4f4f0",
+    "base": [0.90466, 0.90466, 0.87137],
+    "rough": 0.8,
+    "metal": 0.0,
+    "emit": 0.0,
+    "alpha": 1.0
+  },
+  "tray": {
+    "hex": "#6b4a2f",
+    "base": [0.14703, 0.06848, 0.02843],
+    "rough": 0.4,
+    "metal": 0.0,
+    "emit": 0.0,
+    "alpha": 1.0
+  },
+  "cafe_wall": {
+    "hex": "#c98f63",
+    "base": [0.58408, 0.27468, 0.12477],
+    "rough": 0.8,
+    "metal": 0.0,
+    "emit": 0.0,
+    "alpha": 1.0
+  },
+  "cafe_wood": {
+    "hex": "#8a5a35",
+    "base": [0.25415, 0.10224, 0.0356],
+    "rough": 0.5,
+    "metal": 0.0,
+    "emit": 0.0,
+    "alpha": 1.0
+  },
+  "marble": {
+    "hex": "#ece6dc",
+    "base": [0.8388, 0.7913, 0.71569],
+    "rough": 0.3,
+    "metal": 0.0,
+    "emit": 0.0,
+    "alpha": 1.0
+  },
+  "cake": {
+    "hex": "#f0d9a8",
+    "base": [0.87137, 0.69387, 0.39157],
+    "rough": 0.6,
+    "metal": 0.0,
+    "emit": 0.0,
+    "alpha": 1.0
+  },
+  "cake_pink": {
+    "hex": "#f5a8b8",
+    "base": [0.9131, 0.39157, 0.47932],
+    "rough": 0.5,
+    "metal": 0.0,
+    "emit": 0.0,
+    "alpha": 1.0
+  },
+  "cake_choco": {
+    "hex": "#6b4028",
+    "base": [0.14703, 0.05127, 0.02122],
+    "rough": 0.5,
+    "metal": 0.0,
+    "emit": 0.0,
+    "alpha": 1.0
+  },
+  "pot": {
+    "hex": "#e8e2d6",
+    "base": [0.80695, 0.76052, 0.67244],
+    "rough": 0.6,
+    "metal": 0.0,
+    "emit": 0.0,
+    "alpha": 1.0
+  },
+  "vest_black": {
+    "hex": "#23262b",
+    "base": [0.01681, 0.01938, 0.02416],
+    "rough": 0.6,
+    "metal": 0.0,
+    "emit": 0.0,
+    "alpha": 1.0
+  },
+  "button_gold": {
+    "hex": "#e0b84a",
+    "base": [0.7454, 0.47932, 0.06848],
+    "rough": 0.3,
+    "metal": 0.0,
+    "emit": 0.0,
+    "alpha": 1.0
+  },
+  "apron": {
+    "hex": "#5fb89a",
+    "base": [0.11444, 0.47932, 0.32314],
+    "rough": 0.7,
+    "metal": 0.0,
+    "emit": 0.0,
+    "alpha": 1.0
+  },
+  "apron_pocket": {
+    "hex": "#fff1cf",
+    "base": [1.0, 0.87962, 0.62396],
+    "rough": 0.7,
+    "metal": 0.0,
+    "emit": 0.0,
+    "alpha": 1.0
+  },
+  "shirt_green": {
+    "hex": "#3f9d6b",
+    "base": [0.04971, 0.33716, 0.14703],
+    "rough": 0.7,
+    "metal": 0.0,
+    "emit": 0.0,
+    "alpha": 1.0
+  },
+  "pants_beige": {
+    "hex": "#c2a36f",
+    "base": [0.53948, 0.36625, 0.15896],
+    "rough": 0.7,
+    "metal": 0.0,
+    "emit": 0.0,
+    "alpha": 1.0
+  },
+  "bill": {
+    "hex": "#7fbf7a",
+    "base": [0.21223, 0.521, 0.19462],
+    "rough": 0.7,
+    "metal": 0.0,
+    "emit": 0.0,
+    "alpha": 1.0
+  },
+  "rain": {
+    "hex": "#6ea6dc",
+    "base": [0.15593, 0.38133, 0.71569],
+    "rough": 0.3,
+    "metal": 0.0,
+    "emit": 0.0,
+    "alpha": 1.0
+  },
+  "puddle": {
+    "hex": "#a3b6c6",
+    "base": [0.36625, 0.46778, 0.56471],
+    "rough": 0.15,
+    "metal": 0.0,
+    "emit": 0.0,
+    "alpha": 1.0
+  },
+  "book_blue": {
+    "hex": "#7f9ab8",
+    "base": [0.21223, 0.32314, 0.47932],
+    "rough": 0.6,
+    "metal": 0.0,
+    "emit": 0.0,
+    "alpha": 1.0
+  },
+  "book_green": {
+    "hex": "#93ad90",
+    "base": [0.29177, 0.41789, 0.27889],
+    "rough": 0.6,
+    "metal": 0.0,
+    "emit": 0.0,
+    "alpha": 1.0
+  },
+  "book_yellow": {
+    "hex": "#d8c79a",
+    "base": [0.68669, 0.57112, 0.32314],
+    "rough": 0.6,
+    "metal": 0.0,
+    "emit": 0.0,
+    "alpha": 1.0
+  },
+  "book_purple": {
+    "hex": "#a79cc0",
+    "base": [0.38643, 0.33245, 0.52712],
+    "rough": 0.6,
+    "metal": 0.0,
+    "emit": 0.0,
+    "alpha": 1.0
+  },
+  "book_brown": {
+    "hex": "#b09880",
+    "base": [0.43415, 0.31399, 0.21586],
+    "rough": 0.6,
+    "metal": 0.0,
+    "emit": 0.0,
+    "alpha": 1.0
+  },
+  "shirt_blue": {
+    "hex": "#5a8fd6",
+    "base": [0.10224, 0.27468, 0.67244],
+    "rough": 0.7,
+    "metal": 0.0,
+    "emit": 0.0,
+    "alpha": 1.0
+  },
+  "pants_gray": {
+    "hex": "#4a4f5a",
+    "base": [0.06848, 0.07819, 0.10224],
+    "rough": 0.7,
+    "metal": 0.0,
+    "emit": 0.0,
+    "alpha": 1.0
+  },
+  "shoe_brown": {
+    "hex": "#6b4428",
+    "base": [0.14703, 0.05781, 0.02122],
+    "rough": 0.5,
+    "metal": 0.0,
+    "emit": 0.0,
+    "alpha": 1.0
+  },
+  "knit_rose": {
+    "hex": "#e07a8a",
+    "base": [0.7454, 0.19462, 0.25415],
+    "rough": 0.8,
+    "metal": 0.0,
+    "emit": 0.0,
+    "alpha": 1.0
+  },
+  "skirt_navy": {
+    "hex": "#2f3b63",
+    "base": [0.02843, 0.04374, 0.12477],
+    "rough": 0.8,
+    "metal": 0.0,
+    "emit": 0.0,
+    "alpha": 1.0
+  },
+  "shoe_white": {
+    "hex": "#f2f2f2",
+    "base": [0.88792, 0.88792, 0.88792],
+    "rough": 0.5,
+    "metal": 0.0,
+    "emit": 0.0,
+    "alpha": 1.0
+  },
+  "shirt_yellow": {
+    "hex": "#ffcf3a",
+    "base": [1.0, 0.62396, 0.04231],
+    "rough": 0.7,
+    "metal": 0.0,
+    "emit": 0.0,
+    "alpha": 1.0
+  },
+  "shorts_blue": {
+    "hex": "#3d6fb6",
+    "base": [0.04667, 0.15896, 0.46778],
+    "rough": 0.7,
+    "metal": 0.0,
+    "emit": 0.0,
+    "alpha": 1.0
+  },
+  "shoe_red": {
+    "hex": "#e3483c",
+    "base": [0.76815, 0.0648, 0.04519],
+    "rough": 0.5,
+    "metal": 0.0,
+    "emit": 0.0,
+    "alpha": 1.0
+  },
+  "dress_pink": {
+    "hex": "#f29bb5",
+    "base": [0.88792, 0.32778, 0.46208],
+    "rough": 0.75,
+    "metal": 0.0,
+    "emit": 0.0,
+    "alpha": 1.0
+  },
+  "pen": {
+    "hex": "#2f4fb0",
+    "base": [0.02843, 0.07819, 0.43415],
+    "rough": 0.4,
+    "metal": 0.0,
+    "emit": 0.0,
+    "alpha": 1.0
+  },
+  "mug": {
+    "hex": "#3f8fd9",
+    "base": [0.04971, 0.27468, 0.69387],
+    "rough": 0.4,
+    "metal": 0.0,
+    "emit": 0.0,
+    "alpha": 1.0
+  },
+  "door": {
+    "hex": "#b07a4a",
+    "base": [0.43415, 0.19462, 0.06848],
+    "rough": 0.55,
+    "metal": 0.0,
+    "emit": 0.0,
+    "alpha": 1.0
+  },
+  "door_panel": {
+    "hex": "#9a6538",
+    "base": [0.32314, 0.13014, 0.03955],
+    "rough": 0.55,
+    "metal": 0.0,
+    "emit": 0.0,
+    "alpha": 1.0
+  },
+  "door_frame": {
+    "hex": "#ece6da",
+    "base": [0.8388, 0.7913, 0.7011],
+    "rough": 0.6,
+    "metal": 0.0,
+    "emit": 0.0,
+    "alpha": 1.0
+  },
+  "wall": {
+    "hex": "#efe8dc",
+    "base": [0.86316, 0.80695, 0.71569],
+    "rough": 0.9,
+    "metal": 0.0,
+    "emit": 0.0,
+    "alpha": 1.0
+  },
+  "baseboard": {
+    "hex": "#8a6a4a",
+    "base": [0.25415, 0.14413, 0.06848],
+    "rough": 0.6,
+    "metal": 0.0,
+    "emit": 0.0,
+    "alpha": 1.0
+  },
+  "window_frame": {
+    "hex": "#d8dde3",
+    "base": [0.68669, 0.72306, 0.76815],
+    "rough": 0.4,
+    "metal": 0.0,
+    "emit": 0.0,
+    "alpha": 1.0
+  },
+  "counter": {
+    "hex": "#ece7dd",
+    "base": [0.8388, 0.7991, 0.72306],
+    "rough": 0.6,
+    "metal": 0.0,
+    "emit": 0.0,
+    "alpha": 1.0
+  },
+  "counter_top": {
+    "hex": "#6b5a4a",
+    "base": [0.14703, 0.10224, 0.06848],
+    "rough": 0.4,
+    "metal": 0.0,
+    "emit": 0.0,
+    "alpha": 1.0
+  },
+  "register": {
+    "hex": "#3a3f4a",
+    "base": [0.04231, 0.04971, 0.06848],
+    "rough": 0.4,
+    "metal": 0.0,
+    "emit": 0.0,
+    "alpha": 1.0
+  },
+  "receipt": {
+    "hex": "#ffffff",
+    "base": [1.0, 1.0, 1.0],
+    "rough": 0.8,
+    "metal": 0.0,
+    "emit": 0.0,
+    "alpha": 1.0
+  },
+  "shelf": {
+    "hex": "#a46d40",
+    "base": [0.37124, 0.15293, 0.05127],
+    "rough": 0.6,
+    "metal": 0.0,
+    "emit": 0.0,
+    "alpha": 1.0
+  },
+  "basket": {
+    "hex": "#d9352b",
+    "base": [0.69387, 0.0356, 0.02416],
+    "rough": 0.5,
+    "metal": 0.0,
+    "emit": 0.0,
+    "alpha": 1.0
+  },
+  "basket_rim": {
+    "hex": "#a8261f",
+    "base": [0.39157, 0.01938, 0.0137],
+    "rough": 0.5,
+    "metal": 0.0,
+    "emit": 0.0,
+    "alpha": 1.0
+  },
+  "jacket": {
+    "hex": "#3f6d5c",
+    "base": [0.04971, 0.15293, 0.10702],
+    "rough": 0.7,
+    "metal": 0.0,
+    "emit": 0.0,
+    "alpha": 1.0
+  },
+  "jacket2": {
+    "hex": "#8a5a3a",
+    "base": [0.25415, 0.10224, 0.04231],
+    "rough": 0.7,
+    "metal": 0.0,
+    "emit": 0.0,
+    "alpha": 1.0
+  },
+  "knife": {
+    "hex": "#c9ced4",
+    "base": [0.58408, 0.61721, 0.65837],
+    "rough": 0.25,
+    "metal": 0.0,
+    "emit": 0.0,
+    "alpha": 1.0
+  },
+  "bird": {
+    "hex": "#8d7a66",
+    "base": [0.26636, 0.19462, 0.13287],
+    "rough": 0.7,
+    "metal": 0.0,
+    "emit": 0.0,
+    "alpha": 1.0
+  },
+  "bird_belly": {
+    "hex": "#efe6d6",
+    "base": [0.86316, 0.7913, 0.67244],
+    "rough": 0.7,
+    "metal": 0.0,
+    "emit": 0.0,
+    "alpha": 1.0
+  },
+  "bird_beak": {
+    "hex": "#e8a33c",
+    "base": [0.80695, 0.36625, 0.04519],
+    "rough": 0.5,
+    "metal": 0.0,
+    "emit": 0.0,
+    "alpha": 1.0
+  },
+  "balloon": {
+    "hex": "#e8453c",
+    "base": [0.80695, 0.05951, 0.04519],
+    "rough": 0.3,
+    "metal": 0.0,
+    "emit": 0.0,
+    "alpha": 1.0
+  },
+  "candle": {
+    "hex": "#f7e7a0",
+    "base": [0.93011, 0.7991, 0.35153],
+    "rough": 0.5,
+    "metal": 0.0,
+    "emit": 0.0,
+    "alpha": 1.0
+  },
+  "flame": {
+    "hex": "#ffb52e",
+    "base": [1.0, 0.46208, 0.02732],
+    "rough": 0.3,
+    "metal": 0.0,
+    "emit": 0.0,
+    "alpha": 1.0
+  },
+  "ticket_body": {
+    "hex": "#5c7f9e",
+    "base": [0.10702, 0.21223, 0.34191],
+    "rough": 0.5,
+    "metal": 0.0,
+    "emit": 0.0,
+    "alpha": 1.0
+  },
+  "ticket_screen": {
+    "hex": "#1f3a52",
+    "base": [0.0137, 0.04231, 0.08438],
+    "rough": 0.3,
+    "metal": 0.0,
+    "emit": 0.0,
+    "alpha": 1.0
+  },
+  "stick": {
+    "hex": "#9a7248",
+    "base": [0.32314, 0.16827, 0.0648],
+    "rough": 0.7,
+    "metal": 0.0,
+    "emit": 0.0,
+    "alpha": 1.0
+  },
+  "castle": {
+    "hex": "#e3c98f",
+    "base": [0.76815, 0.58408, 0.27468],
+    "rough": 0.9,
+    "metal": 0.0,
+    "emit": 0.0,
+    "alpha": 1.0
+  },
+  "water": {
+    "hex": "#7fc6de",
+    "base": [0.21223, 0.56471, 0.73046],
+    "rough": 0.2,
+    "metal": 0.0,
+    "emit": 0.0,
+    "alpha": 1.0
+  },
+  "shard_glass": {
+    "hex": "#7fc6de",
+    "base": [0.21223, 0.56471, 0.73046],
+    "rough": 0.12,
+    "metal": 0.0,
+    "emit": 0.0,
+    "alpha": 1.0
+  },
+  "shard_metal": {
+    "hex": "#8d96a0",
+    "base": [0.26636, 0.30499, 0.35153],
+    "rough": 0.3,
+    "metal": 0.0,
+    "emit": 0.0,
+    "alpha": 1.0
+  },
+  "broom_straw": {
+    "hex": "#c9a55c",
+    "base": [0.58408, 0.37626, 0.10702],
+    "rough": 0.8,
+    "metal": 0.0,
+    "emit": 0.0,
+    "alpha": 1.0
+  },
+  "apron_green": {
+    "hex": "#3f8f5f",
+    "base": [0.04971, 0.27468, 0.11444],
+    "rough": 0.75,
+    "metal": 0.0,
+    "emit": 0.0,
+    "alpha": 1.0
+  },
+  "apron_green_pocket": {
+    "hex": "#2f7349",
+    "base": [0.02843, 0.17144, 0.06663],
+    "rough": 0.75,
+    "metal": 0.0,
+    "emit": 0.0,
+    "alpha": 1.0
+  },
+  "notepad": {
+    "hex": "#f2c94c",
+    "base": [0.88792, 0.58408, 0.07227],
+    "rough": 0.7,
+    "metal": 0.0,
+    "emit": 0.0,
+    "alpha": 1.0
+  },
+  "bus_wall": {
+    "hex": "#e9eaea",
+    "base": [0.81485, 0.82279, 0.82279],
+    "rough": 0.8,
+    "metal": 0.0,
+    "emit": 0.0,
+    "alpha": 1.0
+  },
+  "bus_floor": {
+    "hex": "#6d7680",
+    "base": [0.15293, 0.18116, 0.21586],
+    "rough": 0.8,
+    "metal": 0.0,
+    "emit": 0.0,
+    "alpha": 1.0
+  },
+  "bus_line": {
+    "hex": "#e8c33c",
+    "base": [0.80695, 0.54572, 0.04519],
+    "rough": 0.7,
+    "metal": 0.0,
+    "emit": 0.0,
+    "alpha": 1.0
+  },
+  "bus_rail": {
+    "hex": "#d9b23a",
+    "base": [0.69387, 0.4452, 0.04231],
+    "rough": 0.35,
+    "metal": 0.0,
+    "emit": 0.0,
+    "alpha": 1.0
+  },
+  "bus_sill": {
+    "hex": "#9aa3ab",
+    "base": [0.32314, 0.36625, 0.40724],
+    "rough": 0.5,
+    "metal": 0.0,
+    "emit": 0.0,
+    "alpha": 1.0
+  },
+  "dish": {
+    "hex": "#ffffff",
+    "base": [1.0, 1.0, 1.0],
+    "rough": 0.25,
+    "metal": 0.0,
+    "emit": 0.0,
+    "alpha": 1.0
+  },
+  "dish_rim": {
+    "hex": "#3f6fc8",
+    "base": [0.04971, 0.15896, 0.57758],
+    "rough": 0.4,
+    "metal": 0.0,
+    "emit": 0.0,
+    "alpha": 1.0
+  },
+  "pan": {
+    "hex": "#2b2b30",
+    "base": [0.02416, 0.02416, 0.02956],
+    "rough": 0.35,
+    "metal": 0.0,
+    "emit": 0.0,
+    "alpha": 1.0
+  },
+  "pan_inside": {
+    "hex": "#55585f",
+    "base": [0.09084, 0.09759, 0.11444],
+    "rough": 0.5,
+    "metal": 0.0,
+    "emit": 0.0,
+    "alpha": 1.0
+  },
+  "pan_handle": {
+    "hex": "#5a3a24",
+    "base": [0.10224, 0.04231, 0.01764],
+    "rough": 0.6,
+    "metal": 0.0,
+    "emit": 0.0,
+    "alpha": 1.0
+  },
+  "shirt": {
+    "hex": "#5b8fd9",
+    "base": [0.10462, 0.27468, 0.69387],
+    "rough": 0.8,
+    "metal": 0.0,
+    "emit": 0.0,
+    "alpha": 1.0
+  },
+  "button": {
+    "hex": "#ffffff",
+    "base": [1.0, 1.0, 1.0],
+    "rough": 0.4,
+    "metal": 0.0,
+    "emit": 0.0,
+    "alpha": 1.0
+  },
+  "laptop": {
+    "hex": "#c9cdd3",
+    "base": [0.58408, 0.6105, 0.65141],
+    "rough": 0.35,
+    "metal": 0.0,
+    "emit": 0.0,
+    "alpha": 1.0
+  },
+  "clock_face": {
+    "hex": "#ffffff",
+    "base": [1.0, 1.0, 1.0],
+    "rough": 0.4,
+    "metal": 0.0,
+    "emit": 0.0,
+    "alpha": 1.0
+  },
+  "bed_frame": {
+    "hex": "#a8683a",
+    "base": [0.39157, 0.13843, 0.04231],
+    "rough": 0.55,
+    "metal": 0.0,
+    "emit": 0.0,
+    "alpha": 1.0
+  },
+  "mattress": {
+    "hex": "#f4f1ea",
+    "base": [0.90466, 0.87962, 0.82279],
+    "rough": 0.8,
+    "metal": 0.0,
+    "emit": 0.0,
+    "alpha": 1.0
+  },
+  "blanket": {
+    "hex": "#7fb5d9",
+    "base": [0.21223, 0.46208, 0.69387],
+    "rough": 0.85,
+    "metal": 0.0,
+    "emit": 0.0,
+    "alpha": 1.0
+  },
+  "pillow": {
+    "hex": "#ffffff",
+    "base": [1.0, 1.0, 1.0],
+    "rough": 0.85,
+    "metal": 0.0,
+    "emit": 0.0,
+    "alpha": 1.0
+  },
+  "seat_fabric": {
+    "hex": "#3d6f9e",
+    "base": [0.04667, 0.15896, 0.34191],
+    "rough": 0.85,
+    "metal": 0.0,
+    "emit": 0.0,
+    "alpha": 1.0
+  },
+  "floor_gap": {
+    "hex": "#7a4e2c",
+    "base": [0.19462, 0.07619, 0.02519],
+    "rough": 0.7,
+    "metal": 0.0,
+    "emit": 0.0,
+    "alpha": 1.0
+  },
+  "floor_wood_a": {
+    "hex": "#b9804e",
+    "base": [0.48515, 0.21586, 0.07619],
+    "rough": 0.55,
+    "metal": 0.0,
+    "emit": 0.0,
+    "alpha": 1.0
+  },
+  "floor_wood_b": {
+    "hex": "#a8703f",
+    "base": [0.39157, 0.16203, 0.04971],
+    "rough": 0.55,
+    "metal": 0.0,
+    "emit": 0.0,
+    "alpha": 1.0
+  },
+  "floor_wood_c": {
+    "hex": "#c48c58",
+    "base": [0.55201, 0.26225, 0.09759],
+    "rough": 0.55,
+    "metal": 0.0,
+    "emit": 0.0,
+    "alpha": 1.0
+  },
+  "class_gap": {
+    "hex": "#b89262",
+    "base": [0.47932, 0.28744, 0.12214],
+    "rough": 0.7,
+    "metal": 0.0,
+    "emit": 0.0,
+    "alpha": 1.0
+  },
+  "class_wood_a": {
+    "hex": "#e2c08e",
+    "base": [0.76052, 0.52712, 0.2705],
+    "rough": 0.5,
+    "metal": 0.0,
+    "emit": 0.0,
+    "alpha": 1.0
+  },
+  "class_wood_b": {
+    "hex": "#d6b07c",
+    "base": [0.67244, 0.43415, 0.20156],
+    "rough": 0.5,
+    "metal": 0.0,
+    "emit": 0.0,
+    "alpha": 1.0
+  },
+  "class_wood_c": {
+    "hex": "#ead0a2",
+    "base": [0.82279, 0.63076, 0.36131],
+    "rough": 0.5,
+    "metal": 0.0,
+    "emit": 0.0,
+    "alpha": 1.0
+  },
+  "grout": {
+    "hex": "#a9a69f",
+    "base": [0.39676, 0.38133, 0.3467],
+    "rough": 0.8,
+    "metal": 0.0,
+    "emit": 0.0,
+    "alpha": 1.0
+  },
+  "tile_white": {
+    "hex": "#f6f5f1",
+    "base": [0.92158, 0.9131, 0.87962],
+    "rough": 0.25,
+    "metal": 0.0,
+    "emit": 0.0,
+    "alpha": 1.0
+  },
+  "tile_gray": {
+    "hex": "#cfd4d8",
+    "base": [0.62396, 0.65837, 0.68669],
+    "rough": 0.25,
+    "metal": 0.0,
+    "emit": 0.0,
+    "alpha": 1.0
+  },
+  "carpet": {
+    "hex": "#7d93b8",
+    "base": [0.20508, 0.29177, 0.47932],
+    "rough": 0.95,
+    "metal": 0.0,
+    "emit": 0.0,
+    "alpha": 1.0
+  },
+  "carpet_border": {
+    "hex": "#5d729b",
+    "base": [0.10946, 0.16827, 0.32778],
+    "rough": 0.95,
+    "metal": 0.0,
+    "emit": 0.0,
+    "alpha": 1.0
+  },
+  "carpet_line": {
+    "hex": "#efe3c8",
+    "base": [0.86316, 0.76815, 0.57758],
+    "rough": 0.95,
+    "metal": 0.0,
+    "emit": 0.0,
+    "alpha": 1.0
+  },
+  "platform": {
+    "hex": "#cfccc5",
+    "base": [0.62396, 0.60383, 0.55834],
+    "rough": 0.85,
+    "metal": 0.0,
+    "emit": 0.0,
+    "alpha": 1.0
+  },
+  "tactile": {
+    "hex": "#f2c230",
+    "base": [0.88792, 0.53948, 0.02956],
+    "rough": 0.6,
+    "metal": 0.0,
+    "emit": 0.0,
+    "alpha": 1.0
+  },
+  "ballast": {
+    "hex": "#8d857b",
+    "base": [0.26636, 0.23455, 0.19807],
+    "rough": 0.95,
+    "metal": 0.0,
+    "emit": 0.0,
+    "alpha": 1.0
+  },
+  "sleeper": {
+    "hex": "#7a5a42",
+    "base": [0.19462, 0.10224, 0.05448],
+    "rough": 0.8,
+    "metal": 0.0,
+    "emit": 0.0,
+    "alpha": 1.0
+  },
+  "rail": {
+    "hex": "#a3a9b1",
+    "base": [0.36625, 0.39676, 0.43966],
+    "rough": 0.35,
+    "metal": 0.0,
+    "emit": 0.0,
+    "alpha": 1.0
+  },
+  "sand": {
+    "hex": "#e8d6b0",
+    "base": [0.80695, 0.67244, 0.43415],
+    "rough": 0.95,
+    "metal": 0.0,
+    "emit": 0.0,
+    "alpha": 1.0
+  },
+  "sand_dark": {
+    "hex": "#dcc59a",
+    "base": [0.71569, 0.55834, 0.32314],
+    "rough": 0.95,
+    "metal": 0.0,
+    "emit": 0.0,
+    "alpha": 1.0
+  },
+  "sand_light": {
+    "hex": "#efe1c4",
+    "base": [0.86316, 0.75294, 0.55201],
+    "rough": 0.95,
+    "metal": 0.0,
+    "emit": 0.0,
+    "alpha": 1.0
+  },
+  "shell": {
+    "hex": "#f8d4c8",
+    "base": [0.93869, 0.65837, 0.57758],
+    "rough": 0.5,
+    "metal": 0.0,
+    "emit": 0.0,
+    "alpha": 1.0
+  },
+  "pebble": {
+    "hex": "#b9b1a5",
+    "base": [0.48515, 0.43966, 0.37626],
+    "rough": 0.8,
+    "metal": 0.0,
+    "emit": 0.0,
+    "alpha": 1.0
+  },
+  "stone_joint": {
+    "hex": "#8c877f",
+    "base": [0.26225, 0.24228, 0.21223],
+    "rough": 0.9,
+    "metal": 0.0,
+    "emit": 0.0,
+    "alpha": 1.0
+  },
+  "stone_a": {
+    "hex": "#b8b3aa",
+    "base": [0.47932, 0.45079, 0.40198],
+    "rough": 0.85,
+    "metal": 0.0,
+    "emit": 0.0,
+    "alpha": 1.0
+  },
+  "stone_b": {
+    "hex": "#a9a39a",
+    "base": [0.39676, 0.36625, 0.32314],
+    "rough": 0.85,
+    "metal": 0.0,
+    "emit": 0.0,
+    "alpha": 1.0
+  },
+  "stone_c": {
+    "hex": "#c7c2b8",
+    "base": [0.57112, 0.53948, 0.47932],
+    "rough": 0.85,
+    "metal": 0.0,
+    "emit": 0.0,
+    "alpha": 1.0
+  },
+  "dirt": {
+    "hex": "#c79c6c",
+    "base": [0.57112, 0.33245, 0.14996],
+    "rough": 0.95,
+    "metal": 0.0,
+    "emit": 0.0,
+    "alpha": 1.0
+  },
+  "dirt_dark": {
+    "hex": "#b5875a",
+    "base": [0.46208, 0.24228, 0.10224],
+    "rough": 0.95,
+    "metal": 0.0,
+    "emit": 0.0,
+    "alpha": 1.0
+  },
+  "dirt_light": {
+    "hex": "#d6b083",
+    "base": [0.67244, 0.43415, 0.22697],
+    "rough": 0.95,
+    "metal": 0.0,
+    "emit": 0.0,
+    "alpha": 1.0
+  },
+  "wall_back": {
+    "hex": "#ddd5c8",
+    "base": [0.72306, 0.66539, 0.57758],
+    "rough": 0.9,
+    "metal": 0.0,
+    "emit": 0.0,
+    "alpha": 1.0
+  },
+  "curtain": {
+    "hex": "#f3d9a8",
+    "base": [0.89627, 0.69387, 0.39157],
+    "rough": 0.9,
+    "metal": 0.0,
+    "emit": 0.0,
+    "alpha": 1.0
+  },
+  "wall_kitchen": {
+    "hex": "#f2dfb8",
+    "base": [0.88792, 0.73791, 0.47932],
+    "rough": 0.9,
+    "metal": 0.0,
+    "emit": 0.0,
+    "alpha": 1.0
+  },
+  "kitchen_tile": {
+    "hex": "#ffffff",
+    "base": [1.0, 1.0, 1.0],
+    "rough": 0.3,
+    "metal": 0.0,
+    "emit": 0.0,
+    "alpha": 1.0
+  },
+  "kitchen_tile2": {
+    "hex": "#a9d8c4",
+    "base": [0.39676, 0.68669, 0.55201],
+    "rough": 0.3,
+    "metal": 0.0,
+    "emit": 0.0,
+    "alpha": 1.0
+  },
+  "cabinet": {
+    "hex": "#b98352",
+    "base": [0.48515, 0.22697, 0.08438],
+    "rough": 0.5,
+    "metal": 0.0,
+    "emit": 0.0,
+    "alpha": 1.0
+  },
+  "blackboard": {
+    "hex": "#2f5a46",
+    "base": [0.02843, 0.10224, 0.06125],
+    "rough": 0.8,
+    "metal": 0.0,
+    "emit": 0.0,
+    "alpha": 1.0
+  },
+  "board_frame": {
+    "hex": "#a8743f",
+    "base": [0.39157, 0.17465, 0.04971],
+    "rough": 0.55,
+    "metal": 0.0,
+    "emit": 0.0,
+    "alpha": 1.0
+  },
+  "wainscot": {
+    "hex": "#c9a272",
+    "base": [0.58408, 0.36131, 0.16827],
+    "rough": 0.6,
+    "metal": 0.0,
+    "emit": 0.0,
+    "alpha": 1.0
+  },
+  "chalk": {
+    "hex": "#ffffff",
+    "base": [1.0, 1.0, 1.0],
+    "rough": 0.9,
+    "metal": 0.0,
+    "emit": 0.0,
+    "alpha": 1.0
+  },
+  "chalk_pink": {
+    "hex": "#ffb3c1",
+    "base": [1.0, 0.45079, 0.53328],
+    "rough": 0.9,
+    "metal": 0.0,
+    "emit": 0.0,
+    "alpha": 1.0
+  },
+  "chalk_yellow": {
+    "hex": "#ffe68a",
+    "base": [1.0, 0.7913, 0.25415],
+    "rough": 0.9,
+    "metal": 0.0,
+    "emit": 0.0,
+    "alpha": 1.0
+  },
+  "store_wall": {
+    "hex": "#f4f1ea",
+    "base": [0.90466, 0.87962, 0.82279],
+    "rough": 0.9,
+    "metal": 0.0,
+    "emit": 0.0,
+    "alpha": 1.0
+  },
+  "store_shelf": {
+    "hex": "#e3e6ea",
+    "base": [0.76815, 0.7913, 0.82279],
+    "rough": 0.4,
+    "metal": 0.0,
+    "emit": 0.0,
+    "alpha": 1.0
+  },
+  "store_sign": {
+    "hex": "#f08a4b",
+    "base": [0.87137, 0.25415, 0.07036],
+    "rough": 0.6,
+    "metal": 0.0,
+    "emit": 0.0,
+    "alpha": 1.0
+  },
+  "goods_a": {
+    "hex": "#ef7a6a",
+    "base": [0.86316, 0.19462, 0.14413],
+    "rough": 0.6,
+    "metal": 0.0,
+    "emit": 0.0,
+    "alpha": 1.0
+  },
+  "goods_b": {
+    "hex": "#f5c76a",
+    "base": [0.9131, 0.57112, 0.14413],
+    "rough": 0.6,
+    "metal": 0.0,
+    "emit": 0.0,
+    "alpha": 1.0
+  },
+  "goods_c": {
+    "hex": "#7cc48a",
+    "base": [0.20156, 0.55201, 0.25415],
+    "rough": 0.6,
+    "metal": 0.0,
+    "emit": 0.0,
+    "alpha": 1.0
+  },
+  "goods_d": {
+    "hex": "#78a8e0",
+    "base": [0.18782, 0.39157, 0.7454],
+    "rough": 0.6,
+    "metal": 0.0,
+    "emit": 0.0,
+    "alpha": 1.0
+  },
+  "goods_e": {
+    "hex": "#f2a3c4",
+    "base": [0.88792, 0.36625, 0.55201],
+    "rough": 0.6,
+    "metal": 0.0,
+    "emit": 0.0,
+    "alpha": 1.0
+  },
+  "goods_f": {
+    "hex": "#ffffff",
+    "base": [1.0, 1.0, 1.0],
+    "rough": 0.6,
+    "metal": 0.0,
+    "emit": 0.0,
+    "alpha": 1.0
+  },
+  "steel": {
+    "hex": "#c9cdd3",
+    "base": [0.58408, 0.6105, 0.65141],
+    "rough": 0.3,
+    "metal": 0.0,
+    "emit": 0.0,
+    "alpha": 1.0
+  },
+  "sink": {
+    "hex": "#8d949c",
+    "base": [0.26636, 0.29614, 0.33245],
+    "rough": 0.3,
+    "metal": 0.0,
+    "emit": 0.0,
+    "alpha": 1.0
+  },
+  "stove": {
+    "hex": "#2b2b30",
+    "base": [0.02416, 0.02416, 0.02956],
+    "rough": 0.2,
+    "metal": 0.0,
+    "emit": 0.0,
+    "alpha": 1.0
+  },
+  "burner": {
+    "hex": "#6a6d74",
+    "base": [0.14413, 0.15293, 0.17465],
+    "rough": 0.5,
+    "metal": 0.0,
+    "emit": 0.0,
+    "alpha": 1.0
+  },
+  "train_body": {
+    "hex": "#eef0f2",
+    "base": [0.85499, 0.87137, 0.88792],
+    "rough": 0.4,
+    "metal": 0.0,
+    "emit": 0.0,
+    "alpha": 1.0
+  },
+  "train_band": {
+    "hex": "#4fae78",
+    "base": [0.07819, 0.42327, 0.18782],
+    "rough": 0.5,
+    "metal": 0.0,
+    "emit": 0.0,
+    "alpha": 1.0
+  },
+  "train_door": {
+    "hex": "#d9dde2",
+    "base": [0.69387, 0.72306, 0.76052],
+    "rough": 0.4,
+    "metal": 0.0,
+    "emit": 0.0,
+    "alpha": 1.0
+  },
+  "train_roof": {
+    "hex": "#a9afb7",
+    "base": [0.39676, 0.42869, 0.47353],
+    "rough": 0.6,
+    "metal": 0.0,
+    "emit": 0.0,
+    "alpha": 1.0
+  },
+  "sign_board": {
+    "hex": "#fbfbf7",
+    "base": [0.96469, 0.96469, 0.93011],
+    "rough": 0.5,
+    "metal": 0.0,
+    "emit": 0.0,
+    "alpha": 1.0
+  },
+  "sign_band": {
+    "hex": "#3f8fd0",
+    "base": [0.04971, 0.27468, 0.63076],
+    "rough": 0.5,
+    "metal": 0.0,
+    "emit": 0.0,
+    "alpha": 1.0
+  },
+  "sign_text": {
+    "hex": "#3a3f4a",
+    "base": [0.04231, 0.04971, 0.06848],
+    "rough": 0.5,
+    "metal": 0.0,
+    "emit": 0.0,
+    "alpha": 1.0
+  },
+  "shelter_frame": {
+    "hex": "#6f7c8a",
+    "base": [0.15896, 0.20156, 0.25415],
+    "rough": 0.4,
+    "metal": 0.0,
+    "emit": 0.0,
+    "alpha": 1.0
+  },
+  "shelter_roof": {
+    "hex": "#5f8fb5",
+    "base": [0.11444, 0.27468, 0.46208],
+    "rough": 0.5,
+    "metal": 0.0,
+    "emit": 0.0,
+    "alpha": 1.0
+  },
+  "busstop_sign": {
+    "hex": "#e3685a",
+    "base": [0.76815, 0.13843, 0.10224],
+    "rough": 0.5,
+    "metal": 0.0,
+    "emit": 0.0,
+    "alpha": 1.0
+  },
+  "iron": {
+    "hex": "#2b2b30",
+    "base": [0.02416, 0.02416, 0.02956],
+    "rough": 0.35,
+    "metal": 0.8,
+    "emit": 0.0,
+    "alpha": 1.0
+  },
+  "ball": {
+    "hex": "#e8352b",
+    "base": [0.80695, 0.0356, 0.02416],
+    "rough": 0.3,
+    "metal": 0.0,
+    "emit": 0.0,
+    "alpha": 1.0
+  },
+  "car": {
+    "hex": "#d0342c",
+    "base": [0.63076, 0.03434, 0.02519],
+    "rough": 0.25,
+    "metal": 0.0,
+    "emit": 0.0,
+    "alpha": 1.0
+  },
+  "umbrella": {
+    "hex": "#3f7fe0",
+    "base": [0.04971, 0.21223, 0.7454],
+    "rough": 0.3,
+    "metal": 0.0,
+    "emit": 0.0,
+    "alpha": 1.0
+  },
+  "umbrella_inner": {
+    "hex": "#2f63b8",
+    "base": [0.02843, 0.12477, 0.47932],
+    "rough": 0.4,
+    "metal": 0.0,
+    "emit": 0.0,
+    "alpha": 1.0
+  },
+  "headlight": {
+    "hex": "#fff6dc",
+    "base": [1.0, 0.92158, 0.71569],
+    "rough": 0.2,
+    "metal": 0.0,
+    "emit": 5.0,
+    "alpha": 1.0
+  },
+  "taillight": {
+    "hex": "#ff3a2e",
+    "base": [1.0, 0.04231, 0.02732],
+    "rough": 0.3,
+    "metal": 0.0,
+    "emit": 3.0,
+    "alpha": 1.0
+  },
+  "vending_glow": {
+    "hex": "#fff6dc",
+    "base": [1.0, 0.92158, 0.71569],
+    "rough": 0.2,
+    "metal": 0.0,
+    "emit": 1.2,
+    "alpha": 1.0
+  },
+  "screen": {
+    "hex": "#9fd0ff",
+    "base": [0.3467, 0.63076, 1.0],
+    "rough": 0.2,
+    "metal": 0.0,
+    "emit": 1.5,
+    "alpha": 1.0
+  },
+  "bench_back": {
+    "hex": "#a8683a",
+    "base": [0.39157, 0.13843, 0.04231],
+    "rough": 0.55,
+    "metal": 0.0,
+    "emit": 0.0,
+    "alpha": 1.0
+  },
+  "chair_back": {
+    "hex": "#c48a55",
+    "base": [0.55201, 0.25415, 0.09084],
+    "rough": 0.5,
+    "metal": 0.0,
+    "emit": 0.0,
+    "alpha": 1.0
+  },
+  "sofa_back": {
+    "hex": "#5a86b8",
+    "base": [0.10224, 0.2384, 0.47932],
+    "rough": 0.85,
+    "metal": 0.0,
+    "emit": 0.0,
+    "alpha": 1.0
+  },
+  "bike_basket": {
+    "hex": "#8e959e",
+    "base": [0.2705, 0.30054, 0.34191],
+    "rough": 0.4,
+    "metal": 0.0,
+    "emit": 0.0,
+    "alpha": 1.0
+  },
+  "window_sill": {
+    "hex": "#d8dde3",
+    "base": [0.68669, 0.72306, 0.76815],
+    "rough": 0.4,
+    "metal": 0.0,
+    "emit": 0.0,
+    "alpha": 1.0
+  },
+  "counter_front": {
+    "hex": "#2f8f5b",
+    "base": [0.02843, 0.27468, 0.10462],
+    "rough": 0.5,
+    "metal": 0.0,
+    "emit": 0.0,
+    "alpha": 1.0
+  },
+  "shelf_back": {
+    "hex": "#8e5c35",
+    "base": [0.2705, 0.10702, 0.0356],
+    "rough": 0.6,
+    "metal": 0.0,
+    "emit": 0.0,
+    "alpha": 1.0
+  },
+  "shirt_collar": {
+    "hex": "#f4f4f0",
+    "base": [0.90466, 0.90466, 0.87137],
+    "rough": 0.7,
+    "metal": 0.0,
+    "emit": 0.0,
+    "alpha": 1.0
+  },
+  "seat_back": {
+    "hex": "#3d6f9e",
+    "base": [0.04667, 0.15896, 0.34191],
+    "rough": 0.85,
+    "metal": 0.0,
+    "emit": 0.0,
+    "alpha": 1.0
+  },
+  "trackpad": {
+    "hex": "#a9aeb6",
+    "base": [0.39676, 0.42327, 0.46778],
+    "rough": 0.3,
+    "metal": 0.0,
+    "emit": 0.0,
+    "alpha": 1.0
+  },
+  "cart_handle": {
+    "hex": "#d9352b",
+    "base": [0.69387, 0.0356, 0.02416],
+    "rough": 0.5,
+    "metal": 0.0,
+    "emit": 0.0,
+    "alpha": 1.0
+  },
+  "laptop_screen": {
+    "hex": "#3f78c8",
+    "base": [0.04971, 0.18782, 0.57758],
+    "rough": 0.2,
+    "metal": 0.0,
+    "emit": 0.6,
+    "alpha": 1.0
+  },
+  "window_glass": {
+    "hex": "#9fd0ff",
+    "base": [0.3467, 0.63076, 1.0],
+    "rough": 0.2,
+    "metal": 0.0,
+    "emit": 0.5,
+    "alpha": 1.0
+  },
+  "platform_edge": {
+    "hex": "#f6f5f1",
+    "base": [0.92158, 0.9131, 0.87962],
+    "rough": 0.7,
+    "metal": 0.0,
+    "emit": 0.0,
+    "alpha": 1.0
+  },
+  "wall_window_sill": {
+    "hex": "#d8dde3",
+    "base": [0.68669, 0.72306, 0.76815],
+    "rough": 0.4,
+    "metal": 0.0,
+    "emit": 0.0,
+    "alpha": 1.0
+  },
+  "kitchen_cabinet": {
+    "hex": "#c8935e",
+    "base": [0.57758, 0.29177, 0.11193],
+    "rough": 0.5,
+    "metal": 0.0,
+    "emit": 0.0,
+    "alpha": 1.0
+  },
+  "chalk_tray": {
+    "hex": "#a8743f",
+    "base": [0.39157, 0.17465, 0.04971],
+    "rough": 0.55,
+    "metal": 0.0,
+    "emit": 0.0,
+    "alpha": 1.0
+  },
+  "price_rail": {
+    "hex": "#ffe27a",
+    "base": [1.0, 0.76052, 0.19462],
+    "rough": 0.5,
+    "metal": 0.0,
+    "emit": 0.0,
+    "alpha": 1.0
+  },
+  "kitchen_front": {
+    "hex": "#d8b07c",
+    "base": [0.68669, 0.43415, 0.20156],
+    "rough": 0.5,
+    "metal": 0.0,
+    "emit": 0.0,
+    "alpha": 1.0
+  },
+  "shelter_back": {
+    "hex": "#cfe3f0",
+    "base": [0.62396, 0.76815, 0.87137],
+    "rough": 0.2,
+    "metal": 0.0,
+    "emit": 0.0,
+    "alpha": 1.0
+  },
+  "cafe_groove": {
+    "hex": "#6e4427",
+    "base": [0.15593, 0.05781, 0.02029],
+    "rough": 0.6,
+    "metal": 0.0,
+    "emit": 0.0,
+    "alpha": 1.0
+  },
+  "cafe_lamp": {
+    "hex": "#ffd98a",
+    "base": [1.0, 0.69387, 0.25415],
+    "rough": 0.3,
+    "metal": 0.0,
+    "emit": 1.2,
+    "alpha": 1.0
+  },
+  "shelter_bench": {
+    "hex": "#a8683a",
+    "base": [0.39157, 0.13843, 0.04231],
+    "rough": 0.55,
+    "metal": 0.0,
+    "emit": 0.0,
+    "alpha": 1.0
+  }
+}

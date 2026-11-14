@@ -3086,7 +3086,7 @@
           "parts"
         ],
         "summary": "部品のメタデータの一覧",
-        "description": "置ける部品と、その大きさ・置き方の点（anchors）。今は Worker に同梱した一覧（src/scenes/parts.json）を返す。",
+        "description": "置ける部品と、その大きさ・置き方の点（anchors）。今は Worker に同梱した一覧（src/scenes/parts.json）を返す。その場で作った部品は入らない（配置の JSON に id@版 で出てくる）。",
         "responses": {
           "200": {
             "description": "一覧",
@@ -3097,6 +3097,56 @@
                 }
               }
             }
+          }
+        }
+      }
+    },
+    "/parts/{id}/{version}.usdz": {
+      "get": {
+        "operationId": "getMadePartUsdz",
+        "tags": [
+          "parts"
+        ],
+        "summary": "その場で作った部品の USDZ",
+        "description": "その場で作った部品（配置の JSON の part が id@版 のもの）の 3D モデルを R2 から返す。メタデータの file（parts/<id>/<version>.usdz）をこのサーバーの URL に足して取る。同梱の部品はアプリが持っているので、ここでは返さない。一度置いた版は変わらないので、ずっとキャッシュしてよい。",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[a-z]+(?:_[a-z]+){0,2}$"
+            },
+            "description": "部品の ID（物の ID の規約の形）",
+            "example": "umbrella_stand"
+          },
+          {
+            "name": "version",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "description": "版の番号",
+            "example": 1
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "部品の USDZ（cache-control: public, max-age=31536000, immutable）",
+            "content": {
+              "model/vnd.usdz+zip": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "その版の部品が無い（作っている途中で、メタデータがまだ無い版も 404）"
           }
         }
       }
