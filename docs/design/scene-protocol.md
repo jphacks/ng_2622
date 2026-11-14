@@ -304,7 +304,7 @@ v1 の基本は止まった場面で、動作は人物のポーズで表す。�
 - 2 回目に渡す部品の一覧には、人と動物のポーズで言える動詞（`says`）を出し、`center` の `accept` の動詞が言える部品を選ばせる。場面・関係・向き・動きの決まりは `/1` の生成と同じ文を使い、`relate`・`seat_at`・`thrown_by`・`facing: "auto"`・`holds`・`uses` の説明を足す。
 - 作り置きをまとめて作るスクリプトは `backend/scripts/make-pool-v2.ts`。場面の ID は `gen-v2-<級>-<テーマ>-<連番 2 桁>`（例: `gen-v2-pre2-bus-stop-11`。級は `eiken3`・`pre2`・`eiken2`、連番は級の中の番号）。アプリが `gen-` で始まる ID を AI で作った場面とみるので先頭は `/1` の作り置き（`gen-` ＋ 10 文字）と同じにし、続く `v2-` で `/2` と分かるようにする。
 - 呼び名の一覧（`cast`）は作らない。検索の問い合わせは、検索のモデルの学習と同じ形（場面の英文 1〜3 文）にする（[ADR](../adr/20261110-write-grade-sentences-before-scene-parts.md)）。
-- Award Day（2026-11-15）の当日は、部屋での生成を止める（`SCENE_GENERATION` を `off`）。
+- Award Day（2026-11-15）の当日は、部屋での生成を止める（`SCENE_GENERATION` を `off`）。苦手の場面（`POST /weak-scenes`、下の「苦手の場面で始める」）は別のスイッチ `WEAK_SCENE_GENERATION` で動かし、当日も `on` にする（2026-11-14、[`part-generation.md`](./part-generation.md)）。
 
 ## 崩れの扱い
 
@@ -319,14 +319,15 @@ v1 の基本は止まった場面で、動作は人物のポーズで表す。�
 | メソッドとパス | だれが使う | 中身 |
 | --- | --- | --- |
 | `GET /parts` | 配置を書く側・アプリ | 部品のメタデータの一覧（各部品の最新の版） |
-| `GET /parts/{id}/{version}.usdz` | アプリ | 部品の USDZ（R2 から返す。版ごとに中身が変わらないので、長くキャッシュしてよい） |
+| `GET /parts/{id}/{version}.usdz` | アプリ | 部品の USDZ。R2 の `parts/<id>/<version>.usdz` を返す。`content-type: model/vnd.usdz+zip`、`cache-control: public, max-age=31536000, immutable`（版ごとに中身が変わらないため）。無ければ 404。同梱の部品はアプリが持っているので、返すのは R2 の物（苦手の場面で作った部品）だけでよい（2026-11-14、[`part-generation.md`](./part-generation.md)） |
 | `PUT /parts/{id}/{version}` | 亀井さんのエージェント | 部品を保存する。本文は multipart（`meta` にメタデータの JSON、`file` に USDZ）。合言葉が要る |
 | `POST /scenes` | 亀井さんのエージェント・人 | 配置の JSON を保存し、`{ "sceneId": "gen-…" }` を返す。合言葉が要る。R2 と合わせて、亀井さんのエージェントが使うときに入れる |
 | `POST /scenes/generate` | 作り置きのスクリプト（手元） | 本文は `{ "difficulty": "eiken-pre2", "theme": "公園" }`（`theme` は任意）。Claude が 2 段で見本の答え・チェックリスト・部品と関係を書き、裏取りを通った配置の JSON（`scenenglish.scene/2`）を、保存せずにそのまま返す。合言葉が要る。アプリは呼ばない |
+| `POST /weak-scenes` | アプリ（苦手の画面） | 級・苦手の種類・AI の分析の癖の題と直し方・次に試すことから、その苦手を練習する場面を作る。足りない物の部品はその場で作る（1 場面 4 個まで）。配置を R2 の `weak-scenes/<sceneId>.json` に置き、`sceneId`（`weak-` ＋ uuid）・名前・狙った種類・一言・配置・作った部品を返す。合言葉は要らず、IP ごとの 1 時間の回数・全体の 1 日の回数の上限と、止めるスイッチ `WEAK_SCENE_GENERATION` で守る。形は [`part-generation.md`](./part-generation.md)（2026-11-14） |
 | `GET /scenes/{sceneId}/layout` | アプリ | 配置の JSON（作り置きの場面は同梱の JSON から、`POST /scenes` で保存したものは R2 から返す）。部屋が作った場面は `?room=<部屋の番号>` を付けると、その部屋に置いたものを返す（2026-10-26） |
 
 - 合言葉: Worker の secret `SCENE_WRITE_TOKEN` に置き（手元の `wrangler dev` では `.dev.vars`）、`Authorization: Bearer <合言葉>` で送る。合言葉は亀井さんに直接渡し、ファイルには書かない。
-- R2 の置き場所: `parts/<id>/<version>.usdz`、`parts/<id>/<version>.json`（メタデータ）、`scenes/<sceneId>.json`（配置）。
+- R2 の置き場所: `parts/<id>/<version>.usdz`、`parts/<id>/<version>.json`（メタデータ）、`scenes/<sceneId>.json`（配置）。2026-11-14 に、`recipes/<id>/<version>.json`（AI が書いた部品表）と `weak-scenes/<sceneId>.json`（苦手の場面の配置と、作った部品のメタデータ）を足した。binding は `BUCKET`（本番 `ng-2622-bucket`、PR のプレビュー `ng-2622-bucket-preview`）。
 - 部屋は round で `sceneId` を全員に配る（今のまま）。作り置きの場面では、ホストは `start` で難易度を送り、部屋が場面を選ぶ（下の「待合での出し方」）。採点は、作り置きの場面なら同梱の配置の JSON、`POST /scenes` で保存した場面なら R2 の配置の JSON を使う。
 - 手作りの 6 場面（公園・教室・駅前・雨のバス停・海辺・カフェ）は、部品の配置で作り直し、作り置きの場面と同じ形で採点する（2026-10-25）。作り直すまでは使わない。外すのは、作り置きの場面と新しい採点が本番に入るのと同時にする。それまでは、焼き込んだ USDZ と今の採点のまま遊べる。
 
@@ -388,7 +389,7 @@ render_layout.py で PNG に描く ──▶ 人が目で確かめる ──▶ 
 - 部屋は、その難易度の作り置きの場面のうち、その部屋でまだ出ていないものからランダムに選ぶ。全部出たら最初に戻る。
 - `start` で難易度（`difficulty`: `eiken-3`・`eiken-pre2`・`eiken-2`。2026-11-11 に切り替えた。古い値は `invalid_message`）を送り、部屋が選んだ `sceneId` を round で全員に配る。round の形は変えない。
 - 部屋は出した場面を覚え（難易度ごと）、その難易度を全部出したら、その難易度の分だけ忘れて最初に戻る。
-- `sceneId` と `difficulty` の両方を送ると `invalid_message`。どちらも無ければ、全部の級の作り置きの場面からおまかせで選ぶ（2026-11-11。手作りの場面を外したため。それまでは手作りの場面のおまかせだった）。`sceneId` には作り置きの場面の ID だけを送れる。
+- `sceneId` と `difficulty` の両方を送ると `invalid_message`。どちらも無ければ、全部の級の作り置きの場面からおまかせで選ぶ（2026-11-11。手作りの場面を外したため。それまでは手作りの場面のおまかせだった）。`sceneId` には作り置きの場面の ID だけを送れる（2026-11-14 から、苦手の場面の `weak-` で始まる ID も送れる。下の「苦手の場面で始める」）。
 - 作り置きの場面のラウンドは、話し方は Azure のまま、内容・表現と講評をチェックリストの採点（`backend/src/scoring/checklistGrade.ts`）の 1 回の Claude 呼び出しで付ける（2026-11-11。それまでは `bands.ts` の段階の基準で、`nextStep.gain` は null だった）。結果（results）には内容の内訳が入り、`nextStep.gain` は合計の点の伸び。手作りの場面は外した。形は [`usecase.md`](./usecase.md) の「アプリへ送るもの」。
 - 手作りの 6 場面の扱いは、下の API の節の最後。
 
@@ -483,6 +484,30 @@ Claude の API（Messages API）に渡すもの:
 - 作った場面の ID は今までどおり `gen-` ＋ 10 文字。配置の JSON は部屋の `ctx.storage` に置き、部屋が消えるときに一緒に消える。R2 には置かない。採点も部屋に置いたものを使う。
 - `GET /scenes/{sceneId}/layout` は、作り置きにない ID のとき、`room` で渡された部屋に置いた配置の JSON を返す。
 - 待つあいだのアプリの画面は [`ui/screens/lobby.md`](./ui/screens/lobby.md)。
+
+## 苦手の場面で始める（2026-11-14 に決定）
+
+> 苦手の画面で作った場面を、部屋で遊ぶ道。決めた理由は [ADR](../adr/20261114-build-parts-from-ai-part-tables-in-typescript-and-share-on-r2.md)、口の形と作り方の正本は [`part-generation.md`](./part-generation.md)。
+
+```
+アプリ（苦手の画面）──POST /weak-scenes──▶ Worker（スイッチ・回数の上限）
+                                             ▼
+                          Durable Object WeakSceneMaker（1 回ごとに 1 つ）──▶ Claude（苦手を入れた 2 段の生成と、足りない部品の部品表）
+                                             │ 部品を組んで R2 に置く（parts/…）
+                                             │ 裏取りと座標の計算
+                                             │ 配置を R2 に置く（weak-scenes/<sceneId>.json）
+                     ◀── sceneId（weak-…）・名前・配置 ──┘
+ホスト ──POST /rooms → start { sceneId: "weak-…" }──▶ 部屋（Room DO）──▶ R2 の weak-scenes/<sceneId>.json を読む
+                                                       ▼
+                                      round { sceneId } を全員へ（形は変えない）
+```
+
+- 苦手の場面は、部屋ではなく `POST /weak-scenes` が作る。生成の全部は、Worker がスイッチと回数の上限を見たあとの、Durable Object `WeakSceneMaker`（migration v6）の中で動く。部屋は作らずに読むだけなので、10 秒の上限と `SCENE_GENERATION` は関係しない。
+- ID は `weak-` ＋ uuid。start の `sceneId` が `weak-` で始まれば、部屋は R2 の `weak-scenes/<sceneId>.json` から配置（と作った部品のメタデータ）を読んで始める。無ければ、今の「知らない場面」のエラーにする。
+- 部屋からアプリへ送る `room`・`round` には欄を足さない（前の版のアプリが `room` ごと読めなくなるため）。ホストの待合に出す場面の名前は、ホストのアプリが `POST /weak-scenes` の返りから覚えておく（[`ui/screens/lobby.md`](./ui/screens/lobby.md)）。
+- 参加者の端末は、今の部屋の場面と同じく `GET /scenes/{sceneId}/layout` で配置を取る。`weak-` の ID は、`?room=` が無くても R2 から返す（PR 3 で確かめた）。作った部品は、配置に `id@版` で書き、`GET /parts/{id}/{version}.usdz` で取る。
+- 採点には、配置と一緒に作った部品のメタデータを渡す。今の採点（`backend/src/scoring/layout.ts` の `describeLayoutWithRelations`）は、静的な一覧に無い部品を捨てるため。
+- 作った部品は物だけ（`thing`・`furniture`・`food`・`plant`・`vehicle`）。人（`person`）・動物（`animal`）・地面（`ground`）・建物（`building`。壁・ドア・窓など）は今の部品から選ぶ。部品は ID の規約で書かせ、一覧は渡さない。部品をその場で作るのは苦手の場面のときだけで、部屋のスタートの生成と作り置きの生成では作らない。部屋の生成と作り置きの生成の引き方は、スイッチ `SCENE_PART_LOOKUP` で選ぶ（`convention` なら規約で引く。それ以外は今の一覧を渡す道で、既定）。
 
 ## アプリの組み立て
 

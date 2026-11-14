@@ -2,6 +2,7 @@
 
 ## Status
 - accepted
+- 部分 supersede: 2 回目に部品の一覧を全部渡すこと（Decision の「2 回目に渡す部品は、今は全部」）は、苦手の場面の生成（`POST /weak-scenes`）に限り、[20261114-build-parts-from-ai-part-tables-in-typescript-and-share-on-r2](./20261114-build-parts-from-ai-part-tables-in-typescript-and-share-on-r2.md) で「部品は ID の規約で書かせてコードが引き、一覧を渡さない」に置き換えた。部屋の生成と作り置きの生成は、今のまま一覧を渡す。
 
 ## Situation
 - 採点を英検の二次試験の評価の観点に沿わせ、内容をチェックリストの F1 で付けると決めた（[20261110-align-scoring-with-eiken-speaking-viewpoints](./20261110-align-scoring-with-eiken-speaking-viewpoints.md)、[20261110-score-content-with-checklist-f1](./20261110-score-content-with-checklist-f1.md)）。チェックリストは場面を作るときに Claude が作り、コードが照らして確かめる（[20261110-make-checklist-at-scene-generation](./20261110-make-checklist-at-scene-generation.md)）。この 3 本は PR #100。

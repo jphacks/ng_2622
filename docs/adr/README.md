@@ -50,7 +50,7 @@
 | 2026-11-10 | [採点は英検の二次試験の評価の観点と課題の形に沿わせる](./20261110-align-scoring-with-eiken-speaking-viewpoints.md) | accepted |
 | 2026-11-10 | [内容の点は、場面ごとのチェックリストと言ったことの正しさの F1 で付ける](./20261110-score-content-with-checklist-f1.md) | accepted（その他を満点の重みに含める条項のみ 2026-11-11 に部分 supersede） |
 | 2026-11-10 | [チェックリストは場面を作るときに Claude が作り、コードが場面と照らして確かめる](./20261110-make-checklist-at-scene-generation.md) | accepted |
-| 2026-11-10 | [場面の生成は、級の規則で英文とチェックリストを先に書き、その英文に合う部品と関係を後に書く](./20261110-write-grade-sentences-before-scene-parts.md) | accepted |
+| 2026-11-10 | [場面の生成は、級の規則で英文とチェックリストを先に書き、その英文に合う部品と関係を後に書く](./20261110-write-grade-sentences-before-scene-parts.md) | accepted（2 回目に部品の一覧を全部渡す条項のみ、苦手の場面の生成に限って 2026-11-14 に部分 supersede） |
 | 2026-11-10 | [場面の形を scenenglish.scene/2 にし、要素をチェックリストに置き換え、説明文を見本の答えにする](./20261110-adopt-scene-protocol-v2-with-checklist.md) | accepted（`/1` と `/2` の両方を読む期間の条項のみ 2026-11-11 に部分 supersede） |
 | 2026-11-11 | [その他の描写は満点に含めないおまけにし、名前だけでは中心・理由・つながりの項目に当てない](./20261111-count-other-claims-as-bonus-and-require-actions-for-items.md) | accepted |
 | 2026-11-11 | [手作りの場面と古い採点を外し、採点をチェックリストの 1 通りにする](./20261111-score-only-with-checklist-and-drop-handmade-scenes.md) | accepted |
@@ -59,3 +59,4 @@
 | 2026-11-13 | [苦手の分析は AI で行い、端末で数えた結果を渡し、送るのは文字だけで残さない](./20261113-analyze-weak-points-with-ai-from-on-device-counts.md) | accepted |
 | 2026-11-13 | [タイトル画面の 3D は、サーバーが期間つきで決め、アプリは id で取り直して期限で消す](./20261113-decide-title-diorama-on-server-with-expiry.md) | accepted（見ている途中で入れ替えない条項のみ同日に部分 supersede） |
 | 2026-11-13 | [タイトル画面の広告の 3D は見ている途中でも入れ替え、アプリに固定の「PR」の札を付ける](./20261113-swap-title-diorama-in-place-and-label-as-pr.md) | accepted |
+| 2026-11-14 | [部品は AI が部品表を書き TS で組み、ID の規約で引き、R2 に置いてみんなで使う](./20261114-build-parts-from-ai-part-tables-in-typescript-and-share-on-r2.md) | accepted |
