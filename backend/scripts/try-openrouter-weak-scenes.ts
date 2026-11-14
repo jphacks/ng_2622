@@ -1,9 +1,10 @@
 // 実験用（2026-11-14、PR は merge しない）: 苦手の場面の生成（部品の生成も含む）を、Claude の代わりに OpenRouter のモデルで試す。
 // 指示・JSON の形・裏取り・作り直し・締め切りは今のコードのまま。Claude を呼ぶ関数（CreateMessage）だけを OpenRouter につなぐ関数に差し替える。
 // 費用は OpenRouter が返す実際の値（usage.cost）を足す（ログの sceneUsd は Claude の単価で数えるので当てにしない）。
-//   OPENROUTER_API_KEY=... MODEL=deepseek/deepseek-v4-pro [REASONING=off] pnpm tsx scripts/try-openrouter-weak-scenes.ts <出力のフォルダ> [場面の数（既定 4）] [費用の上限ドル（既定 1）]
+//   OPENROUTER_API_KEY=... MODEL=deepseek/deepseek-v4-pro [REASONING=off] [NO_TIMEOUT=1] pnpm tsx scripts/try-openrouter-weak-scenes.ts <出力のフォルダ> [場面の数（既定 4）] [費用の上限ドル（既定 1）]
 // 出力: <フォルダ>/result.json（場面ごとの結果と呼び出しごとの記録）、<n>-<級>.json（配置）、parts/<id>/<版>.usdz（作った部品）
 // 4 通りの入力は measure-weak-scenes.ts と同じ。
+// NO_TIMEOUT=1 なら締め切り（全体 90 秒・1 回 45 秒）を外す（考えるモデルが、時間さえあれば裏取りを通るかを見るため。本番のコードは変えない）。
 import { mkdir, writeFile } from "node:fs/promises";
 import path from "node:path";
 import Anthropic from "@anthropic-ai/sdk";
@@ -25,6 +26,10 @@ if (!outDir || !KEY) {
 }
 const count = Number(countArg ?? 4);
 const cap = Number(capArg ?? 1);
+const NO_TIMEOUT = process.env.NO_TIMEOUT === "1";
+// 締め切りを外すときの 1 回の上限と、場面 1 つの上限
+const LOOSE_CALL_MS = 600_000;
+const LOOSE_BUDGET_MS = 3_600_000;
 // makeWeakScene は CLAUDE_API_KEY が無いと止まるので、形だけ入れる（実際の呼び出しは下の orCreate が受ける）
 const env = { CLAUDE_API_KEY: "openrouter" };
 
@@ -167,7 +172,8 @@ const orCreate: CreateMessage = async (params, options) => {
       finish: "",
       ...c,
     });
-  const signals = [AbortSignal.timeout(options.timeout), options.signal].filter(
+  const timeout = NO_TIMEOUT ? LOOSE_CALL_MS : options.timeout;
+  const signals = [AbortSignal.timeout(timeout), options.signal].filter(
     (s): s is AbortSignal => s !== undefined,
   );
   let res: Response;
@@ -301,6 +307,7 @@ for (const [i, input] of CASES.slice(0, count).entries()) {
   const started = Date.now();
   const outcome = await makeWeakScene(env, input, {
     create: orCreate,
+    ...(NO_TIMEOUT ? { budgetMs: LOOSE_BUDGET_MS } : {}),
     workshop,
     store: {
       put: async (r) => {
@@ -344,7 +351,7 @@ for (const [i, input] of CASES.slice(0, count).entries()) {
 }
 await writeFile(
   path.join(outDir, "result.json"),
-  `${JSON.stringify({ model: MODEL, reasoning: process.env.REASONING ?? "effort", results, calls }, null, 2)}\n`,
+  `${JSON.stringify({ model: MODEL, reasoning: process.env.REASONING ?? "effort", noTimeout: NO_TIMEOUT, results, calls }, null, 2)}\n`,
 );
 console.log(
   `モデル ${MODEL}、費用の合計 ${spent.toFixed(4)} USD、呼び出し ${calls.length} 回`,
