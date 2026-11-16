@@ -2,7 +2,7 @@
 
 調べた日: 2026-11-16（担当 6）。扱う範囲は、製品や試験が公開している仕組み・検証・説明の仕方。ルーブリック（担当 1）・データセット（担当 2）・指標の計算方法（担当 3）・LLM の安定化の研究（担当 4）・音声の前処理（担当 5）には踏み込まない。
 
-調べ方についての注意: 途中で、セッション全体で共有している WebSearch の上限に達した。そのあとは、手元にある URL を WebFetch で開くことと、PDF を `pdftotext` で文字にすることだけで進めた。ets.org のいくつかのページ（ヘッダーが大きすぎて開けない）、pearsonpte.com（取得が拒まれた）、cambridgeenglish.org（保守中）は本文を開けなかった。そこは検索結果の抜粋を出典にしていて、そう書いてある。
+調べ方についての注意: 途中で、セッション全体で共有している WebSearch の上限に達した。そのあとは、手元にある URL を WebFetch で開くことと、PDF を `pdftotext` で文字にすることだけで進めた。ets.org のいくつかのページ（ヘッダーが大きすぎて開けない）、pearsonpte.com（取得が拒まれた）、cambridgeenglish.org（保守中）は本文を開けなかった。そこは検索結果の抜粋を出典にしていて、そう書いてある。2026-11-16 に、未確認だった数字を原典で確かめ直し、確かめたものには日付を添えた。
 
 ---
 
@@ -63,21 +63,21 @@
 
 | 製品・試験 | 何を特徴に使うか | 人の採点との組み合わせ | 公開している人との一致 |
 |---|---|---|---|
-| TOEFL iBT スピーキング（ETS SpeechRater） | 流暢さ（言いよどみ・ポーズ）、発音、リズム、語彙、文法の複雑さ、内容の適切さ、談話のまとまり（v5.0。2016 年に本番に入った。RR-18-10） | ETS の公式ページは「AI の採点と ETS 認定の採点者の組み合わせ」とだけ書く。混ぜ方は公開していない。2019 年から本番で人と SpeechRater を併用したという説明は二次情報 | TOEFL Junior のスピーキングで機械と人 r=.81、人と人 .89（ETS 2015 の報告。検索の抜粋。本文は未確認） |
+| TOEFL iBT スピーキング（ETS SpeechRater） | 流暢さ（言いよどみ・ポーズ）、発音、リズム、語彙、文法の複雑さ、内容の適切さ、談話のまとまり（v5.0。2016 年に本番に入った。RR-18-10） | ETS の公式ページは「AI の採点と ETS 認定の採点者の組み合わせ」とだけ書く。混ぜ方は公開していない。2019 年から本番で人と SpeechRater を併用したという説明は二次情報 | TOEFL Junior のスピーキングで機械と人 r=.81、人と人 .89。5 問の合計の点での値（Evanini ほか 2015、ETS RR-15-09。2026-11-16 に ERIC の本文 https://files.eric.ed.gov/fulltext/EJ1109726.pdf で確かめた） |
 | TOEFL iBT ライティング（e-rater） | 文法・語法・表記・文体・構成・展開・前置詞とコロケーションの正しさ・文の多様さ・語の難しさ（ETS Best Practices 2021 の事例の表） | 人の点と混ぜる。人の点との差が、Independent の課題で 1.5、Integrated の課題で 1.0 を超えたら、別の人が採点する（ETS RR-12-06、2012。検索の抜粋） | ETS は「Independent の課題では、e-rater と人の一致が、人どうしの一致より高い」と書く（Attali, Bridgeman & Trapani 2010 を引用。ETS のページ。検索の抜粋） |
 | TOEIC Speaking & Writing（ETS） | — | 人だけが採点する。採点者は認定試験に合格し、採点の日ごとに較正の試験に通る。1 人の受験者の答えを複数の採点者が独立に採点する（ETS 2010。ETS の TOEIC のページ） | （人の採点なので該当しない）。AI を使うという公式の情報は見つからなかった |
-| PTE Academic（Pearson） | 課題ごとの特性。たとえば「Describe Image（画像を説明する）」は内容・発音・流暢さの 3 つ（Pearson の MELTA 2018 の資料） | 全部を AI が採点する。2025-08-07 から、22 種の問題のうち 7 種で、内容だけ人も採点する。人と AI の点が食い違えば、2 人目の人が決める。発音と流暢さは AI だけが採点する。暗記した型どおりの答えは人の確認に回る（Pearson の FAQ。検索の抜粋。本文は開けなかった） | スピーキング r=.96（40 万件超）、ライティング .88（5 万件超。人と人は .87）（Pearson の Efficacy のページ、2019）。特性ごとには、発音 .81・流暢さ .82・内容 .92・語彙 .90・正確さ .95・総合 .96（N=158。MELTA 2018） |
+| PTE Academic（Pearson） | 課題ごとの特性。たとえば「Describe Image（画像を説明する）」は内容・発音・流暢さの 3 つ（Pearson の MELTA 2018 の資料） | 全部を AI が採点する。2025-08-07 から、22 種の問題のうち 7 種で、内容だけ人も採点する。人と AI の点が食い違えば、2 人目の人が決める。発音と流暢さは AI だけが採点する。暗記した型どおりの答えは人の確認に回る（Pearson の FAQ。検索の抜粋。本文は開けなかった） | スピーキング r=.96（40 万件超）、ライティング .88（5 万件超。人と人は .87）（Pearson の Efficacy のページと Assessment Efficacy Report 2019。フィールドテストの受験者 1 万人超・採点者 200 人。2026-11-16 に本文で確かめた）。特性ごとには、発音 .81・流暢さ .82・内容 .92・語彙 .90・正確さ .95・総合 .96（N=158。MELTA 2018） |
 | Versant（Pearson） | 読み上げ・復唱などで、語の正しさ・流暢さ・発音 | 全部を自動で採点する | 口頭の面接の点との相関 r=.77〜.92（Bernstein, Van Moere & Cheng 2010。抄録） |
-| Duolingo English Test | 6 つの下位の力。内容（問いと答えの埋め込みの cos 類似度）、まとまり（専門家の点で調整した言語モデルが予測する 0〜6）、語彙（C1 以上の語の割合）、文法（係り受けの木の深さ）、流暢さ（1 秒あたりの語数）、発音（音響モデルの文字起こしへの確信度） | Duo Speaking Scorer と Duo Writing Scorer が採点する。人の採点は、モデルの学習と評価、採点者の監視（MFRM）に使う。Interactive Speaking は、問いごとに「言うべき内容の点」の一覧を持ち、そのいくつに触れたかで課題の達成を測る | 機械と人 r=.84、人と人 .85（スピーキング、1,922 回分）。機械と人 .85、人と人 .87（ライティング、2,460 回分）。スピーキングの点の再受験での信頼性 .94、SEM 5.68（10〜160 の尺度）（Technical Manual 2025-07） |
-| Linguaskill（Cambridge） | 3 つのモデルを持つ。点を出すモデル、確信度のモデル、異常な答えを見つけるモデル。B2 First のライティングでは最大約 33 万の言語特徴を使う（語彙・文の長さ・文法関係・つなぎの語・読みやすさ・問いとの関連・誤り）（Xu ら 2024） | スピーキングは「人の試験官か自動採点」の混合（hybrid marking）。確信度が低い答えは人が採点する。ライティングの一般的な流れは次のとおり（Xu ら 2024）。確信度が高く異常の印も無いものは、そのまま返す。確信度が閾値に届かないものと異常の印が付いたものは、人が採点する。食い違えば人の点を返す。確信度と関係なく、無作為に選んだ一部も人が採点する | 混合の採点と人だけの採点で、CEFR が完全に一致したのが 95.6%、1 つ違いまでが 100%（Cambridge の資料。検索の抜粋。本文は未確認）。自動採点は、試験官の点の平均より少し甘く、力の低い人で特にそうだった（Xu ら 2021。ResearchGate の抄録） |
+| Duolingo English Test | 6 つの下位の力。内容（問いと答えの埋め込みの cos 類似度）、まとまり（専門家の点で調整した言語モデルが予測する 0〜6）、語彙（C1 以上の語の割合）、文法（係り受けの木の深さ）、流暢さ（1 秒あたりの語数）、発音（音響モデルの文字起こしへの確信度） | Duo Speaking Scorer と Duo Writing Scorer が採点する。人の採点は、モデルの学習と評価、採点者の監視（MFRM）に使う。Interactive Speaking は、問いごとに「言うべき内容の点」の一覧を持ち、そのいくつに触れたかで課題の達成を測る | 機械と人 r=.84、人と人 .85（スピーキング、1,922 回分）。機械と人 .85、人と人 .87（ライティング、2,460 回分）。スピーキングの点の再受験での信頼性 .94、SEM 5.68（10〜160 の尺度）（Technical Manual 2025-07 の表 4・表 5。2026-11-16 に本文で確かめた） |
+| Linguaskill（Cambridge） | 3 つのモデルを持つ。点を出すモデル、確信度のモデル、異常な答えを見つけるモデル。B2 First のライティングでは最大約 33 万の言語特徴を使う（語彙・文の長さ・文法関係・つなぎの語・読みやすさ・問いとの関連・誤り）（Xu ら 2024） | スピーキングは「人の試験官か自動採点」の混合（hybrid marking）。確信度が低い答えは人が採点する。ライティングの一般的な流れは次のとおり（Xu ら 2024）。確信度が高く異常の印も無いものは、そのまま返す。確信度が閾値に届かないものと異常の印が付いたものは、人が採点する。食い違えば人の点を返す。確信度と関係なく、無作為に選んだ一部も人が採点する | 混合の採点と人だけの採点で、CEFR が完全に一致したのが 95.6%、1 つ違いまでが 100%。ただしこれは、人に回す閾値を厳しく置き（自動が誤る答えのうち人に回せた割合 recall が 0.96）、多くの答えを人に回したときの値。自動採点だけでは、9,286 回分で完全な一致 56.8%、1 つ違いまで 96.6%（Xu ほか 2020-06「Linguaskill: Building a validity argument for the Speaking test」。2026-11-16 に Web Archive の写し https://web.archive.org/web/20220126092240/https://www.cambridgeenglish.org/Images/589637-linguaskill-building-a-validity-argument-for-the-speaking-test.pdf で確かめた。Cambridge の元の URL は今は 404）。自動採点は、試験官の点の平均より少し甘く、力の低い人で特にそうだった（Xu ら 2021。ResearchGate の抄録。2020 の資料も「高い所で辛く、低い所で甘い」と書く） |
 | Write & Improve（Cambridge。学習ツール） | Cambridge Learner Corpus（約 3,000 万語。試験官が CEFR の 0〜13 で採点し、教師が誤りに印を付けた）で学習した数千の特徴 | 全部を自動で採点する | 公開値なし。「問いにどこまで答えたか、言いたい意味が通じるかは判定できない」と自分で書いている（ヘルプのページ） |
 | Speak & Improve（Cambridge。学習ツール） | 流暢さ（言いよどみの割合）、発音と聞き取りやすさ（音素の距離、文字起こしの語への確信度）、語彙と談話（級ごとの言語モデルのパープレキシティ）。話題から外れた答えを見つける仕組みもある | 人は入らない。確信度が閾値より低いと、点を出さないことができる。録音の状態が悪ければ、静かな場所へ移るよう勧める（Nicholls ら 2023） | 論文に公開値なし。コーパス（2025）は約 315 時間分 |
 | Aptis（British Council） | — | 本番のスピーキングとライティングは、訓練を受けた試験官が採点する | 研究段階: 自動の点と試験官の点の相関が、1 期目 .90、2 期目 .76（2 期目は 105 件の音声、1 件あたり 36 の指標）（Kang & Johnson 2021。検索の抜粋） |
 | IELTS | — | 試験官が 4 つの観点で採点する。AI の採点は書かれていない（ielts.org） | — |
-| 英検（日本英語検定協会） | 中身は非公開 | 2018-10-17 の発表では、iFlytek を含む複数の事業者と共同研究し、「人の手を介した通常採点と遜色無い成果」が出たとした。2019 年度から、人の採点に加えて自動採点を並行して入れる予定だった。従来型はライティングの全級、スピーキングはまず 4・5 級。英検 CBT は 2〜3 級のライティングとスピーキング。今どう運用しているか（AI が何を担うか）は未確認 | 数値は公開していない |
+| 英検（日本英語検定協会） | 中身は非公開 | 2018-10-17 の発表では、iFlytek を含む複数の事業者と共同研究し、「人の手を介した通常採点と遜色無い成果」が出たとした。2019 年度から、人の採点に加えて自動採点を並行して入れる予定だった。従来型はライティングの全級、スピーキングはまず 4・5 級。英検 CBT は 2〜3 級のライティングとスピーキング。今どう運用しているか（AI が何を担うか）は未確認（2026-11-16 にも探したが、2018 年の発表より新しい公式の資料は見つからなかった） | 数値は公開していない |
 | GTEC（ベネッセ） | 非公開 | 「採点の一部に AI を導入」（自己評価シート、令和 8 年 4 月 1 日） | 数値は公開していない |
 | PROGOS（レアジョブ、2020） | 音声認識と自然言語処理。CEFR-J の総合レベルと、CEFR の 6 つの発話の質 | 「AI の自動採点」版と「採点者の手動採点」版がある。設問設計と採点の品質を、東京外国語大学の投野由紀夫・根岸雅史が監修する | 精度の数値は公開していない |
-| CASEC | 今回は調べきれなかった（未確認） | — | — |
+| CASEC（教育測定研究所） | 本体の CASEC は、語彙・表現・大意・具体情報の聞き取りの 4 つの選択式と書き取りで、問題の難しさを答えに合わせて変える（2001 年〜）。話す力は別の試験の CASEC SPEAKING（13 問・200 点）で、発音・流ちょうさ・語彙・文法を 3 段階で返す | CASEC SPEAKING は「トレーニングを受けた英語ネイティブの採点者による採点」で、AI の採点は書かれていない（公式の頁 https://casec.evidus.com/test_summary/casec-speaking/ 、2026-11-16 に確かめた） | （人の採点なので該当しない） |
 
 #### 出典ごとの補足
 
@@ -135,7 +135,7 @@
   - 集団ごとの誤差の向き（OSD。S−H を母語で回帰。SMD に近い）
   - **人の点が同じときの差（CSD。S−H を、人の点と母語で回帰）**
 
-  （S は自動の点、H は人の点）。もとのモデルでは、母語が CSD の分散の 6.2% を説明した。人の点が同じなら、ドイツ語の話者を人より高く、**日本語の話者を人より低く**採点していた。母語で大きく偏る特徴を外すと（77 のうち 34 を残す）、性能は少し下がった（r=.67）が CSD は減った。「すべての定義で同時に公平にすることはできないかもしれない」と結論している。
+  （S は自動の点、H は人の点）。もとのモデルでは、母語が CSD の分散の 6.2% を説明した。人の点が同じなら、ドイツ語の話者を人より高く、**日本語の話者を人より低く**採点していた（CSD の推定は、スペイン語を基準に、日本語 −0.33・ドイツ語 0.16。表 5。2026-11-16 に本文 https://aclanthology.org/W19-4401.pdf で確かめた）。母語で大きく偏る特徴を外すと（77 のうち 34 を残す）、性能は少し下がった（r=.67）が CSD は減った。「すべての定義で同時に公平にすることはできないかもしれない」と結論している。
 - **DET Technical Manual（2025）**: 次のことをしている。
   - 問題ごとに、性別・国籍・年齢などで DIF を調べる。背景どうしを条件にした分析もする。大きな DIF があり、理由が説明できない問題は直すか外す。
   - 問題は、多様な背景の 2〜3 人が公平さと偏りの観点で見直す（FAB）。
@@ -168,8 +168,8 @@
 | ELSA Speak | 0〜100 の点を CEFR と IELTS に対応づけ、5 つの観点（発音・流暢さ・韻律・文法・語彙）を見せる。「専門家の採点者と ±1 CEFR の範囲で 93.88% 一致」と書く。数百万の非母語話者の録音で学習したという。SLaTE 2023 の論文で、YouTube の IELTS の模擬試験 50 本と比べた（相関の値は今回は読めなかった） | 一致の方法（標本・採点者・設計）。自社の efficacy のページでも「内部の研究」と書く。既存の調査（speech-scoring-research.md）でも、API の精度は公開しないと明言している |
 | Speak | OpenAI との提携。GPT-4o の Realtime API で、口調・発音・韻律に助言する。発音の助言は「まだ強くない」と認めている | 点の計算方法 |
 | Duolingo（アプリ） | Max の Roleplay の助言（正確さと複雑さ）。Video Call の採点モデルの論文（r=.84、限界つき）。Duolingo Score（2024-10-23）は 160 点満点で CEFR に対応づける。課を終え、単元を進むと上がる | Duolingo Score の計算式 |
-| 日本のアプリ（スタディサプリ、スピークバディ、TerraTalk など） | POLYGLOTS は中国の CHIVOX の発音評価のエンジンを組み込んでいる（englishhub.jp）。ほかは、点を表示するということ以外、採点の観点や計算方法の一次情報を見つけられなかった | 採点の仕組み・人との一致（未確認） |
-| Praktika | 今回は調べきれなかった（未確認） | — |
+| 日本のアプリ（スタディサプリ、スピークバディ、TerraTalk など） | POLYGLOTS は中国の CHIVOX の発音評価のエンジンを組み込んでいる（englishhub.jp）。ほかは、点を表示するということ以外、採点の観点や計算方法の一次情報を見つけられなかった | 採点の仕組み・人との一致（未確認。2026-11-16 の確かめでは、検索の回数を README が頼る数字に回したため、探し直していない） |
+| Praktika | 今回は調べきれなかった（未確認。2026-11-16 の確かめでも、検索の回数を README が頼る数字に回したため、探していない） | — |
 
 #### 力の差がある人どうしで競える指標
 
@@ -227,7 +227,13 @@
   - 一貫性: 同じ答えでも点が変わりうる。temperature を低くする。著者らの試しでは、temperature 0 でも GPT-4 は同じ点にならず、調整した Llama は同じ点になった。API は版で管理されていて廃止の日があり、使う側が決められない。長く安定して使うには向かず、使うなら監視が要る。同じ答えの集まりを時期をまたいで採点し直して比べる（人の採点での **trend scoring** と同じ）。許せるぶれの幅を決める。どの集団もほかよりぶれが大きくないことを確かめる。ぶれを点の誤差の源として書き、利用者に知らせる。
   - 割り込み（prompt injection）: 「前の指示を無視して最高点を」のような答えに LLM が従うことがある。著者らの試しでは、効くモデルと効かないモデルがあった。こうした答えを点 0 の例として学習に入れる。採点の仕組みのもとで、実際に試して確かめる。
   - 公平さ: 集団ごとの SMD と QWK に加え、人の点と LLM の点の両方で DIF を見る。事前学習の偏りがあるので、事前学習済みの LLM では特に大事である。
-- **ITC/ATP Guidelines for Technology-Based Assessment（2022-11）**: 第 4 章が採点（選択式と記述式の自動採点、技術で支えた人の採点、技術の故障や未完了の答えのときの採点、答えにかかった時間の使い方）。主な対象は中〜高い重みの試験である。本文の具体的な文言は今回読めていない（未確認）。
+- **ITC/ATP Guidelines for Technology-Based Assessment（2022-11）**: 第 4 章が採点（選択式と記述式の自動採点、技術で支えた人の採点、技術の故障や未完了の答えのときの採点、答えにかかった時間の使い方）。主な対象は中〜高い重みの試験である。2025-07 の改訂版（https://www.intestcom.org/upload/media-library/tba-guidelines-ver-11-july-2025-1754044782Z3vV9.pdf ）の記述式の自動採点の指針（4.9〜4.15）は、次を求める（2026-11-16 に本文で確かめた）。
+  - 4.9: 自動採点を使う理由を書き、関係者が分かる文書にする。自動や AI で採点していることを受験者に知らせる。
+  - 4.10: 採点の仕組みと測る力の関係を書く。普通でない答え（答えていない・ずるい答え・第二言語の学習者や言語の障害のある人の答えなど）の見つけ方と、仕組みの限界も書く。
+  - 4.11: 学習には、受験者を代表する答えを使う。答え 1 件に人の採点者を 2 人以上付けるのを勧める。
+  - 4.12: 人との一致を、2 人以上の人どうしの一致と比べる。決まった集団ごとの性能も、人数の少なさと力の差に気をつけて調べる。
+  - 4.13: 自動だけ、一部を人が見る、一部を人に回す、両方で採点する、人だけ、のどれにするかを、性能と試験の重みで決め、理由を書く。
+  - 4.14: 本番の間と後に性能を見直す手順を持つ。ある答えの点がどう出たかを示せるようにすることを勧める。
 - **文部科学省の検定試験の評価ガイドラインに沿った自己評価シート（GTEC の記入例、令和 8 年 4 月）**: 日本の検定試験が自己評価する項目には、次がある。
   - 審査・採点の基準が明確か
   - 主観的な評定の公平さを、マニュアルと訓練で確保しているか
@@ -365,10 +371,10 @@
 
 - **TOEFL iBT（2026-01 からの新しい形式）**: スピーキングとライティングで、人と AI がそれぞれ何を担うかは公開されていない。公式ページは、旧版の説明で「AI の採点と ETS 認定の採点者の組み合わせ」と書くだけである。新しい形式の説明は見つからなかった。試験対策の会社の「全部 AI」「印の付いた答えだけ人」という説明は確かめていない。
 - **PTE Academic の 2025 年の変更**: 人が採点する 7 種の中身と、食い違いの規則は、Pearson の FAQ の検索の抜粋で見ただけで、本文は開けていない。
-- **Linguaskill の数値**: 混合の採点と人だけの採点の CEFR の一致（95.6% / 100%）は、検索の抜粋で見ただけで、原典は確かめていない。確信度の閾値と、人に回る割合も公開されていない。
+- **Linguaskill の数値**: 混合の採点と人だけの採点の CEFR の一致（95.6% / 100%）は、2026-11-16 に原典（2020-06 の資料の Web Archive の写し）で確かめた。自動だけでは 56.8% / 96.6% で、95.6% は多くの答えを人に回したうえでの値。確信度の閾値と、人に回る割合は公開されていない（資料は「大きな割合を人に回した」とだけ書く）。
 - **英検の現状**: 2019 年度以降の自動採点の範囲（S-CBT のスピーキングで AI が何を担うか、AI の面接 S-Interview の実態）は、一次の資料を見つけられなかった。英検の二次試験（面接）の採点が人か AI かは、このアプリの「英検の観点に沿わせる」説明に関わるので、公式の資料を探す価値がある。
-- **Williamson ら（2012）の原文**: 本文を読めていない。.70 / .10 / .15 は、ETS（2021・2023）と ACT（2021）の引用で確かめた。集団ごとの .10 は、Pearson（2026）・WestEd・ETS（.10 か .15）の引用による。
-- **ITC/ATP（2022）の第 4 章の具体的な文言**は読めていない。
+- **Williamson ら（2012）の原文**: 本文を読めていない（2026-11-16 にも探したが、Wiley が取得を拒み〈403〉、無料で読める版も見つからなかった）。.70 / .10 / .15 は、ETS（2021・2023）と ACT（2021）の引用で確かめた。集団ごとの .10 は、Pearson（2026）・WestEd・ETS（.10 か .15）の引用による。
+- **ITC/ATP の第 4 章の具体的な文言**は、2026-11-16 に 2025-07 の改訂版で読んだ（上の「文書が求めること」）。数値の閾値は書いていない。
 - **学習アプリ**: ELSA の 93.88%、Speak・Praktika・日本のアプリの採点方法は、方法が公開されていないか、調べきれなかった。
 - **iOS 26 の対応機種**（iPhone X が対象外か、いちばん古い機種はどれか）を Apple の発表で確かめていない。
 - **このアプリの「人の点」の基準**: 英検の採点者の点に合わせるのか、英語の先生の判断に合わせるのか。ルーブリック（担当 1）と、使うデータセット（担当 2）の結論しだいで、案 2 の採点の段階が決まる。
@@ -379,19 +385,19 @@
 ## 出典の一覧
 
 試験の運用の基準・指針
-- Williamson, D. M., Xi, X., & Breyer, F. J. (2012). A Framework for Evaluation and Use of Automated Scoring. *Educational Measurement: Issues and Practice*, 31(1), 2–13. https://doi.org/10.1111/j.1745-3992.2011.00223.x （本文は未読。下の ETS・ACT の引用で確かめた）
+- Williamson, D. M., Xi, X., & Breyer, F. J. (2012). A Framework for Evaluation and Use of Automated Scoring. *Educational Measurement: Issues and Practice*, 31(1), 2–13. https://doi.org/10.1111/j.1745-3992.2011.00223.x （本文は未読。2026-11-16 にも Wiley が取得を拒んだ。下の ETS・ACT の引用で確かめた）
 - ETS (2021). *Best Practices for Constructed-Response Scoring*. https://www.ets.org/content/dam/ets-org/pdfs/about/cr_best_practices.pdf
 - Casabianca, J. M., McCaffrey, D. F., Johnson, M. S., Ricker-Pedley, K. L., Rotou, O., & Martineau, J. (2023). *Exploration of the Proportional Reduction in Mean-Squared Error for Evaluating Automated Scores* (ETS RM-23-01). https://www.ets.org/Media/Research/pdf/RM-23-01.pdf
 - Casabianca, J. M., McCaffrey, D. F., Johnson, M. S., Alper, N., & Zubenko, V. (2025). *Validity Arguments for Constructed Response Scoring Using Generative Artificial Intelligence Applications*. arXiv:2501.02334. https://arxiv.org/abs/2501.02334
 - Wood, S., Yao, E., Haisfield, L., & Lottridge, S. (2021). *Establishing Standards of Best Practice in Automated Scoring* (ACT Research Technical Brief). https://act.org/content/dam/act/unsecured/documents/R2100-auto-scoring-standards-2021-07.pdf （AERA/APA/NCME 2014 の Standards 3.8・4.19・6.8・6.9・6.11 の引用もここから）
 - AERA, APA, & NCME (2014). *Standards for Educational and Psychological Testing*. https://www.ncme.org/publications/testing-standards
-- ITC & ATP (2022). *Guidelines for Technology-Based Assessment*（概要は SIOP の記事） https://www.siop.org/tip-article/new-guidelines-for-technology-based-assessment/ 、 https://learnosity.com/edtech-blog/atps-new-best-practice-guidelines-for-technology-based-assessment-a-summary/
+- ITC & ATP (2022、2025-07 改訂). *Guidelines for Technology-Based Assessment*. https://www.intestcom.org/upload/media-library/tba-guidelines-ver-11-july-2025-1754044782Z3vV9.pdf （本文で確認）。概要は SIOP の記事 https://www.siop.org/tip-article/new-guidelines-for-technology-based-assessment/ 、 https://learnosity.com/edtech-blog/atps-new-best-practice-guidelines-for-technology-based-assessment-a-summary/
 - Xu, J., Schmidt, E., Galaczi, E., & Somers, A. (2024). *Automarking in language assessment: Key considerations for best practice* (Cambridge Papers in English Language Education). https://www.cambridge.org/sites/default/files/media/documents/cambridge-research-papers-in-english-language-education.pdf
 
 ETS（TOEFL・TOEIC）
 - ETS. Test Content and Structure of the TOEFL iBT Test（2026-01-21 からの 1〜6 の尺度。旧版の「AI の採点と ETS 認定の採点者の組み合わせ」）. https://www.in.ets.org/toefl/institutions/ibt/about/content-structure.html
 - Chen, L., Zechner, K., Yoon, S.-Y., Evanini, K., ほか (2018). *Automated Scoring of Nonnative Speech Using the SpeechRater v. 5.0 Engine* (ETS RR-18-10). https://searchworks.jioinstitute.edu.in/articles/eric__EJ1202795 （書誌）
-- ETS (2015). Automated Scoring for the TOEFL Junior Comprehensive Writing and Speaking Test. https://www.ets.org/research/policy_research_reports/publications/report/2015/jufc.html （r=.81 / .89 は検索の抜粋）
+- Evanini, K., Heilman, M., Wang, X., & Blanchard, D. (2015). Automated Scoring for the TOEFL Junior Comprehensive Writing and Speaking Test (ETS RR-15-09). https://www.ets.org/research/policy_research_reports/publications/report/2015/jufc.html （r=.81 / .89 は ERIC の本文 https://files.eric.ed.gov/fulltext/EJ1109726.pdf で確認）
 - Ramineni, C. ほか (2012). Evaluation of the e-rater Scoring Engine for the TOEFL Independent and Integrated Prompts (ETS RR-12-06). https://www.ets.org/research/policy_research_reports/publications/report/2012/jejc.html （閾値 1.5 / 1.0 は検索の抜粋）
 - ETS. How the e-rater engine works. https://www.ets.org/erater/how.html （検索の抜粋）
 - ETS (2010). How ETS Scores the TOEIC Speaking and Writing Tests Responses. https://www.ets.org/research/policy_research_reports/publications/report/2010/itjy.html
@@ -419,7 +425,7 @@ Cambridge・British Council・IELTS
 - Knill, K., Nicholls, D., Gales, M. J. F., Qian, M., & Stroinski, P. (2024). Speak & Improve Corpus 2025. arXiv:2412.11986. https://arxiv.org/abs/2412.11986
 - Write & Improve. How does Write & Improve know my score? https://help.writeandimprove.com/articles/2329706-how-does-write-improve-know-my-score
 - Cambridge English. Linguaskill test format（hybrid marking）. https://cambridgeenglish.org/exams-and-tests/linguaskill/test-format （検索の抜粋）
-- Cambridge English（2020 年ごろ）. Linguaskill: Building a Validity Argument for the Speaking Test. https://www.researchgate.net/publication/346039151_Linguaskill_Building_a_Validity_Argument_for_the_Speaking_Test （検索の抜粋。95.6% / 100% は未確認）
+- Xu, J., Brenchley, M., Jones, E., Pinnington, A., Benjamin, T., Knill, K., Seal-Coon, G., Robinson, M., & Geranpayeh, A.（2020-06）. Linguaskill: Building a Validity Argument for the Speaking Test. Cambridge Assessment English. https://web.archive.org/web/20220126092240/https://www.cambridgeenglish.org/Images/589637-linguaskill-building-a-validity-argument-for-the-speaking-test.pdf （元の URL は今は 404。95.6% / 100% と、自動だけの 56.8% / 96.6% を本文で確認）
 - Xu, J. ほか (2021). Assessing L2 English speaking using automated scoring technology: examining automarker reliability. *Assessment in Education*. https://www.researchgate.net/publication/354926178 （抄録）
 - Kang, O., & Johnson, D. (2021). Linguistic features and automatic scoring of Aptis speaking performances (British Council). https://www.britishcouncil.org/exam/english/aptis/research/publications/arags/linguistic-features-and-automatic-scoring-aptis-speaking-performances （検索の抜粋）
 - IELTS. IELTS scoring in detail. https://ielts.org/take-a-test/your-results/ielts-scoring-in-detail

@@ -35,7 +35,7 @@
 | 準2級 | 約 6 分 | 約 50 語 | No.2「イラストに描かれた人物の行動を描写する」、No.3「イラストに描かれた人物の状況を説明する」 |
 | 2級 | 約 7 分 | 60 語程度 | No.2「3コマのイラストの展開を説明する」（考える時間 20 秒。言い出しは問題カードに印刷） |
 
-- 公式ページには配点も採点の基準の文も無い。合否は CSE のスコアで決め、各回の答案を全部採点した後、項目応答理論（IRT）でスコアを出す（「英検CSEスコアでの合否判定方法について」）。「33 点満点」などの素点の内訳は個人や塾のサイトにしか無く、**未確認**（repo の ADR 20261110 と同じ結論）。
+- 公式ページには配点も採点の基準の文も無い。合否は CSE のスコアで決め、各回の答案を全部採点した後、項目応答理論（IRT）でスコアを出す（「英検CSEスコアでの合否判定方法について」）。「33 点満点」などの素点の内訳は個人や塾のサイトにしか無く、**未確認**（repo の ADR 20261110 と同じ結論）。2026-11-16 に eiken.or.jp に絞って探したが、配点を書いた公式のページは見つからなかった。
 - 採点の質を保つ方策（「採点の質を確保するための方策」のページ）:
   - ライティング: 採点の基準は外部の有識者の意見を取り入れて作る。採点者の候補に採用前の訓練と採用のテストを課す。回ごとに実際の問題で全採点者を訓練する。**基準となる評点を付けた答案を全採点者に採点させ、差が大きい採点者は採点から外す。** 差が大きくなくても採点の傾向を分析して知らせる。協会の基準で必要と判断した答案は採点し直す。
   - 面接（準1級〜3級）: 試験の当日に、出題する問題の模範解答とほかの解答例を CD で聞いて、出題のねらいを確かめる訓練をする。受験者とのやり取りを IC レコーダーで録音する。面接と採点の時間を揃えるため、時間を見る係を置く。面接委員が 2 人つくのは 1 級だけ。
@@ -45,7 +45,9 @@
 
 - Questions 3–4「Describe a picture」: 写真を「できるだけ詳しく」描写する。準備 45 秒、話す時間 30 秒。**このアプリの 20 秒にいちばん近い公式の課題。**
 - 評価の観点は「発音」「イントネーションと強勢」に加えて「文法」「語彙」「つながり（cohesion）」。**「内容の関連性」「内容の完全さ」は Questions 5 以降の観点で、写真の描写には挙がっていない。** 0〜3 の 1 つの点で付け、全問の合計を 0〜200 のスコアに換算する。
-- 0〜3 の各段階の公式の文は今回は見つからなかった。試験対策のサイトには、3 は「写真の主な特徴を描写している」という言い換えがあるが、**未確認**。
+- 0〜3 の各段階の公式の文は今回は見つからなかった。試験対策のサイトには、3 は「写真の主な特徴を描写している」という言い換えがあるが、**未確認**。2026-11-16 に ETS の「TOEIC Speaking and Writing Score User Guide」（PDF の作成 2025-09、更新 2026-02）を開いた。段階ごとの文は無かった。分かったのは次の 2 つ。
+  - Questions 1–10 は 0〜3、Question 11 は 0〜5 で付ける。
+  - 音読より後の問題（写真の描写を含む）は、採点者が「課題への適切さ」「話し方」「言葉の使い方」を見る。課題への適切さは「課題に答え、関係する情報を伝えたか」。観点の表には「内容の関連性」が写真の描写に無いが、採点者の見方の説明には、写真の描写でも情報を伝えたかが入っている。
 - 採点の仕組み（Everson & Hines 2010、ETS TC-10-08。本文は未読で、検索結果の抜粋で確かめた）: 採点者は訓練の課程を終え、認定のテストに通る。**採点の日ごとに、較正のテスト（calibration test）に通らなければ採点できない。** 採点中は採点のリーダーが見張り、その場で指摘する。1 人の受験者の答えは問題ごとに別の採点者が採点し（最大 9 人）、ハロー効果（前の印象に引きずられること）を抑える。
 
 #### IELTS Speaking（公式の band descriptors の PDF は 2025-09 作成、公式の統計のページ）
@@ -61,7 +63,7 @@
 - 2026 年 1 月の新しい形式の話す課題は「Listen and Repeat」と「Take an Interview」で、どちらも 0〜5。
   - **Listen and Repeat の基準は、ほぼ数え上げで書かれている。** 5 =「そのまま繰り返した」、4 =「意味は保ったが、機能語の 1〜2 個の欠けや置き換え・時制や数の印の誤り・2 語の入れ替えがある」、3 =「内容語や考えの大部分を含むが、元の意味を正確には伝えていない」、2 =「大きな部分が欠けている」、0 =「答えが無い・英語でない・全く関係が無い・I don't know だけ」。
   - Take an Interview は、5 =「質問に十分に答え、明瞭で流暢」。その下に「典型的な答えはこうなる」として、話題に沿って詳しいか、話す速さ、発音、文法と語彙の幅と正確さを並べる。**観点を並べながらも、点は全体で 1 つ（holistic）。**
-- 旧形式（〜2025）は、話し方・言葉の使い方・話題の展開の 3 つを見ながら、全体で 0〜4 を付けていた（3 つの観点は ETS の資料の抜粋で確かめた。0〜4 は以前からの知識で、今回は未確認）。
+- 旧形式（〜2025）は、話し方・言葉の使い方・話題の展開の 3 つを見ながら、全体で 0〜4 を付けていた（3 つの観点と 0〜4 は、ETS の「TOEFL iBT Independent Speaking Rubric」の PDF（作成 2024-10）で確かめた。表の列は SCORE・GENERAL DESCRIPTION・DELIVERY・LANGUAGE USE・TOPIC DEVELOPMENT。2026-11-16 に確認）。
 - 数値（旧形式、典型的な 1 回の試験）: スピーキングの信頼性 **0.89**、SEM は 30 点満点で 1.43。人と自動採点の相関は 0.82〜0.83（2024 年 1〜6 月）。自動採点を確かめるため、毎回の試験から無作為に選んだ答えを 2 人の人が採点する。
 - 採点者の管理（ETS の 2009 年の発表資料。検索結果の抜粋で確かめ、資料の本文は未読）: 採点を始めるとき、または問題の型を変えるときに較正のテストに通る。休憩の後に例の答えを聞き直す。採点のリーダーが見張る。1 人の受験者のスピーキングは 3〜6 人の採点者が分けて採点する。ETS は、前の回の答えを後の回で採点し直して基準のずれを見る「trend scoring」も勧めている（Li & Brown 2013、RM-13-05。抜粋のみ）。
 
@@ -69,9 +71,9 @@
 
 - B2 First の Speaking の観点は Grammar and Vocabulary、Discourse Management、Pronunciation、Interactive Communication の 4 つ（観点別）と、全体の Global Achievement。段階は 0〜5（公式の資料の抜粋）。
 - 受験者と話す interlocutor が全体の点を付け、横で聞く assessor が観点別の点を付ける。**観点別と全体の両方を、別の人が付ける。**（この分担は、試験対策のサイトと公式の資料の抜粋で確かめた。handbook の PDF は今回取得できなかった。）
-- 写真を 1 分ほど描写したり比べたりする課題（B1 Preliminary の Part 2、B2 First の Part 2）があることは、以前からの知識による。**今回は未確認。**
+- 写真を 1 分ほど描写したり比べたりする課題（B1 Preliminary の Part 2、B2 First の Part 2）があることは、以前からの知識による。**今回は未確認。** 2026-11-16 に公式の試験の形式のページを開こうとしたが、サイトが保守中で開けなかった。
 
-#### CEFR Companion Volume（2018 年版の本文で確かめた。2020 年版は rm.coe.int が取得を拒んだので未確認。2020 年版は 2018 年版の記述を引き継ぎ、性別に中立な言い方に直したものと理解している）
+#### CEFR Companion Volume（2018 年版の本文で確かめた。2020 年版は rm.coe.int が取得を拒んだので未確認。2026-11-16 にもう一度開こうとしたが、403 で拒まれた。2020 年版は 2018 年版の記述を引き継ぎ、性別に中立な言い方に直したものと理解している）
 
 - 「Sustained monologue: Describing experience」（話す・描写する）の尺度は、**言語の質の情報をほとんど含まない**と本文が断っている（「There is little or no information about quality of language」）。質は言語能力の尺度（range・accuracy・fluency など）で見る。**何を描写できたか（活動）と、どれだけ上手か（質）を分けて考える作りで、アプリの「内容」と「表現・話し方」の分け方と同じ。**
   - A2: 「Can describe people, places and possessions in simple terms.」「Can tell a story or describe something in a simple list of points.」など。
@@ -88,10 +90,14 @@
 
 #### CEFR-J
 
-- アプリは表現の物差しに CEFR-J の文法の一覧を使っている（repo の ADR 20261110）。CEFR-J の話すことの記述そのものは今回は読めていない（**未確認**）。
+- アプリは表現の物差しに CEFR-J の文法の一覧を使っている（repo の ADR 20261110）。CEFR-J の話すことの記述そのものは今回は読めていない（**未確認**）。原典を探したが開けなかった。CEFR-J の本体（5 技能 × 12 レベルの can-do）は、公式サイトでダウンロードの登録をしないと落とせない（2026-11-16）。
 - ESAT-J（下）は結果を CEFR-J の段階（Pre-A1、A1.1〜A2.2）で返していて、CEFR-J を採点に使った公の例になっている。
 
-#### ESAT-J（東京都の中学校英語スピーキングテスト、令和 7 年度 YEAR 2 と令和 8 年度 YEAR 3 の採点基準。東京都教育委員会の PDF。2 の文書は別の年度の基準らしく「4 コマ・五つのポイント」としていて、数が合わない。使う前に年度を確かめる）
+#### ESAT-J（東京都の中学校英語スピーキングテスト、令和 7 年度 YEAR 2 と令和 8 年度 YEAR 3 の採点基準。東京都教育委員会の PDF）
+
+- 2 の文書の「4 コマ・五つのポイント」とは、学年が違うだけで食い違いではない。前は「別の年度の基準らしい」と書いていた（2026-11-16 に原典で直した。3 つの PDF で確かめた）。
+  - YEAR 2（中学 2 年）: Part C「イラストの説明」が 6 個のポイント（下の表）。Part D「ナレーション」は 3 コマで 6 個。
+  - YEAR 3（中学 3 年）: Part C「ナレーション」が 4 コマ。5 個のポイントに触れて 4 枚を順に説明すれば A2.2、4 個なら A2.1。令和 7 年度と令和 8 年度で同じ。
 
 - **対象（日本の中学生）と課題（絵の説明）が、このアプリにいちばん近い公の例。**
 - Part C「イラストの説明」（YEAR 2）の段階:
@@ -135,7 +141,7 @@
 - 英検: 面接委員 2 人は 1 級だけ。準1級〜3級は 1 人で採点し、録音を残す。ライティングは協会の基準で必要と判断した答案を採点し直す。
 - IELTS: 点が凸凹な答案（jagged profile）を自動で採点し直す。
 - TOEIC・TOEFL: 1 人の受験者の答えを、問題ごとに別の採点者に割り当てる。採点者を分けることで、1 人の採点者の厳しさやハロー効果が 1 人の受験者に集まらない。
-- ETS の作文などで一般に知られる「2 人の点が 1 点を超えて離れたら 3 人目が採点する」規則は、今回の検索の範囲では一次の出典で確かめられなかった（**未確認**）。
+- ETS の「2 人の点が 1 点を超えて離れたら 3 人目が採点する」規則は、GRE の作文（Analytical Writing、0〜6）で ETS の資料に書かれている。「2 つの点が 1 点を超えて離れたら、3 人目の GRE の採点者が決める。そうでなければ 2 つの平均」（Monaghan & Bridgeman 2005、ETS R&D Connections No.2。2026-11-16 に原典で確かめた）。TOEFL の話す課題で同じ規則かは確かめていない。
 
 #### many-facet Rasch measurement（MFRM）による採点者の厳しさの補正
 
@@ -156,7 +162,7 @@
 
   同じ受験者の同じ答えでも、採点者が 1 logit 違うだけで「言えた」の確率が 57% と 79% に分かれる。MFRM は、この差を推定して取り除く。
 - **Bonk & Ockey（2003、Language Testing 20(1)。要旨と引用で確かめた）**: 日本の英語専攻の大学生 1,000 人を超えるグループ討論のテストを FACETS で分析した。点の違いをいちばん大きく生むのは受験者の力で、次が採点者の厳しさ、その次が項目だった。課題の題目の影響はごく小さかった。採点者の厳しさはかなり違っていた。
-- **Eckes（2005、Language Assessment Quarterly 2(3)、要旨）**: ドイツ語の試験 TestDaF の書く・話すの採点で、採点者の厳しさと、採点者と観点・課題・受験者の性別の組み合わせの効果を MFRM で調べた。本文が取得できず、数値は**未確認**。
+- **Eckes（2005、Language Assessment Quarterly 2(3)、要旨）**: ドイツ語の試験 TestDaF の書く・話すの採点で、採点者の厳しさと、採点者と観点・課題・受験者の性別の組み合わせの効果を MFRM で調べた。本文が取得できず、数値は**未確認**。原典を探したが開けなかった（2026-11-16、出版社のページが 403）。
 
 #### 人と人の一致の値（今回確かめられたもの）
 
@@ -178,7 +184,7 @@
   - **QWK（2 乗の重みつき κ）**: 差が 2 段の食い違いを 1 段の 4 倍重く数える。重み w = (i − j)²/(段階の数 − 1)²。QWK = 1 − Σ w·観察の数 / Σ w·偶然の期待の数 = 1 − 0.75/3.45 ≈ **0.78**
 
   完全一致 70% でも、偶然を引いた κ は 0.52 しかない。「一部」を挟む 3 段階は、食い違いが隣どうしなら QWK では軽く数えられる。
-- 完全一致・隣接一致の「典型的な値」（作文の試験でよく言われる、完全一致 50〜70%・隣接一致 90% 超など）は、今回は一次の出典で確かめられなかった（**未確認**）。
+- 完全一致・隣接一致の「典型的な値」（作文の試験でよく言われる、完全一致 50〜70%・隣接一致 90% 超など）は、今回は一次の出典で確かめられなかった（**未確認**）。2026-11-16 にも、この目安を出した一次の出典は特定できなかった。参考に、2 の文書の ASAP の 8 題では、人どうしの完全一致が 28〜78% と、題でかなり違う。
 
 ### 4. 第二言語習得の研究での話す力の測り方（CAF と内容）
 
@@ -363,7 +369,7 @@
   - Weigle（2002）の全体の点と観点別の点の比較の表、Knoch（2009）の観点別の尺度の比較
   - Barkaoui（2011）の採点の方式の結果
   - 作文・スピーキングの試験での、完全一致・隣接一致の「典型的な値」
-  - ETS の「2 人の点が離れたら 3 人目」の規則の現行の文言
+  - ETS の「2 人の点が離れたら 3 人目」の規則の現行の文言（2026-11-16 に、GRE の 2005 年の資料で規則そのものは確かめた。現行の文言と TOEFL での扱いは見ていない）
   - Cambridge の handbook の本文（PDF の取得を拒まれた）、B1 Preliminary の写真の描写の課題の形式
   - CEFR Companion Volume の 2020 年版の本文（2018 年版で代用）、CEFR-J の話すことの記述
   - CAF の論文（Housen & Kuiken 2009、Pallotti 2009、Skehan 2009、Foster ほか 2000、Kuiken & Vedder 2017）の本文
@@ -385,6 +391,7 @@
 - 日本英語検定協会「英検CSEスコアでの合否判定方法について」 https://www.eiken.or.jp/eiken/result/eiken-cse_admission.html （同上）
 - 東京都教育委員会「令和7年度 ESAT-J YEAR 2 採点基準」 https://www.kyoiku.metro.tokyo.lg.jp/documents/d/kyoiku/r7_esat-j_year2_saitenkijun （2025）
 - 東京都教育委員会「令和8年度 ESAT-J YEAR 3 採点基準」 https://www.kyoiku.metro.tokyo.lg.jp/documents/d/kyoiku/r8_esat-j_year3_saitenkijun （2026）
+- 東京都教育委員会「令和7年度 ESAT-J YEAR 3 採点基準」 https://www.kyoiku.metro.tokyo.lg.jp/documents/d/kyoiku/r7year3saitenkijun （2025。2 の文書が引いたもの）
 
 TOEIC・TOEFL（ETS）
 
@@ -394,7 +401,10 @@ TOEIC・TOEFL（ETS）
 - ETS「Speaking Scoring Guide（Listen and Repeat / Take an Interview）」 https://www.es.ets.org/content/dam/ets-org/pdfs/toefl/speaking-rubrics.pdf （2025）
 - ETS「TOEFL Research Insight Series Vol.3: Reliability and Comparability of TOEFL iBT Scores」 https://www.br.ets.org/content/dam/ets-org/pdfs/toefl/toefl-ibt-insight-s1v3.pdf （2024-11 更新）
 - Tyson, E.（ETS, 2009）CGS での発表資料 https://legacy.cgsnet.org/ckfinder/userfiles/files/am09_Tyson.pdf （検索結果の抜粋のみ）
-- Li & Brown（2013）A trend-scoring study for the TOEFL iBT Speaking and Writing sections（RM-13-05。著者の名は未確認） https://www.ets.org/research/policy_research_reports/publications/report/2013/jqdy.html （抜粋のみ。共著者の名は未確認）
+- Li, Y., & Brown, T. (2013). A trend-scoring study for the TOEFL iBT Speaking and Writing sections (RM-13-05). https://www.ets.org/research/policy_research_reports/publications/report/2013/jqdy.html （著者の名は ETS のページで確かめた。2026-11-16。本文は抜粋のみ）
+- ETS「TOEFL iBT Independent Speaking Rubric」（旧形式の 0〜4） https://www.ets.org/pdfs/toefl/toefl-ibt-speaking-rubrics.pdf （PDF の作成 2024-10、2026-11-16 閲覧）
+- ETS「TOEIC Speaking and Writing Score User Guide」 https://www.ets.org/content/dam/ets-org/pdfs/toeic/toeic-speaking-writing-score-user-guide.pdf （PDF の作成 2025-09、更新 2026-02、2026-11-16 閲覧）
+- Monaghan, W., & Bridgeman, B. (2005). E-rater as a Quality Control on Human Scores. ETS R&D Connections No.2. https://www.ets.org/Media/Research/pdf/RD_Connections2.pdf （GRE の 3 人目の規則）
 - Xi, X., & Mollaun, P. (2006). Investigating the utility of analytic scoring for the TOEFL Academic Speaking Test (TAST) (RR-06-07). https://ets.org/research/policy_research_reports/publications/report/2006/hsjs.html
 
 IELTS・Cambridge・CEFR
@@ -404,7 +414,7 @@ IELTS・Cambridge・CEFR
 - Carey, M. ほか（2009）Contribution of interlanguage phonology accommodation to inter-examiner variation（IELTS Research Reports） https://ielts.org/cdn/Research/contribution-of-interlanguage-phonology-accommodation-to-inter-examiner-variation-carey-et-al-2009.pdf （本文は未読）
 - Cambridge English「B2 First handbook」 https://www.cambridgeenglish.org/images/167791-b2-first-handbook.pdf 、「Assessing speaking performance at level B2」 https://www.cambridgeenglish.org/images/168619-assessing-speaking-performance-at-level-b2.pdf （どちらも今回は取得できず、検索結果の抜粋のみ）
 - Council of Europe (2018). CEFR Companion Volume with New Descriptors（pp.56–162 の抜粋） https://cefr.schools.ac.cy/downloads/CEFR-Companion%20Volume%20with%20new%20descriptors%20-%202018-56-162.pdf
-- Council of Europe (2020). CEFR Companion Volume https://rm.coe.int/16809ea0d4 （取得を拒まれ、未確認）
+- Council of Europe (2020). CEFR Companion Volume https://rm.coe.int/16809ea0d4 （取得を拒まれ、未確認。2026-11-16 にもう一度試したが 403）
 - Council of Europe (2001). CEFR Table 3: Qualitative aspects of spoken language use（国際交流基金 JF スタンダードの転載） https://www.jfstandard.jpf.go.jp/pdf/3_qualitative_aspects_eng.pdf
 
 採点の方式・採点者

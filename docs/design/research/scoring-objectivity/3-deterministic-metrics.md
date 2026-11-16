@@ -4,6 +4,7 @@
 ルーブリック（担当 1）・データセット（担当 2）・LLM の安定化（担当 4）・文字起こしと音声の前処理（担当 5）・製品（担当 6）は扱わない。文字起こしの時刻から出す流暢さは扱う。
 
 > 調べ方の注記: Web 検索の回数の上限（セッション全体で共有）に途中で達したため、後半の一部（c-rater、Somasundaran & Chodorow 2014、Iwashita et al. 2008 の数値、vocd-D の最小の長さなど）は確かめられなかった。それらは本文で「未確認」とした。
+> 2026-11-16 の確かめ: 原典の PDF・公式の文書で、Somasundaran & Chodorow 2014・vocd-D の最小の長さ・SpeechRater 5.0 の一致・料金などを確かめ、本文を直した。c-rater と Iwashita et al. 2008 は原典が有料の誌で開けず、「未確認」のまま残した。残る「未確認」の多くは、文献ではなくこのアプリで測って確かめる問い。
 
 ---
 
@@ -49,7 +50,7 @@
 
 **DiscoSG（Lin et al., EMNLP 2025、Outstanding Paper）** [S4]
 - 複数の文の説明を、文をまたいだ照応も含めて 1 つのグラフにする。専門家が付けた 400 件と、合成の 8,430 件のデータを作った。
-- 小さな Flan-T5-Base 2 つで「下書き → 繰り返し直す」と、基準より SPICE が約 30% 高く、GPT-4o より約 86 倍速いと要約に書かれている（二次の出典。原文の表は未確認）。
+- 小さな Flan-T5-Base 2 つで「下書き → 繰り返し直す」と、基準より SPICE が約 30% 高く、GPT-4o より約 86 倍速い（原典の要旨と序論で確かめた。https://aclanthology.org/2025.emnlp-main.398.pdf 、2025。比べた基準は、文ごとに解析して合わせる方式）。
 
 **CAPTURE（Dong et al., 2024）** [S5]
 - 長い説明文の評価。FACTUAL の解析器で物・属性・関係を取り出し、3 段で一致させる。(1) 完全一致、(2) WordNet の同義語、(3) 残りを Sentence-BERT の cosine で緩く一致。
@@ -68,7 +69,7 @@
 | モデル | パラメタ | SNLI test | MNLI mismatched | ライセンス |
 |---|---|---|---|---|
 | cross-encoder/nli-deberta-v3-base | 約 0.2B | 92.38% | 90.04% | Apache 2.0 |
-| cross-encoder/nli-deberta-v3-small | 約 0.1B | 91.65% | 87.55% | （カードに記載。未確認） |
+| cross-encoder/nli-deberta-v3-small | 約 0.1B | 91.65% | 87.55% | Apache 2.0（モデルカードで確かめた） |
 
 - 出力は 3 値（contradiction・entailment・neutral）。前提を場面の文（`accept` や description）、仮説を発話の 1 節にすれば、「正しい描写（含意）・矛盾・無関係」に直接当たる。
 - 外れやすい所:
@@ -101,7 +102,7 @@
 **話し言葉の GEC（Speak & Improve Challenge 2025、Qian et al. 2024）** [S22]
 - データ: 第二言語の学習者の音声 約 315〜340 時間。そのうち 55〜60 時間に、人の文字起こしと誤りの札が付いている。レベルは CEFR の A2〜C1。課題は 5 部構成で、絵（図）の説明 1 分の Part 4 と、各 20 秒以内の質問への答えの Part 5 を含む。
 - 誤りの訂正の基準のパイプラインは 3 段。Whisper small で文字起こし（WER 17.3%）→ BERT で言いよどみを除く（Switchboard で学習）→ BART-large で GEC（BEA-2019 で学習）。
-- **誤りを指摘するフィードバックの基準の性能は ERRANT の F0.5 = 0.22（精度 0.37、再現率 0.08）**。誤りの種類で差が大きく、前置詞の置き換え（R:PREP）は 0.416、名詞の置き換え（R:NOUN）は 0.087。
+- **誤りを指摘するフィードバックの基準の性能は ERRANT の F0.5 = 0.22（精度 0.37、再現率 0.08）**。誤りの種類で差が大きく、前置詞の置き換え（R:PREP）は 0.416、名詞の置き換え（R:NOUN）は 0.087（どれも Dev のデータでの値。原典の表 6 で 2026-11-16 に確かめた）。
 - 話し言葉の難しさとして挙がるのは、言いよどみ・繰り返し・言い直しと、文字起こしの誤りが学習者の誤りに見えること。文字起こしの誤りから偽の編集が生まれる問題は 2025 年の続報でも扱われている [S23]。音声から直した文を直接出す Whisper の微調整もある（Bannò et al. 2023）[S24]。
 - 同じ基準の、全体の点の推定（Whisper small → BERT）は、人の点と PCC 0.746（RMSE 0.445）。
 
@@ -127,13 +128,13 @@
   - 同じ長さで内容を 1 文繰り返しただけの答えでは 11.5。**因子が 1〜2 個しか無いので、1 語の違いで値が大きく動く**（`scripts/profile_pool.py` で計算）。
 - TAALED（Kyle らの道具）の目安 [S27]。MATTR と MTLD は 50 語以上で「確信をもって使える」。HD-D は 50 語以上で「注意して使う」。Root TTR・単純な TTR は「避ける」。MATTR の既定の窓は 50 語なので、50 語未満では計算そのものができない。
 - L2 の口頭の課題での検証（Kyle, Sung, Eguchi, Zenker 2024, SSLA 46(1)）[S28]: Root TTR と D（vocd-D）は長さが違うと信頼できない。調整した MATTR・MTLD は信頼性と妥当性が支持された（抄録より。窓の大きさや最小の長さは本文を確かめていない）。
-- Koizumi & In'nami（2012, System 40(4)）[S29]: 50〜200 語の口頭の独話で、どの指標も長さから完全には独立しない。MTLD は 100 語前後で安定した（二次の出典の要約。参加者 38 人。日本人の学習者かは未確認）。
-- vocd-D は 50 語以上を前提にする（CLAN の実装。今回は確かめていない。未確認）。
+- Koizumi & In'nami（2012, System 40(4)）[S29]: 50〜200 語の口頭の独話で、どの指標も長さから完全には独立しない。MTLD は 100 語前後で安定した（二次の出典の要約。参加者 38 人。日本人の学習者かは未確認。原典を探したが開けなかった（ScienceDirect が自動の取得を 403 で断る））。
+- vocd-D は 50 語以上を前提にする。CLAN の実装は、35〜50 語の部分標本で TTR の曲線を描くので、50 語より短いと動かない。著者は「50 語で値が出ても、その値が信頼できるとは限らない」と書いている（CLAN の手引き 7.26.3、2026-10-09 の版。https://talkbank.org/0info/manuals/CLAN.pdf ）。
 
 **語彙のレベルの表**
 - CEFR-J Wordlist（東京外国語大学 投野研究室）[S30][S31]: 版 1.6（2020-03-24）。約 7,800 項目に A1〜B2 を付けている。**研究・教育・商用に無料で使える。条件は出典を正しく書くこと**。派生の表を作ってもよい。GitHub の olp-en-cefrj に v1.5 の CSV がある。投野研究室の CVLA（語彙のレベルの分析器）は「300 語未満では結果が不安定」と注記している。
-- NGSL（Browne, Culligan, Phillips 2013）[S32]: 2,809 語で日常の英語の約 92% を覆う。話し言葉版の NGSL-Spoken は CC BY-SA 4.0。本体の NGSL のライセンスは今回確かめられなかった（未確認）。
-- English Vocabulary Profile（Cambridge）: 利用の条件は確かめていない（未確認）。CEFR-J で足りるので優先度は低い。
+- NGSL（Browne, Culligan, Phillips 2013）[S32]: 2,809 語で日常の英語の約 92% を覆う。話し言葉版の NGSL-Spoken は CC BY-SA 4.0。本体の NGSL は、公式の頁に「Creative Commons で無料。商用の利用を含む」とある（2026-11-16 に https://www.newgeneralservicelist.com/ で確かめた）。CC のどの版かは、頁に書かれていない。
+- English Vocabulary Profile（Cambridge）: 利用の条件は確かめていない（未確認。原典を探したが開けなかった（englishprofile.org は JavaScript で描く頁で、本文を取れない））。CEFR-J で足りるので優先度は低い。
 - 英検と CEFR の対応: 3 級 = A1、準 2 級 = A2、2 級 = B1（旺文社の 2024 年の対照表。協会の公式の頁は確かめていない）[S33]。
 
 **文法の範囲の目録**
@@ -191,6 +192,7 @@
 | ポーズの頻度 | −.59 |
 | ポーズの長さ | −.46 |
 | 言い直し | −.20 |
+- 2026-11-16 に原典（著者の版の PDF、[S41]）の表で確かめた。speech rate は 11 研究（標本の大きさ 365）、MLR は 9 研究（335）からの値（表 8）（22 研究すべてが両方を測ったわけではない）。
 - 自発の課題では、統制した課題より相関が低い（自発 .51〜.53、統制 .74）。発話の全体を聞かせた研究のほうが、一部を切り出して聞かせた研究より高い（.59 vs .50）。L2 の日本語の研究では .77。
 - Bosker et al.（2013, Language Testing 30(2)）[S42]: 聞き手の流暢さの判定は、ポーズと速さの指標で最もよく説明できる。言い直しはほとんど寄与しない。
 
@@ -222,7 +224,7 @@
 **このアプリで取れる時刻**
 - Azure の発音評価の応答（今すでに呼んでいる）[S47][S48]。
   - 単語ごとに `Offset`・`Duration`（100 ns 単位）が付く。
-  - `Granularity` を細かくすると、音節・音素の時刻も付く（公式の例では音節の Offset がある。どの設定で音節が返るかの細部は未確認）。
+  - `Granularity` を `Phoneme` にすると、全体・語・音節・音素の結果が返る（`Word` では全体と語だけ）。音節の結果は en-US だけ（[S47] で 2026-11-16 に確かめた）。公式の例では音節にも Offset がある。
   - FluencyScore の公式の定義は「どれだけ母語話者の語の間の無音の使い方に近いか」だけで、計算は公開されていない。
   - 語ごとの `UnexpectedBreak`（予期しない切れ目）の確信度も返る。公式が勧める閾値は 0.75。
   - 30 秒を超える音声は連続のモードにする必要がある（このアプリは最長 20 秒なので当たらない）。
@@ -237,7 +239,9 @@
   - 解釈: 1 回の応答の単位では、**指標の線形和でも人ひとりと同じくらい人の点に一致する**。係数の符号を、指標と点の相関の向きに揃えることが、妥当性と説明のために求められる。6 応答を合計した話者の単位なら、人どうしは r ≈ .9 と見込まれる。
 - TAALES の 5 指標が話す力の分散の 48.7% を説明（前掲）[S40]。
 - Speak & Improve の基準（BERT。決まった指標ではない）は PCC .746 [S22]。
-- SpeechRater 5.0（ETS RR-18-10）は、発音・韻律・語彙・文法・内容・談話の指標を線形回帰でまとめる [S52]。数値は今回確かめていない（未確認）。
+- SpeechRater 5.0（ETS RR-18-10）は、発音・韻律・語彙・文法・内容・談話の指標を線形回帰でまとめる [S52]。TOEFL Practice Online の版 5 の採点モデルは、102 の指標から LASSO と専門家の判断で 20 を選び、最小二乗で係数を決めた（係数は正）。人との一致（評価用の 333 人・約 2,000 応答）は次のとおり（原典の表 15・16 で確かめた。https://files.eric.ed.gov/fulltext/EJ1202795.pdf 、2018）。
+  - 1 応答の単位: 人どうし r = .591、機械と人 r = .557
+  - 6 応答を合計した話者の単位: 人どうし r = .88、機械と人 r = .770
 - 注意: 課題が変わると指標の予測は落ちる（Güçer et al. 2026: 97.7% → 71%）[S39]。
 
 ### 3.7 この repo で手元で確かめたこと
@@ -324,9 +328,9 @@
 - **効き目**: 言い換えの見逃しを減らす。LLM より安く、温度が無いので、同じ入力なら同じ出力（GPU の浮動小数の差はほぼ無視できる見込み）。
 - **手間**:
   - 埋め込みは Workers から呼ぶだけ。
-  - NLI は Workers AI に無いので、Cloudflare Containers（2026-04-13 に一般提供。10 ms 単位で課金）で Python のサーバーを立てる。冷えた状態からの起動の待ち時間は未確認。
+  - NLI は Workers AI に無いので、Cloudflare Containers（2026-04-13 に一般提供。10 ms 単位で課金）で Python のサーバーを立てる。冷えた状態からの起動は「多くは 1〜3 秒。イメージの大きさと起動の処理による」（Containers の FAQ、https://developers.cloudflare.com/containers/faq/ 、2026-11-16 に確かめた）。
   - 閾値を合わせるための評価の組が要る。
-- **費用**: Containers の CPU は 1 vCPU 秒あたり約 $0.00002（二次の出典）。1 回 2 秒なら約 $0.00004 で、ほぼ 0。埋め込みの料金は未確認だが、短い句なので小さい。
+- **費用**: Containers の CPU は 1 vCPU 秒あたり $0.000020（Workers Paid は月 375 vCPU 分まで込み。公式の料金の頁 [S54] で確かめた）。1 回 2 秒なら約 $0.00004 で、ほぼ 0。埋め込みの `bge-small-en-v1.5` は 100 万 token あたり $0.020（Workers AI の料金の頁、https://developers.cloudflare.com/workers-ai/platform/pricing/ 、2026-11-12 更新の版で確かめた）。短い句なので小さい。
 - **リスク**: 閾値の調整が新たな「見えないロジック」になる。cosine の閾値は説明しにくい。否定・数・左右に弱い。
 
 ### 案 D: 文法は「級のねらいの形」の使えた数・正しかった数を規則で数える（推奨）
@@ -392,9 +396,11 @@
   - 案 B の判定と、人や LLM の判定との一致率
 - 案 B の言い換えの網羅は、辞書づくりの手間と見逃しの率の兼ね合い。どこまで辞書で、どこから C（埋め込み・NLI）か LLM に回すかの線は、データで決める必要がある。
 - 文字起こし（SpeechAnalyzer と Azure）が、学習者の文法の誤りをどれだけ「直して」しまうか。案 D の正確さの数え上げの前提に関わる（担当 5 と共同）。
-- Azure の単語の時刻の精度（正解文を端末の文字起こしにしたとき、文字起こしの誤りで時刻がずれるか）と、音節の時刻が返る設定は未確認。
+- Azure の単語の時刻の精度（正解文を端末の文字起こしにしたとき、文字起こしの誤りで時刻がずれるか）は未確認（実測の問い）。音節の結果は `Granularity: "Phoneme"` で返り、en-US だけ（3.5 で確かめた）。
 - FACTUAL・DiscoSG の解析器が、学習者の誤りを含み句読点の無い文でどれだけ崩れるかは未確認。作り置きの模範文を組にする用途（オフライン）なら使える見込み。
-- 確かめられなかった数値: Iwashita et al.（2008）のレベルごとの特徴、c-rater・Somasundaran & Chodorow（2014）の一致率、vocd-D の最小の長さ、SpeechRater 5.0 の人との一致、NGSL 本体・EVP のライセンス、Containers の冷えた起動の時間、Workers AI の埋め込みの料金。
+- 確かめられなかった数値: Iwashita et al.（2008、Applied Linguistics 29(1)、https://doi.org/10.1093/applin/amm017 ）のレベルごとの特徴と、c-rater（Leacock & Chodorow 2003）の一致率。どちらも原典を探したが開けなかった（有料の誌で、自動の取得では本文が読めない）。EVP の利用の条件も開けなかった。
+- 2026-11-16 に確かめたもの: vocd-D の最小の長さ（3.4）、SpeechRater 5.0 の人との一致（3.6）、NGSL 本体のライセンス（3.4。CC の版は頁に無い）、Containers の冷えた起動の時間と Workers AI の埋め込みの料金（案 C）。
+- Somasundaran & Chodorow（2014、BEA、https://aclanthology.org/W14-1801.pdf ）は 2026-11-16 に原典で確かめた。ETS の「絵を見て、指定の 2 語を使って 1 文を書く」課題の自動採点で、規則と統計のモデルを組み合わせ、絵の説明の文との一致も特徴に使う。正解率は機械 76.23%・人どうし 86%、QWK は機械と人 0.63・人どうし 0.83。絵の描写の内容を機械で判定する近い先例だが、1 文・書き言葉で、人どうしとの差は 10 ポイント残った。
 - 3 級（A1）は、流暢さの文献（多くは A2 以上）の範囲の下限より下になる。A1 での指標の振る舞いは文献が乏しい。
 
 ---
@@ -416,7 +422,7 @@
 - [S13] Kamath, A., Hessel, J., Chang, K.-W. (2023). What's "up" with vision-language models? Investigating their struggle with spatial reasoning. https://arxiv.org/abs/2310.19785
 - [S14] Laban, P., Schnabel, T., Bennett, P., Hearst, M. (2022). SummaC: Re-Visiting NLI-based Models for Inconsistency Detection in Summarization. TACL 10. https://arxiv.org/abs/2111.09525
 - [S15] Zha, Y., Yang, Y., Li, R., Hu, Z. (2023). AlignScore: Evaluating Factual Consistency with a Unified Alignment Function. ACL 2023. https://arxiv.org/abs/2305.16739
-- [S16] Jina AI（ブログ、年は未確認・2024 年ごろ）. Text Embeddings Fail to Capture Word Order and How to Fix It. https://jina.ai/news/text-embeddings-fail-to-capture-word-order-and-how-to-fix-it
+- [S16] Jina AI（ブログ、2024-12-17）. Text Embeddings Fail to Capture Word Order and How to Fix It. https://jina.ai/news/text-embeddings-fail-to-capture-word-order-and-how-to-fix-it
 - [S17] Towards preserving word order importance through Forced Invalidation. EACL 2023. https://aclanthology.org/2023.eacl-main.187
 - [S18] Omelianchuk, K., Atrasevych, V., Chernodub, A., Skurzhanskyi, O. (2020). GECToR – Grammatical Error Correction: Tag, Not Rewrite. BEA 2020, 163–170. https://arxiv.org/abs/2005.12592
 - [S19] Crossley, S. A., Bradfield, F., Bustamante, A. (2019). Using human judgments to examine the validity of automated grammar, syntax, and mechanical errors in writing. Journal of Writing Research, 11(2), 251–270. https://jowr.org/jowr/article/download/591/487
@@ -446,7 +452,7 @@
 - [S43] Tavakoli, P., Nakatsuhara, F., Hunter, A.-M. (2020). Aspects of fluency across assessed levels of speaking proficiency. Modern Language Journal, 104(1), 169–191. https://centaur.reading.ac.uk/84796/
 - [S44] Saito, K., Ilkan, M., Magne, V., Tran, M. N., Suzuki, S. (2018). Acoustic characteristics and learner profiles of low-, mid- and high-level second language fluency. Applied Psycholinguistics, 39(3), 593–617. https://discovery.ucl.ac.uk/10066019/1/AP2018.pdf
 - [S45] Bibauw, S., François, T., Desmet, P. (2021). Automatizing L2 fluency measurement: validity and developmental sensitivity of temporal fluency metrics variations. AILA 2021. https://sbibauw.github.io/talks/2021/aila
-- [S46] de Jong, N. H., Pacilly, J., Heeren, W. (2021). PRAAT scripts to measure speed fluency and breakdown fluency in speech automatically. Assessment in Education: Principles, Policy & Practice.（題名は記憶による。内容は Web 検索の結果の要約による。原文は未確認）
+- [S46] de Jong, N. H., Pacilly, J., Heeren, W. (2021). PRAAT scripts to measure speed fluency and breakdown fluency in speech automatically. Assessment in Education: Principles, Policy & Practice. https://doi.org/10.1080/0969594X.2021.1951162 （題名・誌・著者は Crossref で 2026-11-16 に確かめた。内容は Web 検索の結果の要約による。本文は未確認。原典を探したが開けなかった（有料の誌））
 - [S47] Microsoft Learn: Use pronunciation assessment（FluencyScore の定義、Offset/Duration、UnexpectedBreak の閾値 0.75、30 秒の制限）. https://learn.microsoft.com/en-us/azure/ai-services/speech-service/how-to-pronunciation-assessment
 - [S48] Microsoft Learn: Speech to text REST API for short audio. https://learn.microsoft.com/en-us/azure/ai-services/speech-service/rest-speech-to-text-short
 - [S49] Apple Developer: SpeechTranscriber.ResultAttributeOption（audioTimeRange）. https://developer.apple.com/documentation/speech/speechtranscriber/resultattributeoption

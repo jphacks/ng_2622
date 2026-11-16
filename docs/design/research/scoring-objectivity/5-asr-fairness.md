@@ -2,7 +2,7 @@
 
 > 調査メモ（2026-11-16）。担当 5。採点の前の段階（録音 → 文字起こし → 採点に渡す）を扱う。ルーブリック・データセット・文法と語彙の指標・LLM の採点・製品は、ほかの担当の範囲なので扱わない。
 > ベンダーごとの WER と料金の比較は repo の `docs/design/speech-scoring-research.md` の「3. 文字起こし」にあるので繰り返さない。
-> 数字には、出典の条件（データ・話者・課題）を添える。確かめられなかったことは「未確認」と書く。Web 検索の回数の上限に達したため、最後の数件（Koenecke 2020 など）は原典を開けていない。
+> 数字には、出典の条件（データ・話者・課題）を添える。確かめられなかったことは「未確認」と書く。Web 検索の回数の上限に達したため、最後の数件（Koenecke 2020 など）は原典を開けていなかった。2026-11-16 に原典で確かめ直し、開けたものは本文に反映した。残る「未確認」は、原典を開けなかったものか、測らないと分からないもの。
 
 ## 問い
 
@@ -19,7 +19,7 @@
 2. **今の作りには、端末によって採点の道筋が変わる所が 3 つある（repo を読んで見つけた）。** (a) SpeechTranscriber が使えない端末（iPhone 11 系・SE 第 2 世代は使えないという開発者の報告）と、5 秒の時間切れの端末は、Azure の文字起こしに切り替わる。(b) 端末の文字起こしがあると Azure の発音評価は正解文ありの評価（scripted）、無いと正解文なしの評価（unscripted）になる。Microsoft は、正解文なしの評価は別の認識モデルを使うと書いている。つまり話し方の 25% も、端末で評価の方式が変わる。(c) 文字起こしは端末が `X-Transcript` で送り、サーバーはそのまま信じる。作り替えた文字起こしを送ることもできてしまう。**いちばん効くのは、全員の WAV を同じサーバーの同じ設定で文字にすることで、手間も小さい**（WAV はもう全員分サーバーに届いている）。マイクの差は残るので、録音の条件もそろえる（`AVAudioSession` の `.measurement` モード、音量の正規化、話す前のマイクの確かめ）。iPhone X は iOS 26 を入れられないので、このアプリはそもそも入らない。心配すべき差は「iPhone 11・SE 第 2 世代」と「12 以降」の間にある。
 3. **チェックリストの F1 は、1 語の聞き違いに弱い。** 「A girl is running」が「A car is running」になると、中心の項目を落とし（再現率 R が下がる）、場面に無い物を言った誤り（適合率 P が下がる）も増える。3 級の例で、内容は 100 点から 63 点に下がる（下の手計算）。ETS の要点（key point）の検出は WER 18.5% でも人の書き起こしと同じ性能だったが（Yoon ほか 2019）、それは複数の語で要点を判定したからで、このアプリの項目は名詞 1 語で決まることが多い。**直し方は、「聞き取りに自信の無い語は、減点の根拠にしない」をコードで決めること。** 確信度（SpeechTranscriber は `transcriptionConfidence` と `alternativeTranscriptions` を返せるのに、今の `.transcription` の preset では使っていない）と、音の近さ（音素の編集距離。日本語話者に多い取り違えの重みを付ける）を使う。確信度 0.9 以上の語だけを使うと、発音の誤りのある語の WER は 29.0% から 7.3% に下がった（Knill ほか 2018）。
 4. **部品の名前をヒントとして渡す案は、今の構成では使えず、使うなら水増しへの備えが要る。** SpeechTranscriber は `contextualStrings` を使わない（Apple の担当者の回答、2026-01）。使えるのは古いモデルの DictationTranscriber だけ。Azure の phrase list は、今呼んでいる短い音声用の REST に無く、Fast transcription の REST や SDK にある。Workers AI の Whisper は `initial_prompt`、Deepgram Nova-3 は `keyterm` を受け付ける。ヒントの語は言っていなくても出やすくなるので、そのまま点に使うと「場面の語が勝手に出て当たる」水増しになる。入れるなら、場面に無い音の近い語（例: girl に対して car・curl・gal）を混ぜ、ヒントありとなしの結果が食い違った語は「聞き取りが分かれた」として扱う。
-5. **ファインチューンは今は勧めない。効くが、データの偏りで公平さを悪くしうる。** Speak & Improve の約 28 時間で Whisper-small を LoRA で学習すると、全体の WER は 10.2% → 9.2% に下がったが、A2 の WER は相対で約 20% 上がった（Sun ほか 2025）。チームの録音（大学生）で学習すると、同じことが中高生や力の低い人に起きうる。日本の中高生の英語の書き起こしつき音声が数時間〜数十時間要り、学習したモデルを動かす GPU のサーバー（Workers AI では動かせない、未確認）か、WhisperKit で端末に載せる作りが要る。先に、測る仕組みと、誤りに強い照合を入れるべき。
+5. **ファインチューンは今は勧めない。効くが、データの偏りで公平さを悪くしうる。** Speak & Improve の約 28 時間で Whisper-small を LoRA で学習すると、全体の WER は 10.2% → 9.2% に下がったが、A2 の WER は相対で約 20% 上がった（Sun ほか 2025）。チームの録音（大学生）で学習すると、同じことが中高生や力の低い人に起きうる。日本の中高生の英語の書き起こしつき音声が数時間〜数十時間要り、学習したモデルを動かす GPU のサーバー（Workers AI では動かせない。LoRA を載せられるのは LLM 向けの決まったモデルだけで、Whisper は無い。2026-11-16 に Cloudflare の文書で確かめた）か、WhisperKit で端末に載せる作りが要る。先に、測る仕組みと、誤りに強い照合を入れるべき。
 6. **公平さの説明は「全員同じ AI で文字にし、聞き取りの自信が無い語では減点しない。端末の差は X 本の録音で測って Y ポイント以内」と、数字で言えるようにする。** そのために、端末の型番・OS の版・文字起こしの出どころを採点のログに残し、同じ録音を端末ごとに文字にして比べる測り方を先に作る。
 
 ## 調べたこと（出典ごと）
@@ -47,7 +47,7 @@
 - CEFR 別（Normalized）: A2 25.4%、B1 21.5%、B2 21.1%。ただし統計モデルでは、力の差は有意でなかった（A2 が 16 人と少ない）。
 - 誤りの典型: 学習者の文法の誤りを、文字起こしが「直して」しまう。名詞の形の誤り（例: many student）を直した割合は Google 57.6%・Rev 55.8%・Whisper 98.9%、動詞は 51.1%・38.5%・86.2%。
 - 言いよどみの除去: GPT-4o に段階を決めた指示（フィラー → 繰り返し → 言い直しの順で消す）で消させると、F 値 0.949。
-- 先行研究の紹介として: 30 人の学習者を 5 つのアプリ（Apple Dictation を含む）で比べた Hirai & Kovalyova (2024) では、正しく認識できた語の割合が、話の再生（retelling）で 57.60%、質問への自由な答えで 64.41%（原典は未確認）。
+- 先行研究の紹介として: 30 人の学習者を 5 つのアプリ（Apple Dictation を含む）で比べた Hirai & Kovalyova (2024) では、正しく認識できた語の割合が、話の再生（retelling）で 57.60%、質問への自由な答えで 64.41%（Koizumi 2024 の紹介の文で確かめた。原典の Language Learning & Technology 28(1)、https://hdl.handle.net/10125/73555 は、ScholarSpace がブラウザの確認で取得を拒み、開けなかった）。
 
 **Knill ほか (2018)「Impact of ASR performance on free speaking language assessment」**（Interspeech 2018、DOI 10.21437/Interspeech.2018-1312、https://eprints.whiterose.ac.uk/152761/ ）
 - データ: BULATS の試験（A1〜C、多くの母語）。評価は 226 人。
@@ -87,24 +87,24 @@
 
 **Apple（公式の文書と開発者フォーラム）**
 - DictationTranscriber の文書（https://developer.apple.com/documentation/speech/dictationtranscriber ）: 「特定の語へ寄せるには `AnalysisContext` を作って `contextualStrings` に語を入れ、`SpeechAnalyzer` に渡す」。独自の語彙は `SFSpeechLanguageModel` と `customizedLanguage(modelConfiguration:)` で渡す。DictationTranscriber は「システムの音声入力や、端末内で動かす `SFSpeechRecognizer` と同じモデル」で、古い端末でも動く。
-- Apple の担当者の回答（2026-01、https://developer.apple.com/forums/thread/811083 ）: "contextual strings only help transcriptions from the DictationTranscriber module. The SpeechTranscriber module does not currently take contextual strings into account."
-- 第三者の比べ（Inscribe、2026-07。GIGAZINE の記事 https://gigazine.net/gsc_news/en/20260714-apple-speech-analyzer-benchmark/ 、元は https://get-inscribe.com/blog/apple-speech-api-benchmark.html ）: LibriSpeech の読み上げ（M2 Pro の Mac）で、SpeechAnalyzer 2.12%・Whisper small 3.74%・旧 SFSpeechRecognizer 9.02%。訛りのある英語は測っていない。別の比べ（Argmax、2025-06、決算説明会の音声）では SpeechTranscriber 14.0% と伝えられており（二次情報、未確認）、順位は一致しない。
+- Apple の担当者の回答（2026-01、https://developer.apple.com/forums/thread/811083 。解決済みの印が付いた Apple_Agent の回答）: "contextual strings only help transcriptions from the DictationTranscriber module. The SpeechTranscriber module does not currently take contextual strings into account." `contextualStrings` の公式の文書（https://developer.apple.com/documentation/speech/analysiscontext/contextualstrings ）も「DictationTranscriber のモジュールで使える」とだけ書き、SpeechTranscriber には触れない（2026-11-16 に確かめた）。
+- 第三者の比べ（Inscribe、2026-07。GIGAZINE の記事 https://gigazine.net/gsc_news/en/20260714-apple-speech-analyzer-benchmark/ 、元は https://get-inscribe.com/blog/apple-speech-api-benchmark.html ）: LibriSpeech の読み上げ（M2 Pro の Mac）で、SpeechAnalyzer 2.12%・Whisper small 3.74%・旧 SFSpeechRecognizer 9.02%。訛りのある英語は測っていない。別の比べ（Argmax、2025-06-20、https://www.argmaxinc.com/blog/apple-and-argmax ）では、earnings22（決算説明会の会話）の 1 割を M4 の Mac mini（macOS 26 の beta）で測り、WER は SpeechTranscriber 14.0%・WhisperKit の whisper-small.en 12.8%・whisper-base.en 15.2% だった（2026-11-16 に原典で確かめた）。順位は一致しない。
 - まとめ: 端末で寄せるには、精度の低い古いモデル（DictationTranscriber）に替える必要がある。割に合わない見込み。
 
 **Azure**
-- phrase list の文書（2026-10-28 更新、https://learn.microsoft.com/en-us/azure/ai-services/speech-service/improve-accuracy-phrase-list ）: 使えるのは SDK のリアルタイムの文字起こし、Fast transcription API、LLM Speech、Voice Live。バッチでは使えない。このアプリが呼ぶ「短い音声用の REST」は一覧に無い（使えないと明記した文も無いので、使えるかは未確認）。重み（0〜2）を変えられるのは SDK だけ。語の数は 200 以下を勧め、上限は 2,000。
+- phrase list の文書（2026-10-28 更新、https://learn.microsoft.com/en-us/azure/ai-services/speech-service/improve-accuracy-phrase-list ）: 使えるのは SDK のリアルタイムの文字起こし、Fast transcription API、LLM Speech、Voice Live。バッチでは使えない。このアプリが呼ぶ「短い音声用の REST」は一覧に無い。短い音声用の REST の文書（https://learn.microsoft.com/en-us/azure/ai-services/speech-service/rest-speech-to-text-short ）のパラメータの表にも phrase list は無い。使えないと明記した文は無いが、渡す口が文書に無いので、使えないものとして扱う（2026-11-16 に確かめた）。重み（0〜2）を変えられるのは SDK だけ。語の数は 200 以下を勧め、上限は 2,000。
 - 発音評価の文書（2026-07-03 更新、https://learn.microsoft.com/en-us/azure/ai-services/speech-service/how-to-pronunciation-assessment ）: "For unscripted assessment, the speech-to-text (STT) model used is different from Azure STT. If you need assessment based on highly accurate recognized text, we recommend first calling Azure STT to obtain the reference text, and then performing scripted assessment." 正解文ありは音読の場面向け、なしは話す場面向けで、返る結果も違う。
-- 正解文と違う語を言ったとき: 利用者の質問（Microsoft Q&A）では、「there」の正解文に「they」と言っても誤りと判定されず、高い点が返ったという報告がある（公式の説明ではない）。端末の聞き違いが話し方の点をどれだけ動かすかは未確認。
+- 正解文と違う語を言ったとき: 利用者の質問（Microsoft Q&A、2026-01-14）では、「there」の正解文に「they」と言っても誤りと判定されず、高い点が返ったという報告がある（音読の場面、SDK と Playground の両方で再現したという。公式の説明ではない）。端末の聞き違いが話し方の点をどれだけ動かすかは未確認（文献では決まらず、測る必要がある）。
 
 **Whisper・Workers AI**
 - OpenAI の Whisper の prompting の手引き（https://cookbook.openai.com/examples/whisper_prompting_guide ）: 綴りの手本として語を prompt に入れる方法を紹介しつつ、「あまり当てにならない（not especially reliable）」と書いている。
 - Yang, Huang, Lee (2024)「Do Prompts Really Prompt?」（SLT 2024、https://arxiv.org/abs/2406.05806 ）: Whisper は prompt を人の期待どおりには読まない。話題に強く従うほど良くなるわけではない。
 - Cloudflare Workers AI の `@cf/openai/whisper-large-v3-turbo`（https://developers.cloudflare.com/ai/models/%40cf/openai/whisper-large-v3-turbo/ ）: `initial_prompt`・`prefix`・`vad_filter`・`hallucination_silence_threshold`・`condition_on_previous_text`・`beam_size` などを渡せる。出力は全文と区切りごとの WebVTT で、語ごとの確信度は返らない。料金は 0.000513 USD / 分。
-- Workers AI の `@cf/deepgram/nova-3`（https://developers.cloudflare.com/ai/models/%40cf/deepgram/nova-3/ ）: `keyterm`（"Key term prompting can boost or suppress specialized terminology"）、`filler_words`（uh・um を残す）を渡せる。料金は HTTP で 0.0052 USD / 分。語ごとの確信度が返るかは、この頁では未確認。
+- Workers AI の `@cf/deepgram/nova-3`（https://developers.cloudflare.com/ai/models/%40cf/deepgram/nova-3/ ）: `keyterm`（"Key term prompting can boost or suppress specialized terminology"）、`filler_words`（uh・um を残す）を渡せる。料金は HTTP で 0.0052 USD / 分。出力の schema（https://developers.cloudflare.com/workers-ai/models/nova-3/schema-output.json ）には、語ごとの `confidence`・`start`・`end` がある（2026-11-16 に確かめた）。
 
 **水増し（言っていない語が出る）の危険**
 - 寄せる語の一覧が大きいと、綴りや音の似た語の誤検出で WER がかえって上がる（arXiv 2508.17796、Whisper large-v3 の trie を使う寄せ方。検索の要約で読んだ範囲）。
-- 学習で寄せる方式でも、正解の語に関係の無い語（distractor）を 25〜50 語混ぜ、正解の語を 1 割の確率で一覧から抜いて、寄せすぎを防いでいる（SALMONN-2、arXiv 2607.17079。検索の要約で読んだ範囲、原典は未確認）。
+- 学習で寄せる方式でも、正解の語に関係の無い語（distractor）を 25〜50 語混ぜ、正解の語を 1 割の確率で一覧から抜いて、寄せすぎを防いでいる（SALMONN-2、arXiv 2607.17079、2026-07。2026-11-16 に原典で確かめた）。
 - 寄せる語の無い発話では、一覧を空にしないと誤検出が出る、という報告もある（arXiv 2306.00804。検索の要約で読んだ範囲）。
 - このアプリで「言っていない語が出る率」を測った研究は無い。場面の部品の名前を全部渡すと、正解の語の一覧をそのまま渡すことになり、聞き取れない発話ほど場面の語に寄る（= 内容の点が上がる）と見るのが安全（推測）。
 
@@ -113,7 +113,7 @@
 **SpeechTranscriber の対応端末とモデル（Apple）**
 - 文書（https://developer.apple.com/documentation/speech/speechtranscriber ）: 「`isAvailable` か `supportedLocales` で、端末が SpeechTranscriber のモデルに対応しているかを確かめる。対応していなければ機能を止めるか DictationTranscriber を使う」。
 - 担当者の回答（2025-09、https://developer.apple.com/forums/thread/801197 ）: 「SpeechTranscriber にはハードウェアの要件がある。A16 の iPad は満たす。古いハードウェアでは DictationTranscriber を使える」。端末の一覧は出さない方針（2025-10、https://developer.apple.com/forums/thread/802863 ）。
-- 開発者の報告（2025-11、https://developer.apple.com/forums/thread/807739 ）: iPhone 12・SE 第 3 世代・14 Pro・15 Pro で動き、SE 第 2 世代（A13）で動かない。iPhone 11 Pro（A13）で `isAvailable` が false という報告もある。A13 の端末は使えない、というのは開発者の推測で、Apple は認めていない。シミュレータでは動かない。
+- 開発者の報告（2025-11、https://developer.apple.com/forums/thread/807739 ）: iPhone 12・SE 第 3 世代・14 Pro・15 Pro で動き、SE 第 2 世代（A13）で動かない。別のスレッド（2025-11、https://developer.apple.com/forums/thread/806765 ）では、iPhone 11・11 Pro・11 Pro Max・SE 第 2 世代で `isAvailable` が false、iPhone 12〜17 では動いたという報告がある。A13 の端末は使えない（Neural Engine が 8 コアだから）、というのは開発者の推測で、Apple は認めていない。`isAvailable` の文書も「端末のハードウェアと能力から見て使えるか」とだけ書き、機種は挙げない（2026-11-16 に確かめた）。シミュレータでは動かない。
 - iOS 26 を入れられるのは iPhone 11 以降と SE 第 2 世代以降（A13 以降。MacRumors 2025-08 など二次情報、https://www.macrumors.com/2025/08/05/will-my-iphone-support-ios-26 ）。iPhone X・XS・XR は入らない。
 - WWDC25 の Session 277（書き起こし、https://nonstrict.eu/wwdcindex/wwdc2025/277/ ）: 「モデルはシステムの領域に置かれ、アプリの大きさを増やさない」「モデルは絶えず改善しており、更新が出ればシステムが自動で入れる」。
 - AssetInventory の文書（https://developer.apple.com/documentation/speech/assetinventory ）: モデルは Apple のサーバーから入れ、システムが自動で更新し、アプリ間で共有する。**モデルの版を調べる API は無い。**
@@ -122,11 +122,11 @@
 **マイクと音の処理**
 - `AVAudioSession.Mode.measurement` の文書（https://developer.apple.com/documentation/avfaudio/avaudiosession/mode-swift.struct/measurement ）: 「システムが入出力にかける信号処理を最小にしたいアプリ向け。マイクが複数ある端末では主マイクを使う」。注意として「入出力のダイナミクス処理の一部を止めるので、再生の音量が下がる」。別の説明では、このモードでは自動の音量調整（AGC）をしない。
 - `.voiceChat` は通話向けで、エコーの除去や自動の音量調整が入る（Apple の文書の要約）。
-- マイクの違いの研究: 同じ音声を 3 つのマイクで流し直すと、Google と Bing の WER は最大 1.41 倍になった（Mathur ほか 2018、https://discovery.ucl.ac.uk/id/eprint/10075038/1/mathur_hasca2018.pdf 。検索の要約で読んだ範囲）。古い研究で、今のモデルでの差は未確認。
+- マイクの違いの研究: LibriSpeech の音声を 3 つのマイク（Matrix Voice・ReSpeaker・安い USB マイク、10 cm の距離、静かな部屋）で流し直すと、Google と Bing の WER は元の音声の最大 1.41 倍になった。Bing ではマイクによって 1.24〜1.41 倍と幅があった（Mathur ほか 2018、https://discovery.ucl.ac.uk/id/eprint/10075038/1/mathur_hasca2018.pdf 。2026-11-16 に本文で確かめた）。古い研究で、今のモデルでの差は未確認（測る必要がある）。
 - 音量: Moonshine の論文（Jeffries ほか 2024、https://arxiv.org/abs/2410.15608 ）は、入力の音量を下げていくと、-40 dB より小さい所で WER が急に上がることを示した（LibriSpeech、Whisper と Moonshine の比べ）。普通の範囲の音量の違いには、今のモデルはおおむね強い。
 - 雑音の除去: 1 チャンネルの雑音除去は、作り出すひずみ（artifact）のせいで、かえって認識を悪くしやすい（Iwamoto ほか 2022、Interspeech、https://arxiv.org/abs/2201.06685 ）。雑音の除去を前処理に入れるのは避ける。
 - 無音と幻覚: Whisper は無音の多い音声で、言っていない文を作りやすい。失語症の話者で 1.7%、対照群で 1.2% の区切りに幻覚が出て、無音の割合が多いほど起きやすい（Koenecke ほか 2024、FAccT、https://arxiv.org/abs/2402.08021 ）。言いよどみの多い、力の低い学習者ほど同じ形で不利になりうる。VAD で無音を切ると減らせる（Workers AI の Whisper には `vad_filter`・`hallucination_silence_threshold` がある）。
-- 背景: 米国の 5 社の文字起こしで、話者の人種によって WER に大きな差が出た研究（Koenecke ほか 2020、PNAS、https://www.pnas.org/doi/10.1073/pnas.1915768117 ）がよく引かれる。本調査では原典を開けず、数値は未確認。
+- 背景: 米国の 5 社の文字起こしで、話者の人種によって WER に大きな差が出た研究（Koenecke ほか 2020、PNAS、https://www.pnas.org/doi/10.1073/pnas.1915768117 ）がよく引かれる。Amazon・Apple・Google・IBM・Microsoft の 5 つで、米国の 5 都市の面接（黒人 73 人・白人 42 人、19.8 時間、年齢と性別をそろえた）を文字にすると、平均の WER は黒人 0.35、白人 0.19 だった。同じ語句を言った部分でも差が同じくらい大きく、著者は差の元を音響モデルにあるとした（2026-11-16 に PMC 版 https://pmc.ncbi.nlm.nih.gov/articles/PMC7149386/ で確かめた）。
 
 ### 4. 誤りに強い採点の材料
 
@@ -153,11 +153,11 @@
 | Sun ほか (2025) | Speak & Improve、学習 28.2 時間、Whisper-small、LoRA | 全体 10.2% → 9.2%。A2 は相対 20% 悪化。工夫すれば 7.2% |
 | Lu ほか (2025) | Speak & Improve の 7,100 件（学習 + dev）、Whisper large-v3、rsLoRA（rank 32） | 9.5% → 6.47%（Closed Track で 1 位） |
 | Attia ほか (2024)「Kid-Whisper」（AIES、https://arxiv.org/abs/2309.07927 ） | 米国の 8〜11 歳（MyST）を整えた 132.5 時間 | small 13.93% → 9.11%、medium 13.23% → 8.61%。学習に入れていない CSLU の自由発話も medium で 31.85% → 16.53% |
-| Jain ほか (2024)（IEEE Access 12、DOI 10.1109/ACCESS.2024.3378738） | 母語でない子どもの英語（PFSTAR・speechocean762 など）の 1 割だけで学習 | 既知の基準から相対 29〜89% の改善（要旨。表の数値は未確認） |
+| Jain ほか (2024)（IEEE Access 12、DOI 10.1109/ACCESS.2024.3378738） | 母語でない子どもの英語（PFSTAR・speechocean762 など）の 1 割だけで学習 | 同じデータでの既知の基準から、WER が相対 29〜89% 改善（要旨で確かめた。表の数値とデータの名前は未確認。IEEE Xplore が PDF の取得を拒み、開けなかった） |
 | Halychanskyi ほか (2026)（ICML 2026 の workshop、https://arxiv.org/abs/2604.27273 ） | 少ない実の訛りの音声 ＋ 合成の訛りの音声 | 音素をでたらめに置き換えた合成でも、効き目の多くが出る。合成と実の比率が大事 |
 
 - 端末で動く選択肢: Apple の SpeechTranscriber（無料・システムが更新）、DictationTranscriber（古い端末・寄せる語を渡せる・精度は低め）、WhisperKit（Argmax。Whisper を CoreML で動かす。https://arxiv.org/abs/2507.10860 。ファインチューンした Hugging Face の Whisper を `whisperkittools` で CoreML に変換できる、https://github.com/argmaxinc/whisperkittools ）、Moonshine（27.1M・61.5M パラメータ、Whisper tiny・base と同程度の精度で速い。長い音声では精度が落ちる）。
-- サーバーで動かすなら、Workers AI の Whisper large-v3-turbo は Cloudflare の決まったモデルで、自前のファインチューンを載せられるかは未確認（Workers AI の LoRA は LLM 向けとして案内されている）。
+- サーバーで動かすなら、Workers AI の Whisper large-v3-turbo は Cloudflare の決まったモデルで、自前のファインチューンは載せられない。Workers AI の LoRA は「LoRA に対応したモデル」だけで使え、対応するのは LLM 向けの決まったモデル（Mistral・Gemma・Llama 2 の `-lora`）だけ。Whisper の頁に LoRA の記載は無く、自前のモデルを載せる口も文書に無い（2026-11-16 に https://developers.cloudflare.com/workers-ai/features/fine-tunes/loras/ と Workers AI のモデルの一覧で確かめた）。
 
 ## このアプリへの当てはめ（案ごとに、効き目・手間・費用・リスク）
 
@@ -257,7 +257,7 @@
 - 効き目: 誤りの多い所（日本語話者の音の取り違え）に直接効く見込み。ただし学習の偏りで、力の低い人の WER がかえって上がりうる。
 - 手間: 大きい。データの同意・書き起こし・学習・評価で数週間。
 - 費用: 学習の GPU（数時間）と、動かすサーバー（常時の GPU か、使った分だけ払うもの）。端末で動かすなら WhisperKit で CoreML に変換し、アプリにモデル（small で約 460 MB）を入れる。
-- 実装の場所: 別のサーバー（Workers AI に自前の Whisper を載せられるかは未確認）か、iOS（WhisperKit）。iOS に載せると端末の性能の差が戻るので、公平さの面ではサーバーの方がよい。
+- 実装の場所: 別のサーバー（Workers AI には自前の Whisper を載せられない。上の 5. のとおり、2026-11-16 に Cloudflare の文書で確かめた）か、iOS（WhisperKit）。iOS に載せると端末の性能の差が戻るので、公平さの面ではサーバーの方がよい。
 - リスク: 学習のデータに未成年の声が入るので、同意と保管の決まりが要る。モデルを持つと、更新と評価を続ける手間がかかる。
 
 ### 公平さを、プレイヤーにどう説明できるか（案 A・C・E を入れた後）
@@ -279,14 +279,14 @@
 ## 不確かな点・残る問い
 
 - 日本の**中高生**の英語で、SpeechTranscriber・Azure・Whisper の WER を測った研究は見つからなかった。ICNALE（大学生、電話の音声、声の高さを変えてある）と米国の子ども（母語話者）の値から推しているだけ。案 C で測るまでは、どれが良いか言えない。
-- SpeechTranscriber の対応端末（A13 は使えないか）と、端末や自動更新の時期でモデルや結果が変わるかは、Apple が公表しておらず未確認。iPhone 11 と 12 で同じ WAV を通して比べる必要がある。
+- SpeechTranscriber の対応端末（A13 は使えないか）と、端末や自動更新の時期でモデルや結果が変わるかは、Apple が公表しておらず未確認。Apple は一覧を出さない方針（DTS の回答、2025-10）で、文書は `isAvailable` で確かめるよう書くだけ。A13 の機種（iPhone 11 系・SE 第 2 世代）で false という報告は、2 つのスレッド（806765・807739、2025-11）にある（2026-11-16 に確かめた）。iPhone 11 と 12 で同じ WAV を通して比べる必要がある。
 - 端末の文字起こしを正解文にしたとき、Azure の `NBest[0].Display`（ログの `azureTranscript`）が正解文に引きずられるかは未確認。引きずられるなら、ログで端末と Azure の食い違いを比べても意味が無い。正解文なしで同じ WAV を通して確かめる。
 - 正解文に聞き違いの語（car）があるとき、話し方の点がどれだけ下がるかは未確認（Microsoft Q&A には、違う語でも高い点が返るという報告がある）。
-- Azure の短い音声用の REST で phrase list が使えるか、Workers AI の Nova-3 が語ごとの確信度を返すか、Workers AI に自前のファインチューンした Whisper を載せられるかは、文書で確かめられなかった。
+- Azure の短い音声用の REST で phrase list が使えるか、Workers AI の Nova-3 が語ごとの確信度を返すか、Workers AI に自前のファインチューンした Whisper を載せられるかは、2026-11-16 に文書で確かめた。短い音声用の REST には phrase list を渡す口が無い。Nova-3 は語ごとの確信度を返す。Workers AI に自前の Whisper は載せられない。
 - 寄せる語を渡したときに「言っていない部品の名前が出る率」は、このアプリの条件で測った研究が無い。案 D3 の測定が要る。
 - 案 E の決まり（聞き違いを「一部」にする）は、内容の点の定義そのものを変えるので、担当 1（ルーブリック）と担当 4（LLM の採点）との合意が要る。
 - 文字起こしが文法の誤りを直してしまう傾向（Whisper は名詞の形の誤りの 98.9% を直した）は、表現の点を力の低い人ほど高めに出す。どの文字起こしを選ぶかが表現の点にも効くので、担当 3 と合わせて測る。
-- Web 検索の上限に達したため、Koenecke 2020（PNAS）・Jain 2024 の表・Mathur 2018 の本文・SALMONN-2 などは原典を開けていない。
+- Web 検索の上限に達したため、Koenecke 2020（PNAS）・Jain 2024 の表・Mathur 2018 の本文・SALMONN-2 などは原典を開けていなかった。2026-11-16 に、Koenecke 2020・Mathur 2018・SALMONN-2 は原典で確かめた。Jain 2024 の表（IEEE Xplore が取得を拒んだ）と Hirai & Kovalyova 2024 の原典（ScholarSpace が取得を拒んだ）は開けなかった。
 
 ## 出典の一覧
 
@@ -304,14 +304,14 @@
 - Jain, R. ほか (2024). Exploring Native and Non-Native English Child Speech Recognition With Whisper. IEEE Access 12. DOI 10.1109/ACCESS.2024.3378738（要旨のみ確認）
 - Halychanskyi, Y. ほか (2026). Few-Shot Synthetic Accented Speech for ASR Fine-Tuning: What Helps and When? https://arxiv.org/abs/2604.27273
 - Koenecke, A. ほか (2024). Careless Whisper: Speech-to-Text Hallucination Harms. FAccT 2024. https://arxiv.org/abs/2402.08021
-- Koenecke, A. ほか (2020). Racial disparities in automated speech recognition. PNAS. https://www.pnas.org/doi/10.1073/pnas.1915768117（原典は未確認）
+- Koenecke, A. ほか (2020). Racial disparities in automated speech recognition. PNAS. https://www.pnas.org/doi/10.1073/pnas.1915768117（PMC 版 https://pmc.ncbi.nlm.nih.gov/articles/PMC7149386/ で確認）
 - Yang, C.-K., Huang, K.-P., Lee, H.-y. (2024). Do Prompts Really Prompt? Exploring the Prompt Understanding Capability of Whisper. SLT 2024. https://arxiv.org/abs/2406.05806
 - Sun, G. ほか (2023). Can Contextual Biasing Remain Effective with Whisper and GPT-2? https://arxiv.org/abs/2306.01942
 - Zero-shot Context Biasing with Trie-based Decoding using Synthetic Multi-Pronunciation (2025). https://arxiv.org/abs/2508.17796（検索の要約で確認）
-- SALMONN-2 (2026). https://arxiv.org/abs/2607.17079（検索の要約で確認）
+- SALMONN-2: Advancing General-Purpose Hearing Abilities with Self-Supervised Representations (2026). https://arxiv.org/abs/2607.17079（本文で確認）
 - Jeffries, N. ほか (2024). Moonshine: Speech Recognition for Live Transcription and Voice Commands. https://arxiv.org/abs/2410.15608
 - Iwamoto, K. ほか (2022). How Bad Are Artifacts?: Analyzing the Impact of Speech Enhancement Errors on ASR. Interspeech 2022. https://arxiv.org/abs/2201.06685
-- Mathur, A. ほか (2018). 同じ音声を複数のマイクで録り直し、クラウドの文字起こしの WER を比べた研究（UCL、HASCA 2018。題名は未確認）. https://discovery.ucl.ac.uk/id/eprint/10075038/1/mathur_hasca2018.pdf（検索の要約で確認）
+- Mathur, A., Smith, R., Isopoussu, A., Lane, N. D. (2018). On Robustness of Cloud Speech APIs: An Early Characterization. HASCA 2018. https://discovery.ucl.ac.uk/id/eprint/10075038/1/mathur_hasca2018.pdf（本文で確認）
 - WhisperKit: On-device Real-time ASR with Billion-Scale Transformers (2025). https://arxiv.org/abs/2507.10860
 - Wang, W. ほか (2011). 音の近さを言語理解に足す研究（USC ICT）. https://people.ict.usc.edu/~leuski/publications/papers/Wang-11.pdf（検索の要約で確認）
 - LASER: An LLM-based ASR Scoring and Evaluation Rubric (2025). https://arxiv.org/abs/2510.07437（検索の要約で確認）
