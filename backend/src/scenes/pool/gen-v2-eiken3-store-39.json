@@ -1,0 +1,102 @@
+{
+  "protocol": "scenenglish.scene/2",
+  "id": "gen-v2-eiken3-store-39",
+  "name": "店のレジ",
+  "difficulty": "eiken-3",
+  "description": "A woman is paying at the checkout counter. A man is carrying a box. There is a shelf next to the door.",
+  "checklist": [
+    {
+      "id": "woman_pay",
+      "kind": "center",
+      "label": "女の人がレジで支払いをしている",
+      "accept": "a woman is paying",
+      "refs": ["woman", "checkout_counter"]
+    },
+    {
+      "id": "man_carry",
+      "kind": "center",
+      "label": "男の人が箱を運んでいる",
+      "accept": "a man is carrying a box",
+      "refs": ["man"]
+    },
+    {
+      "id": "shelf_door",
+      "kind": "detail",
+      "label": "ドアの隣に棚がある",
+      "accept": "there is a shelf next to the door",
+      "refs": ["shelf", "door"]
+    }
+  ],
+  "items": [
+    {
+      "key": "ground",
+      "part": "floor_tile",
+      "place": {
+        "relation": "ground"
+      },
+      "position": [0, 0, 0]
+    },
+    {
+      "key": "bgwall",
+      "part": "wall_store_shelves",
+      "place": {
+        "relation": "ground"
+      },
+      "position": [0, 0, -3.734]
+    },
+    {
+      "key": "checkout_counter",
+      "part": "checkout_counter",
+      "place": {
+        "relation": "ground",
+        "zone": "left"
+      },
+      "position": [-2.75, 0, 0.3],
+      "yaw": 90
+    },
+    {
+      "key": "woman",
+      "part": "person_pay_woman_a",
+      "place": {
+        "relation": "relate",
+        "target": "checkout_counter",
+        "link": "hand",
+        "side": "front",
+        "distance": "touch",
+        "turn": "toward"
+      },
+      "position": [-2.07, 0, -0.25],
+      "yaw": -90
+    },
+    {
+      "key": "door",
+      "part": "door",
+      "place": {
+        "relation": "ground",
+        "zone": "back_right"
+      },
+      "position": [2.75, 0, -2.45]
+    },
+    {
+      "key": "shelf",
+      "part": "shelf",
+      "place": {
+        "relation": "next_to",
+        "target": "door",
+        "side": "left"
+      },
+      "position": [1.58, 0, -2.45]
+    },
+    {
+      "key": "man",
+      "part": "person_carry_adult_a",
+      "place": {
+        "relation": "ground",
+        "zone": "front_right"
+      },
+      "facing": "camera",
+      "position": [2.75, 0, 3.05],
+      "yaw": 90
+    }
+  ]
+}

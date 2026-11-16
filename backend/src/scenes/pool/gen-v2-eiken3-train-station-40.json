@@ -1,0 +1,76 @@
+{
+  "protocol": "scenenglish.scene/2",
+  "id": "gen-v2-eiken3-train-station-40",
+  "name": "ホームを走る男の人",
+  "difficulty": "eiken-3",
+  "description": "A man is running with a bag. A girl is looking far away. There is a train at the platform.",
+  "checklist": [
+    {
+      "id": "man_run",
+      "kind": "center",
+      "label": "男の人がかばんを持って走っている",
+      "accept": "a man is running",
+      "refs": ["man"]
+    },
+    {
+      "id": "girl_look",
+      "kind": "center",
+      "label": "女の子が遠くを見ている",
+      "accept": "a girl is looking far away",
+      "refs": ["girl"]
+    },
+    {
+      "id": "train",
+      "kind": "detail",
+      "label": "ホームに電車がある",
+      "accept": "there is a train at the platform",
+      "refs": ["train", "platform"]
+    }
+  ],
+  "items": [
+    {
+      "key": "platform",
+      "part": "platform_station",
+      "place": {
+        "relation": "ground"
+      },
+      "position": [0, 0, 0]
+    },
+    {
+      "key": "train",
+      "part": "train",
+      "place": {
+        "relation": "ground",
+        "zone": "back"
+      },
+      "position": [0, 0, -2.684]
+    },
+    {
+      "key": "man",
+      "part": "person_run_bag_adult_a",
+      "place": {
+        "relation": "ground",
+        "zone": "front_left"
+      },
+      "facing": "right",
+      "position": [-2.75, 0, 2.75],
+      "yaw": 116.9,
+      "motion": {
+        "type": "move",
+        "to": [2.667, 0, 0],
+        "duration": 5,
+        "toward": "right"
+      }
+    },
+    {
+      "key": "girl",
+      "part": "person_look_girl_a",
+      "place": {
+        "relation": "ground",
+        "zone": "front_right"
+      },
+      "facing": "camera",
+      "position": [2.75, 0, 2.75]
+    }
+  ]
+}

@@ -37,7 +37,7 @@ pnpm openapi          # openapi.json を生成し直す
 
 ## 作り置きの場面（`src/scenes/pool/`）
 
-AI で作り置いた場面（配置の JSON、`scenenglish.scene/2`）と、級ごとの例と出題の候補を書いた `index.json`。今あるのは、2 段の生成で作って人が絵で選んだ 30 場面（`gen-v2-…`、級ごとに例 1 つ・出題 9 つ）。形と足し方は [`src/scenes/pool/README.md`](./src/scenes/pool/README.md)。iOS の Mock もビルドのときにここから写して使う。
+AI で作り置いた場面（配置の JSON、`scenenglish.scene/2`）と、級ごとの例と出題の候補を書いた `index.json`。今あるのは、2 段の生成で作って絵で選んだ 48 場面（`gen-v2-…`、級ごとに例 1 つ、出題は 3 級 21・準 2 級 12・2 級 12）。形と足し方は [`src/scenes/pool/README.md`](./src/scenes/pool/README.md)。iOS の Mock もビルドのときにここから写して使う。
 
 ### 手元で採点を試す
 

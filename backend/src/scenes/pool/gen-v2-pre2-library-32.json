@@ -1,0 +1,153 @@
+{
+  "protocol": "scenenglish.scene/2",
+  "id": "gen-v2-pre2-library-32",
+  "name": "図書館で本を取る",
+  "difficulty": "eiken-pre2",
+  "description": "A girl is pointing at a book on a high shelf. A boy is taking a book from the shelf because the girl is pointing at it. A woman is sitting on a sofa. There is a table in the library. There is a bag under the table.",
+  "checklist": [
+    {
+      "id": "girl_point",
+      "kind": "center",
+      "label": "女の子が指さしている",
+      "accept": "a girl is pointing at a book",
+      "refs": ["girl", "book"]
+    },
+    {
+      "id": "boy_take",
+      "kind": "center",
+      "label": "男の子が本を取っている",
+      "accept": "a boy is taking a book from the shelf",
+      "refs": ["boy", "book", "shelf"]
+    },
+    {
+      "id": "woman_sit",
+      "kind": "center",
+      "label": "女の人がソファに座っている",
+      "accept": "a woman is sitting on a sofa",
+      "refs": ["woman", "sofa"]
+    },
+    {
+      "id": "why_take",
+      "kind": "reason",
+      "label": "男の子が本を取る理由",
+      "accept": "a boy is taking a book from the shelf because the girl is pointing at it",
+      "refs": ["boy", "girl", "book"]
+    },
+    {
+      "id": "table",
+      "kind": "detail",
+      "label": "テーブルがある",
+      "accept": "there is a table in the library",
+      "refs": ["table"]
+    },
+    {
+      "id": "bag_table",
+      "kind": "detail",
+      "label": "かばんがテーブルの下にある",
+      "accept": "there is a bag under the table",
+      "refs": ["bag", "table"]
+    }
+  ],
+  "items": [
+    {
+      "key": "ground",
+      "part": "floor_carpet",
+      "place": {
+        "relation": "ground"
+      },
+      "position": [0, 0, 0]
+    },
+    {
+      "key": "wall",
+      "part": "wall_window",
+      "place": {
+        "relation": "ground"
+      },
+      "position": [0, 0, -3.86]
+    },
+    {
+      "key": "shelf",
+      "part": "bookshelf",
+      "place": {
+        "relation": "ground",
+        "zone": "left"
+      },
+      "position": [-2.795, 0, 0.175],
+      "yaw": 65
+    },
+    {
+      "key": "boy",
+      "part": "person_take_book_teen_a",
+      "place": {
+        "relation": "relate",
+        "target": "shelf",
+        "link": "hand",
+        "side": "front",
+        "distance": "touch",
+        "turn": "toward"
+      },
+      "position": [-2.292, 0, 0.257],
+      "yaw": -115
+    },
+    {
+      "key": "book",
+      "part": "book",
+      "place": {
+        "relation": "on",
+        "target": "shelf"
+      },
+      "position": [-2.795, 2.3, 0.175]
+    },
+    {
+      "key": "girl",
+      "part": "person_ask_girl_a",
+      "place": {
+        "relation": "relate",
+        "target": "boy",
+        "side": "right",
+        "distance": "talk",
+        "turn": "same"
+      },
+      "position": [-2.538, 0, 1.013],
+      "yaw": -115
+    },
+    {
+      "key": "sofa",
+      "part": "sofa",
+      "place": {
+        "relation": "ground",
+        "zone": "back_right"
+      },
+      "position": [2.705, 0, -2.325],
+      "yaw": 65
+    },
+    {
+      "key": "woman",
+      "part": "person_sit_woman_a",
+      "place": {
+        "relation": "sit_on",
+        "target": "sofa"
+      },
+      "position": [2.954, -0.02, -2.209],
+      "yaw": 65
+    },
+    {
+      "key": "table",
+      "part": "table",
+      "place": {
+        "relation": "ground",
+        "zone": "front_right"
+      },
+      "position": [2.705, 0, 2.925]
+    },
+    {
+      "key": "bag",
+      "part": "bag",
+      "place": {
+        "relation": "under",
+        "target": "table"
+      },
+      "position": [2.705, 0, 2.925]
+    }
+  ]
+}

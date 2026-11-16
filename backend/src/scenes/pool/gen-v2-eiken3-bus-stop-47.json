@@ -1,0 +1,84 @@
+{
+  "protocol": "scenenglish.scene/2",
+  "id": "gen-v2-eiken3-bus-stop-47",
+  "name": "バス停の男の子と女の人",
+  "difficulty": "eiken-3",
+  "description": "A boy is running to the bus stop. A woman is waiting. There is a bench next to the woman.",
+  "checklist": [
+    {
+      "id": "boy_run",
+      "kind": "center",
+      "label": "男の子が走っている",
+      "accept": "a boy is running",
+      "refs": ["boy"]
+    },
+    {
+      "id": "woman_wait",
+      "kind": "center",
+      "label": "女の人が待っている",
+      "accept": "a woman is waiting",
+      "refs": ["woman"]
+    },
+    {
+      "id": "bench",
+      "kind": "detail",
+      "label": "女の人の隣にベンチがある",
+      "accept": "there is a bench next to the woman",
+      "refs": ["bench", "woman"]
+    }
+  ],
+  "items": [
+    {
+      "key": "ground",
+      "part": "sidewalk_stone",
+      "place": {
+        "relation": "ground"
+      },
+      "position": [0, 0, 0]
+    },
+    {
+      "key": "shelter",
+      "part": "bus_shelter",
+      "place": {
+        "relation": "ground",
+        "zone": "back"
+      },
+      "position": [0, 0, -2.75]
+    },
+    {
+      "key": "woman",
+      "part": "person_stand_woman_a",
+      "place": {
+        "relation": "ground",
+        "zone": "center"
+      },
+      "position": [0, 0, 0]
+    },
+    {
+      "key": "bench",
+      "part": "bench",
+      "place": {
+        "relation": "next_to",
+        "target": "woman",
+        "side": "right"
+      },
+      "position": [1.216, 0, 0]
+    },
+    {
+      "key": "boy",
+      "part": "person_run_boy_a",
+      "place": {
+        "relation": "ground",
+        "zone": "front_left"
+      },
+      "position": [-2.75, 0, 2.75],
+      "yaw": 153.4,
+      "motion": {
+        "type": "move",
+        "to": [-0.921, 0, -0.909],
+        "duration": 5,
+        "toward": "shelter"
+      }
+    }
+  ]
+}

@@ -10,7 +10,19 @@
       "gen-v2-eiken3-library-08",
       "gen-v2-eiken3-playground-12",
       "gen-v2-eiken3-street-10",
-      "gen-v2-eiken3-train-station-04"
+      "gen-v2-eiken3-train-station-04",
+      "gen-v2-eiken3-store-39",
+      "gen-v2-eiken3-living-room-31",
+      "gen-v2-eiken3-kitchen-41",
+      "gen-v2-eiken3-classroom-42",
+      "gen-v2-eiken3-cafe-38",
+      "gen-v2-eiken3-train-station-40",
+      "gen-v2-eiken3-street-34",
+      "gen-v2-eiken3-playground-48",
+      "gen-v2-eiken3-park-37",
+      "gen-v2-eiken3-beach-45",
+      "gen-v2-eiken3-bus-stop-47",
+      "gen-v2-eiken3-library-44"
     ]
   },
   "eiken-pre2": {
@@ -24,7 +36,10 @@
       "gen-v2-pre2-library-20",
       "gen-v2-pre2-living-room-07",
       "gen-v2-pre2-playground-24",
-      "gen-v2-pre2-train-station-16"
+      "gen-v2-pre2-train-station-16",
+      "gen-v2-pre2-library-32",
+      "gen-v2-pre2-street-34",
+      "gen-v2-pre2-living-room-31"
     ]
   },
   "eiken-2": {
@@ -38,7 +53,10 @@
       "gen-v2-eiken2-living-room-07",
       "gen-v2-eiken2-park-13",
       "gen-v2-eiken2-playground-24",
-      "gen-v2-eiken2-train-station-04"
+      "gen-v2-eiken2-train-station-04",
+      "gen-v2-eiken2-living-room-31",
+      "gen-v2-eiken2-street-34",
+      "gen-v2-eiken2-bus-stop-35"
     ]
   }
 }

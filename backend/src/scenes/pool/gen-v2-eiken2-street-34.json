@@ -1,0 +1,174 @@
+{
+  "protocol": "scenenglish.scene/2",
+  "id": "gen-v2-eiken2-street-34",
+  "name": "雨の道で転んだ女の人",
+  "difficulty": "eiken-2",
+  "description": "A woman has fallen down on the road. A man is helping the woman get up because she has fallen down. A boy is running to the bus stop because it is raining, so that he does not get wet. A girl is looking far away. There is a car on the road. The trash can is next to the bus stop.",
+  "checklist": [
+    {
+      "id": "woman_fallen",
+      "kind": "center",
+      "label": "女の人が転んでいる",
+      "accept": "a woman has fallen down",
+      "refs": ["woman"]
+    },
+    {
+      "id": "man_help",
+      "kind": "center",
+      "label": "男の人が女の人を助け起こしている",
+      "accept": "a man is helping the woman get up",
+      "refs": ["man", "woman"]
+    },
+    {
+      "id": "boy_run",
+      "kind": "center",
+      "label": "男の子が走っている",
+      "accept": "a boy is running to the bus stop",
+      "refs": ["boy", "bus_stop"]
+    },
+    {
+      "id": "girl_look",
+      "kind": "center",
+      "label": "女の子が遠くを見ている",
+      "accept": "a girl is looking far away",
+      "refs": ["girl"]
+    },
+    {
+      "id": "why_help",
+      "kind": "reason",
+      "label": "男の人が助けている理由",
+      "accept": "a man is helping the woman get up because she has fallen down",
+      "refs": ["man", "woman"]
+    },
+    {
+      "id": "link_run",
+      "kind": "link",
+      "label": "雨なので男の子がバス停へ走っている",
+      "accept": "a boy is running to the bus stop because it is raining, so that he does not get wet",
+      "refs": ["boy", "rain", "bus_stop"]
+    },
+    {
+      "id": "car_road",
+      "kind": "detail",
+      "label": "道路に車がある",
+      "accept": "there is a car on the road",
+      "refs": ["car", "road"]
+    },
+    {
+      "id": "trash_bus_stop",
+      "kind": "detail",
+      "label": "ごみ箱はバス停の隣にある",
+      "accept": "the trash can is next to the bus stop",
+      "refs": ["trash_can", "bus_stop"]
+    }
+  ],
+  "items": [
+    {
+      "key": "ground",
+      "part": "sidewalk_stone",
+      "place": {
+        "relation": "ground"
+      },
+      "position": [0, 0, 0]
+    },
+    {
+      "key": "road",
+      "part": "road_patch",
+      "place": {
+        "relation": "ground",
+        "zone": "back"
+      },
+      "position": [0, 0.01, -1.25]
+    },
+    {
+      "key": "rain",
+      "part": "rain",
+      "place": {
+        "relation": "ground"
+      },
+      "position": [0, 0, 0]
+    },
+    {
+      "key": "car",
+      "part": "car",
+      "place": {
+        "relation": "ground",
+        "zone": "back_right"
+      },
+      "facing": "left",
+      "position": [2.001, 0, -2.75],
+      "yaw": -90
+    },
+    {
+      "key": "woman",
+      "part": "person_fallen_woman_a",
+      "place": {
+        "relation": "ground",
+        "zone": "center"
+      },
+      "facing": "camera",
+      "position": [0, 0, 0],
+      "yaw": 90
+    },
+    {
+      "key": "man",
+      "part": "person_help_up_adult_a",
+      "place": {
+        "relation": "relate",
+        "target": "woman",
+        "link": "hand",
+        "side": "front",
+        "distance": "talk",
+        "turn": "toward"
+      },
+      "position": [0.368, 0, 0.1],
+      "yaw": -90
+    },
+    {
+      "key": "bus_stop",
+      "part": "bus_shelter",
+      "place": {
+        "relation": "ground",
+        "zone": "front_left"
+      },
+      "position": [-2.75, 0, 2.355],
+      "yaw": 90
+    },
+    {
+      "key": "boy",
+      "part": "person_run_boy_a",
+      "place": {
+        "relation": "ground",
+        "zone": "front"
+      },
+      "facing": "left",
+      "position": [0.792, 0, 2.864],
+      "yaw": -98.2,
+      "motion": {
+        "type": "move",
+        "to": [-0.712, 0, 2.648],
+        "duration": 5,
+        "toward": "bus_stop"
+      }
+    },
+    {
+      "key": "trash_can",
+      "part": "trash_bin",
+      "place": {
+        "relation": "next_to",
+        "target": "bus_stop"
+      },
+      "position": [-1.69, 0, 2.355]
+    },
+    {
+      "key": "girl",
+      "part": "person_look_girl_a",
+      "place": {
+        "relation": "ground",
+        "zone": "front_right"
+      },
+      "position": [2.75, 0, 2.75],
+      "yaw": 90
+    }
+  ]
+}

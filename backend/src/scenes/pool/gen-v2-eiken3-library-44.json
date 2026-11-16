@@ -1,0 +1,105 @@
+{
+  "protocol": "scenenglish.scene/2",
+  "id": "gen-v2-eiken3-library-44",
+  "name": "図書館で勉強",
+  "difficulty": "eiken-3",
+  "description": "A boy is writing at a desk. A man is sitting on a chair and reading a book. There is a laptop on the table.",
+  "checklist": [
+    {
+      "id": "boy_write",
+      "kind": "center",
+      "label": "男の子が机で書いている",
+      "accept": "a boy is writing at a desk",
+      "refs": ["boy"]
+    },
+    {
+      "id": "man_read",
+      "kind": "center",
+      "label": "男の人が本を読んでいる",
+      "accept": "a man is sitting on a chair and reading a book",
+      "refs": ["man", "chair"]
+    },
+    {
+      "id": "laptop_table",
+      "kind": "detail",
+      "label": "テーブルの上にノートパソコンがある",
+      "accept": "there is a laptop on the table",
+      "refs": ["laptop", "table"]
+    }
+  ],
+  "items": [
+    {
+      "key": "ground",
+      "part": "floor_carpet",
+      "place": {
+        "relation": "ground"
+      },
+      "position": [0, 0, 0]
+    },
+    {
+      "key": "wall",
+      "part": "wall_window",
+      "place": {
+        "relation": "ground"
+      },
+      "position": [0, 0, -3.86]
+    },
+    {
+      "key": "table",
+      "part": "table_small",
+      "place": {
+        "relation": "ground",
+        "zone": "left"
+      },
+      "facing": "camera",
+      "position": [-2.75, 0, 0]
+    },
+    {
+      "key": "chair_boy",
+      "part": "chair",
+      "place": {
+        "relation": "seat_at",
+        "target": "table"
+      },
+      "facing": "table",
+      "position": [-2.75, 0, -0.595]
+    },
+    {
+      "key": "boy",
+      "part": "person_write_boy_a",
+      "place": {
+        "relation": "sit_on",
+        "target": "chair_boy"
+      },
+      "position": [-2.751, 0.1, -0.445]
+    },
+    {
+      "key": "laptop",
+      "part": "laptop",
+      "place": {
+        "relation": "on",
+        "target": "table"
+      },
+      "position": [-2.75, 0.72, 0]
+    },
+    {
+      "key": "chair",
+      "part": "chair",
+      "place": {
+        "relation": "ground",
+        "zone": "right"
+      },
+      "facing": "camera",
+      "position": [2.75, 0, 0]
+    },
+    {
+      "key": "man",
+      "part": "person_read_sit_adult_a",
+      "place": {
+        "relation": "sit_on",
+        "target": "chair"
+      },
+      "position": [2.75, -0.02, 0.2]
+    }
+  ]
+}
