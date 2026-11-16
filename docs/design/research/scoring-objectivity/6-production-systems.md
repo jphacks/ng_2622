@@ -66,7 +66,7 @@
 | TOEFL iBT スピーキング（ETS SpeechRater） | 流暢さ（言いよどみ・ポーズ）、発音、リズム、語彙、文法の複雑さ、内容の適切さ、談話のまとまり（v5.0。2016 年に本番に入った。RR-18-10） | ETS の公式ページは「AI の採点と ETS 認定の採点者の組み合わせ」とだけ書く。混ぜ方は公開していない。2019 年から本番で人と SpeechRater を併用したという説明は二次情報 | TOEFL Junior のスピーキングで機械と人 r=.81、人と人 .89。5 問の合計の点での値（Evanini ほか 2015、ETS RR-15-09。2026-11-16 に ERIC の本文 https://files.eric.ed.gov/fulltext/EJ1109726.pdf で確かめた） |
 | TOEFL iBT ライティング（e-rater） | 文法・語法・表記・文体・構成・展開・前置詞とコロケーションの正しさ・文の多様さ・語の難しさ（ETS Best Practices 2021 の事例の表） | 人の点と混ぜる。人の点との差が、Independent の課題で 1.5、Integrated の課題で 1.0 を超えたら、別の人が採点する（ETS RR-12-06、2012。検索の抜粋） | ETS は「Independent の課題では、e-rater と人の一致が、人どうしの一致より高い」と書く（Attali, Bridgeman & Trapani 2010 を引用。ETS のページ。検索の抜粋） |
 | TOEIC Speaking & Writing（ETS） | — | 人だけが採点する。採点者は認定試験に合格し、採点の日ごとに較正の試験に通る。1 人の受験者の答えを複数の採点者が独立に採点する（ETS 2010。ETS の TOEIC のページ） | （人の採点なので該当しない）。AI を使うという公式の情報は見つからなかった |
-| PTE Academic（Pearson） | 課題ごとの特性。たとえば「Describe Image（画像を説明する）」は内容・発音・流暢さの 3 つ（Pearson の MELTA 2018 の資料） | 全部を AI が採点する。2025-08-07 から、22 種の問題のうち 7 種で、内容だけ人も採点する。人と AI の点が食い違えば、2 人目の人が決める。発音と流暢さは AI だけが採点する。暗記した型どおりの答えは人の確認に回る（Pearson の FAQ。検索の抜粋。本文は開けなかった） | スピーキング r=.96（40 万件超）、ライティング .88（5 万件超。人と人は .87）（Pearson の Efficacy のページと Assessment Efficacy Report 2019。フィールドテストの受験者 1 万人超・採点者 200 人。2026-11-16 に本文で確かめた）。特性ごとには、発音 .81・流暢さ .82・内容 .92・語彙 .90・正確さ .95・総合 .96（N=158。MELTA 2018） |
+| PTE Academic（Pearson） | 課題ごとの特性。たとえば「Describe Image（画像を説明する）」は内容・発音・流暢さの 3 つ（Pearson の MELTA 2018 の資料） | 全部を AI が採点する。2025-08-07 から、22 種の問題のうち 7 種（Describe Image・Retell Lecture など）で、内容だけ人も採点する。人と AI の点が食い違えば、2 人目の人が決める。発音と流暢さは AI だけが採点する（Pearson の記事で 2026-11-17 に確かめた。開始日の 2025-08-07 は第三者のページの値）。暗記した型どおりの答えが人の確認に回ることは、検索の抜粋でしか見ていない | スピーキング r=.96（40 万件超）、ライティング .88（5 万件超。人と人は .87）（Pearson の Efficacy のページと Assessment Efficacy Report 2019。フィールドテストの受験者 1 万人超・採点者 200 人。2026-11-16 に本文で確かめた）。特性ごとには、発音 .81・流暢さ .82・内容 .92・語彙 .90・正確さ .95・総合 .96（N=158。MELTA 2018） |
 | Versant（Pearson） | 読み上げ・復唱などで、語の正しさ・流暢さ・発音 | 全部を自動で採点する（未確認。この行の出典は相関の値だけのもの） | 口頭の面接の点との相関 r=.77〜.92（Bernstein, Van Moere & Cheng 2010。抄録） |
 | Duolingo English Test | 6 つの下位の力。内容（問いと答えの埋め込みの cos 類似度）、まとまり（専門家の点で調整した言語モデルが予測する 0〜6）、語彙（C1 以上の語の割合）、文法（係り受けの木の深さ）、流暢さ（1 秒あたりの語数）、発音（音響モデルの文字起こしへの確信度） | Duo Speaking Scorer と Duo Writing Scorer が採点する。人の採点は、モデルの学習と評価、採点者の監視（MFRM）に使う。Interactive Speaking は、問いごとに「言うべき内容の点」の一覧を持ち、そのいくつに触れたかで課題の達成を測る | 機械と人 r=.84、人と人 .85（スピーキング、1,922 回分）。機械と人 .85、人と人 .87（ライティング、2,460 回分）。スピーキングの点の再受験での信頼性 .94、SEM 5.68（10〜160 の尺度）（Technical Manual 2025-07 の表 4・表 5。2026-11-16 に本文で確かめた） |
 | Linguaskill（Cambridge） | 3 つのモデルを持つ。点を出すモデル、確信度のモデル、異常な答えを見つけるモデル。B2 First のライティングでは最大約 33 万の言語特徴を使う（語彙・文の長さ・文法関係・つなぎの語・読みやすさ・問いとの関連・誤り）（Xu ら 2024） | スピーキングは「人の試験官か自動採点」の混合（hybrid marking）。確信度が低い答えは人が採点する。ライティングの一般的な流れは次のとおり（Xu ら 2024）。確信度が高く異常の印も無いものは、そのまま返す。確信度が閾値に届かないものと異常の印が付いたものは、人が採点する。食い違えば人の点を返す。確信度と関係なく、無作為に選んだ一部も人が採点する | 混合の採点と人だけの採点で、CEFR が完全に一致したのが 95.6%、1 つ違いまでが 100%。ただしこれは、人に回す閾値を厳しく置き（自動が誤る答えのうち人に回せた割合 recall が 0.96）、多くの答えを人に回したときの値。自動採点だけでは、9,286 回分で完全な一致 56.8%、1 つ違いまで 96.6%（Xu ほか 2020-06「Linguaskill: Building a validity argument for the Speaking test」。2026-11-16 に Web Archive の写し https://web.archive.org/web/20220126092240/https://www.cambridgeenglish.org/Images/589637-linguaskill-building-a-validity-argument-for-the-speaking-test.pdf で確かめた。Cambridge の元の URL は今は 404）。自動採点は、試験官の点の平均より少し甘く、力の低い人で特にそうだった（Xu ら 2021。ResearchGate の抄録。2020 の資料も「高い所で辛く、低い所で甘い」と書く） |
@@ -370,7 +370,7 @@
 ## 不確かな点・残る問い
 
 - **TOEFL iBT（2026-01 からの新しい形式）**: スピーキングとライティングで、人と AI がそれぞれ何を担うかは公開されていない。公式ページは、旧版の説明で「AI の採点と ETS 認定の採点者の組み合わせ」と書くだけである。新しい形式の説明は見つからなかった。試験対策の会社の「全部 AI」「印の付いた答えだけ人」という説明は確かめていない。
-- **PTE Academic の 2025 年の変更**: 人が採点する 7 種の中身と、食い違いの規則は、Pearson の FAQ の検索の抜粋で見ただけで、本文は開けていない。
+- **PTE Academic の 2025 年の変更**: 人が採点する 7 種と、食い違いの規則は、2026-11-17 に Pearson の記事で確かめた。開始日の 2025-08-07 は、記事には無く第三者のページの値。
 - **Linguaskill の数値**: 混合の採点と人だけの採点の CEFR の一致（95.6% / 100%）は、2026-11-16 に原典（2020-06 の資料の Web Archive の写し）で確かめた。自動だけでは 56.8% / 96.6% で、95.6% は多くの答えを人に回したうえでの値。確信度の閾値と、人に回る割合は公開されていない（資料は「大きな割合を人に回した」とだけ書く）。
 - **英検の現状**: 2019 年度以降の自動採点の範囲（S-CBT のスピーキングで AI が何を担うか、AI の面接 S-Interview の実態）は、一次の資料を見つけられなかった。英検の二次試験（面接）の採点が人か AI かは、このアプリの「英検の観点に沿わせる」説明に関わるので、公式の資料を探す価値がある。
 - **Williamson ら（2012）の原文**: 本文を読めていない（2026-11-16 にも探したが、Wiley が取得を拒み〈403〉、無料で読める版も見つからなかった）。.70 / .10 / .15 は、ETS（2021・2023）と ACT（2021）の引用で確かめた。集団ごとの .10 は、Pearson（2026）・WestEd・ETS（.10 か .15）の引用による。
@@ -401,13 +401,13 @@ ETS（TOEFL・TOEIC）
 - Ramineni, C. ほか (2012). Evaluation of the e-rater Scoring Engine for the TOEFL Independent and Integrated Prompts (ETS RR-12-06). https://www.ets.org/research/policy_research_reports/publications/report/2012/jejc.html （閾値 1.5 / 1.0 は検索の抜粋）
 - ETS. How the e-rater engine works. https://www.ets.org/erater/how.html （検索の抜粋）
 - ETS (2010). How ETS Scores the TOEIC Speaking and Writing Tests Responses. https://www.ets.org/research/policy_research_reports/publications/report/2010/itjy.html
-- ETS. TOEIC scores（Speaking・Writing は認定の採点者）. https://www.in.ets.org/toeic/organizations/scores.html
+- ETS. TOEIC scores（Speaking・Writing は認定の採点者）. https://www.ets.org/toeic/organizations/scores.html
 - ETS. TOEFL TestReady. https://www.ets.org/content/ets-org/language-master/in/home/preparation-toefl/testready.html （2024-02 開始）
 
 Pearson
 - Pearson. PTE Academic product evidence (Efficacy, 2019). https://pearson.com/efficacy/product-evidence/pte-academic.html
 - Pearson (2018). MELTA 2018 Automated Scoring（資料）. https://www.pearson.com/content/dam/one-dot-com/one-dot-com/english/versant-test/Presentations/MELTA2018-Automated-Scoring.pdf
-- Pearson (2025). PTE changes 2025: everything you need to know. https://www.pearsonpte.com/articles/pte-changes-2025-everything-you-need-to-know （本文は開けず、検索の抜粋）
+- Pearson (2025). PTE changes 2025: everything you need to know. https://www.pearsonpte.com/articles/pte-changes-2025-everything-you-need-to-know （2026-11-17 に本文で確かめた）
 - Bernstein, J., Van Moere, A., & Cheng, J. (2010). Validating automated speaking tests. *Language Testing*, 27(3), 355–377. https://doi.org/10.1177/0265532210364404 （抄録）
 - Xu, Y., Bellows, M., & Wolfe, E. W. (2026). Effects of Demographic Representations and Model Training Methods on Automated Scoring Engines. AIME-Con 2026, 154–160. https://aclanthology.org/2026.aimecon-main.16.pdf
 
@@ -434,7 +434,7 @@ Cambridge・British Council・IELTS
 - 日本英語検定協会 (2018-10-17). AI による自動採点実証研究で有意な成果―2019 年度から英検に順次本格導入予定―. https://digitalpr.jp/pdf.php?r=29346
 - ベネッセコーポレーション (2026-04-01). 検定試験の自己評価シート「GTEC」. https://www.benesse.co.jp/gtec/fs/pdf/self-assessment2026.pdf
 - レアジョブ (2020-06-17). PROGOS の提供開始. https://www.rarejob.co.jp/en/news/service/2020/0617/8861
-- englishhub.jp. POLYGLOTS の発音評価（CHIVOX）. https://englishhub.jp/news/polyglots-speech-analysis.html
+- englishhub.jp. POLYGLOTS の発音評価（CHIVOX）. https://englishhub.jp/news/polyglots-speech-analysis.html （2026-11-17 には削除済み、410）
 
 学習アプリ・その他
 - ELSA. Efficacy. https://elsaspeak.com/en/efficacy

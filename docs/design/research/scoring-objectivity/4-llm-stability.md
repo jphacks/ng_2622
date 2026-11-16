@@ -23,7 +23,7 @@
 
 ## 結論
 
-1. **総合点を LLM に直接付けさせると、人との一致は中くらいで、安いモデルほど下がる。** 英作文では、安いモデル（Claude 3.5 Haiku・GPT-4o-mini・Gemini 1.5 Flash・Llama 3 70B）の QWK が 0.52〜0.63（人どうしは 0.8〜0.9）。GPT-4 でも例を入れないと 0.6 前後で、段階ごとに 1 つ例を入れて 0.81（人どうし 0.87）。話す答えでは、ゼロショットの相関が 0.56〜0.76、学習させたモデルが 0.82〜0.95。**一方で、参照のある狭い二値の判定（「この答えは正解と同じことを言っているか」）では、小さなモデルが GPT-4 と同じか上回る**（Cohen の κ 0.73〜0.90）。安いモデルへ移せるかは、モデルの大きさよりも「LLM に何を判断させるか」の狭さで決まる。
+1. **総合点を LLM に直接付けさせると、人との一致は中くらいで、安いモデルほど下がる。** 英作文では、安いモデル（Claude 3.5 Haiku・GPT-4o-mini・Gemini 1.5 Flash・Llama 3 70B）の QWK が 0.52〜0.63（TOEFL11 で、点を 3 段に丸めた値。人どうしの 0.8〜0.9 は、論文が文献から引いた一般の値）。GPT-4 でも例を入れないと 0.6 前後で、段階ごとに 1 つ例を入れて 0.81（人どうし 0.87）。話す答えでは、ゼロショットの相関が 0.56〜0.76、学習させたモデルが 0.82〜0.95。**一方で、参照のある狭い二値の判定（「この答えは正解と同じことを言っているか」）では、小さなモデルが GPT-4 と同じか上回る**（Cohen の κ 0.73〜0.90）。安いモデルへ移せるかは、モデルの大きさよりも「LLM に何を判断させるか」の狭さで決まる。
 2. **今のアプリの形（LLM が判定し、コードが F1 を計算する）は、文献の安定させる手法の多くを既に取り入れている。次の一歩は、1 回の大きな判定を「項目ごとの固定の欄」と「小さな yes/no」に分け、部分点の規則と場面との照合をコードへ移すこと。** チェックリストで判定すると、評価モデルの間の一致（Krippendorff の α）が 0.09 から 0.48 に上がった研究がある（CheckEval）。項目ごとの欄にすると、2026-11-11 の指示を直す前の実測（150 回）で唯一の不合格だった「1 文が 2 項目に当たるのに片方にしか付かない」（78 点と 85 点。直した後の 90 回は全部合格）が、起きにくくなる見込み（測って確かめる）。
 3. **Claude の Sonnet 5.5・Haiku 5.5 は temperature を既定から変えられず（変えると 400）、seed も無い。** API の版 2026-10-21 では、どのモデルでも temperature を送ると 400 になる。他社の seed も「best effort」で、temperature 0 でも同じ入力の 1000 回の答えが 80 通りに分かれた報告がある。**パラメタでは決定的にできない。** 選択肢を減らす・同じ入力の結果を保存する・多数決をとる、といった設計で安定させる。
 4. **安いモデルなら多数決をとっても安い。** Haiku 5.5 の単価は Sonnet 5.5 の 1/20（入力 0.10 対 2.00 USD/100 万 token）。3〜5 回を並列に回し、項目ごとに多数決をとっても、Sonnet 1 回より安い見込み。1 回で 20% の確率で判定が割れる項目は、独立なら 3 票の多数決で 10%、5 票で 6% に下がる（誤りは相関するので、実際の効き目はこれより小さい）。
@@ -206,14 +206,14 @@
   - **英作文では、お題ごとに約 1,000 件の採点があれば、BERT 程度のエンコーダーでも人並みになる。** 小さな LLM の LoRA は少し上だが、重い。**短答（このアプリの項目の判定に近い）では、0.749〜0.759 で人どうしの 0.874 に届かなかった。**
   - 出典: https://arxiv.org/abs/2407.01873 （2024）
 - Gayed（2026）: 480 本で調整した Gemma-3-27B が、見たことのないお題で QWK 0.70（上記）。
-- Xiao et al.（2024、LAK 2025、arXiv 2401.06431）: 調整した LLM の速い採点（Fast）に、自信の低い答えだけ遅い推論（Slow）に回す仕組みを付けた。人と AI の共同の採点では、初心者の採点者の QWK が 0.5256 → 0.6609 に上がり（p < 0.01）、熟練者（0.7117）と有意な差が無くなった。熟練者は 0.7117 → 0.7734 に上がったが、有意ではなかった（p = 0.13）（原典の 6.2 節と表 3 で確かめた。前の版の「自信の低い答えを人に回す」は誤りで、回す先は遅い推論。2026-11-16 に原典で直した）。
+- Xiao et al.（2024、LAK 2025、arXiv 2401.06431）: 調整した LLM の速い採点（Fast）に、自信の低い答えを、遅い推論（Slow）で考え直させるか、外部の判定者（人か AI）に回す仕組みを付けた。結びでは、自信の低い答えを人に見せて最後の判断を任せる運用を勧めている。人と AI の共同の採点では、初心者の採点者の QWK が 0.5256 → 0.6609 に上がり（p < 0.01）、熟練者（0.7117）と有意な差が無くなった。熟練者は 0.7117 → 0.7734 に上がったが、有意ではなかった（p = 0.13）（原典の 3 節・6.2 節と表 3 で確かめた。2026-11-17）。
   - 出典: https://arxiv.org/abs/2401.06431
 - Latif et al.（arXiv 2312.15842）: 理科の記述式で、教師（調整した BERT）の柔らかいラベルから小さな生徒を学習し、教師並みの正しさを、桁違いに小さく速いモデルで得た。
   - 出典: https://arxiv.org/abs/2312.15842
 - **Kaggle**（The Learning Agency Lab）: Feedback Prize - English Language Learning（2022、8〜12 年生の英語学習者の英作文、ELLIPSE、6 つの観点の点、評価は MCRMSE）と、Automated Essay Scoring 2.0（2024、QWK）。上位は DeBERTa-v3-large を中心にした ensemble だった、という報告が複数ある（25 位の解法の README など）。公開の leaderboard の 1 位は、ELL が MCRMSE 0.433356（小さいほど良い）、AES 2.0 が QWK 0.84128（kaggle CLI で 2026-11-16 に取得）。**最終の順位（private の leaderboard）の 1 位の点は、CLI でも頁でも取れず未確認**（Kaggle の頁は JavaScript で描き、API は公開の leaderboard だけを返す）。
   - 出典: https://www.kaggle.com/competitions/feedback-prize-english-language-learning 、https://www.kaggle.com/competitions/learning-agency-lab-automated-essay-scoring-2
 - **SemEval-2013 Task 7**（学生の答えの分析）: 答えを正解・一部（不完全）・矛盾・無関係・分野外の 5 つに分ける課題で、このアプリの判定（correct / partial / contradiction / offtopic / absent）とよく似ている。当時の素性ベースの系では、SciEntsBank の 5 分類の macro-F1 が最高 0.380、平均 0.267（参加者の論文の表から）。細かい 5 つの区別は難しい課題。
-  - 出典: https://huggingface.co/datasets/nkazi/SciEntsBank （データ）、https://preview.aclanthology.org/fix_video/S13-2097.pdf （参加者の論文）
+  - 出典: https://huggingface.co/datasets/nkazi/SciEntsBank （データ）、https://aclanthology.org/S13-2097.pdf （参加者の論文）
 
 ### 7. LLM を抜き出しと判定に限り、点はコードで計算する（hybrid）
 
@@ -491,7 +491,7 @@
 - Latif, E. et al. (2023–2024). Knowledge Distillation of LLM for Automatic Scoring of Science Education Assessments. https://arxiv.org/abs/2312.15842
 - Kaggle. Feedback Prize - English Language Learning (2022). https://www.kaggle.com/competitions/feedback-prize-english-language-learning
 - Kaggle. Learning Agency Lab - Automated Essay Scoring 2.0 (2024). https://www.kaggle.com/competitions/learning-agency-lab-automated-essay-scoring-2
-- SemEval-2013 Task 7（SciEntsBank のデータ）. https://huggingface.co/datasets/nkazi/SciEntsBank 、参加者の論文 https://preview.aclanthology.org/fix_video/S13-2097.pdf
+- SemEval-2013 Task 7（SciEntsBank のデータ）. https://huggingface.co/datasets/nkazi/SciEntsBank 、参加者の論文 https://aclanthology.org/S13-2097.pdf
 
 ### 抜き出しと計算を分ける（hybrid）
 - Min, S. et al. (2023). FActScore. EMNLP 2023. https://aclanthology.org/2023.emnlp-main.741

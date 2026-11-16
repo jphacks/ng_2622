@@ -17,7 +17,7 @@
 
 1. **日本人学習者の自由発話の WER は 20% 前後で、母語話者の約 1.5〜2 倍。力の低い人ほど誤りが増える。** ICNALE の 60 秒の独話（日本人 107 人、電話の音声）で、Google・Rev・Whisper large-v3 の WER は 20.7〜23.8%、母語話者は 11.9〜13.8%（Koizumi 2024）。英国の BULATS の試験では、WER は A1 で 43.7%、C で 21.2%（Knill ほか 2018）。Speak & Improve でも、Whisper-small は A2 で約 17%、C1 で 8% 未満（Sun ほか 2025）。**誤りの起き方に力の差があるので、文字起こしの誤りは、力の低い人を二重に不利にする。**
 2. **今の作りには、端末によって採点の道筋が変わる所が 3 つある（repo を読んで見つけた）。** (a) SpeechTranscriber が使えない端末（iPhone 11 系・SE 第 2 世代は使えないという開発者の報告）、音声モデルがまだ入っていない端末、文字起こしの失敗・空の結果・5 秒の時間切れのときは、Azure の文字起こしに切り替わる。(b) 端末の文字起こしがあると Azure の発音評価は正解文ありの評価（scripted）、無いと正解文なしの評価（unscripted）になる。Microsoft は、正解文なしの評価は別の認識モデルを使うと書いている。つまり話し方の 25% も、端末で評価の方式が変わる。(c) 文字起こしは端末が `X-Transcript` で送り、サーバーはそのまま信じる。作り替えた文字起こしを送ることもできてしまう。**いちばん効くのは、全員の WAV を同じサーバーの同じ設定で文字にすることで、手間も小さい**（WAV はもう全員分サーバーに届いている）。マイクの差は残るので、録音の条件もそろえる（`AVAudioSession` の `.measurement` モード、音量の正規化、話す前のマイクの確かめ）。iPhone X は iOS 26 を入れられない（二次情報。下の 3 節）ので、このアプリはそもそも入らない。心配すべき差は「iPhone 11・SE 第 2 世代」と「12 以降」の間にある。
-3. **チェックリストの F1 は、1 語の聞き違いに弱い。** 「A girl is running」が「A car is running」になると、中心の項目を落とし（再現率 R が下がる）、場面に無い物を言った誤り（適合率 P が下がる）も増える。3 級の例で、内容は 100 点から 63 点に下がる（下の手計算）。ETS の要点（key point）の検出は WER 18.5% でも人の書き起こしと同じ性能だったが（Yoon ほか 2019）、それは複数の語で要点を判定したからで、このアプリの項目は名詞 1 語で決まることが多い。**直し方は、「聞き取りに自信の無い語は、減点の根拠にしない」をコードで決めること。** 確信度（SpeechTranscriber は `transcriptionConfidence` と `alternativeTranscriptions` を返せるのに、今の `.transcription` の preset では使っていない）と、音の近さ（音素の編集距離。日本語話者に多い取り違えの重みを付ける）を使う。確信度 0.9 以上の語だけを使うと、発音の誤りのある語の WER は 29.0% から 7.3% に下がった（Knill ほか 2018）。
+3. **チェックリストの F1 は、1 語の聞き違いに弱い。** 「A girl is running」が「A car is running」になると、中心の項目を落とし（再現率 R が下がる）、場面に無い物を言った誤り（適合率 P が下がる）も増える。3 級の例で、内容は 100 点から 63 点に下がる（下の手計算）。ETS の要点（key point）の検出は WER 18.5% でも人の書き起こしと同じ性能だったが（Yoon ほか 2019）、それは複数の語で要点を判定したからで、このアプリの項目は名詞 1 語で決まることが多い。**直し方は、「聞き取りに自信の無い語は、減点の根拠にしない」をコードで決めること。** 確信度（SpeechTranscriber は `transcriptionConfidence` と `alternativeTranscriptions` を返せるのに、今の `.transcription` の preset では使っていない）と、音の近さ（音素の編集距離。日本語話者に多い取り違えの重みを付ける）を使う。確信度 0.9 以上の語だけを使うと、発音の誤りのある語の WER は 29.0% から 7.3% に下がった（Knill ほか 2018。BULATS の System 2 で、挿入の誤りを除いた WER）。
 4. **部品の名前をヒントとして渡す案は、今の構成では使えず、使うなら水増しへの備えが要る。** SpeechTranscriber は `contextualStrings` を使わない（Apple の担当者の回答、2026-01）。使えるのは古いモデルの DictationTranscriber だけ。Azure の phrase list は、今呼んでいる短い音声用の REST に無く、Fast transcription の REST や SDK にある。Workers AI の Whisper は `initial_prompt`、Deepgram Nova-3 は `keyterm` を受け付ける。ヒントの語は言っていなくても出やすくなるので、そのまま点に使うと「場面の語が勝手に出て当たる」水増しになる。入れるなら、場面に無い音の近い語（例: girl に対して car・curl・gal）を混ぜ、ヒントありとなしの結果が食い違った語は「聞き取りが分かれた」として扱う。
 5. **ファインチューンは今は勧めない。効くが、データの偏りで公平さを悪くしうる。** Speak & Improve の約 28 時間で Whisper-small を LoRA で学習すると、全体の WER は 10.2% → 9.2% に下がったが、A2 の WER は相対で約 20% 上がった（Sun ほか 2025）。チームの録音（大学生）で学習すると、同じことが中高生や力の低い人に起きうる。日本の中高生の英語の書き起こしつき音声が数時間〜数十時間要り、学習したモデルを動かす GPU のサーバー（Workers AI では動かせない。LoRA を載せられるのは LLM 向けの決まったモデルだけで、Whisper は無い。2026-11-16 に Cloudflare の文書で確かめた）か、WhisperKit で端末に載せる作りが要る。先に、測る仕組みと、誤りに強い照合を入れるべき。
 6. **公平さの説明は「全員同じ AI で文字にし、聞き取りの自信が無い語では減点しない。端末の差は X 本の録音で測って Y ポイント以内」と、数字で言えるようにする。** そのために、端末の型番・OS の版・文字起こしの出どころを採点のログに残し、同じ録音を端末ごとに文字にして比べる測り方を先に作る。
@@ -53,7 +53,7 @@
 - データ: BULATS の試験（A1〜C、多くの母語）。評価は 226 人。
 - 2 つの文字起こし（WER 47.5% と 30.4%）で、音声と流暢さの特徴量による採点の人との相関は、どちらも PCC 0.854 で変わらなかった。品詞の特徴量を足すと、WER の低い方だけ 0.865 に上がった。話題から外れた答えの検出も、WER の低い方が良かった（0.949 → 0.976 など）。
 - 力ごとの WER（1,043 の答え）: A1 43.7%（置換 18.2・脱落 19.9・挿入 5.5）、A2 32.2%、B1 25.1%、B2 23.7%、C 21.2%。
-- 確信度で絞る効果: 発音の誤りのある語の WER は 29.0%、確信度 0.9 以上の語だけでは 7.3%。全部の語では 22.7% → 3.4%。結論は「最も確信のある語に絞って講評すれば、文字起こしの誤りによる誤った講評を減らせる」。
+- 確信度で絞る効果（System 2、挿入の誤りを除いた WER。表 5）: 発音の誤りのある語の WER は 29.0%、確信度 0.9 以上の語だけでは 7.3%。全部の語では 22.7% → 3.4%。結論は「最も確信のある語に絞って講評すれば、文字起こしの誤りによる誤った講評を減らせる」。
 
 **Qian ほか (2024)「Speak & Improve Challenge 2025: Tasks and Baseline Systems」**（https://arxiv.org/abs/2412.11985 ）
 - データ: Speak & Improve の約 315 時間（A2〜C1、多くの母語）。手で書き起こした部分は約 55 時間で、言いよどみと文法の訂正の注釈つき。日本人の学習者のコーパスとして KISTEC（KIT Speaking Test Corpus）も挙げている。
@@ -304,17 +304,17 @@
 - Jain, R. ほか (2024). Exploring Native and Non-Native English Child Speech Recognition With Whisper. IEEE Access 12. DOI 10.1109/ACCESS.2024.3378738（要旨のみ確認）
 - Halychanskyi, Y. ほか (2026). Few-Shot Synthetic Accented Speech for ASR Fine-Tuning: What Helps and When? https://arxiv.org/abs/2604.27273
 - Koenecke, A. ほか (2024). Careless Whisper: Speech-to-Text Hallucination Harms. FAccT 2024. https://arxiv.org/abs/2402.08021
-- Koenecke, A. ほか (2020). Racial disparities in automated speech recognition. PNAS. https://www.pnas.org/doi/10.1073/pnas.1915768117（PMC 版 https://pmc.ncbi.nlm.nih.gov/articles/PMC7149386/ で確認）
+- Koenecke, A. ほか (2020). Racial disparities in automated speech recognition. PNAS. https://www.pnas.org/doi/10.1073/pnas.1915768117 （PMC 版 https://pmc.ncbi.nlm.nih.gov/articles/PMC7149386/ で確認）
 - Yang, C.-K., Huang, K.-P., Lee, H.-y. (2024). Do Prompts Really Prompt? Exploring the Prompt Understanding Capability of Whisper. SLT 2024. https://arxiv.org/abs/2406.05806
 - Sun, G. ほか (2023). Can Contextual Biasing Remain Effective with Whisper and GPT-2? https://arxiv.org/abs/2306.01942
-- Zero-shot Context Biasing with Trie-based Decoding using Synthetic Multi-Pronunciation (2025). https://arxiv.org/abs/2508.17796（検索の要約で確認）
-- SALMONN-2: Advancing General-Purpose Hearing Abilities with Self-Supervised Representations (2026). https://arxiv.org/abs/2607.17079（本文で確認）
+- Zero-shot Context Biasing with Trie-based Decoding using Synthetic Multi-Pronunciation (2025). https://arxiv.org/abs/2508.17796 （検索の要約で確認）
+- SALMONN-2: Advancing General-Purpose Hearing Abilities with Self-Supervised Representations (2026). https://arxiv.org/abs/2607.17079 （本文で確認）
 - Jeffries, N. ほか (2024). Moonshine: Speech Recognition for Live Transcription and Voice Commands. https://arxiv.org/abs/2410.15608
 - Iwamoto, K. ほか (2022). How Bad Are Artifacts?: Analyzing the Impact of Speech Enhancement Errors on ASR. Interspeech 2022. https://arxiv.org/abs/2201.06685
-- Mathur, A., Smith, R., Isopoussu, A., Lane, N. D. (2018). On Robustness of Cloud Speech APIs: An Early Characterization. HASCA 2018. https://discovery.ucl.ac.uk/id/eprint/10075038/1/mathur_hasca2018.pdf（本文で確認）
+- Mathur, A., Smith, R., Isopoussu, A., Lane, N. D. (2018). On Robustness of Cloud Speech APIs: An Early Characterization. HASCA 2018. https://discovery.ucl.ac.uk/id/eprint/10075038/1/mathur_hasca2018.pdf （本文で確認）
 - WhisperKit: On-device Real-time ASR with Billion-Scale Transformers (2025). https://arxiv.org/abs/2507.10860
-- Wang, W. ほか (2011). 音の近さを言語理解に足す研究（USC ICT）. https://people.ict.usc.edu/~leuski/publications/papers/Wang-11.pdf（検索の要約で確認）
-- LASER: An LLM-based ASR Scoring and Evaluation Rubric (2025). https://arxiv.org/abs/2510.07437（検索の要約で確認）
+- Wang, W. ほか (2011). 音の近さを言語理解に足す研究（USC ICT）. https://people.ict.usc.edu/~leuski/publications/papers/Wang-11.pdf （検索の要約で確認）
+- LASER: An LLM-based ASR Scoring and Evaluation Rubric (2025). https://arxiv.org/abs/2510.07437 （検索の要約で確認）
 
 公式の文書・フォーラム
 - Apple SpeechTranscriber: https://developer.apple.com/documentation/speech/speechtranscriber （Preset・ReportingOption・ResultAttributeOption の各頁も）
