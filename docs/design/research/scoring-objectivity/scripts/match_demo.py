@@ -72,7 +72,7 @@ def extract(text):
     return out
 
 def same(a, b):
-    """要素が一致=1、上位語どうし=0.5、代名詞・欠け=0.5（照応は解かない）"""
+    """要素が一致=1、上位語どうし=0.25、代名詞・欠け=0.5（照応は解かない）、前置詞だけ違う=0.75"""
     if a == b: return 1.0
     if a is None or b is None or a in PRON or b in PRON: return 0.5
     if HYPER.get(a) == b or HYPER.get(b) == a or (HYPER.get(a) and HYPER.get(a) == HYPER.get(b)): return 0.25

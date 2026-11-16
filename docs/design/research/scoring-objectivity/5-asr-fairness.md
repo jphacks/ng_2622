@@ -15,8 +15,8 @@
 
 ## 結論
 
-1. **日本人学習者の自由発話の WER は 20% 前後で、母語話者の約 2 倍。力の低い人ほど誤りが増える。** ICNALE の 60 秒の独話（日本人 107 人、電話の音声）で、Google・Rev・Whisper large-v3 の WER は 20.7〜23.8%、母語話者は 11.9〜13.8%（Koizumi 2024）。英国の BULATS の試験では、WER は A1 で 43.7%、C で 21.2%（Knill ほか 2018）。Speak & Improve でも、Whisper-small は A2 で約 17%、C1 で 8% 未満（Sun ほか 2025）。**誤りの起き方に力の差があるので、文字起こしの誤りは、力の低い人を二重に不利にする。**
-2. **今の作りには、端末によって採点の道筋が変わる所が 3 つある（repo を読んで見つけた）。** (a) SpeechTranscriber が使えない端末（iPhone 11 系・SE 第 2 世代は使えないという開発者の報告）と、5 秒の時間切れの端末は、Azure の文字起こしに切り替わる。(b) 端末の文字起こしがあると Azure の発音評価は正解文ありの評価（scripted）、無いと正解文なしの評価（unscripted）になる。Microsoft は、正解文なしの評価は別の認識モデルを使うと書いている。つまり話し方の 25% も、端末で評価の方式が変わる。(c) 文字起こしは端末が `X-Transcript` で送り、サーバーはそのまま信じる。作り替えた文字起こしを送ることもできてしまう。**いちばん効くのは、全員の WAV を同じサーバーの同じ設定で文字にすることで、手間も小さい**（WAV はもう全員分サーバーに届いている）。マイクの差は残るので、録音の条件もそろえる（`AVAudioSession` の `.measurement` モード、音量の正規化、話す前のマイクの確かめ）。iPhone X は iOS 26 を入れられないので、このアプリはそもそも入らない。心配すべき差は「iPhone 11・SE 第 2 世代」と「12 以降」の間にある。
+1. **日本人学習者の自由発話の WER は 20% 前後で、母語話者の約 1.5〜2 倍。力の低い人ほど誤りが増える。** ICNALE の 60 秒の独話（日本人 107 人、電話の音声）で、Google・Rev・Whisper large-v3 の WER は 20.7〜23.8%、母語話者は 11.9〜13.8%（Koizumi 2024）。英国の BULATS の試験では、WER は A1 で 43.7%、C で 21.2%（Knill ほか 2018）。Speak & Improve でも、Whisper-small は A2 で約 17%、C1 で 8% 未満（Sun ほか 2025）。**誤りの起き方に力の差があるので、文字起こしの誤りは、力の低い人を二重に不利にする。**
+2. **今の作りには、端末によって採点の道筋が変わる所が 3 つある（repo を読んで見つけた）。** (a) SpeechTranscriber が使えない端末（iPhone 11 系・SE 第 2 世代は使えないという開発者の報告）、音声モデルがまだ入っていない端末、文字起こしの失敗・空の結果・5 秒の時間切れのときは、Azure の文字起こしに切り替わる。(b) 端末の文字起こしがあると Azure の発音評価は正解文ありの評価（scripted）、無いと正解文なしの評価（unscripted）になる。Microsoft は、正解文なしの評価は別の認識モデルを使うと書いている。つまり話し方の 25% も、端末で評価の方式が変わる。(c) 文字起こしは端末が `X-Transcript` で送り、サーバーはそのまま信じる。作り替えた文字起こしを送ることもできてしまう。**いちばん効くのは、全員の WAV を同じサーバーの同じ設定で文字にすることで、手間も小さい**（WAV はもう全員分サーバーに届いている）。マイクの差は残るので、録音の条件もそろえる（`AVAudioSession` の `.measurement` モード、音量の正規化、話す前のマイクの確かめ）。iPhone X は iOS 26 を入れられない（二次情報。下の 3 節）ので、このアプリはそもそも入らない。心配すべき差は「iPhone 11・SE 第 2 世代」と「12 以降」の間にある。
 3. **チェックリストの F1 は、1 語の聞き違いに弱い。** 「A girl is running」が「A car is running」になると、中心の項目を落とし（再現率 R が下がる）、場面に無い物を言った誤り（適合率 P が下がる）も増える。3 級の例で、内容は 100 点から 63 点に下がる（下の手計算）。ETS の要点（key point）の検出は WER 18.5% でも人の書き起こしと同じ性能だったが（Yoon ほか 2019）、それは複数の語で要点を判定したからで、このアプリの項目は名詞 1 語で決まることが多い。**直し方は、「聞き取りに自信の無い語は、減点の根拠にしない」をコードで決めること。** 確信度（SpeechTranscriber は `transcriptionConfidence` と `alternativeTranscriptions` を返せるのに、今の `.transcription` の preset では使っていない）と、音の近さ（音素の編集距離。日本語話者に多い取り違えの重みを付ける）を使う。確信度 0.9 以上の語だけを使うと、発音の誤りのある語の WER は 29.0% から 7.3% に下がった（Knill ほか 2018）。
 4. **部品の名前をヒントとして渡す案は、今の構成では使えず、使うなら水増しへの備えが要る。** SpeechTranscriber は `contextualStrings` を使わない（Apple の担当者の回答、2026-01）。使えるのは古いモデルの DictationTranscriber だけ。Azure の phrase list は、今呼んでいる短い音声用の REST に無く、Fast transcription の REST や SDK にある。Workers AI の Whisper は `initial_prompt`、Deepgram Nova-3 は `keyterm` を受け付ける。ヒントの語は言っていなくても出やすくなるので、そのまま点に使うと「場面の語が勝手に出て当たる」水増しになる。入れるなら、場面に無い音の近い語（例: girl に対して car・curl・gal）を混ぜ、ヒントありとなしの結果が食い違った語は「聞き取りが分かれた」として扱う。
 5. **ファインチューンは今は勧めない。効くが、データの偏りで公平さを悪くしうる。** Speak & Improve の約 28 時間で Whisper-small を LoRA で学習すると、全体の WER は 10.2% → 9.2% に下がったが、A2 の WER は相対で約 20% 上がった（Sun ほか 2025）。チームの録音（大学生）で学習すると、同じことが中高生や力の低い人に起きうる。日本の中高生の英語の書き起こしつき音声が数時間〜数十時間要り、学習したモデルを動かす GPU のサーバー（Workers AI では動かせない。LoRA を載せられるのは LLM 向けの決まったモデルだけで、Whisper は無い。2026-11-16 に Cloudflare の文書で確かめた）か、WhisperKit で端末に載せる作りが要る。先に、測る仕組みと、誤りに強い照合を入れるべき。
@@ -29,7 +29,7 @@
 | 段階 | 今の作り | 端末の差が入る所 |
 | --- | --- | --- |
 | 録音 | `VoiceRecorder.swift`。`AVAudioRecorder` で WAV（16 kHz・16 bit・モノラル）、最長 20 秒。`AVAudioSession` は `.playAndRecord`・`.default` モード・`.defaultToSpeaker`。音量メーターあり（-50〜-10 dB を 0〜1 に） | `.default` モードでは、端末が自動の音量調整などの処理をかける（下の Apple の文書）。マイクの性能と処理は機種で違う |
-| 文字起こし | `DeviceTranscriber.swift`。`SpeechTranscriber(locale: en-US, preset: .transcription)` に WAV を渡す。5 秒で時間切れ。使えない・失敗・時間切れは nil | 使えない端末と遅い端末だけ、Azure の文字起こしになる |
+| 文字起こし | `DeviceTranscriber.swift`。`SpeechTranscriber(locale: en-US, preset: .transcription)` に WAV を渡す。5 秒で時間切れ。使えない・失敗・時間切れは nil | 使えない端末・音声モデルがまだ入っていない端末・失敗・空の結果・時間切れのときに、Azure の文字起こしになる |
 | 送信 | `LiveGameClient.finishSpeaking`。文字起こしが返るまで（最長 5 秒）待ってから、WAV と `X-Transcript` を送る | 端末の文字起こしの待ちが、そのまま結果の遅れになる |
 | 話し方 | `backend/src/scoring/azure.ts`。端末の文字起こしを `ReferenceText` に入れる。空なら正解文なしの評価。`EnableMiscue: false` | 文字起こしの有無で、評価の方式（scripted / unscripted）が変わる |
 | 内容・表現 | `backend/src/scoring/index.ts`。端末の文字起こしがあればそれ、無ければ Azure の文字起こしを Claude に渡す。指示は "The input is an automatic transcript, so ignore punctuation and small recognition errors."（`checklistGrade.ts`） | 誤りの扱いは Claude の判断まかせ |
@@ -81,7 +81,7 @@
 
 **girl → car の取り違えの見立て（推測。確かめた出典は無い）**
 - 日本語話者は girl を「ガール」[ɡaːɾɯ] に近く発音しやすい。英語の girl の母音 /ɝ/（r の音色の付いた母音）が日本語に無く、[aː] は car /kɑːr/ の母音に近い。語頭の g と k の違いは、英語では主に息の出方（有気音）で区別されるので、声が小さいと崩れやすい。日本語話者の L と R の混同、子音の後に母音を足す癖（例: [ɡaːɾɯ] の最後の [ɯ]）も、取り違えのもとになる。
-- 「声が小さい・言いよどむと悪化する」（2026-11-13 にチームで遊んだときの所見）は、上の Knill の「力の低い人ほど脱落の誤りが多い」（A1 で脱落 19.9%）と合う。
+- 「声が小さい・言いよどむと悪化する」（2026-11-13 にチームで遊んだときの所見。repo には記録が無い）は、上の Knill の「力の低い人ほど脱落の誤りが多い」（A1 で脱落 19.9%）と合う。
 
 ### 2. 文脈で認識を寄せる（contextual biasing）
 
