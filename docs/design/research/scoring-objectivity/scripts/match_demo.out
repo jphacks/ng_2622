@@ -1,0 +1,16 @@
+発話: A girl is showing her hand. A boy is running. A dog is sitting.
+  取り出した組: [('girl', 'show', 'hand'), ('boy', 'run', None), ('dog', 'sit', None)]
+  項目: [('girl_show', '言えた'), ('woman_check', '-'), ('boy_run', '一部'), ('dog_watch', '-'), ('why_dog', '-'), ('link_check', '-'), ('bench_tree', '-'), ('flowers', '-')]
+  各描写の一致度: [(('girl', 'show', 'hand'), 1.0), (('boy', 'run', None), 1.0), (('dog', 'sit', None), 1.0)]
+発話: A kid is running on the grass. A lady is looking at the girl. There are flowers.
+  取り出した組: [('child', 'run-on', 'grass'), ('woman', 'watch-at', 'girl'), ('flower',)]
+  項目: [('girl_show', '-'), ('woman_check', '-'), ('boy_run', '一部'), ('dog_watch', '-'), ('why_dog', '-'), ('link_check', '-'), ('bench_tree', '-'), ('flowers', '一部')]
+  各描写の一致度: [(('child', 'run-on', 'grass'), 0.67), (('woman', 'watch-at', 'girl'), 0.0), (('flower',), 0.5)]
+発話: A boy is watching the dog. The dog is running.
+  取り出した組: [('boy', 'watch', 'dog'), ('dog', 'run', None)]
+  項目: [('girl_show', '-'), ('woman_check', '-'), ('boy_run', '-'), ('dog_watch', '-'), ('why_dog', '-'), ('link_check', '-'), ('bench_tree', '-'), ('flowers', '-')]
+  各描写の一致度: [(('boy', 'watch', 'dog'), 0.0), (('dog', 'run', None), 0.0)]
+発話: A girl is showing her hand, so a woman is checking it to help her. A dog is watching the boy because the boy is running. There is a bench under the tree.
+  取り出した組: [('girl', 'show', 'hand'), ('woman', 'check', 'it'), ('dog', 'watch', 'boy'), ('boy', 'run', None), ('bench', 'under', 'tree')]
+  項目: [('girl_show', '言えた'), ('woman_check', '言えた'), ('boy_run', '一部'), ('dog_watch', '言えた'), ('why_dog', '言えた'), ('link_check', '言えた'), ('bench_tree', '言えた'), ('flowers', '-')]
+  各描写の一致度: [(('girl', 'show', 'hand'), 1.0), (('woman', 'check', 'it'), 1.0), (('dog', 'watch', 'boy'), 1.0), (('boy', 'run', None), 1.0), (('bench', 'under', 'tree'), 1.0)]
